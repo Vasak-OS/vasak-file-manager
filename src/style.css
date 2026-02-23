@@ -82,9 +82,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-   /* radius */
+  /* radius */
   --radius-corner: var(--corner-radius);
-  --radius-corner-window: calc(var(--corner-radius) + 16px);
+  --radius-corner-window: calc(var(--corner-radius) + 2px);
 
   /* Colores de Marca */
   --color-primary: var(--primary);
