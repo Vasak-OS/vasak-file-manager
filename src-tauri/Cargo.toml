@@ -26,6 +26,7 @@ tauri-plugin-vicons = "2"
 tauri-plugin-config-manager = "2"
 gtk = "0.18"
 base64 = "0.22"
+tauri-plugin-store = "2"
 
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.
