@@ -161,7 +161,9 @@ function handleSearchSelectionChange(entries: DirEntry[]) {
 		isSearchSelectionActive.value = true;
 		selectedEntries.value = entries;
 
-		paneRefsMap.value.forEach((pane) => pane.clearSelection());
+		paneRefsMap.value.forEach((pane) => {
+			pane.clearSelection();
+		});
 
 		if (singlePaneRef.value) {
 			singlePaneRef.value.clearSelection();
@@ -473,7 +475,7 @@ function callActivePaneMethod(
 	const pane = getActivePaneRef();
 
 	if (pane?.[method]) {
-		pane[method]!();
+		pane[method]?.();
 		return true;
 	}
 

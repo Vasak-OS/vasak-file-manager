@@ -407,7 +407,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 
 	function replacePathPrefix(path: string, oldPrefix: string, newPrefix: string): string | null {
 		if (path === oldPrefix) return newPrefix;
-		if (path.startsWith(oldPrefix + '/')) return newPrefix + path.slice(oldPrefix.length);
+		if (path.startsWith(`${oldPrefix}/`)) return newPrefix + path.slice(oldPrefix.length);
 		return null;
 	}
 
@@ -420,7 +420,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 			for (const tabGroup of workspace.tabGroups) {
 				for (const tab of tabGroup) {
 					const isAffected = paths.some(
-						(deletedPath) => tab.path === deletedPath || tab.path.startsWith(deletedPath + '/')
+						(deletedPath) => tab.path === deletedPath || tab.path.startsWith(`${deletedPath}/`)
 					);
 
 					if (isAffected) {
@@ -503,10 +503,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		}
 	}
 
-	const debouncedSaveWorkspaces = useDebounceFn(
-		saveWorkspaces,
-		300
-	);
+	const debouncedSaveWorkspaces = useDebounceFn(saveWorkspaces, 300);
 
 	watch(
 		() => workspaces.value,
