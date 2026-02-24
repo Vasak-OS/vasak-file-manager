@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import SidebarComponent from "@/components/sidebar/SidebarComponent.vue"
-import TopBarComponent from "../components/topbar/TopBarComponent.vue";
-import ContentInformation from "../components/content/ContentInformation.vue";
+import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
+import ContentInformation from '../components/content/ContentInformation.vue';
+import TopBarComponent from '../components/topbar/TopBarComponent.vue';
 </script>
 <template>
   <div class="h-screen w-screen background rounded-corner-window flex">
