@@ -37,6 +37,5 @@ onUnmounted(() => {
 
 <template>
   <WindowAppLayout>
-
-	</WindowAppLayout>
+  </WindowAppLayout>
 </template>
