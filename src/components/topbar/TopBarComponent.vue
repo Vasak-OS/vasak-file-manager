@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import ActionControlsComponent from "@/components/topbar/ActionControlsComponent.vue";
+import ActionControlsComponent from '@/components/topbar/ActionControlsComponent.vue';
 </script>
 <template>
   <div class="flex justify-between p-1" data-tauri-drag-region>

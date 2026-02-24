@@ -27,7 +27,6 @@ onMounted(async () => {
 	}
 });
 
-
 onUnmounted(() => {
 	if (unListenConfig.value !== null) {
 		unListenConfig.value();

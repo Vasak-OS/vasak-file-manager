@@ -1,17 +1,17 @@
 <script lang="ts" setup>
-import { ref, Ref, onMounted } from "vue";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, Ref, ref } from 'vue';
 
 const appWindow = getCurrentWindow();
-const closeIcon: Ref<string> = ref("");
-const minimizeIcon: Ref<string> = ref("");
-const maximizeIcon: Ref<string> = ref("");
+const closeIcon: Ref<string> = ref('');
+const minimizeIcon: Ref<string> = ref('');
+const maximizeIcon: Ref<string> = ref('');
 
 onMounted(async () => {
-  closeIcon.value = await getIconSource("window-close");
-  minimizeIcon.value = await getIconSource("window-minimize");
-  maximizeIcon.value = await getIconSource("window-maximize");
+	closeIcon.value = await getIconSource('window-close');
+	minimizeIcon.value = await getIconSource('window-minimize');
+	maximizeIcon.value = await getIconSource('window-maximize');
 });
 </script>
 <template>

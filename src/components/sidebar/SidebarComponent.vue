@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import { onMounted, ref } from "vue";
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, ref } from 'vue';
 
-const folderIcon = ref("");
+const folderIcon = ref('');
 
 onMounted(async () => {
-  folderIcon.value = await getIconSource("folder");
+	folderIcon.value = await getIconSource('folder');
 });
 </script>
 
