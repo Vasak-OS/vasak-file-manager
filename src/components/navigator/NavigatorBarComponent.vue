@@ -4,7 +4,6 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { GlobalSearchView } from '@/modules/global-search';
 import { ClipboardToolbar } from '@/modules/navigator/components/clipboard-toolbar';
 import { FileBrowser } from '@/modules/navigator/components/file-browser';
-import { InfoPanel } from '@/modules/navigator/components/info-panel';
 import { NavigatorToolbarActions } from '@/modules/navigator/components/navigator-toolbar-actions';
 import { TabBar } from '@/modules/tab-bar';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
@@ -36,6 +35,11 @@ type GlobalSearchViewInstance = InstanceType<typeof GlobalSearchView> & {
 	clearSelections?: () => void;
 };
 
+const emit = defineEmits<{
+	'update:selected-entries': [entries: DirEntry[]];
+	'update:current-dir-entry': [entry: DirEntry | null];
+}>();
+
 const workspacesStore = useWorkspacesStore();
 const userSettingsStore = useUserSettingsStore();
 const clipboardStore = useClipboardStore();
@@ -48,7 +52,6 @@ const paneRefsMap = ref<Map<string, FileBrowserInstance>>(new Map());
 const singlePaneRef = ref<FileBrowserInstance | null>(null);
 const globalSearchViewRef = ref<GlobalSearchViewInstance | null>(null);
 const isSearchSelectionActive = ref(false);
-const showInfoPanel = ref(true);
 const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
 const activeTabId = ref<string | null>(null);
@@ -85,14 +88,6 @@ const currentLayout = computed(() => {
 		default:
 			return 'list';
 	}
-});
-
-const infoPanelEntry = computed(() => {
-	if (selectedEntries.value.length > 0) {
-		return selectedEntries.value[selectedEntries.value.length - 1];
-	}
-
-	return currentDirEntry.value;
 });
 
 const isSplitView = computed(() => {
@@ -132,15 +127,12 @@ function handleToggleSplitView() {
 	workspacesStore.toggleSplitView();
 }
 
-function handleToggleInfoPanel() {
-	showInfoPanel.value = !showInfoPanel.value;
-}
-
 function handleSelectionChange(entries: DirEntry[], tabId?: string) {
 	if (entries.length > 0) {
 		isSearchSelectionActive.value = false;
 		globalSearchViewRef.value?.clearSelections?.();
 		selectedEntries.value = entries;
+		emit('update:selected-entries', entries);
 
 		if (tabId) {
 			activeTabId.value = tabId;
@@ -153,6 +145,7 @@ function handleSelectionChange(entries: DirEntry[], tabId?: string) {
 		}
 	} else if (!isSearchSelectionActive.value && (!tabId || tabId === activeTabId.value)) {
 		selectedEntries.value = [];
+		emit('update:selected-entries', []);
 	}
 }
 
@@ -160,6 +153,7 @@ function handleSearchSelectionChange(entries: DirEntry[]) {
 	if (entries.length > 0) {
 		isSearchSelectionActive.value = true;
 		selectedEntries.value = entries;
+		emit('update:selected-entries', entries);
 
 		paneRefsMap.value.forEach((pane) => {
 			pane.clearSelection();
@@ -171,11 +165,13 @@ function handleSearchSelectionChange(entries: DirEntry[]) {
 	} else {
 		isSearchSelectionActive.value = false;
 		selectedEntries.value = [];
+		emit('update:selected-entries', []);
 	}
 }
 
 function handleCurrentDirChange(entry: DirEntry | null) {
 	currentDirEntry.value = entry;
+	emit('update:current-dir-entry', entry);
 }
 
 function handlePaneFocus(tabId: string) {
@@ -534,16 +530,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <NavigatorToolbarActions :is-split-view="isSplitView" :show-info-panel="showInfoPanel"
-    :is-global-search-open="globalSearchStore.isOpen" @toggle-split-view="handleToggleSplitView"
-    @toggle-info-panel="handleToggleInfoPanel" />
+  <NavigatorToolbarActions :is-split-view="isSplitView"
+    :is-global-search-open="globalSearchStore.isOpen" @toggle-split-view="handleToggleSplitView" />
   <div class="navigator-page">
     <TabBar v-if="!isSmallScreen" />
     <div class="navigator-page__main">
       <div v-if="isSmallScreen" class="navigator-page__compact-header">
         <TabBar teleport-target="" :compact="true" />
-        <InfoPanel v-if="showInfoPanel" :selected-entry="infoPanelEntry"
-          :is-current-dir="selectedEntries.length === 0 && !!currentDirEntry" />
       </div>
       <div class="navigator-page__panes-wrapper">
         <div class="navigator-page__panes-container">
@@ -584,8 +577,6 @@ onUnmounted(() => {
           :pane2-path="workspacesStore.currentTabGroup?.[1]?.path" @paste="handlePasteShortcut"
           @paste-to-pane="handlePasteToPane" />
       </div>
-      <InfoPanel v-if="showInfoPanel && !isSmallScreen" :selected-entry="infoPanelEntry"
-        :is-current-dir="selectedEntries.length === 0 && !!currentDirEntry" />
     </div>
   </div>
 </template>
