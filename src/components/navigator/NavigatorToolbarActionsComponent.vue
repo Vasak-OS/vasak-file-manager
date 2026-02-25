@@ -12,8 +12,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Layout } from '@/types/navigator';
 import { LAYOUTS_TYPES } from '@/constants/navigator';
+import { Layout } from '@/types/navigator';
 
 type LayoutType = Layout;
 

@@ -3,11 +3,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import ClipboardToolbarComponent from '@/components/navigator/ClipboardToolbarComponent.vue';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
+import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
 import ResizablePanel from '@/components/ui/ResizablePanel.vue';
 import ResizablePanelGroup from '@/components/ui/ResizablePanelGroup.vue';
 import { LAYOUTS_TYPES } from '@/constants/navigator';
-import { TabBar } from '@/modules/tab-bar';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
@@ -533,10 +533,10 @@ onUnmounted(() => {
   <NavigatorToolbarActionsComponent :is-split-view="isSplitView"
     :is-global-search-open="globalSearchStore.isOpen" @toggle-split-view="handleToggleSplitView" />
   <div class="navigator-page">
-    <TabBar v-if="!isSmallScreen" />
+    <TabBarComponent v-if="!isSmallScreen" />
     <div class="navigator-page__main">
       <div v-if="isSmallScreen" class="navigator-page__compact-header">
-        <TabBar teleport-target="" :compact="true" />
+        <TabBarComponent teleport-target="" :compact="true" />
       </div>
       <div class="navigator-page__panes-wrapper">
         <div class="navigator-page__panes-container">

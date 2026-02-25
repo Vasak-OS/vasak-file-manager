@@ -1,1 +1,1 @@
-export type Layout = "grid" | "list" | "compactList"
+export type Layout = 'grid' | 'list' | 'compactList';

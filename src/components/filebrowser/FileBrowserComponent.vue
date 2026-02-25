@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useFileBrowser } from '@/composables/file-browser/use-file-browser';
 import { provideFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import type { DirEntry } from '@/types/dir-entry';
+import { Layout } from '@/types/navigator';
 import type { Tab } from '@/types/workspaces';
 import FileBrowserConflictDialog from './file-browser-conflict-dialog.vue';
 import FileBrowserContent from './file-browser-content.vue';
@@ -13,7 +14,6 @@ import FileBrowserOpenWithDialog from './file-browser-open-with-dialog.vue';
 import FileBrowserRenameDialog from './file-browser-rename-dialog.vue';
 import FileBrowserStatusBar from './file-browser-status-bar.vue';
 import FileBrowserToolbar from './file-browser-toolbar.vue';
-import { Layout } from '@/types/navigator';
 
 const props = defineProps<{
 	tab?: Tab;
