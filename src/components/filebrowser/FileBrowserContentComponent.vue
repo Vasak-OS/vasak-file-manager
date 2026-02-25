@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import FileBrowserContextMenu from '@/components/filebrowser/FileBrowserContextMenuComponent.vue';
+import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
+import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
+import ContextMenu from '@/components/ui/contextmenu/ContextMenu.vue';
+import ContextMenuTrigger from '@/components/ui/contextmenu/ContextMenuTrigger.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import Popover from '@/components/ui/popover/Popover.vue';
+import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
+import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
+import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
+import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
+import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
-import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import type { Layout, ListSortColumn } from '@/types/navigator';
-import FileBrowserContextMenu from './file-browser-context-menu.vue';
-import FileBrowserError from './file-browser-error.vue';
-import FileBrowserGridView from './file-browser-grid-view.vue';
-import FileBrowserListView from './file-browser-list-view.vue';
-import FileBrowserLoading from './file-browser-loading.vue';
+import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
+import FileBrowserListView from '@/views/filebrowser/FileBrowserListView.vue';
 
 const props = defineProps<{
 	layout?: Layout;
@@ -22,12 +25,13 @@ const props = defineProps<{
 
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
-const userSettingsStore = useUserSettingsStore();
 const isColumnsPopoverOpen = ref(false);
 
-const columnVisibility = computed(
-	() => userSettingsStore.userSettings.navigator.listColumnVisibility
-);
+const columnVisibility = ref({
+	items: true,
+	size: true,
+	modified: true,
+});
 const showItemsColumn = computed(() => columnVisibility.value.items);
 
 const listColumnsTemplate = computed(() => {
@@ -49,23 +53,18 @@ const listColumnsTemplate = computed(() => {
 });
 
 function toggleColumnVisibility(column: 'items' | 'size' | 'modified', checked: boolean) {
-	userSettingsStore.set(`navigator.listColumnVisibility.${column}`, checked);
+	columnVisibility.value[column] = checked;
 }
 
-const listSortColumn = computed(() => userSettingsStore.userSettings.navigator.listSortColumn);
-const listSortDirection = computed(
-	() => userSettingsStore.userSettings.navigator.listSortDirection
-);
+const listSortColumn = ref(null);
+const listSortDirection = ref('asc');
 
 function handleColumnHeaderClick(column: ListSortColumn) {
 	if (listSortColumn.value === column) {
-		userSettingsStore.set(
-			'navigator.listSortDirection',
-			listSortDirection.value === 'asc' ? 'desc' : 'asc'
-		);
+		listSortDirection.value = listSortDirection.value === 'asc' ? 'desc' : 'asc';
 	} else {
-		userSettingsStore.set('navigator.listSortColumn', column);
-		userSettingsStore.set('navigator.listSortDirection', 'asc');
+		listSortColumn.value = column;
+		listSortDirection.value = 'asc';
 	}
 }
 </script>
@@ -77,7 +76,7 @@ function handleColumnHeaderClick(column: ListSortColumn) {
         <button type="button"
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-name"
           @click="handleColumnHeaderClick('name')">
-          {{ t('fileBrowser.name') }}
+          'fileBrowser.name'
           <ArrowUpIcon v-if="listSortColumn === 'name' && listSortDirection === 'asc'" :size="12"
             class="file-browser-list-view__header-sort-icon" />
           <ArrowDownIcon v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" :size="12"
@@ -86,7 +85,7 @@ function handleColumnHeaderClick(column: ListSortColumn) {
         <button v-if="showItemsColumn" type="button"
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-items"
           @click="handleColumnHeaderClick('items')">
-          {{ t('items') }}
+          'items'
           <ArrowUpIcon v-if="listSortColumn === 'items' && listSortDirection === 'asc'" :size="12"
             class="file-browser-list-view__header-sort-icon" />
           <ArrowDownIcon v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'" :size="12"
@@ -97,7 +96,7 @@ function handleColumnHeaderClick(column: ListSortColumn) {
             <button type="button"
               class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-size file-browser-list-view__header-size--with-info"
               @click="handleColumnHeaderClick('size')">
-              {{ t('fileBrowser.size') }}
+              'fileBrowser.size'
               <InfoIcon :size="12" class="file-browser-list-view__header-info-icon" />
               <ArrowUpIcon v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
                 class="file-browser-list-view__header-sort-icon" />
@@ -108,31 +107,28 @@ function handleColumnHeaderClick(column: ListSortColumn) {
           <TooltipContent side="bottom" :side-offset="8" class="file-browser-list-view__size-tooltip">
             <div class="file-browser-list-view__size-tooltip-content">
               <div class="file-browser-list-view__size-tooltip-title">
-                {{ t('fileBrowser.sizeTooltip.title') }}
+                'fileBrowser.sizeTooltip.title'
               </div>
               <div class="file-browser-list-view__size-tooltip-body">
                 <div class="file-browser-list-view__size-tooltip-item">
                   <span class="file-browser-list-view__size-tooltip-label">{{ legendSizeText }}</span>
-                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.exact')
-                    }}</span>
+                  <span class="file-browser-list-view__size-tooltip-desc">'fileBrowser.sizeTooltip.exact'</span>
                 </div>
                 <div class="file-browser-list-view__size-tooltip-item">
                   <span
                     class="file-browser-list-view__size-tooltip-label file-browser-list-view__size-tooltip-label--loading">
                     <Skeleton class="file-browser-list-view__size-tooltip-skeleton" />
                   </span>
-                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.loading')
-                    }}</span>
+                  <span class="file-browser-list-view__size-tooltip-desc">'fileBrowser.sizeTooltip.loading'</span>
                 </div>
                 <div class="file-browser-list-view__size-tooltip-item">
                   <span
                     class="file-browser-list-view__size-tooltip-label file-browser-list-view__size-tooltip-label--empty">—</span>
-                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.notCalculated')
-                    }}</span>
+                  <span class="file-browser-list-view__size-tooltip-desc">'fileBrowser.sizeTooltip.notCalculated'</span>
                 </div>
               </div>
               <div class="file-browser-list-view__size-tooltip-note">
-                {{ t('fileBrowser.sizeTooltip.note') }}
+                'fileBrowser.sizeTooltip.note'
               </div>
             </div>
           </TooltipContent>
@@ -140,7 +136,7 @@ function handleColumnHeaderClick(column: ListSortColumn) {
         <button v-if="columnVisibility.modified" type="button"
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-modified"
           @click="handleColumnHeaderClick('modified')">
-          {{ t('fileBrowser.modified') }}
+          'fileBrowser.modified'
           <ArrowUpIcon v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" :size="12"
             class="file-browser-list-view__header-sort-icon" />
           <ArrowDownIcon v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'" :size="12"
@@ -161,23 +157,23 @@ function handleColumnHeaderClick(column: ListSortColumn) {
               <input id="column-items" type="checkbox" class="file-browser-list-view__columns-checkbox"
                 :checked="columnVisibility.items"
                 @change="toggleColumnVisibility('items', ($event.target as HTMLInputElement).checked)" />
-              <Label for="column-items">{{ t('items') }}</Label>
+              <label for="column-items" class="file-browser-list-view__columns-label">'items'</label>
             </div>
             <div class="file-browser-list-view__columns-option">
               <input id="column-size" type="checkbox" class="file-browser-list-view__columns-checkbox"
                 :checked="columnVisibility.size"
                 @change="toggleColumnVisibility('size', ($event.target as HTMLInputElement).checked)" />
-              <Label for="column-size">{{ t('fileBrowser.size') }}</Label>
+              <label for="column-size" class="file-browser-list-view__columns-label">'fileBrowser.size'</label>
             </div>
             <div class="file-browser-list-view__columns-option">
               <input id="column-modified" type="checkbox" class="file-browser-list-view__columns-checkbox"
                 :checked="columnVisibility.modified"
                 @change="toggleColumnVisibility('modified', ($event.target as HTMLInputElement).checked)" />
-              <Label for="column-modified">{{ t('fileBrowser.modified') }}</Label>
+              <label for="column-modified" class="file-browser-list-view__columns-label">'fileBrowser.modified'</label>
             </div>
           </PopoverContent>
           <TooltipContent>
-            {{ t('fileBrowser.columns') }}
+            'fileBrowser.columns'
           </TooltipContent>
         </Tooltip>
       </Popover>
@@ -188,8 +184,8 @@ function handleColumnHeaderClick(column: ListSortColumn) {
     <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
 
     <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="file-browser__empty-state-container"
-      :icon="FolderOpenIcon" :title="t('fileBrowser.directoryIsEmpty')"
-      :description="t('fileBrowser.directoryIsEmptyDescription')" :bordered="false" />
+      :icon="FolderOpenIcon" :title="'fileBrowser.directoryIsEmpty'"
+      :description="'fileBrowser.directoryIsEmptyDescription'" :bordered="false" />
 
     <template v-else>
       <ScrollArea class="file-browser__scroll-area" @contextmenu.self.prevent>
@@ -404,7 +400,7 @@ function handleColumnHeaderClick(column: ListSortColumn) {
   text-transform: capitalize;
 }
 
-.file-browser-list-view__columns-option .sigma-ui-label {
+.file-browser-list-view__columns-label {
   cursor: pointer;
   font-size: 13px;
   user-select: none;
