@@ -7,7 +7,6 @@ import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
 import ResizablePanel from '@/components/ui/ResizablePanel.vue';
 import ResizablePanelGroup from '@/components/ui/ResizablePanelGroup.vue';
-import { LAYOUTS_TYPES } from '@/constants/navigator';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
@@ -16,6 +15,7 @@ import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
+import { Layout } from '@/types/navigator';
 import GlobalSearchView from '@/views/GlobalSearchView.vue';
 
 type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
@@ -76,18 +76,19 @@ function handleSmallScreenChange(event: MediaQueryListEvent) {
 	isSmallScreen.value = event.matches;
 }
 
-const currentLayout = computed(() => {
-	const layoutName = 'list';
-	switch (layoutName) {
-		case LAYOUTS_TYPES.list:
-			return 'list';
-		case LAYOUTS_TYPES.compactList:
-			return 'compact-list';
-		case LAYOUTS_TYPES.grid:
-			return 'grid';
-		default:
-			return 'list';
-	}
+const currentLayout = computed<Layout | undefined>(() => {
+	// const layoutName = workspacesStore.currentLayout || LAYOUTS_TYPES.list;
+	// switch (layoutName) {
+	// 	case LAYOUTS_TYPES.list:
+	// 		return 'list';
+	// 	case LAYOUTS_TYPES.compactList:
+	// 		return 'compact-list';
+	// 	case LAYOUTS_TYPES.grid:
+	// 		return 'grid';
+	// 	default:
+	// 		return 'list';
+	// }
+	return 'list';
 });
 
 const isSplitView = computed(() => {
@@ -530,8 +531,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <NavigatorToolbarActionsComponent :is-split-view="isSplitView"
-    :is-global-search-open="globalSearchStore.isOpen" @toggle-split-view="handleToggleSplitView" />
+	<NavigatorToolbarActionsComponent :is-split-view="isSplitView"
+		:is-global-search-open="globalSearchStore.isOpen" :show-info-panel="false"
+		@toggle-split-view="handleToggleSplitView" />
   <div class="navigator-page">
     <TabBarComponent v-if="!isSmallScreen" />
     <div class="navigator-page__main">

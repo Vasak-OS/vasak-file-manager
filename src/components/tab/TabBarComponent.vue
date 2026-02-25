@@ -2,8 +2,13 @@
 import { computed, onBeforeUnmount, ref } from 'vue';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
+import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
+import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
+import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
+import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
+import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
+import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { TabGroup, Tab as TabType } from '@/types/workspaces';
@@ -78,9 +83,9 @@ onBeforeUnmount(() => {
 
       <Tooltip>
         <TooltipTrigger as-child>
-          <Button class="tab-bar__add-tab-button" variant="ghost" size="xs" @click="openNewTabGroup()">
+          <button class="tab-bar__add-tab-button" variant="ghost" size="xs" @click="openNewTabGroup()">
             <PlusIcon :size="14" />
-          </Button>
+          </button>
         </TooltipTrigger>
         <TooltipContent>
           'tabs.newTab'

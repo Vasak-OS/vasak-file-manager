@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Button } from '@/components/ui/button';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { LAYOUTS_TYPES } from '@/constants/navigator';
+import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
+import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
+import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
+import DropdownMenuLabel from '@/components/ui/dropdown/DropdownMenuLabel.vue';
+import DropdownMenuSeparator from '@/components/ui/dropdown/DropdownMenuSeparator.vue';
+import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
+import Popover from '@/components/ui/popover/Popover.vue';
+import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
+import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
+import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
+import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
+import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { Layout } from '@/types/navigator';
 
 type LayoutType = Layout;
@@ -31,17 +30,18 @@ const emit = defineEmits<{
 const isLayoutPopoverOpen = ref(false);
 
 const currentLayout = computed(() => {
-	const layoutName = 'list';
-	switch (layoutName) {
-		case LAYOUTS_TYPES.list:
-			return 'list';
-		case LAYOUTS_TYPES.compactList:
-			return 'compact-list';
-		case LAYOUTS_TYPES.grid:
-			return 'grid';
-		default:
-			return 'list';
-	}
+	// const layoutName = 'list';
+	// switch (layoutName) {
+	// 	case LAYOUTS_TYPES.list:
+	// 		return 'list';
+	// 	case LAYOUTS_TYPES.compactList:
+	// 		return 'compact-list';
+	// 	case LAYOUTS_TYPES.grid:
+	// 		return 'grid';
+	// 	default:
+	// 		return 'list';
+	// }
+	return 'list';
 });
 
 const showHiddenFiles = ref(true);
@@ -63,9 +63,9 @@ async function setLayout(layoutName: LayoutType) {
         <Tooltip>
           <TooltipTrigger as-child>
             <DropdownMenuTrigger as-child>
-              <Button variant="ghost" size="icon">
+              <button class="navigator-toolbar-actions__button">
                 <EllipsisVerticalIcon :size="16" class="navigator-toolbar-actions__icon" />
-              </Button>
+              </button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
           <DropdownMenuContent :side="'bottom'" :align="'end'" class="navigator-settings-menu">
@@ -73,8 +73,12 @@ async function setLayout(layoutName: LayoutType) {
             <DropdownMenuSeparator />
             <DropdownMenuItem class="navigator-settings-menu__item" @select.prevent>
               <span class="navigator-settings-menu__item-label">'filter.showHiddenItems'</span>
-              <Switch class="navigator-settings-menu__switch" :model-value="showHiddenFiles"
-                @update:model-value="showHiddenFiles = !showHiddenFiles" />
+              <input
+                type="checkbox"
+                class="navigator-settings-menu__switch"
+                :checked="showHiddenFiles"
+                @change="showHiddenFiles = !showHiddenFiles"
+              />
             </DropdownMenuItem>
           </DropdownMenuContent>
           <TooltipContent>
@@ -87,10 +91,10 @@ async function setLayout(layoutName: LayoutType) {
         <Tooltip>
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
-              <Button variant="ghost" size="icon">
+              <button class="navigator-toolbar-actions__button">
                 <LayoutGridIcon v-if="currentLayout === 'grid'" :size="16" class="navigator-toolbar-actions__icon" />
                 <ListIcon v-else :size="16" class="navigator-toolbar-actions__icon" />
-              </Button>
+              </button>
             </PopoverTrigger>
           </TooltipTrigger>
           <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
@@ -112,11 +116,14 @@ async function setLayout(layoutName: LayoutType) {
       </Popover>
       <Tooltip>
         <TooltipTrigger as-child>
-          <Button variant="ghost" size="icon"
+          <button
+            class="navigator-toolbar-actions__button"
             :class="{ 'navigator-toolbar-actions__button--active': props.isSplitView }"
-            :disabled="props.isGlobalSearchOpen" @click="emit('toggle-split-view')">
+            :disabled="props.isGlobalSearchOpen"
+            @click="emit('toggle-split-view')"
+          >
             <FlipHorizontalIcon :size="16" class="navigator-toolbar-actions__icon" />
-          </Button>
+          </button>
         </TooltipTrigger>
         <TooltipContent>
           'splitView'
@@ -124,11 +131,13 @@ async function setLayout(layoutName: LayoutType) {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
-          <Button variant="ghost" size="icon"
+          <button
+            class="navigator-toolbar-actions__button"
             :class="{ 'navigator-toolbar-actions__button--active': props.showInfoPanel }"
-            @click="emit('toggle-info-panel')">
+            @click="emit('toggle-info-panel')"
+          >
             <PanelRightIcon :size="16" class="navigator-toolbar-actions__icon" />
-          </Button>
+          </button>
         </TooltipTrigger>
         <TooltipContent>
           'settings.infoPanel.title'
@@ -145,9 +154,32 @@ async function setLayout(layoutName: LayoutType) {
   gap: 4px;
 }
 
-.navigator-toolbar-actions .sigma-ui-button {
+.navigator-toolbar-actions__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.navigator-toolbar-actions__button:hover {
+  background-color: hsl(var(--muted));
+}
+
+.navigator-toolbar-actions__button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.navigator-toolbar-actions__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .navigator-toolbar-actions__icon {
@@ -224,17 +256,10 @@ async function setLayout(layoutName: LayoutType) {
   flex: 1;
 }
 
-.navigator-settings-menu__switch.sigma-ui-switch {
-  width: 1.75rem;
-  height: 1rem;
-}
-
-.navigator-settings-menu__switch .sigma-ui-switch__thumb {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-.navigator-settings-menu__switch .sigma-ui-switch__thumb[data-state="checked"] {
-  transform: translateX(0.75rem);
+.navigator-settings-menu__switch {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: hsl(var(--primary));
 }
 </style>

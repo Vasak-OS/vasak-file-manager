@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
+import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
+import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
+import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
+import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
+import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
+import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { Tab } from '@/types/workspaces';
 import { useEventListener } from '@/utils/event-listener';
-import { useTimeoutFn } from '@/utils/timeou';
+import { useTimeoutFn } from '@/utils/timeout';
 
 interface Props {
 	tabGroup: Tab[];
@@ -158,11 +158,11 @@ function closeAllTabs() {
       <DropdownMenuContent align="start" class="tab__dropdown-menu">
         <DropdownMenuItem @select="closeOtherTabs">
           <XIcon class="tab__menu-button-icon" :size="14" />
-          {{ t('tabs.closeOtherTabs') }}
+          'tabs.closeOtherTabs'
         </DropdownMenuItem>
         <DropdownMenuItem @select="closeAllTabs">
           <XIcon class="tab__menu-button-icon" :size="14" />
-          {{ t('tabs.closeAllTabs') }}
+          'tabs.closeAllTabs'
         </DropdownMenuItem>
       </DropdownMenuContent>
       <TooltipContent side="bottom" class="tab__tooltip-content">

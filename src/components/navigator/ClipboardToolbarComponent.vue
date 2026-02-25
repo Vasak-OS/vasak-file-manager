@@ -1,25 +1,16 @@
 <script setup lang="ts">
-import {
-	ClipboardPasteIcon,
-	CopyIcon,
-	EllipsisVerticalIcon,
-	EyeIcon,
-	FolderInputIcon,
-	XIcon,
-} from 'lucide-vue-next';
-import { PopoverAnchor } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
-import { Button } from '@/components/ui/button';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
+import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
+import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
+import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
+import Popover from '@/components/ui/popover/Popover.vue';
+import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
+import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
+import ScrollArea from '@/components/ui/ScrollArea.vue';
+import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
+import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
+import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import type { DirEntry } from '@/types/dir-entry';
@@ -164,12 +155,12 @@ function openCollapsedPopover() {
               <template v-if="isSplitView">
                 <Tooltip :delay-duration="300">
                   <TooltipTrigger as-child>
-                    <Button variant="ghost" size="sm" class="clipboard-toolbar__button"
+                    <button variant="ghost" size="sm" class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane1 }" :disabled="!canPasteToPane1"
                       @click="emit('pasteToPane', 0)">
                       <ClipboardPasteIcon :size="14" />
                       <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.actions.pasteToPane1' }}</span>
-                    </Button>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {{ 'shortcuts.transferPreparedToPane1' }}
@@ -179,12 +170,12 @@ function openCollapsedPopover() {
 
                 <Tooltip :delay-duration="300">
                   <TooltipTrigger as-child>
-                    <Button variant="ghost" size="sm" class="clipboard-toolbar__button"
+                    <button variant="ghost" size="sm" class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane2 }" :disabled="!canPasteToPane2"
                       @click="emit('pasteToPane', 1)">
                       <ClipboardPasteIcon :size="14" />
                       <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.actions.pasteToPane2' }}</span>
-                    </Button>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {{ 'shortcuts.transferPreparedToPane2' }}
@@ -195,12 +186,12 @@ function openCollapsedPopover() {
 
               <Tooltip v-else :delay-duration="300">
                 <TooltipTrigger as-child>
-                  <Button variant="ghost" size="sm" class="clipboard-toolbar__button"
+                  <button variant="ghost" size="sm" class="clipboard-toolbar__button"
                     :class="{ 'clipboard-toolbar__button--disabled': !canPaste }" :disabled="!canPaste"
                     @click="emit('paste')">
                     <ClipboardPasteIcon :size="14" />
                     <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.actions.paste' }}</span>
-                  </Button>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {{ 'shortcuts.transferPreparedForCopying' }}
@@ -208,19 +199,19 @@ function openCollapsedPopover() {
                 </TooltipContent>
               </Tooltip>
 
-              <Button variant="ghost" size="sm" class="clipboard-toolbar__button clipboard-toolbar__button--discard"
+              <button variant="ghost" size="sm" class="clipboard-toolbar__button clipboard-toolbar__button--discard"
                 :title="t('fileBrowser.discardClipboard')" @click="clipboardStore.clearClipboard()">
                 <XIcon :size="14" />
                 <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.discardClipboard' }}</span>
-              </Button>
+              </button>
             </div>
 
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--collapsed">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="'actions'">
+                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="'actions'">
                     <EllipsisVerticalIcon :size="16" />
-                  </Button>
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="clipboard-toolbar__dropdown">
                   <DropdownMenuItem @click="openCollapsedPopover">
@@ -254,7 +245,7 @@ function openCollapsedPopover() {
         <PopoverContent align="center" side="top" :side-offset="8" class="clipboard-toolbar__popover">
           <div class="clipboard-toolbar__popover-content">
             <div class="clipboard-toolbar__filter-wrapper">
-              <Input v-model="clipboardItemsFilterQuery" :placeholder="'filter.filter'"
+              <input v-model="clipboardItemsFilterQuery" :placeholder="'filter.filter'"
                 class="clipboard-toolbar__filter-input" />
             </div>
             <div v-if="clipboardItemsHeader" class="clipboard-toolbar__items-header">

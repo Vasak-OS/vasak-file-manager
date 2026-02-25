@@ -10,29 +10,20 @@
 // 	XIcon,
 // } from 'lucide-vue-next';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
-//import { useRoute, useRouter } from 'vue-router';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-	NumberField,
-	NumberFieldContent,
-	NumberFieldDecrement,
-	NumberFieldIncrement,
-	NumberFieldInput,
-} from '@/components/ui/number-field';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import NumberField from '@/components/ui/number-field/NumberField.vue';
+import NumberFieldContent from '@/components/ui/number-field/NumberFieldContent.vue';
+import NumberFieldDecrement from '@/components/ui/number-field/NumberFieldDecrement.vue';
+import NumberFieldIncrement from '@/components/ui/number-field/NumberFieldIncrement.vue';
+import NumberFieldInput from '@/components/ui/number-field/NumberFieldInput.vue';
+import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { getDriveByPath } from '@/composables/use-drives';
-import FileBrowser from '@/modules/navigator/components/file-browser/file-browser.vue';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
-// import { useSettingsStore } from '@/stores/runtime/settings';
-// import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import type { DirEntry } from '@/types/dir-entry';
 import type { DriveInfo } from '@/types/drive-info';
 
-type FileBrowserInstance = InstanceType<typeof FileBrowser>;
+type FileBrowserInstance = InstanceType<typeof FileBrowserComponent>;
 
 const emit = defineEmits<{
 	close: [];
@@ -40,13 +31,8 @@ const emit = defineEmits<{
 	'update:selectedEntries': [entries: DirEntry[]];
 }>();
 
-//const router = useRouter();
-//const route = useRoute();
 const globalSearchStore = useGlobalSearchStore();
-// const userSettingsStore = useUserSettingsStore();
-// const settingsStore = useSettingsStore();
-
-const inputRef = ref<InstanceType<typeof Input> | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 const showOptions = ref(false);
 
 const includeFiles = ref(true);
@@ -227,12 +213,12 @@ function handleClose() {
 
 function clearQuery() {
 	globalSearchStore.clearQuery();
-	inputRef.value?.$el?.focus();
+	inputRef.value?.focus();
 }
 
 function focusInput() {
 	setTimeout(() => {
-		inputRef.value?.$el?.focus();
+		inputRef.value?.focus();
 	}, 0);
 }
 
@@ -267,23 +253,27 @@ onMounted(() => {
         <SearchIcon v-if="!globalSearchStore.isSearching" :size="18" class="global-search-view__search-icon" />
         <LoaderCircleIcon v-else :size="18"
           class="global-search-view__search-icon global-search-view__search-icon--loading" />
-        <Input ref="inputRef" :model-value="globalSearchStore.query" :placeholder="'globalSearch.globalSearch'"
+        <input
+          ref="inputRef"
+          :value="globalSearchStore.query"
+          :placeholder="'globalSearch.globalSearch'"
           class="global-search-view__input"
           :disabled="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
-          @update:model-value="globalSearchStore.setQuery(String($event ?? ''))" />
-        <Button v-if="globalSearchStore.query" variant="ghost" size="icon" class="global-search-view__clear-button"
+          @input="globalSearchStore.setQuery(String(($event.target as HTMLInputElement).value ?? ''))"
+        />
+        <button v-if="globalSearchStore.query" variant="ghost" size="icon" class="global-search-view__clear-button"
           @click="clearQuery">
           <XIcon :size="16" />
-        </Button>
+        </button>
       </div>
       <div class="global-search-view__header-actions">
-        <Button variant="ghost" size="icon" class="global-search-view__options-toggle"
+        <button variant="ghost" size="icon" class="global-search-view__options-toggle"
           :data-active="showOptions || undefined" @click="toggleOptions">
           <SlidersHorizontalIcon :size="18" />
-        </Button>
-        <Button variant="outline" size="icon" class="global-search-view__close" @click="handleClose">
+        </button>
+        <button variant="outline" size="icon" class="global-search-view__close" @click="handleClose">
           <XIcon :size="18" />
-        </Button>
+        </button>
       </div>
     </div>
 
@@ -291,32 +281,52 @@ onMounted(() => {
       <div class="global-search-view__options-group">
         <span class="global-search-view__options-group-title">results</span>
         <div class="global-search-view__options-row">
-          <Checkbox id="include-files" :model-value="includeFiles" />
-          <Label for="include-files" class="global-search-view__option-label">
+          <input
+            id="include-files"
+            v-model="includeFiles"
+            type="checkbox"
+            class="global-search-view__option-checkbox"
+          />
+          <label for="include-files" class="global-search-view__option-label">
             'globalSearch.showFiles'
-          </Label>
+          </label>
         </div>
         <div class="global-search-view__options-row">
-          <Checkbox id="include-directories" :model-value="includeDirectories" />
-          <Label for="include-directories" class="global-search-view__option-label">
+          <input
+            id="include-directories"
+            v-model="includeDirectories"
+            type="checkbox"
+            class="global-search-view__option-checkbox"
+          />
+          <label for="include-directories" class="global-search-view__option-label">
             'globalSearch.showDirectories'
-          </Label>
+          </label>
         </div>
       </div>
 
       <div class="global-search-view__options-group">
         <span class="global-search-view__options-group-title">options</span>
         <div class="global-search-view__options-row">
-          <Checkbox id="exact-match" :model-value="exactMatch" />
-          <Label for="exact-match" class="global-search-view__option-label">
+          <input
+            id="exact-match"
+            v-model="exactMatch"
+            type="checkbox"
+            class="global-search-view__option-checkbox"
+          />
+          <label for="exact-match" class="global-search-view__option-label">
             'globalSearch.exactMatch'
-          </Label>
+          </label>
         </div>
         <div class="global-search-view__options-row">
-          <Checkbox id="typo-tolerance" :model-value="typoTolerance" />
-          <Label for="typo-tolerance" class="global-search-view__option-label">
+          <input
+            id="typo-tolerance"
+            v-model="typoTolerance"
+            type="checkbox"
+            class="global-search-view__option-checkbox"
+          />
+          <label for="typo-tolerance" class="global-search-view__option-label">
             'globalSearch.typoTolerance'
-          </Label>
+          </label>
         </div>
       </div>
 
@@ -404,7 +414,7 @@ onMounted(() => {
               </button>
 
               <div v-if="!isDriveCollapsed(group.driveRoot)" class="global-search-view__list">
-                <FileBrowser
+                <FileBrowserComponent
                   :ref="(element: any) => setSearchFileBrowserRef(element as FileBrowserInstance, group.driveRoot)"
                   :external-entries="group.entries" :base-path="group.driveRoot" layout="list" :hide-toolbar="true"
                   :hide-status-bar="true" :entry-description="getEntryDescription" @open-entry="handleSearchEntryOpen"

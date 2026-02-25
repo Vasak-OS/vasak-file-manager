@@ -21,7 +21,7 @@ import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
 import type { Tab } from '@/types/workspaces';
 import { sortFileBrowserEntries } from '@/utils/file-browser-sort';
-import { useVideoThumbnails } from './use-video-thumbnails';
+import { useVideoThumbnails } from '@/composables/file-browser/use-video-thumbnails';
 
 export interface UseFileBrowserOptions {
 	tab: () => Tab | undefined;
