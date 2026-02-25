@@ -1,9 +1,8 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
-import { useUserSettingsStore } from '@/stores/storage/user-settings';
-import type { ShortcutId, ShortcutKeys, UserShortcuts } from '@/types/user-settings';
-
-export type { ShortcutId, ShortcutKeys, UserShortcuts };
+import { ref } from 'vue';
+//import { useUserSettingsStore } from '@/stores/storage/user-settings';
+//import type { ShortcutId, ShortcutKeys, UserShortcuts } from '@/types/user-settings';
+import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
 
 export type ShortcutConditions = {
 	inputFieldIsActive?: boolean;
@@ -460,25 +459,12 @@ type HandlerRegistration = {
 };
 
 export const useShortcutsStore = defineStore('shortcuts', () => {
-	const userSettingsStore = useUserSettingsStore();
-
 	const definitions = ref<ShortcutDefinition[]>(DEFAULT_SHORTCUTS);
 	const handlers = ref<Map<ShortcutId, HandlerRegistration>>(new Map());
 	const isInitialized = ref(false);
 	const isListenerActive = ref(false);
 
-	const userShortcuts = computed({
-		get: () => userSettingsStore.userSettings.shortcuts ?? {},
-		set: async (value: UserShortcuts) => {
-			userSettingsStore.userSettings.shortcuts = value;
-			await userSettingsStore.setUserSettingsStorage('shortcuts', value);
-		},
-	});
-
 	function getShortcutKeys(shortcutId: ShortcutId): ShortcutKeys {
-		const userKeys = userShortcuts.value[shortcutId];
-		if (userKeys) return userKeys;
-
 		const definition = definitions.value.find((definitionItem) => definitionItem.id === shortcutId);
 
 		return definition?.defaultKeys ?? { key: '' };
@@ -490,32 +476,6 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 
 	function getShortcutDefinition(shortcutId: ShortcutId): ShortcutDefinition | undefined {
 		return definitions.value.find((definitionItem) => definitionItem.id === shortcutId);
-	}
-
-	function isCustomized(shortcutId: ShortcutId): boolean {
-		return userShortcuts.value[shortcutId] !== undefined;
-	}
-
-	function getSource(shortcutId: ShortcutId): 'system' | 'user' {
-		return isCustomized(shortcutId) ? 'user' : 'system';
-	}
-
-	async function setShortcut(shortcutId: ShortcutId, keys: ShortcutKeys): Promise<void> {
-		const newShortcuts = {
-			...userShortcuts.value,
-			[shortcutId]: keys,
-		};
-		userShortcuts.value = newShortcuts;
-	}
-
-	async function resetShortcut(shortcutId: ShortcutId): Promise<void> {
-		const newShortcuts = { ...userShortcuts.value };
-		delete newShortcuts[shortcutId];
-		userShortcuts.value = newShortcuts;
-	}
-
-	async function resetAllShortcuts(): Promise<void> {
-		userShortcuts.value = {};
 	}
 
 	function checkConditions(
@@ -670,16 +630,10 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 
 	return {
 		definitions,
-		userShortcuts,
 		isInitialized,
 		getShortcutKeys,
 		getShortcutLabel,
 		getShortcutDefinition,
-		isCustomized,
-		getSource,
-		setShortcut,
-		resetShortcut,
-		resetAllShortcuts,
 		registerHandler,
 		unregisterHandler,
 		findMatchingShortcut,

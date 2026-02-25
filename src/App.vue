@@ -6,6 +6,7 @@ import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import I18n from '@vasakgroup/tauri-plugin-i18n';
 import type { Store } from 'pinia';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
@@ -36,6 +37,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <WindowAppLayout>
-  </WindowAppLayout>
+  <WindowAppLayout />
+  <ToastContainer />
 </template>

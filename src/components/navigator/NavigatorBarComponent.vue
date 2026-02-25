@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
-import { GlobalSearchView } from '@/modules/global-search';
-import { ClipboardToolbar } from '@/modules/navigator/components/clipboard-toolbar';
-import { FileBrowser } from '@/modules/navigator/components/file-browser';
-import { NavigatorToolbarActions } from '@/modules/navigator/components/navigator-toolbar-actions';
+import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
+import ClipboardToolbarComponent from '@/components/navigator/ClipboardToolbarComponent.vue';
+import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
+import ResizableHandle from '@/components/ui/ResizableHandle.vue';
+import ResizablePanel from '@/components/ui/ResizablePanel.vue';
+import ResizablePanelGroup from '@/components/ui/ResizablePanelGroup.vue';
+import { LAYOUTS_TYPES } from '@/constants/navigator';
 import { TabBar } from '@/modules/tab-bar';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
@@ -12,12 +14,11 @@ import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
-import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
-import { LAYOUTS_TYPES } from '../../constants/navigator';
+import GlobalSearchView from '@/views/GlobalSearchView.vue';
 
-type FileBrowserInstance = InstanceType<typeof FileBrowser> & {
+type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
 	navigateToPath?: (path: string) => Promise<void>;
 	openFile?: (path: string) => Promise<void>;
 	startRename?: (entry: DirEntry) => void;
@@ -41,7 +42,6 @@ const emit = defineEmits<{
 }>();
 
 const workspacesStore = useWorkspacesStore();
-const userSettingsStore = useUserSettingsStore();
 const clipboardStore = useClipboardStore();
 const dismissalLayerStore = useDismissalLayerStore();
 const globalSearchStore = useGlobalSearchStore();
@@ -77,7 +77,7 @@ function handleSmallScreenChange(event: MediaQueryListEvent) {
 }
 
 const currentLayout = computed(() => {
-	const layoutName = userSettingsStore.userSettings.navigator.layout.type.name;
+	const layoutName = 'list';
 	switch (layoutName) {
 		case LAYOUTS_TYPES.list:
 			return 'list';
@@ -530,7 +530,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <NavigatorToolbarActions :is-split-view="isSplitView"
+  <NavigatorToolbarActionsComponent :is-split-view="isSplitView"
     :is-global-search-open="globalSearchStore.isOpen" @toggle-split-view="handleToggleSplitView" />
   <div class="navigator-page">
     <TabBar v-if="!isSmallScreen" />
@@ -547,7 +547,7 @@ onUnmounted(() => {
             <template v-if="workspacesStore.currentTabGroup && isSplitView">
               <template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">
                 <ResizablePanel :default-size="50" :min-size="15" @mousedown="handlePaneFocus(tab.id)">
-                  <FileBrowser :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)" :tab="tab"
+                  <FileBrowserComponent :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)" :tab="tab"
                     :pane-index="index" :layout="currentLayout" class="navigator-page__pane"
                     @update:selected-entries="(entries) => handleSelectionChange(entries, tab.id)"
                     @update:current-dir-entry="handleCurrentDirChange" />
@@ -557,7 +557,7 @@ onUnmounted(() => {
             </template>
             <template v-else-if="workspacesStore.currentTabGroup">
               <ResizablePanel :default-size="100">
-                <FileBrowser :key="workspacesStore.currentTabGroup[0].id"
+                <FileBrowserComponent :key="workspacesStore.currentTabGroup[0].id"
                   :ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
                   :tab="workspacesStore.currentTabGroup[0]" :pane-index="0" :layout="currentLayout"
                   class="navigator-page__pane"
@@ -566,13 +566,13 @@ onUnmounted(() => {
               </ResizablePanel>
             </template>
             <ResizablePanel v-else :default-size="100">
-              <FileBrowser ref="singlePaneRef" :layout="currentLayout" class="navigator-page__pane"
+              <FileBrowserComponent ref="singlePaneRef" :layout="currentLayout" class="navigator-page__pane"
                 @update:selected-entries="(entries) => handleSelectionChange(entries)"
                 @update:current-dir-entry="handleCurrentDirChange" />
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
-        <ClipboardToolbar :current-path="currentActivePath" :is-split-view="isSplitView"
+        <ClipboardToolbarComponent :current-path="currentActivePath" :is-split-view="isSplitView"
           :pane1-path="workspacesStore.currentTabGroup?.[0]?.path"
           :pane2-path="workspacesStore.currentTabGroup?.[1]?.path" @paste="handlePasteShortcut"
           @paste-to-pane="handlePasteToPane" />

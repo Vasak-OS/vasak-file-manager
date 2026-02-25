@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { sharedDrives } from '@/composables/use-drives';
 import { SEARCH_CONSTANTS } from '@/constants/search';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
-import { useUserSettingsStore } from '@/stores/storage/user-settings';
+//import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
 
@@ -60,7 +60,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const lastActivityTime = ref<number>(Date.now());
 	const lastKnownDriveCount = ref<number>(0);
 
-	const userSettingsStore = useUserSettingsStore();
+	//const userSettingsStore = useUserSettingsStore();
 	const userStatsStore = useUserStatsStore();
 	const userPathsStore = useUserPathsStore();
 
@@ -81,8 +81,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		if (!isIndexValid.value) return true;
 		if (indexedItemCount.value === 0) return true;
 
-		const settings = userSettingsStore.userSettings.globalSearch;
-		const staleThresholdMs = (settings.autoScanPeriodMinutes ?? 60) * 60 * 1000;
+		// const settings = userSettingsStore.userSettings.globalSearch;
+		const staleThresholdMs = 30 * 60 * 1000;
 		const timeSinceLastScan = Date.now() - lastScanTime.value;
 
 		return timeSinceLastScan > staleThresholdMs;
@@ -93,8 +93,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	}
 
 	async function getDriveRoots(): Promise<string[]> {
-		const selected = userSettingsStore.userSettings.globalSearch.selectedDriveRoots;
-		if (selected.length > 0) return selected;
+		// const selected = userSettingsStore.userSettings.globalSearch.selectedDriveRoots;
+		// if (selected.length > 0) return selected;
 
 		try {
 			const systemDrives = await invoke<Array<{ path: string }>>('get_system_drives');
@@ -142,9 +142,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			startIdleDetection();
 
-			const settings = userSettingsStore.userSettings.globalSearch;
+			//const settings = userSettingsStore.userSettings.globalSearch;
 			const shouldRescanOnLaunch =
-				needsScan.value || (settings.autoReindexWhenIdle && getIsIndexStale());
+				needsScan.value || /*settings.autoReindexWhenIdle &&*/ getIsIndexStale();
 
 			if (shouldRescanOnLaunch) {
 				await startScan();
@@ -183,7 +183,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		if (isScanInProgress.value) return;
 
 		try {
-			const settings = userSettingsStore.userSettings.globalSearch;
+			// const settings = userSettingsStore.userSettings.globalSearch;
 			const driveRoots = await getDriveRoots();
 
 			if (driveRoots.length === 0) {
@@ -195,10 +195,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			await invoke('global_search_start_scan', {
 				settings: {
-					scan_depth: Math.max(1, Math.floor(settings.scanDepth)),
-					ignored_paths: settings.ignoredPaths,
+					scan_depth: Math.max(1, /*Math.floor(settings.scanDepth)*/ 5),
+					ignored_paths: /*settings.ignoredPaths*/ [],
 					drive_roots: driveRoots,
-					parallel_scan: settings.parallelScan ?? false,
+					parallel_scan: /* settings.parallelScan ??*/ false,
 				},
 			});
 
@@ -257,13 +257,13 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		isSearching.value = true;
 
 		try {
-			const settings = userSettingsStore.userSettings.globalSearch;
+			// const settings = userSettingsStore.userSettings.globalSearch;
 			const queryOptions = {
-				limit: settings.resultLimit ?? SEARCH_CONSTANTS.DEFAULT_RESULT_LIMIT,
+				limit: /*settings.resultLimit ??*/ SEARCH_CONSTANTS.DEFAULT_RESULT_LIMIT,
 				include_files: true,
 				include_directories: true,
-				exact_match: settings.exactMatch ?? false,
-				typo_tolerance: settings.typoTolerance ?? true,
+				exact_match: /*settings.exactMatch ??*/ false,
+				typo_tolerance: /*settings.typoTolerance ??*/ true,
 				min_score_threshold: null,
 			};
 
@@ -408,9 +408,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	}
 
 	function checkIdleReindex() {
-		const settings = userSettingsStore.userSettings.globalSearch;
+		//const settings = userSettingsStore.userSettings.globalSearch;
 
-		if (!settings.autoReindexWhenIdle) return;
+		// if (!settings.autoReindexWhenIdle) return;
 		if (isScanInProgress.value) return;
 		if (!isInitialized.value) return;
 		if (!getIsIndexStale()) return;
@@ -508,17 +508,17 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	async function startScanWithCurrentDrives() {
 		if (!isInitialized.value) return;
 
-		const settings = userSettingsStore.userSettings.globalSearch;
-		const selectedRoots = settings.selectedDriveRoots;
+		// const settings = userSettingsStore.userSettings.globalSearch;
+		// const selectedRoots = settings.selectedDriveRoots;
 		let driveRoots: string[];
 
-		if (selectedRoots.length > 0) {
-			driveRoots = selectedRoots.filter((root) =>
-				sharedDrives.value.some((drive) => drive.path === root)
-			);
-		} else {
-			driveRoots = sharedDrives.value.map((drive) => drive.path);
-		}
+		// if (selectedRoots.length > 0) {
+		// 	driveRoots = selectedRoots.filter((root) =>
+		// 		sharedDrives.value.some((drive) => drive.path === root)
+		// 	);
+		// } else {
+		driveRoots = sharedDrives.value.map((drive) => drive.path);
+		//}
 
 		if (driveRoots.length === 0) {
 			return;
@@ -527,10 +527,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		try {
 			await invoke('global_search_start_scan', {
 				settings: {
-					scan_depth: Math.max(1, Math.floor(settings.scanDepth)),
-					ignored_paths: settings.ignoredPaths,
+					scan_depth: Math.max(1, /*Math.floor(settings.scanDepth)*/ 5),
+					ignored_paths: /*settings.ignoredPaths*/ [],
 					drive_roots: driveRoots,
-					parallel_scan: settings.parallelScan ?? false,
+					parallel_scan: /*settings.parallelScan ??*/ false,
 				},
 			});
 
@@ -553,7 +553,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	);
 
 	watch(
-		() => userSettingsStore.userSettings.globalSearch.ignoredPaths,
+		() => /*userSettingsStore.userSettings.globalSearch.ignoredPaths*/ [],
 		async (newPaths, oldPaths) => {
 			if (!isInitialized.value) return;
 
