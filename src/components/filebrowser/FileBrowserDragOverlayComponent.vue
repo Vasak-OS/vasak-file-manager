@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { UI_CONSTANTS } from '@/constants';
-import type { DragOperationType } from './composables/use-file-browser-drag';
+import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 
 const props = defineProps<{
 	isActive: boolean;
@@ -12,16 +11,16 @@ const props = defineProps<{
 }>();
 
 const overlayStyle = computed(() => ({
-	left: `${props.cursorX + UI_CONSTANTS.DRAG_OVERLAY_OFFSET_X}px`,
-	top: `${props.cursorY + UI_CONSTANTS.DRAG_OVERLAY_OFFSET_Y}px`,
+	left: `${props.cursorX + 16}px`,
+	top: `${props.cursorY + 16}px`,
 }));
 
 const description = computed(() => {
 	if (props.operationType === 'copy') {
-		return t('drag.copyItems', { count: props.itemCount });
+		return `drag.copyItems ${props.itemCount}`;
 	}
 
-	return t('drag.moveItems', { count: props.itemCount });
+	return `drag.moveItems ${props.itemCount}`;
 });
 </script>
 
@@ -35,7 +34,7 @@ const description = computed(() => {
             class="file-browser-drag-overlay__icon" />
         </div>
         <div class="file-browser-drag-overlay__hint">
-          {{ t('drag.holdShiftToChangeMode') }}
+          'drag.holdShiftToChangeMode'
         </div>
       </div>
     </Transition>

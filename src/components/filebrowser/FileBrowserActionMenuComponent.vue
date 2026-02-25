@@ -1,62 +1,45 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { TagSelector } from '@/components/ui/tag-selector';
-import {
-  PencilIcon,
-  CopyIcon,
-  FolderInputIcon,
-  ClipboardPasteIcon,
-  Trash2Icon,
-  ShredderIcon,
-  EyeIcon,
-  Share2Icon,
-  PlusIcon,
-  StarIcon,
-} from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
+import FileBrowserMoreOptionsSubmenu from '@/components/filebrowser/FileBrowserMoreOptionsSubMenuComponent.vue';
+import FileBrowserOpenWithSubmenu from '@/components/filebrowser/FileBrowserOpenWithSubMenuComponent.vue';
+import FileBrowserTerminalSubmenu from '@/components/filebrowser/FileBrowserTerminalSubMenuComponent.vue';
+import TagSelector from '@/components/ui/TagSelector.vue';
+import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
+import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
+import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
-import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
+import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ContextMenuAction } from './types';
-import { useContextMenuItems } from './composables/use-context-menu-items';
-import {
-  toRef,
-  computed,
-  ref,
-  onMounted,
-  onUnmounted,
-} from 'vue';
-import FileBrowserOpenWithSubmenu from './file-browser-open-with-submenu.vue';
-import FileBrowserMoreOptionsSubmenu from './file-browser-more-options-submenu.vue';
-import FileBrowserTerminalSubmenu from './file-browser-terminal-submenu.vue';
 
 const props = defineProps<{
-  selectedEntries: DirEntry[];
-  menuItemComponent: object;
-  menuSeparatorComponent: object;
-  isContextMenu?: boolean;
+	selectedEntries: DirEntry[];
+	menuItemComponent: object;
+	menuSeparatorComponent: object;
+	isContextMenu?: boolean;
 }>();
 
 const emit = defineEmits<{
-  action: [action: ContextMenuAction];
-  openCustomDialog: [];
+	action: [action: ContextMenuAction];
+	openCustomDialog: [];
 }>();
 
 function emitAction(action: ContextMenuAction) {
-  emit('action', action);
+	emit('action', action);
 }
 
 function handleOpenCustomDialog() {
-  emit('openCustomDialog');
+	emit('openCustomDialog');
 }
 
 function handleCopyClick() {
-  emitAction('copy');
+	emitAction('copy');
 }
 
 function handleCutClick() {
-  emitAction('cut');
+	emitAction('cut');
 }
 
 const { t } = useI18n();
@@ -68,100 +51,106 @@ const shortcutsStore = useShortcutsStore();
 const { isActionVisible } = useContextMenuItems(toRef(props, 'selectedEntries'));
 
 const allSelectedAreFavorites = computed(() => {
-  return props.selectedEntries.every(entry => userStatsStore.isFavorite(entry.path));
+	return props.selectedEntries.every((entry) => userStatsStore.isFavorite(entry.path));
 });
 
 const availableTags = computed(() => userStatsStore.tags);
 
 const selectedItemTagIds = computed(() => {
-  if (props.selectedEntries.length === 0) return [];
+	if (props.selectedEntries.length === 0) return [];
 
-  if (props.selectedEntries.length === 1) {
-    const taggedItem = userStatsStore.taggedItems.find(
-      item => item.path === props.selectedEntries[0].path,
-    );
+	if (props.selectedEntries.length === 1) {
+		const taggedItem = userStatsStore.taggedItems.find(
+			(item) => item.path === props.selectedEntries[0].path
+		);
 
-    return taggedItem?.tagIds ?? [];
-  }
+		return taggedItem?.tagIds ?? [];
+	}
 
-  const allTagIds = props.selectedEntries.map((entry) => {
-    const taggedItem = userStatsStore.taggedItems.find(item => item.path === entry.path);
+	const allTagIds = props.selectedEntries.map((entry) => {
+		const taggedItem = userStatsStore.taggedItems.find((item) => item.path === entry.path);
 
-    return new Set(taggedItem?.tagIds ?? []);
-  });
+		return new Set(taggedItem?.tagIds ?? []);
+	});
 
-  const firstSet = allTagIds[0] ?? new Set();
+	const firstSet = allTagIds[0] ?? new Set();
 
-  return Array.from(firstSet).filter(tagId =>
-    allTagIds.every(tagSet => tagSet.has(tagId)),
-  );
+	return Array.from(firstSet).filter((tagId) => allTagIds.every((tagSet) => tagSet.has(tagId)));
 });
 
 async function handleToggleTag(tagId: string) {
-  const isCurrentlySelected = selectedItemTagIds.value.includes(tagId);
+	const isCurrentlySelected = selectedItemTagIds.value.includes(tagId);
 
-  for (const entry of props.selectedEntries) {
-    if (isCurrentlySelected) {
-      await userStatsStore.removeTagFromItem(entry.path, tagId);
-    }
-    else {
-      await userStatsStore.addTagToItem(entry.path, tagId, entry.is_file);
-    }
-  }
+	for (const entry of props.selectedEntries) {
+		if (isCurrentlySelected) {
+			await userStatsStore.removeTagFromItem(entry.path, tagId);
+		} else {
+			await userStatsStore.addTagToItem(entry.path, tagId, entry.is_file);
+		}
+	}
 }
 
 async function handleCreateTag(name: string) {
-  const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899'];
-  const randomColor = colors[Math.floor(Math.random() * colors.length)];
-  const newTag = await userStatsStore.createTag(name, randomColor);
+	const colors = [
+		'#ef4444',
+		'#f97316',
+		'#eab308',
+		'#22c55e',
+		'#14b8a6',
+		'#3b82f6',
+		'#8b5cf6',
+		'#ec4899',
+	];
+	const randomColor = colors[Math.floor(Math.random() * colors.length)];
+	const newTag = await userStatsStore.createTag(name, randomColor);
 
-  for (const entry of props.selectedEntries) {
-    await userStatsStore.addTagToItem(entry.path, newTag.id, entry.is_file);
-  }
+	for (const entry of props.selectedEntries) {
+		await userStatsStore.addTagToItem(entry.path, newTag.id, entry.is_file);
+	}
 }
 
 async function handleDeleteTag(tagId: string) {
-  await userStatsStore.deleteTag(tagId);
+	await userStatsStore.deleteTag(tagId);
 }
 
 const selectedDirectory = computed(() => {
-  return props.selectedEntries.find(entry => entry.is_dir);
+	return props.selectedEntries.find((entry) => entry.is_dir);
 });
 
 const canPasteToSelectedDirectory = computed(() => {
-  if (!clipboardStore.hasItems || !selectedDirectory.value) {
-    return false;
-  }
+	if (!clipboardStore.hasItems || !selectedDirectory.value) {
+		return false;
+	}
 
-  return clipboardStore.canPasteTo(selectedDirectory.value.path);
+	return clipboardStore.canPasteTo(selectedDirectory.value.path);
 });
 
 const isShiftHeld = ref(false);
 
 function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Shift') {
-    isShiftHeld.value = true;
-  }
+	if (event.key === 'Shift') {
+		isShiftHeld.value = true;
+	}
 }
 
 function handleKeyUp(event: KeyboardEvent) {
-  if (event.key === 'Shift') {
-    isShiftHeld.value = false;
-  }
+	if (event.key === 'Shift') {
+		isShiftHeld.value = false;
+	}
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown);
-  window.addEventListener('keyup', handleKeyUp);
+	window.addEventListener('keydown', handleKeyDown);
+	window.addEventListener('keyup', handleKeyUp);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown);
-  window.removeEventListener('keyup', handleKeyUp);
+	window.removeEventListener('keydown', handleKeyDown);
+	window.removeEventListener('keyup', handleKeyUp);
 });
 
 function handleDeleteClick() {
-  emitAction(isShiftHeld.value ? 'delete-permanently' : 'delete');
+	emitAction(isShiftHeld.value ? 'delete-permanently' : 'delete');
 }
 </script>
 
@@ -169,9 +158,9 @@ function handleDeleteClick() {
   <div class="file-browser-actions-menu__quick-actions">
     <Tooltip :delay-duration="300" v-if="isActionVisible('rename')">
       <TooltipTrigger as-child>
-        <Button variant="ghost" size="icon" @click="emitAction('rename')">
+        <button type="button" class="file-browser-actions-menu__icon-button" @click="emitAction('rename')">
           <PencilIcon :size="16" />
-        </Button>
+        </button>
       </TooltipTrigger>
       <TooltipContent>
         {{ t('fileBrowser.actions.rename') }}
@@ -180,9 +169,9 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('copy')">
       <TooltipTrigger as-child>
-        <Button variant="ghost" size="icon" @click="handleCopyClick">
+        <button type="button" class="file-browser-actions-menu__icon-button" @click="handleCopyClick">
           <CopyIcon :size="16" />
-        </Button>
+        </button>
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
@@ -193,9 +182,9 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('cut')">
       <TooltipTrigger as-child>
-        <Button variant="ghost" size="icon" @click="handleCutClick">
+        <button type="button" class="file-browser-actions-menu__icon-button" @click="handleCutClick">
           <FolderInputIcon :size="16" />
-        </Button>
+        </button>
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
@@ -206,9 +195,9 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="canPasteToSelectedDirectory">
       <TooltipTrigger as-child>
-        <Button variant="ghost" size="icon" @click="emitAction('paste')">
+        <button type="button" class="file-browser-actions-menu__icon-button" @click="emitAction('paste')">
           <ClipboardPasteIcon :size="16" />
-        </Button>
+        </button>
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
@@ -219,11 +208,11 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('delete')">
       <TooltipTrigger as-child>
-        <Button variant="ghost" size="icon" class="file-browser-actions-menu__action--danger"
+        <button type="button" class="file-browser-actions-menu__icon-button file-browser-actions-menu__action--danger"
           @click="handleDeleteClick">
           <ShredderIcon v-if="isShiftHeld" :size="16" />
           <Trash2Icon v-else :size="16" />
-        </Button>
+        </button>
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
@@ -284,6 +273,28 @@ function handleDeleteClick() {
   display: flex;
   justify-content: center;
   gap: 4px;
+}
+
+.file-browser-actions-menu__icon-button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.file-browser-actions-menu__icon-button:hover {
+  background-color: hsl(var(--muted) / 60%);
+}
+
+.file-browser-actions-menu__icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .file-browser-actions-menu__action--danger:hover {

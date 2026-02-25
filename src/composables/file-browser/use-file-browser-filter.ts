@@ -16,16 +16,7 @@ type GlobalSearchStore = {
 	isOpen: boolean;
 };
 
-type UserSettingsStore = {
-	userSettings: {
-		navigator: {
-			focusFilterOnTyping: boolean;
-		};
-	};
-};
-
 export function useFileBrowserFilter(options: {
-	userSettingsStore: UserSettingsStore;
 	dismissalLayerStore: DismissalLayerStore;
 	globalSearchStore: GlobalSearchStore;
 }) {
@@ -69,10 +60,6 @@ export function useFileBrowserFilter(options: {
 	}
 
 	function handleKeydownForFilter(event: KeyboardEvent) {
-		if (!options.userSettingsStore.userSettings.navigator.focusFilterOnTyping) {
-			return;
-		}
-
 		if (isCursorInsideTextField()) {
 			return;
 		}

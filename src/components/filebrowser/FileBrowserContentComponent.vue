@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
@@ -8,9 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import type { Layout, ListSortColumn } from '@/types/navigator';
-import { useFileBrowserContext } from './composables/use-file-browser-context';
 import FileBrowserContextMenu from './file-browser-context-menu.vue';
 import FileBrowserError from './file-browser-error.vue';
 import FileBrowserGridView from './file-browser-grid-view.vue';
@@ -159,18 +158,21 @@ function handleColumnHeaderClick(column: ListSortColumn) {
           </TooltipTrigger>
           <PopoverContent :side="'bottom'" :align="'end'" class="file-browser-list-view__columns-popover">
             <div class="file-browser-list-view__columns-option">
-              <Checkbox id="column-items" :model-value="columnVisibility.items"
-                @update:model-value="toggleColumnVisibility('items', $event as boolean)" />
+              <input id="column-items" type="checkbox" class="file-browser-list-view__columns-checkbox"
+                :checked="columnVisibility.items"
+                @change="toggleColumnVisibility('items', ($event.target as HTMLInputElement).checked)" />
               <Label for="column-items">{{ t('items') }}</Label>
             </div>
             <div class="file-browser-list-view__columns-option">
-              <Checkbox id="column-size" :model-value="columnVisibility.size"
-                @update:model-value="toggleColumnVisibility('size', $event as boolean)" />
+              <input id="column-size" type="checkbox" class="file-browser-list-view__columns-checkbox"
+                :checked="columnVisibility.size"
+                @change="toggleColumnVisibility('size', ($event.target as HTMLInputElement).checked)" />
               <Label for="column-size">{{ t('fileBrowser.size') }}</Label>
             </div>
             <div class="file-browser-list-view__columns-option">
-              <Checkbox id="column-modified" :model-value="columnVisibility.modified"
-                @update:model-value="toggleColumnVisibility('modified', $event as boolean)" />
+              <input id="column-modified" type="checkbox" class="file-browser-list-view__columns-checkbox"
+                :checked="columnVisibility.modified"
+                @change="toggleColumnVisibility('modified', ($event.target as HTMLInputElement).checked)" />
               <Label for="column-modified">{{ t('fileBrowser.modified') }}</Label>
             </div>
           </PopoverContent>
@@ -376,6 +378,13 @@ function handleColumnHeaderClick(column: ListSortColumn) {
   height: 28px;
   color: hsl(var(--muted-foreground));
   transform: translateY(-50%);
+}
+
+.file-browser-list-view__columns-checkbox {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: hsl(var(--primary));
 }
 </style>
 

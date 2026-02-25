@@ -11,17 +11,16 @@ import { useFileBrowserKeyboardNavigation } from '@/composables/file-browser/use
 import { useFileBrowserLifecycle } from '@/composables/file-browser/use-file-browser-lifecycle';
 import { useFileBrowserNavigation } from '@/composables/file-browser/use-file-browser-navigation';
 import { useFileBrowserSelection } from '@/composables/file-browser/use-file-browser-selection';
+import { useVideoThumbnails } from '@/composables/file-browser/use-video-thumbnails';
 import type { LAYOUTS_TYPES } from '@/constants/navigator';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useQuickViewStore } from '@/stores/runtime/quick-view';
-import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
 import type { Tab } from '@/types/workspaces';
 import { sortFileBrowserEntries } from '@/utils/file-browser-sort';
-import { useVideoThumbnails } from '@/composables/file-browser/use-video-thumbnails';
 
 export interface UseFileBrowserOptions {
 	tab: () => Tab | undefined;
@@ -67,7 +66,6 @@ function setupNavigationDataSource(
 	options: UseFileBrowserOptions,
 	onNavigationCleanup: () => void
 ): DataSource {
-	const userSettingsStore = useUserSettingsStore();
 	const dismissalLayerStore = useDismissalLayerStore();
 	const globalSearchStore = useGlobalSearchStore();
 
@@ -78,16 +76,13 @@ function setupNavigationDataSource(
 	);
 
 	const filter = useFileBrowserFilter({
-		userSettingsStore,
 		dismissalLayerStore,
 		globalSearchStore,
 	});
 
-	const showHiddenFiles = computed(() => userSettingsStore.userSettings.navigator.showHiddenFiles);
-	const listSortColumn = computed(() => userSettingsStore.userSettings.navigator.listSortColumn);
-	const listSortDirection = computed(
-		() => userSettingsStore.userSettings.navigator.listSortDirection
-	);
+	const showHiddenFiles = ref(false);
+	const listSortColumn = ref(null);
+	const listSortDirection = ref<'asc' | 'desc'>('asc');
 	const applyListSort = computed(() => options.layout() === 'list');
 	const { entries: filteredEntries, isDirectoryEmpty: filteredIsDirectoryEmpty } =
 		useFileBrowserEntries(
@@ -139,15 +134,12 @@ function setupNavigationDataSource(
 
 function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 	const globalSearchStore = useGlobalSearchStore();
-	const userSettingsStore = useUserSettingsStore();
 	const dirSizesStore = useDirSizesStore();
 	const getEntries = options.externalEntries ?? (() => []);
 	const getBasePath = options.basePath ?? (() => '');
 
-	const listSortColumn = computed(() => userSettingsStore.userSettings.navigator.listSortColumn);
-	const listSortDirection = computed(
-		() => userSettingsStore.userSettings.navigator.listSortDirection
-	);
+	const listSortColumn = ref(null);
+	const listSortDirection = ref<'asc' | 'desc'>('asc');
 
 	const entries = computed(() => {
 		const rawEntries = getEntries();

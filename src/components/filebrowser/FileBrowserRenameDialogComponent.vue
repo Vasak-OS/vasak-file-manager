@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import Dialog from '@/components/ui/dialog/Dialog.vue';
+import DialogContent from '@/components/ui/dialog/DialogContent.vue';
+import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
+import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
+import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import type { DirEntry } from '@/types/dir-entry';
 
 const props = defineProps<{
@@ -124,19 +122,19 @@ function handleKeydown(event: KeyboardEvent) {
   <Dialog v-model:open="isOpen">
     <DialogContent class="file-browser-rename-dialog">
       <DialogHeader>
-        <DialogTitle>{{ t('dialogs.renameDirItemDialog.renameItem') }}</DialogTitle>
+        <DialogTitle>'dialogs.renameDirItemDialog.renameItem'</DialogTitle>
       </DialogHeader>
 
       <div class="file-browser-rename-dialog__form">
         <div class="file-browser-rename-dialog__field-wrapper">
           <label for="rename-input" class="file-browser-rename-dialog__label">
-            {{ t('dialogs.renameDirItemDialog.newName') }}
+            'dialogs.renameDirItemDialog.newName'
           </label>
           <div class="file-browser-rename-dialog__field">
             <input id="rename-input" ref="inputRef" v-model="newName" type="text"
               :class="{ 'file-browser-rename-dialog__input--error': newName && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || !hasChanges || isSubmitting" @click="handleSubmit">
-              {{ t('save') }}
+              'save'
             </button>
           </div>
         </div>

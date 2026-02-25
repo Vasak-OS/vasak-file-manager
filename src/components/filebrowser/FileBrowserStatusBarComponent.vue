@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { PopoverAnchor } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
+import FileBrowserActionMenuComponent from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -12,7 +12,6 @@ import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
-import FileBrowserActionMenuComponent from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
 import type { ContextMenuAction } from './types';
 
 const MAX_VISIBLE_ITEMS = 100;
