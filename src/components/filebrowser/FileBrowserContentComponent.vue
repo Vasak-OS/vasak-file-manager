@@ -10,7 +10,7 @@ import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/Skeleton.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';

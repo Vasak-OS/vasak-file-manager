@@ -2,7 +2,7 @@
 import { LoaderCircleIcon } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/Skeleton.vue';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useUserSettingsStore } from '@/stores/storage/user-settings';
