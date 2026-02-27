@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue';
+import { computed, inject, nextTick, ref, watch } from 'vue';
 
 interface Props {
 	side?: 'top' | 'bottom' | 'left' | 'right';
@@ -16,14 +16,14 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const tooltip = inject<any>('tooltip');
-const triggerElement = inject<any>('tooltipTriggerElement');
+const triggerElement = computed(() => tooltip?.triggerElement?.value ?? null);
 
 const isOpen = computed(() => tooltip?.isOpen.value ?? false);
 const contentRef = ref<HTMLElement | null>(null);
 const position = ref({ top: 0, left: 0 });
 
 const calculatePosition = () => {
-	if (!triggerElement?.value || !contentRef.value) return;
+	if (!triggerElement.value || !contentRef.value) return;
 	
 	const triggerRect = triggerElement.value.getBoundingClientRect();
 	const contentRect = contentRef.value.getBoundingClientRect();
@@ -53,9 +53,12 @@ const calculatePosition = () => {
 	position.value = { top, left };
 };
 
-watch(isOpen, (open) => {
+watch(isOpen, async (open) => {
 	if (open) {
-		setTimeout(calculatePosition, 0);
+		await nextTick();
+		requestAnimationFrame(() => {
+			calculatePosition();
+		});
 	}
 });
 </script>

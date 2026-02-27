@@ -12,6 +12,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const isOpen = ref(false);
+const triggerElement = ref<HTMLElement | null>(null);
 let delayTimer: ReturnType<typeof setTimeout> | null = null;
 
 const open = () => {
@@ -26,11 +27,17 @@ const close = () => {
 	isOpen.value = false;
 };
 
+const setTriggerElement = (element: HTMLElement | null) => {
+	triggerElement.value = element;
+};
+
 provide('tooltip', {
 	isOpen: computed(() => isOpen.value),
 	disabled: computed(() => props.disabled),
 	open,
 	close,
+	triggerElement,
+	setTriggerElement,
 });
 </script>
 
