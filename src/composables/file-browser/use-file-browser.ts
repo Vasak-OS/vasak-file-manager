@@ -12,7 +12,6 @@ import { useFileBrowserLifecycle } from '@/composables/file-browser/use-file-bro
 import { useFileBrowserNavigation } from '@/composables/file-browser/use-file-browser-navigation';
 import { useFileBrowserSelection } from '@/composables/file-browser/use-file-browser-selection';
 import { useVideoThumbnails } from '@/composables/file-browser/use-video-thumbnails';
-import type { LAYOUTS_TYPES } from '@/constants/navigator';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
@@ -24,7 +23,7 @@ import { sortFileBrowserEntries } from '@/utils/file-browser-sort';
 
 export interface UseFileBrowserOptions {
 	tab: () => Tab | undefined;
-	layout: () => typeof LAYOUTS_TYPES | undefined;
+	layout: () => 'list' | 'grid' | undefined;
 	externalEntries?: () => DirEntry[];
 	basePath?: () => string;
 	onSelectedEntriesChange: (entries: DirEntry[]) => void;
