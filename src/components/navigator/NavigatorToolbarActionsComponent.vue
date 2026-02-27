@@ -30,17 +30,6 @@ const emit = defineEmits<{
 
 const isLayoutPopoverOpen = ref(false);
 const currentLayout = computed(() => {
-	// const layoutName = 'list';
-	// switch (layoutName) {
-	// 	case LAYOUTS_TYPES.list:
-	// 		return 'list';
-	// 	case LAYOUTS_TYPES.compactList:
-	// 		return 'compact-list';
-	// 	case LAYOUTS_TYPES.grid:
-	// 		return 'grid';
-	// 	default:
-	// 		return 'list';
-	// }
 	return 'list';
 });
 const showHiddenFiles = ref(true);
@@ -51,12 +40,7 @@ const infoPanelIcon = ref('');
 const ellipsisVerticalIcon = ref('');
 
 
-async function setLayout(layoutName: LayoutType) {
-	const layoutTitle = layoutName === 'grid' ? 'gridLayout' : 'listLayout';
-	// await userSettingsStore.set('navigator.layout.type', {
-	//   title: layoutTitle,
-	//   name: layoutName,
-	// });
+async function setLayout(_layoutName: LayoutType) {
 	isLayoutPopoverOpen.value = false;
 }
 
@@ -70,36 +54,34 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Teleport to=".window-toolbar-secondary-teleport-target">
-    <div class="navigator-toolbar-actions animate-fade-in">
-      asd
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <DropdownMenuTrigger as-child>
-              <button class="navigator-toolbar-actions__button">
-                <img :src="ellipsisVerticalIcon" alt="Settings" :size="16" class="navigator-toolbar-actions__icon" />
-              </button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <DropdownMenuContent :side="'bottom'" :align="'end'" class="navigator-settings-menu">
-            <DropdownMenuLabel>'settings.navigator.navigatorOptions'</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem class="navigator-settings-menu__item" @select.prevent>
-              <span class="navigator-settings-menu__item-label">'filter.showHiddenItems'</span>
-              <input
-                type="checkbox"
-                class="navigator-settings-menu__switch"
-                :checked="showHiddenFiles"
-                @change="showHiddenFiles = !showHiddenFiles"
-              />
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-          <TooltipContent>
-            'settings.navigator.navigatorOptions'
-          </TooltipContent>
-        </Tooltip>
-      </DropdownMenu>
+  <div class="navigator-toolbar-actions animate-fade-in">
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <DropdownMenuTrigger as-child>
+            <button class="navigator-toolbar-actions__button">
+              <img :src="ellipsisVerticalIcon" alt="Settings" :size="16" class="navigator-toolbar-actions__icon" />
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <DropdownMenuContent :side="'bottom'" :align="'end'" class="navigator-settings-menu">
+          <DropdownMenuLabel>'settings.navigator.navigatorOptions'</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem class="navigator-settings-menu__item" @select.prevent>
+            <span class="navigator-settings-menu__item-label">'filter.showHiddenItems'</span>
+            <input
+              type="checkbox"
+              class="navigator-settings-menu__switch"
+              :checked="showHiddenFiles"
+              @change="showHiddenFiles = !showHiddenFiles"
+            />
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+        <TooltipContent>
+          'settings.navigator.navigatorOptions'
+        </TooltipContent>
+      </Tooltip>
+    </DropdownMenu>
 
       <Popover :open="isLayoutPopoverOpen" @update:open="isLayoutPopoverOpen = $event">
         <Tooltip>
@@ -158,7 +140,6 @@ onMounted(async () => {
         </TooltipContent>
       </Tooltip>
     </div>
-  </Teleport>
 </template>
 
 <style>
