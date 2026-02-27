@@ -194,13 +194,13 @@ function openCollapsedPopover() {
               </button>
 
               <button type="button" class="file-browser-status-bar__button"
-                :title="t('shortcuts.selectAllItemsInCurrentDirectory')" @click="emit('selectAll')">
+                :title="'shortcuts.selectAllItemsInCurrentDirectory'" @click="emit('selectAll')">
                 <CheckCheckIcon :size="14" />
                 <span class="file-browser-status-bar__button-text">'fileBrowser.selectAll'</span>
               </button>
 
               <button type="button" class="file-browser-status-bar__button"
-                :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
+                :title="'fileBrowser.deselectAll'" @click="emit('deselectAll')">
                 <XIcon :size="14" />
                 <span class="file-browser-status-bar__button-text">'fileBrowser.deselectAll'</span>
               </button>

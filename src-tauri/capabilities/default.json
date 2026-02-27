@@ -16,7 +16,7 @@
     "vicons:default",
     "config-manager:default",
     "store:default",
-    "opener:default",
+    "opener:allow-open-path",
     "dialog:default"
   ]
 }

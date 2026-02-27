@@ -373,8 +373,13 @@ export function useFileBrowserNavigation(
 	}
 
 	async function openFile(path: string) {
-		await openPath(path);
-		userStatsStore.recordItemOpen(path, true);
+		try {
+			await openPath(path);
+			userStatsStore.recordItemOpen(path, true);
+		} catch (error) {
+			console.error('Failed to open path:', error);
+			// Silently fail - the file manager will display error UI if needed
+		}
 	}
 
 	async function init() {

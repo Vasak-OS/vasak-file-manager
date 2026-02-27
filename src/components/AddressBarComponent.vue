@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { dirname } from '@tauri-apps/api/path';
-import I18n from '@vasakgroup/tauri-plugin-i18n';
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -60,11 +59,11 @@ const addressParts = computed(() => {
 		let fullPath = pathSegments.join('/');
 
 		if (props.currentPath.startsWith('/')) {
-			fullPath = '/' + fullPath;
+			fullPath = `/${fullPath}`;
 		} else if (!fullPath.includes(':')) {
-			fullPath = fullPath + '/';
+			fullPath = `${fullPath}/`;
 		} else if (index === 0 && fullPath.includes(':')) {
-			fullPath = fullPath + '/';
+			fullPath = `${fullPath}/`;
 		}
 
 		formattedParts.push({
@@ -117,21 +116,30 @@ function handleSeparatorNavigate(path: string) {
 
 function scrollSelectedIntoView() {
 	nextTick(() => {
-		const selectedElement = document.querySelector('.address-bar__suggestion--selected');
+		try {
+			const selectedElement = document.querySelector('.address-bar__suggestion--selected');
 
-		if (selectedElement) {
-			selectedElement.scrollIntoView({
-				block: 'nearest',
-				behavior: 'smooth',
-			});
+			if (selectedElement?.parentElement) {
+				selectedElement.scrollIntoView({
+					block: 'nearest',
+					behavior: 'smooth',
+				});
+			}
+		} catch (error) {
+			// Silently ignore DOM manipulation errors during scroll
+			console.debug('Scroll error:', error);
 		}
 	});
 }
 
 function handleBreadcrumbsWheel(event: WheelEvent) {
-	if (breadcrumbsContainerRef.value) {
-		event.preventDefault();
-		breadcrumbsContainerRef.value.scrollLeft += event.deltaY;
+	try {
+		if (breadcrumbsContainerRef.value) {
+			event.preventDefault();
+			breadcrumbsContainerRef.value.scrollLeft += event.deltaY;
+		}
+	} catch (error) {
+		console.debug('Breadcrumbs scroll error:', error);
 	}
 }
 

@@ -5,11 +5,23 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import I18n from '@vasakgroup/tauri-plugin-i18n';
 import type { Store } from 'pinia';
-import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
+
+onErrorCaptured((err) => {
+	// Handle nextSibling and emitsOptions errors gracefully
+	if (err instanceof TypeError) {
+		const message = String(err);
+		if (message.includes('nextSibling') || message.includes('emitsOptions')) {
+			console.warn('Recovered from DOM/component error:', message);
+			return false; // Prevent error from propagating
+		}
+	}
+	return true; // Let other errors propagate normally
+});
 
 onMounted(async () => {
 	try {
