@@ -103,7 +103,7 @@ onBeforeUnmount(() => {
 				:class="[$attrs.class]"
 				:style="{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }"
 				dropdown-content
-				class="min-w-[160px] rounded-md border bg-white shadow-lg"
+				class="min-w-[160px] rounded-corner border background shadow-lg"
 				@click="(e) => e.stopPropagation()"
 			>
 				<div class="py-1">

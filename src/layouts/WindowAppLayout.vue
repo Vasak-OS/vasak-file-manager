@@ -15,6 +15,7 @@ const globalSearchStore = useGlobalSearchStore();
 
 const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
+const isInfoPanelVisible = ref(true);
 
 const isSplitView = computed(() => {
   return (workspacesStore.currentTabGroup?.length ?? 0) > 1;
@@ -32,6 +33,10 @@ function handleSelectedEntriesUpdate(entries: DirEntry[]) {
 function handleCurrentDirEntryUpdate(entry: DirEntry | null) {
   currentDirEntry.value = entry;
 }
+
+function handleToggleInfoPanel() {
+  isInfoPanelVisible.value = !isInfoPanelVisible.value;
+}
 </script>
 <template>
   <div class="h-screen w-screen background rounded-corner-window flex">
@@ -40,7 +45,8 @@ function handleCurrentDirEntryUpdate(entry: DirEntry | null) {
       <TopBarComponent>
         <TabBarComponent teleport-target="" />
         <NavigatorToolbarActionsComponent :is-split-view="isSplitView" :is-global-search-open="globalSearchStore.isOpen"
-          :show-info-panel="false" @toggle-split-view="handleToggleSplitView" />
+          :show-info-panel="isInfoPanelVisible" @toggle-split-view="handleToggleSplitView"
+          @toggle-info-panel="handleToggleInfoPanel" />
       </TopBarComponent>
       <div class="flex-1 flex p-1">
         <div class="flex-1">
@@ -48,7 +54,7 @@ function handleCurrentDirEntryUpdate(entry: DirEntry | null) {
             @update:selected-entries="handleSelectedEntriesUpdate"
             @update:current-dir-entry="handleCurrentDirEntryUpdate" />
         </div>
-        <ContentInformation 
+        <ContentInformation v-if="isInfoPanelVisible"
           :selected-entries="selectedEntries"
           :current-dir-entry="currentDirEntry" />
       </div>

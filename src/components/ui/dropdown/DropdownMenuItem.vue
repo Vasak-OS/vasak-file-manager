@@ -26,10 +26,10 @@ const handleClick = () => {
 <template>
 	<div
 		:class="[
-			'dropdown-menu-item',
+			'px-3 py-2 text-sm transition-colors',
 			{
 				'opacity-50 cursor-not-allowed': disabled,
-				'cursor-pointer hover:bg-slate-100': !disabled,
+				'cursor-pointer hover:bg-primary dark:hover:bg-primary-dark': !disabled,
 			},
 			$attrs.class,
 		]"
@@ -38,11 +38,3 @@ const handleClick = () => {
 		<slot />
 	</div>
 </template>
-
-<style scoped>
-@reference "../../../style.css";
-
-.dropdown-menu-item {
-	@apply px-3 py-2 text-sm transition-colors;
-}
-</style>

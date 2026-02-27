@@ -8,16 +8,9 @@ defineProps<Props>();
 
 <template>
 	<div
-		:class="['dropdown-menu-label', $attrs.class]"
+		:class="['px-3 py-2 text-sm font-semibold text-tx-main dark:text-tx-main-dark', $attrs.class]"
 	>
 		<slot />
 	</div>
 </template>
 
-<style scoped>
-@reference "../../../style.css";
-
-.dropdown-menu-label {
-	@apply px-3 py-2 text-sm font-semibold text-slate-900;
-}
-</style>
