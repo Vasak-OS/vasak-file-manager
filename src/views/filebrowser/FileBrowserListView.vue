@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed, ref, type Ref } from 'vue';
-import Skeleton  from '@/components/ui/Skeleton.vue';
+import { computed, type Ref, ref } from 'vue';
+import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
+import Skeleton from '@/components/ui/Skeleton.vue';
+import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
-import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
-import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
 import { formatBytes } from '@/utils/byte-parser';
 import { formatDate } from '@/utils/date-formatter';
 
@@ -17,9 +17,9 @@ const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
 
 const columnVisibility: Ref<{ items: boolean; size: boolean; modified: boolean }> = ref({
-  items: true,
-  size: true,
-  modified: true,
+	items: true,
+	size: true,
+	modified: true,
 });
 const showItemsColumn = computed(() => columnVisibility.value.items);
 const showSizeColumn = computed(() => columnVisibility.value.size);

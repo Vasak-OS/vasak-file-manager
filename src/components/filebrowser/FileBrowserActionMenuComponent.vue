@@ -11,8 +11,8 @@ import { useContextMenuItems } from '@/composables/file-browser/use-context-menu
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
-import type { DirEntry } from '@/types/dir-entry';
 import type { ContextMenuAction } from '@/types/contextMenu';
+import type { DirEntry } from '@/types/dir-entry';
 
 const props = defineProps<{
 	selectedEntries: DirEntry[];

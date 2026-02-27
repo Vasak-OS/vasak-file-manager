@@ -26,7 +26,7 @@ export function useFileBrowserActions(options: {
 		const targetEntry =
 			entry || options.selectedEntries.value[options.selectedEntries.value.length - 1];
 
-		if (targetEntry && targetEntry.is_file) {
+		if (targetEntry?.is_file) {
 			await options.quickViewStore.toggleQuickView(targetEntry.path);
 		}
 	}

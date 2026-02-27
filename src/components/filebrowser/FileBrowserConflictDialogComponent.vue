@@ -6,9 +6,9 @@ import DialogDescription from '@/components/ui/dialog/DialogDescription.vue';
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
+import ScrollArea from '@/components/ui/ScrollArea.vue';
 import type { ConflictItem, ConflictResolution } from '@/stores/runtime/clipboard';
 import toReadableBytes from '@/utils/byte-parser';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
 
 const props = defineProps<{
 	conflicts: ConflictItem[];

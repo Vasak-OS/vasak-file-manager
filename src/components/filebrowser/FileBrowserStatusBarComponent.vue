@@ -10,9 +10,9 @@ import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
+import type { ContextMenuAction } from '@/types/contextMenu';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
-import type { ContextMenuAction } from '@/types/contextMenu';
 
 const MAX_VISIBLE_ITEMS = 100;
 
@@ -29,7 +29,6 @@ const emit = defineEmits<{
 	removeFromSelection: [entry: DirEntry];
 	contextMenuAction: [action: ContextMenuAction];
 }>();
-
 
 const dirSizesStore = useDirSizesStore();
 
@@ -85,11 +84,11 @@ const selectionSizeDisplay = computed(() => {
 	const parts = [];
 
 	if (fileCount > 0) {
-		parts.push(`fileBrowser.fileCount ${ fileCount }`);
+		parts.push(`fileBrowser.fileCount ${fileCount}`);
 	}
 
 	if (dirCount > 0) {
-		parts.push(`fileBrowser.directoryCount ${ dirCount }`);
+		parts.push(`fileBrowser.directoryCount ${dirCount}`);
 	}
 
 	const countStr = parts.join(', ');
@@ -130,8 +129,7 @@ const showItemsHeader = computed(() => {
 		const hidden = Math.max(total - displayed, 0);
 
 		return `fileBrowser.showingNOfItems ${hidden} ${total}`;
-
-		}
+	}
 
 	return null;
 });

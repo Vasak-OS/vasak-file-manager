@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import FileBrowserActionsMenu from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
 import ContextMenuContent from '@/components/ui/contextmenu/ContextMenuContent.vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
-import FileBrowserActionsMenu from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
 
 const ctx = useFileBrowserContext();
 

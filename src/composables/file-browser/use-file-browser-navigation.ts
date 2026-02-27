@@ -422,7 +422,7 @@ export function useFileBrowserNavigation(
 
 			const isAffected = deletedPaths.some(
 				(deletedPath) =>
-					currentPath.value === deletedPath || currentPath.value.startsWith(deletedPath + '/')
+					currentPath.value === deletedPath || currentPath.value.startsWith(`${deletedPath}/`)
 			);
 
 			if (isAffected) {
