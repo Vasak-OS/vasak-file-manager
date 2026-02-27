@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
-import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
-import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
-import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
-import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import type { TabGroup, Tab as TabType } from '@/types/workspaces';
 
 const props = withDefaults(
@@ -33,7 +30,8 @@ const { openNewTabGroup, closeTabGroup, setTabs } = workspacesStore;
 
 const previewEnabled = ref(true);
 const scrollContainerRef = ref<HTMLElement | null>(null);
-let scrollDisableTimeoutId: number | null = null;
+const plusIcon = ref('');
+let scrollDisableTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 function handleScrollActivity() {
 	previewEnabled.value = false;
@@ -42,7 +40,7 @@ function handleScrollActivity() {
 		clearTimeout(scrollDisableTimeoutId);
 	}
 
-	scrollDisableTimeoutId = window.setTimeout(() => {
+	scrollDisableTimeoutId = globalThis.setTimeout(() => {
 		previewEnabled.value = true;
 	}, 200);
 }
@@ -57,6 +55,10 @@ function handleWheel(event: WheelEvent) {
 function onScroll() {
 	handleScrollActivity();
 }
+
+onMounted(async () => {
+	plusIcon.value = await getSymbolSource('add');
+});
 
 onBeforeUnmount(() => {
 	if (scrollDisableTimeoutId !== null) {
@@ -74,7 +76,7 @@ onBeforeUnmount(() => {
             :draggable-bg-color-var="'window-toolbar-color'" parent-selector=".tab-bar"
             @set="setTabs($event as TabGroup[])" @drag-start="previewEnabled = false" @drag-end="previewEnabled = true">
             <template #item="{ item }">
-              <TabComponent :tab-group="(item as TabType[])" :preview-enabled="previewEnabled"
+              <TabComponent :tab-group="((item as TabType[]) || [])" :preview-enabled="previewEnabled"
                 @close-tab="closeTabGroup($event)" />
             </template>
           </TabDraggableComponent>
@@ -84,7 +86,7 @@ onBeforeUnmount(() => {
       <Tooltip>
         <TooltipTrigger as-child>
           <button class="tab-bar__add-tab-button" variant="ghost" size="xs" @click="openNewTabGroup()">
-            <PlusIcon :size="14" />
+            <img v-if="plusIcon" :src="plusIcon" alt="Add Tab" class="w-3.5 h-3.5" />
           </button>
         </TooltipTrigger>
         <TooltipContent>

@@ -32,7 +32,6 @@ const NAVIGATOR_TAB_WIDTH = 100;
 const LONG_PRESS_DELAY = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 
-const tabRef = ref<HTMLElement | null>(null);
 const isDropdownOpen = ref(false);
 const isLongPressing = ref(false);
 const isPressing = ref(false);
@@ -55,7 +54,7 @@ useEventListener(document, 'pointermove', (event: PointerEvent) => {
 
 	const deltaX = Math.abs(event.clientX - startPosition.value.x);
 	const deltaY = Math.abs(event.clientY - startPosition.value.y);
-	const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const distance = Math.hypot(deltaX, deltaY);
 
 	if (distance > LONG_PRESS_MOVE_THRESHOLD) {
 		stopLongPressTimer();
@@ -93,6 +92,10 @@ const showCloseButton = computed(() => {
 const tabName = computed(() => {
 	const firstTab = props.tabGroup?.[0];
 	const secondTab = props.tabGroup?.[1];
+
+  if (!firstTab) {
+    return '';
+  }
 
 	if (props.tabGroup?.length === 2 && secondTab) {
 		return `${firstTab.name || firstTab.path} | ${secondTab.name || secondTab.path}`;
@@ -137,9 +140,9 @@ function closeAllTabs() {
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child :disabled="true">
-          <div v-if="tabGroup.length" ref="tabRef" v-wave class="tab" :class="{ 'tab--no-close': !showCloseButton }"
+          <div v-if="props.tabGroup?.length" v-wave class="tab" :class="{ 'tab--no-close': !showCloseButton }"
             :style="{
-              '--tab-width': `${props.tabGroup.length === 2 ? NAVIGATOR_TAB_WIDTH * 2 : NAVIGATOR_TAB_WIDTH}px`
+              '--tab-width': `${props.tabGroup?.length === 2 ? NAVIGATOR_TAB_WIDTH * 2 : NAVIGATOR_TAB_WIDTH}px`
             }" :is-active="isActive" @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
             <div class="tab__title">

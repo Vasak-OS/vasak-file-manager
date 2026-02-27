@@ -4,6 +4,7 @@ import NavigatorBarComponent from '@/components/navigator/NavigatorBarComponent.
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
 import ContentInformation from '../components/content/ContentInformation.vue';
 import TopBarComponent from '../components/topbar/TopBarComponent.vue';
+import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
@@ -37,6 +38,7 @@ function handleCurrentDirEntryUpdate(entry: DirEntry | null) {
     <SidebarComponent />
     <div class="flex-1 flex flex-col">
       <TopBarComponent>
+        <TabBarComponent teleport-target="" />
         <NavigatorToolbarActionsComponent :is-split-view="isSplitView" :is-global-search-open="globalSearchStore.isOpen"
           :show-info-panel="false" @toggle-split-view="handleToggleSplitView" />
       </TopBarComponent>

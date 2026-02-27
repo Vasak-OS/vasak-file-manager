@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 
 interface Props {
 	side?: 'top' | 'bottom' | 'left' | 'right';
@@ -8,7 +8,7 @@ interface Props {
 	delayDuration?: number;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	side: 'bottom',
 	align: 'center',
 	sideOffset: 4,
@@ -16,38 +16,67 @@ withDefaults(defineProps<Props>(), {
 });
 
 const tooltip = inject<any>('tooltip');
+const triggerElement = inject<any>('tooltipTriggerElement');
 
 const isOpen = computed(() => tooltip?.isOpen.value ?? false);
+const contentRef = ref<HTMLElement | null>(null);
+const position = ref({ top: 0, left: 0 });
 
-const getPositionClasses = (side: string, align: string) => {
-	const baseClasses =
-		'absolute z-50 whitespace-nowrap rounded-md bg-slate-950 px-2 py-1 text-sm text-slate-50 shadow-md';
-
-	const sideClasses = {
-		top: 'bottom-full mb-2 left-1/2 -translate-x-1/2',
-		bottom: 'top-full mt-2 left-1/2 -translate-x-1/2',
-		left: 'right-full mr-2 top-1/2 -translate-y-1/2',
-		right: 'left-full ml-2 top-1/2 -translate-y-1/2',
-	}[side];
-
-	return `${baseClasses} ${sideClasses}`;
+const calculatePosition = () => {
+	if (!triggerElement?.value || !contentRef.value) return;
+	
+	const triggerRect = triggerElement.value.getBoundingClientRect();
+	const contentRect = contentRef.value.getBoundingClientRect();
+	
+	let top = 0;
+	let left = 0;
+	
+	switch (props.side) {
+		case 'bottom':
+			top = triggerRect.bottom + props.sideOffset;
+			left = triggerRect.left + (triggerRect.width / 2) - (contentRect.width / 2);
+			break;
+		case 'top':
+			top = triggerRect.top - contentRect.height - props.sideOffset;
+			left = triggerRect.left + (triggerRect.width / 2) - (contentRect.width / 2);
+			break;
+		case 'left':
+			left = triggerRect.left - contentRect.width - props.sideOffset;
+			top = triggerRect.top + (triggerRect.height / 2) - (contentRect.height / 2);
+			break;
+		case 'right':
+			left = triggerRect.right + props.sideOffset;
+			top = triggerRect.top + (triggerRect.height / 2) - (contentRect.height / 2);
+			break;
+	}
+	
+	position.value = { top, left };
 };
+
+watch(isOpen, (open) => {
+	if (open) {
+		setTimeout(calculatePosition, 0);
+	}
+});
 </script>
 
 <template>
-	<Transition
-		name="tooltip"
-		@enter="(el) => (el as HTMLElement).offsetHeight"
-		@leave="(el) => (el as HTMLElement).offsetHeight"
-	>
-		<div
-			v-show="isOpen"
-			:class="getPositionClasses(side, align)"
-			class="pointer-events-none"
+	<Teleport to="body">
+		<Transition
+			name="tooltip"
+			@enter="(el) => (el as HTMLElement).offsetHeight"
+			@leave="(el) => (el as HTMLElement).offsetHeight"
 		>
-			<slot />
-		</div>
-	</Transition>
+			<div
+				v-show="isOpen"
+				ref="contentRef"
+				:style="{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }"
+				class="pointer-events-none whitespace-nowrap rounded-md bg-slate-950 px-2 py-1 text-sm text-slate-50 shadow-md"
+			>
+				<slot />
+			</div>
+		</Transition>
+	</Teleport>
 </template>
 
 <style scoped>

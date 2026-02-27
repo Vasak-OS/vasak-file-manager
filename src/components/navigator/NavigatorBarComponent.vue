@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import ClipboardToolbarComponent from '@/components/navigator/ClipboardToolbarComponent.vue';
-import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
 import ResizablePanel from '@/components/ui/ResizablePanel.vue';
 import ResizablePanelGroup from '@/components/ui/ResizablePanelGroup.vue';
@@ -527,11 +526,7 @@ onUnmounted(() => {
 <template>
 	
   <div class="navigator-page">
-    <TabBarComponent v-if="!isSmallScreen" />
     <div class="navigator-page__main">
-      <div v-if="isSmallScreen" class="navigator-page__compact-header">
-        <TabBarComponent teleport-target="" :compact="true" />
-      </div>
       <div class="navigator-page__panes-wrapper">
         <div class="navigator-page__panes-container">
           <GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"

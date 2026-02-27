@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
+import { computed, inject, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 
 interface Props {
 	side?: 'top' | 'bottom' | 'left' | 'right';
@@ -8,42 +8,86 @@ interface Props {
 	class?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	side: 'bottom',
 	align: 'start',
 	sideOffset: 4,
 });
 
 const dropdown = inject<any>('dropdown');
+const triggerElement = inject<any>('dropdownTriggerElement');
 
 const isOpen = computed(() => dropdown?.isOpen.value ?? false);
+const contentRef = ref<HTMLElement | null>(null);
+const position = ref({ top: 0, left: 0 });
 
-const getPositionClasses = (side: string, align: string) => {
-	const baseClasses =
-		'absolute z-50 min-w-[160px] rounded-md border border-slate-200 bg-white shadow-lg';
-
-	const sideClasses = {
-		top: 'bottom-full mb-1',
-		bottom: 'top-full mt-1',
-		left: 'right-full mr-1',
-		right: 'left-full ml-1',
-	}[side];
-
-	const alignClasses = {
-		start: 'left-0',
-		center: 'left-1/2 -translate-x-1/2',
-		end: 'right-0',
-	}[align];
-
-	return `${baseClasses} ${sideClasses} ${alignClasses}`;
+const calculatePosition = () => {
+	if (!triggerElement?.value || !contentRef.value) return;
+	
+	const triggerRect = triggerElement.value.getBoundingClientRect();
+	const contentRect = contentRef.value.getBoundingClientRect();
+	
+	let top = 0;
+	let left = 0;
+	
+	switch (props.side) {
+		case 'bottom':
+			top = triggerRect.bottom + props.sideOffset;
+			break;
+		case 'top':
+			top = triggerRect.top - contentRect.height - props.sideOffset;
+			break;
+		case 'left':
+			left = triggerRect.left - contentRect.width - props.sideOffset;
+			top = triggerRect.top;
+			break;
+		case 'right':
+			left = triggerRect.right + props.sideOffset;
+			top = triggerRect.top;
+			break;
+	}
+	
+	switch (props.align) {
+		case 'start':
+			if (props.side === 'bottom' || props.side === 'top') {
+				left = triggerRect.left;
+			}
+			break;
+		case 'center':
+			if (props.side === 'bottom' || props.side === 'top') {
+				left = triggerRect.left + (triggerRect.width / 2) - (contentRect.width / 2);
+			}
+			break;
+		case 'end':
+			if (props.side === 'bottom' || props.side === 'top') {
+				left = triggerRect.right - contentRect.width;
+			}
+			break;
+	}
+	
+	position.value = { top, left };
 };
+
+watch(isOpen, (open) => {
+	if (open) {
+		setTimeout(calculatePosition, 0);
+	}
+});
 
 const handleClickOutside = (event: MouseEvent) => {
 	const target = event.target as HTMLElement;
-	if (!target.closest('[dropdown-content]')) {
+	if (!target.closest('[dropdown-content]') && !target.closest('.dropdown-menu-trigger')) {
 		dropdown?.closeDropdown();
 	}
 };
+
+onMounted(() => {
+	document.addEventListener('click', handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
@@ -55,8 +99,11 @@ const handleClickOutside = (event: MouseEvent) => {
 		>
 			<div
 				v-show="isOpen"
-				:class="[getPositionClasses(side, align), $attrs.class]"
+				ref="contentRef"
+				:class="[$attrs.class]"
+				:style="{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }"
 				dropdown-content
+				class="min-w-[160px] rounded-md border bg-white shadow-lg"
 				@click="(e) => e.stopPropagation()"
 			>
 				<div class="py-1">

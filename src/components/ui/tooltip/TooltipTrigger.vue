@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject } from 'vue';
+import { inject, ref, provide, onMounted } from 'vue';
 
 interface Props {
 	asChild?: boolean;
@@ -10,6 +10,9 @@ withDefaults(defineProps<Props>(), {
 });
 
 const tooltip = inject<any>('tooltip');
+const triggerRef = ref<HTMLElement | null>(null);
+
+provide('tooltipTriggerElement', triggerRef);
 
 const handleMouseEnter = () => {
 	tooltip?.open();
@@ -26,10 +29,20 @@ const handleFocus = () => {
 const handleBlur = () => {
 	tooltip?.close();
 };
+
+onMounted(() => {
+	if (triggerRef.value) {
+		const child = triggerRef.value.firstElementChild as HTMLElement;
+		if (child) {
+			triggerRef.value = child;
+		}
+	}
+});
 </script>
 
 <template>
 	<div
+		ref="triggerRef"
 		class="tooltip-trigger"
 		@mouseenter="handleMouseEnter"
 		@mouseleave="handleMouseLeave"

@@ -37,7 +37,6 @@ const layoutGridIcon = ref('');
 const layoutListIcon = ref('');
 const splitViewIcon = ref('');
 const infoPanelIcon = ref('');
-const ellipsisVerticalIcon = ref('');
 
 
 async function setLayout(_layoutName: LayoutType) {
@@ -47,9 +46,8 @@ async function setLayout(_layoutName: LayoutType) {
 onMounted(async () => {
   layoutGridIcon.value = await getSymbolSource('view-grid');
   layoutListIcon.value = await getSymbolSource('view-list-text');
-  splitViewIcon.value = await getSymbolSource('split-view');
-  infoPanelIcon.value = await getSymbolSource('info-panel');
-  ellipsisVerticalIcon.value = await getSymbolSource('ellipsis-vertical');
+  splitViewIcon.value = await getSymbolSource('view-split-left-right');
+  infoPanelIcon.value = await getSymbolSource('swap-panels');
 });
 </script>
 
@@ -57,13 +55,6 @@ onMounted(async () => {
   <div class="navigator-toolbar-actions animate-fade-in">
     <DropdownMenu>
       <Tooltip>
-        <TooltipTrigger as-child>
-          <DropdownMenuTrigger as-child>
-            <button class="navigator-toolbar-actions__button">
-              <img :src="ellipsisVerticalIcon" alt="Settings" :size="16" class="navigator-toolbar-actions__icon" />
-            </button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
         <DropdownMenuContent :side="'bottom'" :align="'end'" class="navigator-settings-menu">
           <DropdownMenuLabel>'settings.navigator.navigatorOptions'</DropdownMenuLabel>
           <DropdownMenuSeparator />

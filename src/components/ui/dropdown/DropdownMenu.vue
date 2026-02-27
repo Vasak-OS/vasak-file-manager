@@ -34,15 +34,7 @@ provide('dropdown', {
 </script>
 
 <template>
-	<div class="dropdown-menu">
+	<div class="relative inline-block background rounded-corner p-1 hover:bg-primary dark:hover:bg-primary-dark">
 		<slot />
 	</div>
 </template>
-
-<style scoped>
-@reference "../../../style.css";
-
-.dropdown-menu {
-	@apply relative inline-block;
-}
-</style>
