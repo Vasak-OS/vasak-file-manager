@@ -12,7 +12,7 @@ import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
-import type { ContextMenuAction } from './types';
+import type { ContextMenuAction } from '@/types/contextMenu';
 
 const props = defineProps<{
 	selectedEntries: DirEntry[];

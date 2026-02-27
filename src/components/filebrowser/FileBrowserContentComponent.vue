@@ -15,7 +15,8 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
-import type { Layout, ListSortColumn } from '@/types/navigator';
+import type { Layout } from '@/types/navigator';
+import type { ListSortColumn } from '@/types/short';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
 import FileBrowserListView from '@/views/filebrowser/FileBrowserListView.vue';
 
@@ -56,8 +57,8 @@ function toggleColumnVisibility(column: 'items' | 'size' | 'modified', checked: 
 	columnVisibility.value[column] = checked;
 }
 
-const listSortColumn = ref(null);
-const listSortDirection = ref('asc');
+const listSortColumn = ref<ListSortColumn | null>(null);
+const listSortDirection = ref<'asc' | 'desc'>('asc');
 
 function handleColumnHeaderClick(column: ListSortColumn) {
 	if (listSortColumn.value === column) {

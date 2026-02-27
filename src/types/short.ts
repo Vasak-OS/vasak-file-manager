@@ -1,0 +1,1 @@
+export type ListSortColumn = 'name' | 'items' | 'size' | 'modified';

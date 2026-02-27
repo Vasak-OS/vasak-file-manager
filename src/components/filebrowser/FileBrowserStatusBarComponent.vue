@@ -12,7 +12,7 @@ import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
-import type { ContextMenuAction } from '@/types/navigator';
+import type { ContextMenuAction } from '@/types/contextMenu';
 
 const MAX_VISIBLE_ITEMS = 100;
 

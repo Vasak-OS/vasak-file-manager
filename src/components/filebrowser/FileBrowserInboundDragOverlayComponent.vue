@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { DragOperationType } from './composables/use-file-browser-drag';
+import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 
 const props = defineProps<{
 	isActive: boolean;
