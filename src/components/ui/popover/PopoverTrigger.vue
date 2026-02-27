@@ -31,15 +31,10 @@ onMounted(() => {
 <template>
 	<div
 		ref="triggerRef"
-		class="popover-trigger"
+		class="popover-trigger inline-block"
 		@click="handleClick"
 	>
 		<slot />
 	</div>
 </template>
 
-<style scoped>
-.popover-trigger {
-	@apply inline-block;
-}
-</style>

@@ -239,12 +239,12 @@ onMounted(async () => {
             'fileBrowser.quickSearch'
             <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('toggleFilter') }}</kbd>
           </TooltipContent>
-          <PopoverContent :side="'bottom'" :align="'end'" class="file-browser-toolbar__filter-popover"
+          <PopoverContent :side="'bottom'" :align="'end'" class="w-70 p-2"
             @open-auto-focus="handleFilterAutoFocus" @close-auto-focus.prevent
             @interact-outside="handleFilterInteractOutside">
-            <div class="file-browser-toolbar__filter-input-wrapper">
+            <div class="flex relative">
               <input ref="filterInputRef" type="text" :value="filterQuery" placeholder="'fileBrowser.searchThisDirectory'"
-                class="file-browser-toolbar__filter-input" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
+                class="h-8 w-full pr-8 rounded-corner" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
               <button v-if="filterQuery" type="button" class="file-browser-toolbar__filter-clear"
                 @click="clearFilter">
                 <img :src="xIcon" alt="Clear Filter" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
@@ -341,18 +341,6 @@ onMounted(async () => {
 .file-browser-toolbar__filter-button--active {
   background-color: hsl(var(--secondary));
   color: hsl(var(--foreground));
-}
-
-.file-browser-toolbar__filter-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.file-browser-toolbar__filter-input {
-  width: 100%;
-  height: 36px;
-  padding-right: 36px;
 }
 
 .file-browser-toolbar__filter-clear {

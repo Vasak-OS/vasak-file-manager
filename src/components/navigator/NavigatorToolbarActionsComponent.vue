@@ -79,20 +79,20 @@ onMounted(async () => {
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
               <button class="navigator-toolbar-actions__button">
-                <img :src="layoutGridIcon" alt="Show Grid" v-if="currentLayout === 'grid'" :size="16" class="navigator-toolbar-actions__icon" />
-                <img :src="layoutListIcon" alt="Show List" v-else :size="16" class="navigator-toolbar-actions__icon" />
+                <img :src="layoutGridIcon" alt="Show Grid" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
+                <img :src="layoutListIcon" alt="Show List" v-else height="24" width="24" class="fill-primary" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
           <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
             <button class="navigator-layout-option"
               :class="{ 'navigator-layout-option--active': currentLayout === 'list' }" @click="setLayout('list')">
-              <img :src="layoutListIcon" alt="Show List" :size="16" class="navigator-toolbar-actions__icon" />
+              <img :src="layoutListIcon" alt="Show List" height="24" width="24" class="fill-primary" />
               <span>'listLayout'</span>
             </button>
             <button class="navigator-layout-option"
               :class="{ 'navigator-layout-option--active': currentLayout === 'grid' }" @click="setLayout('grid')">
-              <img :src="layoutGridIcon" alt="Show Grid" :size="16" class="navigator-toolbar-actions__icon" />
+              <img :src="layoutGridIcon" alt="Show Grid" height="24" width="24" class="fill-primary" />
               <span>'gridLayout'</span>
             </button>
           </PopoverContent>
@@ -109,7 +109,7 @@ onMounted(async () => {
             :disabled="props.isGlobalSearchOpen"
             @click="emit('toggle-split-view')"
           >
-            <img :src="splitViewIcon" alt="Toggle Split View" :size="16" class="navigator-toolbar-actions__icon" />
+            <img :src="splitViewIcon" alt="Toggle Split View" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>
         <TooltipContent>
@@ -123,7 +123,7 @@ onMounted(async () => {
             :class="{ 'navigator-toolbar-actions__button--active': props.showInfoPanel }"
             @click="emit('toggle-info-panel')"
           >
-            <img :src="infoPanelIcon" alt="Toggle Info Panel" :size="16" class="navigator-toolbar-actions__icon" />
+            <img :src="infoPanelIcon" alt="Toggle Info Panel" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>
         <TooltipContent>
@@ -168,15 +168,11 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
-.navigator-toolbar-actions__icon {
-  stroke: hsl(var(--icon));
-}
-
 .navigator-toolbar-actions__button--active {
   background-color: hsl(var(--secondary));
 }
 
-.navigator-toolbar-actions__button--active .navigator-toolbar-actions__icon {
+.navigator-toolbar-actions__button--active {
   stroke: hsl(var(--primary));
 }
 

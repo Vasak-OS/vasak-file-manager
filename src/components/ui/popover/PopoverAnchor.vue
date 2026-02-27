@@ -9,13 +9,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-	<div class="popover-anchor">
+	<div class="inline-block">
 		<slot />
 	</div>
 </template>
-
-<style scoped>
-.popover-anchor {
-	@apply inline-block;
-}
-</style>

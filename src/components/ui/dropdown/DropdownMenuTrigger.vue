@@ -33,7 +33,7 @@ onMounted(() => {
 <template>
 	<div
 		ref="triggerRef"
-		class="inline-block"
+		class="dropdown-menu-trigger inline-block"
 		@click="handleClick"
 	>
 		<slot />

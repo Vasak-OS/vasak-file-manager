@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, provide } from 'vue';
+import { computed, provide, ref } from 'vue';
 
 interface Props {
 	open?: boolean;
@@ -11,9 +11,14 @@ const emit = defineEmits<{
 	'update:open': [value: boolean];
 }>();
 
+const internalOpen = ref(false);
+
 const isOpen = computed({
-	get: () => props.open ?? false,
+	get: () => props.open ?? internalOpen.value,
 	set: (value: boolean) => {
+		if (props.open === undefined) {
+			internalOpen.value = value;
+		}
 		emit('update:open', value);
 	},
 });
@@ -39,13 +44,7 @@ provide('popover', {
 </script>
 
 <template>
-	<div class="popover">
+	<div class="relative inline-block">
 		<slot />
 	</div>
 </template>
-
-<style scoped>
-.popover {
-	@apply relative inline-block;
-}
-</style>

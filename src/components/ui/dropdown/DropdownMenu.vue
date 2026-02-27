@@ -11,9 +11,14 @@ const emit = defineEmits<{
 	'update:open': [value: boolean];
 }>();
 
+const internalOpen = ref(false);
+
 const isOpen = computed({
-	get: () => props.open ?? false,
+	get: () => props.open ?? internalOpen.value,
 	set: (value: boolean) => {
+		if (props.open === undefined) {
+			internalOpen.value = value;
+		}
 		emit('update:open', value);
 	},
 });
