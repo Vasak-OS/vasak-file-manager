@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, provide, onMounted } from 'vue';
+import { inject, ref, onMounted } from 'vue';
 
 interface Props {
 	asChild?: boolean;
@@ -12,19 +12,20 @@ withDefaults(defineProps<Props>(), {
 const popover = inject<any>('popover');
 const triggerRef = ref<HTMLElement | null>(null);
 
-provide('popoverTriggerElement', triggerRef);
+const resolveTriggerElement = () => {
+	if (!triggerRef.value) return null;
+	const child = triggerRef.value.firstElementChild as HTMLElement | null;
+	return child ?? triggerRef.value;
+};
 
-const handleClick = () => {
+const handleClick = (event: MouseEvent) => {
+	const element = (event.currentTarget as HTMLElement) ?? resolveTriggerElement();
+	popover?.setTriggerElement?.(element);
 	popover?.togglePopover();
 };
 
 onMounted(() => {
-	if (triggerRef.value) {
-		const child = triggerRef.value.firstElementChild as HTMLElement;
-		if (child) {
-			triggerRef.value = child;
-		}
-	}
+	popover?.setTriggerElement?.(resolveTriggerElement());
 });
 </script>
 

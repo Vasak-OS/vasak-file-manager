@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>();
 
 const internalOpen = ref(false);
+const triggerElement = ref<HTMLElement | null>(null);
 
 const isOpen = computed({
 	get: () => props.open ?? internalOpen.value,
@@ -35,11 +36,17 @@ const openPopover = () => {
 	isOpen.value = true;
 };
 
+const setTriggerElement = (element: HTMLElement | null) => {
+	triggerElement.value = element;
+};
+
 provide('popover', {
 	isOpen,
 	togglePopover,
 	closePopover,
 	openPopover,
+	triggerElement,
+	setTriggerElement,
 });
 </script>
 

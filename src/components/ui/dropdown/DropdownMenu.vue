@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>();
 
 const internalOpen = ref(false);
+const triggerElement = ref<HTMLElement | null>(null);
 
 const isOpen = computed({
 	get: () => props.open ?? internalOpen.value,
@@ -31,10 +32,16 @@ const toggleDropdown = () => {
 	isOpen.value = !isOpen.value;
 };
 
+const setTriggerElement = (element: HTMLElement | null) => {
+	triggerElement.value = element;
+};
+
 provide('dropdown', {
 	isOpen,
 	closeDropdown,
 	toggleDropdown,
+	triggerElement,
+	setTriggerElement,
 });
 </script>
 

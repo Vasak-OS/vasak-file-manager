@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, provide, onMounted } from 'vue';
+import { inject, ref, onMounted } from 'vue';
 
 interface Props {
 	asChild?: boolean;
@@ -14,19 +14,20 @@ withDefaults(defineProps<Props>(), {
 const dropdown = inject<any>('dropdown');
 const triggerRef = ref<HTMLElement | null>(null);
 
-provide('dropdownTriggerElement', triggerRef);
+const resolveTriggerElement = () => {
+	if (!triggerRef.value) return null;
+	const child = triggerRef.value.firstElementChild as HTMLElement | null;
+	return child ?? triggerRef.value;
+};
 
-const handleClick = () => {
+const handleClick = (event: MouseEvent) => {
+	const element = (event.currentTarget as HTMLElement) ?? resolveTriggerElement();
+	dropdown?.setTriggerElement?.(element);
 	dropdown?.toggleDropdown();
 };
 
 onMounted(() => {
-	if (triggerRef.value) {
-		const child = triggerRef.value.firstElementChild as HTMLElement;
-		if (child) {
-			triggerRef.value = child;
-		}
-	}
+	dropdown?.setTriggerElement?.(resolveTriggerElement());
 });
 </script>
 
