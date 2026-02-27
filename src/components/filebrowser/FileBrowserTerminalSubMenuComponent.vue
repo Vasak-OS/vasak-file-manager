@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import {
-	ContextMenuItem,
-	ContextMenuLabel,
-	ContextMenuSeparator,
-	ContextMenuSubContent,
-	ContextMenuSubTrigger,
-} from '@/components/ui/context-menu';
+import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
+import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
+import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
+import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
+import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import type { DirEntry } from '@/types/dir-entry';

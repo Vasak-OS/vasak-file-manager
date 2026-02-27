@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/Skeleton.vue';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
-import { useFileBrowserContext } from './composables/use-file-browser-context';
-import FileBrowserEntryIcon from './file-browser-entry-icon.vue';
-import type { GroupedEntries } from './types';
-import { formatBytes, getImageSrc, isImageFile, isVideoFile } from './utils';
+import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
+import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
+import type { GroupedEntries } from '@/types/file-browser';
+import { formatBytes } from '@/utils/byte-parser';
+import { getImageSrc } from '@/utils/images';
+import { isImageFile, isVideoFile } from '@/utils/files';
 
 const ctx = useFileBrowserContext();
 
@@ -36,12 +38,10 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 	}
 }
 
-const { t } = useI18n();
-
 function getDirSizeDisplay(entry: DirEntry): string | null {
 	const sizeInfo = dirSizesStore.getSize(entry.path);
 	const itemCountStr =
-		entry.item_count !== null ? t('fileBrowser.itemCount', { count: entry.item_count }) : null;
+		entry.item_count !== null ? `fileBrowser.itemCount ${entry.item_count}` : null;
 
 	if (!sizeInfo) {
 		return itemCountStr || '—';
@@ -107,7 +107,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FolderIcon :size="14" />
-        <span>{{ t('fileBrowser.folders') }}</span>
+        <span>'fileBrowser.folders'</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.dirs.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">
@@ -149,7 +149,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.images.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FileImageIcon :size="14" />
-        <span>{{ t('fileBrowser.images') }}</span>
+        <span>'fileBrowser.images'</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.images.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">
@@ -183,7 +183,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.videos.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FileVideoIcon :size="14" />
-        <span>{{ t('fileBrowser.videos') }}</span>
+        <span>'fileBrowser.videos'</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.videos.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">
@@ -211,7 +211,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
           <div class="file-browser-grid-view__card-info file-browser-grid-view__card-info--overlay">
             <span class="file-browser-grid-view__card-name">{{ entry.name }}</span>
             <div class="file-browser-grid-view__card-meta">
-              <span class="file-browser-grid-view__card-type">{{ t('fileBrowser.video') }}</span>
+              <span class="file-browser-grid-view__card-type">'fileBrowser.video'</span>
               <span class="file-browser-grid-view__card-size">{{ formatBytes(entry.size) }}</span>
             </div>
           </div>
@@ -222,7 +222,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.others.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FileIcon :size="14" />
-        <span>{{ t('fileBrowser.otherFiles') }}</span>
+        <span>'fileBrowser.otherFiles'</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.others.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">
@@ -245,7 +245,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
           <div class="file-browser-grid-view__card-info file-browser-grid-view__card-info--bottom">
             <span class="file-browser-grid-view__card-name">{{ entry.name }}</span>
             <div class="file-browser-grid-view__card-meta">
-              <span class="file-browser-grid-view__card-type">{{ entry.ext?.toUpperCase() || t('file') }}</span>
+              <span class="file-browser-grid-view__card-type">{{ entry.ext?.toUpperCase() || 'file' }}</span>
               <span class="file-browser-grid-view__card-size">{{ formatBytes(entry.size) }}</span>
             </div>
           </div>

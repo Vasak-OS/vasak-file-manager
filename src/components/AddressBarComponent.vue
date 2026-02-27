@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { dirname } from '@tauri-apps/api/path';
+import I18n from '@vasakgroup/tauri-plugin-i18n';
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -10,7 +11,7 @@ import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vu
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import { ScrollArea } from '@/components/ui/ScrollArea.vue';
+import ScrollArea from '@/components/ui/ScrollArea.vue';
 import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
 import { toast } from '@/components/ui/toast/toaster';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
@@ -25,8 +26,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	navigate: [path: string];
 }>();
-
-const { t } = useI18n();
 
 const isEditorOpen = ref(false);
 const isPinned = ref(false);
@@ -260,7 +259,7 @@ async function copyPathToClipboard() {
 		await navigator.clipboard.writeText(props.currentPath);
 		toast.custom(markRaw(CustomSimple), {
 			componentProps: {
-				title: t('dialogs.localShareManagerDialog.addressCopiedToClipboard'),
+				title: 'dialogs.localShareManagerDialog.addressCopiedToClipboard',
 				description: props.currentPath,
 			},
 			duration: 2000,
@@ -315,15 +314,15 @@ onUnmounted(() => {
         <DropdownMenuContent :side="'bottom'" :align="'start'" class="address-bar__menu">
           <DropdownMenuItem @select="copyPathToClipboard">
             <CopyIcon :size="16" />
-            <span>{{ t('settings.addressBar.copyPathToClipboard') }}</span>
+            <span>'settings.addressBar.copyPathToClipboard'</span>
           </DropdownMenuItem>
           <DropdownMenuItem @select="openCopiedPath">
             <ClipboardPasteIcon :size="16" />
-            <span>{{ t('settings.addressBar.openCopiedPath') }}</span>
+            <span>'settings.addressBar.openCopiedPath'</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
         <TooltipContent>
-          {{ t('settings.addressBar.addressBarActions') }}
+          'settings.addressBar.addressBarActions'
         </TooltipContent>
       </Tooltip>
     </DropdownMenu>
@@ -346,7 +345,7 @@ onUnmounted(() => {
                 }
               }">
                 <DropdownMenuTrigger as-child>
-                  <button class="address-bar__separator" :title="t('settings.addressBar.showSiblingDirectories')"
+                  <button class="address-bar__separator" :title="'settings.addressBar.showSiblingDirectories'"
                     @click.stop>
                     <ChevronRightIcon :size="12"
                       :class="{ 'address-bar__separator-icon--open': openSeparatorIndex === index }" />
@@ -372,7 +371,7 @@ onUnmounted(() => {
         @pointer-down-outside="(event: Event) => { if (isPinned) event.preventDefault() }"
         @interact-outside="(event: Event) => { if (isPinned) event.preventDefault() }">
         <div class="address-bar__editor-header">
-          <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="t('settings.addressBar.enterValidPath')"
+          <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="'settings.addressBar.enterValidPath'"
             class="address-bar__path-input" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
           <Tooltip>
             <TooltipTrigger as-child>
@@ -382,10 +381,10 @@ onUnmounted(() => {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              {{ t('settings.addressBar.keepEditorOpened') }}
-              <span v-if="isPinned" class="address-bar__tooltip-status">{{ t('enabled') }}
+              'settings.addressBar.keepEditorOpened'
+              <span v-if="isPinned" class="address-bar__tooltip-status">'enabled'
               </span>
-              <span v-else class="address-bar__tooltip-status">{{ t('disabled') }}
+              <span v-else class="address-bar__tooltip-status">'disabled'
               </span>
             </TooltipContent>
           </Tooltip>
@@ -397,7 +396,7 @@ onUnmounted(() => {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              {{ t('settings.addressBar.closeEditor') }}
+              'settings.addressBar.closeEditor'
               <kbd class="shortcut">Esc</kbd>
             </TooltipContent>
           </Tooltip>
@@ -413,7 +412,7 @@ onUnmounted(() => {
         </ScrollArea>
 
         <div v-else class="address-bar__empty">
-          {{ t('settings.addressBar.noMatchingDirectories') }}
+          'settings.addressBar.noMatchingDirectories'
         </div>
 
         <div class="address-bar__editor-hints">
@@ -422,9 +421,9 @@ onUnmounted(() => {
           <span class="address-bar__hint-key">Tab</span>
           /
           <span class="address-bar__hint-key">Shift+Tab</span>
-          {{ t('settings.addressBar.toAutocomplete') }};
+          'settings.addressBar.toAutocomplete';
           <span class="address-bar__hint-key">Enter</span>
-          {{ t('settings.addressBar.toOpenThePath') }}
+          'settings.addressBar.toOpenThePath'
         </div>
       </PopoverContent>
     </Popover>
@@ -436,7 +435,7 @@ onUnmounted(() => {
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        {{ t('settings.addressBar.editAddress') }}
+        'settings.addressBar.editAddress'
         <kbd class="shortcut">Ctrl+P</kbd>
       </TooltipContent>
     </Tooltip>

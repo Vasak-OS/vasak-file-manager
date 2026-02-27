@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { LoaderCircleIcon } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
-import Skeleton from '@/components/ui/Skeleton.vue';
+import { computed, ref, type Ref } from 'vue';
+import Skeleton  from '@/components/ui/Skeleton.vue';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
-import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import type { DirEntry } from '@/types/dir-entry';
-import { useFileBrowserContext } from './composables/use-file-browser-context';
-import FileBrowserEntryIcon from './file-browser-entry-icon.vue';
-import { formatBytes, formatDate } from './utils';
+import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
+import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
+import { formatBytes } from '@/utils/byte-parser';
+import { formatDate } from '@/utils/date-formatter';
 
 const ctx = useFileBrowserContext();
 
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
-const userSettingsStore = useUserSettingsStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
 
-const columnVisibility = computed(
-	() => userSettingsStore.userSettings.navigator.listColumnVisibility
-);
+const columnVisibility: Ref<{ items: boolean; size: boolean; modified: boolean }> = ref({
+  items: true,
+  size: true,
+  modified: true,
+});
 const showItemsColumn = computed(() => columnVisibility.value.items);
 const showSizeColumn = computed(() => columnVisibility.value.size);
 const showModifiedColumn = computed(() => columnVisibility.value.modified);
@@ -66,7 +66,7 @@ function getItemsDisplay(entry: DirEntry): string {
 		return '—';
 	}
 
-	return entry.item_count !== null ? t('fileBrowser.itemCount', { count: entry.item_count }) : '—';
+	return entry.item_count !== null ? `${entry.item_count} items` : '—';
 }
 
 function isDirLoadingWithProgress(entry: DirEntry): boolean {
@@ -80,8 +80,6 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 		event.preventDefault();
 	}
 }
-
-const { t } = useI18n();
 </script>
 
 <template>

@@ -1,9 +1,0 @@
-export { default as ContextMenu } from './contextmenu/ContextMenu.vue';
-export { default as ContextMenuContent } from './contextmenu/ContextMenuContent.vue';
-export { default as ContextMenuItem } from './contextmenu/ContextMenuItem.vue';
-export { default as ContextMenuLabel } from './contextmenu/ContextMenuLabel.vue';
-export { default as ContextMenuSeparator } from './contextmenu/ContextMenuSeparator.vue';
-export { default as ContextMenuSub } from './contextmenu/ContextMenuSub.vue';
-export { default as ContextMenuSubContent } from './contextmenu/ContextMenuSubContent.vue';
-export { default as ContextMenuSubTrigger } from './contextmenu/ContextMenuSubTrigger.vue';
-export { default as ContextMenuTrigger } from './contextmenu/ContextMenuTrigger.vue';

@@ -10,14 +10,12 @@ const props = defineProps<{
 	targetingEntry: boolean;
 }>();
 
-const { t } = useI18n();
-
 const description = computed(() => {
 	if (props.operationType === 'copy') {
-		return t('drag.dropToCopyItems', props.itemCount);
+		return `drag.dropToCopyItems ${props.itemCount}`;
 	}
 
-	return t('drag.dropToMoveItems', props.itemCount);
+	return `drag.dropToMoveItems ${props.itemCount}`;
 });
 </script>
 
@@ -32,10 +30,10 @@ const description = computed(() => {
             class="inbound-drag-overlay__icon" />
         </div>
         <div class="inbound-drag-overlay__hint">
-          {{ t('drag.holdShiftToChangeMode') }}
+          'drag.holdShiftToChangeMode'
         </div>
         <div class="inbound-drag-overlay__hint">
-          {{ t('drag.holdCtrlForCurrentDirDrop') }}
+          'drag.holdCtrlForCurrentDirDrop'
         </div>
       </div>
     </div>

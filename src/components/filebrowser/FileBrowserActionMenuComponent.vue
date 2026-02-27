@@ -42,8 +42,6 @@ function handleCutClick() {
 	emitAction('cut');
 }
 
-const { t } = useI18n();
-
 const clipboardStore = useClipboardStore();
 const userStatsStore = useUserStatsStore();
 const shortcutsStore = useShortcutsStore();
@@ -163,7 +161,7 @@ function handleDeleteClick() {
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        {{ t('fileBrowser.actions.rename') }}
+        fileBrowser.actions.rename'
         <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('rename') }}</kbd>
       </TooltipContent>
     </Tooltip>
@@ -175,7 +173,7 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          {{ t('fileBrowser.actions.copy') }}
+          'fileBrowser.actions.copy'
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('copy') }}</kbd>
         </div>
       </TooltipContent>
@@ -188,7 +186,7 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          {{ t('fileBrowser.actions.move') }}
+          'fileBrowser.actions.move'
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('cut') }}</kbd>
         </div>
       </TooltipContent>
@@ -201,7 +199,7 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          {{ t('shortcuts.transferPreparedForCopying') }}
+          'shortcuts.transferPreparedForCopying'
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
         </div>
       </TooltipContent>
@@ -216,11 +214,11 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          {{ t('shortcuts.moveSelectedItemsToTrash') }}
+          'shortcuts.moveSelectedItemsToTrash'
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('delete') }}</kbd>
         </div>
         <div class="file-browser-actions-menu__tooltip-row">
-          {{ t('shortcuts.deleteSelectedItemsFromDrive') }}
+          'shortcuts.deleteSelectedItemsFromDrive'
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('deletePermanently') }}</kbd>
         </div>
       </TooltipContent>
@@ -232,13 +230,13 @@ function handleDeleteClick() {
   <FileBrowserMoreOptionsSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-with') && !isContextMenu"
     @select="emitAction('open-with')" @click="emitAction('open-with')">
-    <span>{{ t('fileBrowser.actions.openWith') }}</span>
+    <span>'fileBrowser.actions.openWith'</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('quick-view')"
     class="file-browser-actions-menu__item-with-shortcut" @select="emitAction('quick-view')"
     @click="emitAction('quick-view')">
     <EyeIcon :size="16" />
-    <span>{{ t('fileBrowser.actions.quickView') }}</span>
+    <span>'fileBrowser.actions.quickView'</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('quickView') }}</kbd>
   </component>
   <FileBrowserTerminalSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" :is-shift-held="isShiftHeld" />
@@ -246,20 +244,19 @@ function handleDeleteClick() {
     class="file-browser-actions-menu__item-with-shortcut" @select="emitAction('open-in-new-tab')"
     @click="emitAction('open-in-new-tab')">
     <PlusIcon :size="16" />
-    <span>{{ t('fileBrowser.actions.openInNewTab') }}</span>
+    <span>'fileBrowser.actions.openInNewTab'</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('share')" @select="emitAction('share')"
     @click="emitAction('share')">
     <Share2Icon :size="16" />
-    <span>{{ t('fileBrowser.actions.share') }}</span>
+    <span>'fileBrowser.actions.share'</span>
   </component>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"
     @click="emitAction('toggle-favorite')">
     <StarIcon :size="16" :fill="allSelectedAreFavorites ? 'currentColor' : 'none'" />
-    <span>{{ allSelectedAreFavorites ? t('fileBrowser.actions.removeFromFavorites') :
-      t('fileBrowser.actions.addToFavorites') }}</span>
+    <span>{{ allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites' }}</span>
   </component>
   <div v-if="isActionVisible('edit-tags')" class="file-browser-actions-menu__tag-selector">
     <TagSelector :tags="availableTags" :selected-tag-ids="selectedItemTagIds" :allow-create="true" :max-badges="1"

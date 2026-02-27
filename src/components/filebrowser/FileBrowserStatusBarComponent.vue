@@ -12,7 +12,7 @@ import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
-import type { ContextMenuAction } from './types';
+import type { ContextMenuAction } from '@/types/navigator';
 
 const MAX_VISIBLE_ITEMS = 100;
 
@@ -30,7 +30,6 @@ const emit = defineEmits<{
 	contextMenuAction: [action: ContextMenuAction];
 }>();
 
-const { t } = useI18n();
 
 const dirSizesStore = useDirSizesStore();
 
@@ -86,11 +85,11 @@ const selectionSizeDisplay = computed(() => {
 	const parts = [];
 
 	if (fileCount > 0) {
-		parts.push(t('fileBrowser.fileCount', { count: fileCount }));
+		parts.push(`fileBrowser.fileCount ${ fileCount }`);
 	}
 
 	if (dirCount > 0) {
-		parts.push(t('fileBrowser.directoryCount', { count: dirCount }));
+		parts.push(`fileBrowser.directoryCount ${ dirCount }`);
 	}
 
 	const countStr = parts.join(', ');
@@ -124,20 +123,15 @@ const showItemsHeader = computed(() => {
 	const displayed = Math.min(matched, MAX_VISIBLE_ITEMS);
 
 	if (itemsFilterQuery.value) {
-		return t('fileBrowser.matchedNOfItems', {
-			matched,
-			total,
-		});
+		return `fileBrowser.matchedNOfItems ${matched} ${total}`;
 	}
 
 	if (total > MAX_VISIBLE_ITEMS) {
 		const hidden = Math.max(total - displayed, 0);
 
-		return t('fileBrowser.showingNOfItems', {
-			hidden,
-			total,
-		});
-	}
+		return `fileBrowser.showingNOfItems ${hidden} ${total}`;
+
+		}
 
 	return null;
 });
@@ -174,7 +168,7 @@ function openCollapsedPopover() {
   <div class="file-browser-status-bar">
     <template v-if="hasSelection">
       <span class="file-browser-status-bar__selected-count">
-        {{ t('fileBrowser.selectedItems', { count: selectedCount }) }}
+        {{ `fileBrowser.selectedItems ${selectedCount}` }}
         <template v-if="selectionSizeDisplay">
           <span class="file-browser-status-bar__separator">·</span>
           <span class="file-browser-status-bar__size-info">
@@ -193,29 +187,29 @@ function openCollapsedPopover() {
         <PopoverAnchor as-child>
           <div class="file-browser-status-bar__actions">
             <div class="file-browser-status-bar__actions--expanded">
-              <button type="button" class="file-browser-status-bar__button" :title="t('showItems')"
+              <button type="button" class="file-browser-status-bar__button" :title="'showItems'"
                 @click="showItemsPopoverOpen = true">
                 <EyeIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">{{ t('showItems') }}</span>
+                <span class="file-browser-status-bar__button-text">'showItems'</span>
               </button>
 
               <button type="button" class="file-browser-status-bar__button"
                 :title="t('shortcuts.selectAllItemsInCurrentDirectory')" @click="emit('selectAll')">
                 <CheckCheckIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">{{ t('fileBrowser.selectAll') }}</span>
+                <span class="file-browser-status-bar__button-text">'fileBrowser.selectAll'</span>
               </button>
 
               <button type="button" class="file-browser-status-bar__button"
                 :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
                 <XIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">{{ t('fileBrowser.deselectAll') }}</span>
+                <span class="file-browser-status-bar__button-text">'fileBrowser.deselectAll'</span>
               </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="file-browser-status-bar__button" :title="t('menu')">
+                  <button type="button" class="file-browser-status-bar__button" :title="'menu'">
                     <MenuIcon :size="14" />
-                    <span class="file-browser-status-bar__button-text">{{ t('menu') }}</span>
+                    <span class="file-browser-status-bar__button-text">'menu'</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="file-browser-status-bar__menu">
@@ -229,22 +223,22 @@ function openCollapsedPopover() {
             <div class="file-browser-status-bar__actions--collapsed">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="file-browser-status-bar__button" :title="t('actions')">
+                  <button type="button" class="file-browser-status-bar__button" :title="'actions'">
                     <EllipsisVerticalIcon :size="16" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="file-browser-status-bar__dropdown">
                   <DropdownMenuItem @click="openCollapsedPopover">
                     <EyeIcon :size="14" />
-                    {{ t('showItems') }}
+                    'showItems'
                   </DropdownMenuItem>
                   <DropdownMenuItem @click="emit('selectAll')">
                     <CheckCheckIcon :size="14" />
-                    {{ t('fileBrowser.selectAll') }}
+                    'fileBrowser.selectAll'
                   </DropdownMenuItem>
                   <DropdownMenuItem @click="emit('deselectAll')">
                     <XIcon :size="14" />
-                    {{ t('fileBrowser.deselectAll') }}
+                    'fileBrowser.deselectAll'
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <FileBrowserActionMenuComponent :selected-entries="selectedEntriesArray"
@@ -258,7 +252,7 @@ function openCollapsedPopover() {
         <PopoverContent align="start" side="top" class="file-browser-status-bar__popover">
           <div class="file-browser-status-bar__popover-content">
             <div class="file-browser-status-bar__filter-wrapper">
-              <input v-model="itemsFilterQuery" type="text" :placeholder="t('filter.filter')"
+              <input v-model="itemsFilterQuery" type="text" :placeholder="'filter.filter'"
                 class="file-browser-status-bar__filter-input" />
             </div>
             <div v-if="showItemsHeader" class="file-browser-status-bar__items-header">
@@ -272,12 +266,12 @@ function openCollapsedPopover() {
                     <span class="file-browser-status-bar__item-path">{{ entry.path }}</span>
                   </div>
                   <button type="button" class="file-browser-status-bar__item-remove"
-                    :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)">
+                    :title="'fileBrowser.removeFromSelection'" @click="removeItem(entry)">
                     <XIcon :size="18" />
                   </button>
                 </div>
                 <div v-if="displayedEntries.length === 0" class="file-browser-status-bar__no-items">
-                  {{ t('fileBrowser.noMatchingItems') }}
+                  'fileBrowser.noMatchingItems'
                 </div>
               </div>
             </ScrollArea>
@@ -287,10 +281,10 @@ function openCollapsedPopover() {
     </template>
     <template v-else>
       <span v-if="isFiltered">
-        {{ t('fileBrowser.showingFiltered', { hidden: hiddenCount, total: totalCount }) }}
+        {{  `fileBrowser.showingFiltered ${ hiddenCount} , total: ${totalCount}` }}
       </span>
       <span v-else>
-        {{ t('fileBrowser.itemsTotal', { count: totalCount }) }}
+        {{  `fileBrowser.itemsTotal ${ totalCount }` }}
       </span>
     </template>
   </div>

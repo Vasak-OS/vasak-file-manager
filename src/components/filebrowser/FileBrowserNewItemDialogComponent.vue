@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import Dialog from '@/components/ui/dialog/Dialog.vue';
+import DialogContent from '@/components/ui/dialog/DialogContent.vue';
+import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
+import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
+import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 
 const props = defineProps<{
 	type: 'directory' | 'file';
@@ -24,7 +22,7 @@ const name = ref('');
 const isSubmitting = ref(false);
 
 const dialogTitle = computed(() => {
-	return props.type === 'directory' ? t('navigator.newDirectory') : t('navigator.newFile');
+	return props.type === 'directory' ? 'navigator.newDirectory' : 'navigator.newFile';
 });
 
 const trimmedName = computed(() => name.value.trim());
@@ -89,13 +87,13 @@ function handleKeydown(event: KeyboardEvent) {
       <div class="file-browser-new-item-dialog__form">
         <div class="file-browser-new-item-dialog__field-wrapper">
           <label for="new-item-input" class="file-browser-new-item-dialog__label">
-            {{ t('name') }}
+            'name'
           </label>
           <div class="file-browser-new-item-dialog__field">
             <input id="new-item-input" ref="inputRef" v-model="name" type="text"
               :class="{ 'file-browser-new-item-dialog__input--error': name && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || isSubmitting" @click="handleSubmit">
-              {{ t('create') }}
+              'create'
             </button>
           </div>
         </div>

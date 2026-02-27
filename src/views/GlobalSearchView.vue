@@ -1,23 +1,12 @@
 <script setup lang="ts">
-// import {
-// 	ChevronDownIcon,
-// 	HardDriveIcon,
-// 	LoaderCircleIcon,
-// 	SearchIcon,
-// 	SettingsIcon,
-// 	SlidersHorizontalIcon,
-// 	UsbIcon,
-// 	XIcon,
-// } from 'lucide-vue-next';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
-import { EmptyState } from '@/components/ui/empty-state';
+import EmptyState from '@/components/ui/EmptyState.vue';
 import NumberField from '@/components/ui/number-field/NumberField.vue';
 import NumberFieldContent from '@/components/ui/number-field/NumberFieldContent.vue';
 import NumberFieldDecrement from '@/components/ui/number-field/NumberFieldDecrement.vue';
 import NumberFieldIncrement from '@/components/ui/number-field/NumberFieldIncrement.vue';
 import NumberFieldInput from '@/components/ui/number-field/NumberFieldInput.vue';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { getDriveByPath } from '@/composables/use-drives';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import type { DirEntry } from '@/types/dir-entry';
@@ -371,7 +360,7 @@ onMounted(() => {
         {{ `globalSearch.searchStats.foundOnDrives, ${totalResultsCount}, ${groupedResults.length}` }}
       </div>
 
-      <ScrollArea class="global-search-view__results">
+      <div class="global-search-view__results">
         <div class="global-search-view__results-inner">
           <EmptyState v-if="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
             :icon="SearchIcon" :title="'globalSearch.searchDataIncomplete'"
@@ -423,7 +412,7 @@ onMounted(() => {
             </div>
           </template>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   </div>
 </template>
@@ -555,6 +544,7 @@ onMounted(() => {
 
 .global-search-view__results {
   flex: 1;
+  overflow-y: auto;
 }
 
 .global-search-view__results-inner {

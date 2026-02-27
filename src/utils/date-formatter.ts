@@ -49,3 +49,21 @@ export function formatDateTime(date: Date | number): string {
 		second: '2-digit',
 	});
 }
+
+export function formatDate(timestamp: number, includeSeconds = false): string {
+	if (!timestamp) return '-';
+
+	const options: Intl.DateTimeFormatOptions = {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+	};
+
+	if (includeSeconds) {
+		options.second = '2-digit';
+	}
+
+	return new Date(timestamp).toLocaleString(undefined, options);
+}
