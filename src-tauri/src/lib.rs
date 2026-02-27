@@ -1,5 +1,3 @@
-use tauri::Manager;
-
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;

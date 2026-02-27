@@ -118,27 +118,29 @@ onUnmounted(() => {
 				No tags available
 			</div>
 			<div v-else class="flex flex-col gap-1">
-				<button
+				<div
 					v-for="tag in tags"
 					:key="tag.id"
-					type="button"
-					class="flex items-center justify-between rounded-md px-2 py-1 text-left text-xs hover:bg-slate-50"
-					@click="handleToggleTag(tag.id)"
+					class="flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-slate-50"
 				>
-					<span class="flex items-center gap-2">
+					<button
+						type="button"
+						class="flex flex-1 items-center gap-2 text-left"
+						@click="handleToggleTag(tag.id)"
+					>
 						<span class="h-2 w-2 rounded-full" :style="{ backgroundColor: tag.color }" />
 						<span :class="{ 'font-semibold text-slate-900': selectedTagIds.includes(tag.id) }">
 							{{ tag.name }}
 						</span>
-					</span>
+					</button>
 					<button
 						type="button"
 						class="rounded px-1 text-[10px] text-slate-400 hover:text-slate-700"
-						@click.stop="handleDeleteTag(tag.id)"
+						@click="handleDeleteTag(tag.id)"
 					>
 						Delete
 					</button>
-				</button>
+				</div>
 			</div>
 
 			<div v-if="allowCreate" class="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
