@@ -82,7 +82,9 @@ function handlePointerDown(event: PointerEvent) {
 	startLongPressTimer();
 }
 
-const isActive = computed(() => props.tabGroup?.[0]?.id === workspacesStore.currentTab?.id);
+const isActive = computed(
+  () => props.tabGroup?.[0]?.id === workspacesStore.currentTabGroup?.[0]?.id
+);
 
 const showCloseButton = computed(() => {
 	const tabGroups = workspacesStore.currentWorkspace?.tabGroups ?? [];

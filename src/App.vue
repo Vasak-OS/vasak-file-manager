@@ -8,6 +8,8 @@ import type { Store } from 'pinia';
 import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
+import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { useUserPathsStore } from '@/stores/storage/user-paths';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
 
@@ -25,10 +27,14 @@ onErrorCaptured((err) => {
 
 onMounted(async () => {
 	try {
+		const userPathsStore = useUserPathsStore();
+		const workspacesStore = useWorkspacesStore();
 		const configStore = useConfigStore() as Store<
 			'config',
 			{ config: any; loadConfig: () => Promise<void> }
 		>;
+		await userPathsStore.init();
+		await workspacesStore.init();
 		await configStore.loadConfig();
 		await I18n.getInstance().load();
 		unListenConfig.value = await listen('config-changed', async () => {
