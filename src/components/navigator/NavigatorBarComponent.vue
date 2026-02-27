@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import ClipboardToolbarComponent from '@/components/navigator/ClipboardToolbarComponent.vue';
-import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
 import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
 import ResizablePanel from '@/components/ui/ResizablePanel.vue';
@@ -122,11 +121,6 @@ watch(
 		}
 	}
 );
-
-function handleToggleSplitView() {
-	if (globalSearchStore.isOpen) return;
-	workspacesStore.toggleSplitView();
-}
 
 function handleSelectionChange(entries: DirEntry[], tabId?: string) {
 	if (entries.length > 0) {
@@ -531,9 +525,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<NavigatorToolbarActionsComponent :is-split-view="isSplitView"
-		:is-global-search-open="globalSearchStore.isOpen" :show-info-panel="false"
-		@toggle-split-view="handleToggleSplitView" />
+	
   <div class="navigator-page">
     <TabBarComponent v-if="!isSmallScreen" />
     <div class="navigator-page__main">

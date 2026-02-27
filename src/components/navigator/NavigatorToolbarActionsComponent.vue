@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -13,6 +13,7 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { Layout } from '@/types/navigator';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 type LayoutType = Layout;
 
@@ -28,7 +29,6 @@ const emit = defineEmits<{
 }>();
 
 const isLayoutPopoverOpen = ref(false);
-
 const currentLayout = computed(() => {
 	// const layoutName = 'list';
 	// switch (layoutName) {
@@ -43,8 +43,13 @@ const currentLayout = computed(() => {
 	// }
 	return 'list';
 });
-
 const showHiddenFiles = ref(true);
+const layoutGridIcon = ref('');
+const layoutListIcon = ref('');
+const splitViewIcon = ref('');
+const infoPanelIcon = ref('');
+const ellipsisVerticalIcon = ref('');
+
 
 async function setLayout(layoutName: LayoutType) {
 	const layoutTitle = layoutName === 'grid' ? 'gridLayout' : 'listLayout';
@@ -54,17 +59,26 @@ async function setLayout(layoutName: LayoutType) {
 	// });
 	isLayoutPopoverOpen.value = false;
 }
+
+onMounted(async () => {
+  layoutGridIcon.value = await getSymbolSource('view-grid');
+  layoutListIcon.value = await getSymbolSource('view-list-text');
+  splitViewIcon.value = await getSymbolSource('split-view');
+  infoPanelIcon.value = await getSymbolSource('info-panel');
+  ellipsisVerticalIcon.value = await getSymbolSource('ellipsis-vertical');
+});
 </script>
 
 <template>
   <Teleport to=".window-toolbar-secondary-teleport-target">
     <div class="navigator-toolbar-actions animate-fade-in">
+      asd
       <DropdownMenu>
         <Tooltip>
           <TooltipTrigger as-child>
             <DropdownMenuTrigger as-child>
               <button class="navigator-toolbar-actions__button">
-                <EllipsisVerticalIcon :size="16" class="navigator-toolbar-actions__icon" />
+                <img :src="ellipsisVerticalIcon" alt="Settings" :size="16" class="navigator-toolbar-actions__icon" />
               </button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
@@ -92,20 +106,20 @@ async function setLayout(layoutName: LayoutType) {
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
               <button class="navigator-toolbar-actions__button">
-                <LayoutGridIcon v-if="currentLayout === 'grid'" :size="16" class="navigator-toolbar-actions__icon" />
-                <ListIcon v-else :size="16" class="navigator-toolbar-actions__icon" />
+                <img :src="layoutGridIcon" alt="Show Grid" v-if="currentLayout === 'grid'" :size="16" class="navigator-toolbar-actions__icon" />
+                <img :src="layoutListIcon" alt="Show List" v-else :size="16" class="navigator-toolbar-actions__icon" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
           <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
             <button class="navigator-layout-option"
               :class="{ 'navigator-layout-option--active': currentLayout === 'list' }" @click="setLayout('list')">
-              <ListIcon :size="16" />
+              <img :src="layoutListIcon" alt="Show List" :size="16" class="navigator-toolbar-actions__icon" />
               <span>'listLayout'</span>
             </button>
             <button class="navigator-layout-option"
               :class="{ 'navigator-layout-option--active': currentLayout === 'grid' }" @click="setLayout('grid')">
-              <LayoutGridIcon :size="16" />
+              <img :src="layoutGridIcon" alt="Show Grid" :size="16" class="navigator-toolbar-actions__icon" />
               <span>'gridLayout'</span>
             </button>
           </PopoverContent>
@@ -122,7 +136,7 @@ async function setLayout(layoutName: LayoutType) {
             :disabled="props.isGlobalSearchOpen"
             @click="emit('toggle-split-view')"
           >
-            <FlipHorizontalIcon :size="16" class="navigator-toolbar-actions__icon" />
+            <img :src="splitViewIcon" alt="Toggle Split View" :size="16" class="navigator-toolbar-actions__icon" />
           </button>
         </TooltipTrigger>
         <TooltipContent>
@@ -136,7 +150,7 @@ async function setLayout(layoutName: LayoutType) {
             :class="{ 'navigator-toolbar-actions__button--active': props.showInfoPanel }"
             @click="emit('toggle-info-panel')"
           >
-            <PanelRightIcon :size="16" class="navigator-toolbar-actions__icon" />
+            <img :src="infoPanelIcon" alt="Toggle Info Panel" :size="16" class="navigator-toolbar-actions__icon" />
           </button>
         </TooltipTrigger>
         <TooltipContent>
