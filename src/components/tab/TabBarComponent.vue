@@ -57,7 +57,7 @@ function onScroll() {
 }
 
 onMounted(async () => {
-	plusIcon.value = await getSymbolSource('add');
+	plusIcon.value = await getSymbolSource('gtk-add');
 });
 
 onBeforeUnmount(() => {
