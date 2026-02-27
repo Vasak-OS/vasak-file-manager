@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import FileBrowserContextMenu from '@/components/filebrowser/FileBrowserContextMenuComponent.vue';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
@@ -19,10 +19,12 @@ import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
 import FileBrowserListView from '@/views/filebrowser/FileBrowserListView.vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	layout?: Layout;
 }>();
+const FolderOpenIcon = ref('');
 
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
@@ -68,6 +70,10 @@ function handleColumnHeaderClick(column: ListSortColumn) {
 		listSortDirection.value = 'asc';
 	}
 }
+
+onMounted(async () => {
+  FolderOpenIcon.value = await getIconSource('folder-open');
+});
 </script>
 
 <template>

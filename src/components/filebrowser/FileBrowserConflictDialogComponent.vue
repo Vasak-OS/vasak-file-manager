@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import Dialog from '@/components/ui/dialog/Dialog.vue';
 import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogDescription from '@/components/ui/dialog/DialogDescription.vue';
@@ -21,10 +22,10 @@ const emit = defineEmits<{
 }>();
 
 const isOpen = defineModel<boolean>('open', { required: true });
-
 const sizeSeparator = ' \u2192 ';
-
 const conflictCount = computed(() => props.conflicts.length);
+const FolderIcon = ref('')
+const FileIcon = ref('');
 
 const visibleConflicts = computed(() => {
 	return props.conflicts.slice(0, 5);
@@ -67,6 +68,11 @@ function handleOpenChange(open: boolean) {
 		handleCancel();
 	}
 }
+
+onMounted(async () => {
+  FolderIcon.value = await getIconSource('folder');
+  FileIcon.value = await getIconSource('application-rtf');
+});
 </script>
 
 <template>

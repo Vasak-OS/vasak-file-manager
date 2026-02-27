@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref  } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	isActive: boolean;
@@ -9,6 +10,9 @@ const props = defineProps<{
 	cursorX: number;
 	cursorY: number;
 }>();
+
+const CopyIcon = ref('');
+const FolderInputIcon = ref('');
 
 const overlayStyle = computed(() => ({
 	left: `${props.cursorX + 16}px`,
@@ -21,6 +25,11 @@ const description = computed(() => {
 	}
 
 	return `drag.moveItems ${props.itemCount}`;
+});
+
+onMounted(async () => {
+  CopyIcon.value = await getSymbolSource('copy');
+  FolderInputIcon.value = await getSymbolSource('folder-open');
 });
 </script>
 

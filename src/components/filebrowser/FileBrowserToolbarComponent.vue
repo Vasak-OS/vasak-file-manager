@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -13,6 +13,7 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	pathInput: string;
@@ -43,6 +44,17 @@ const shortcutsStore = useShortcutsStore();
 
 const filterInputRef = ref<HTMLInputElement | null>(null);
 const filterTriggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null);
+const plusIcon = ref('');
+const folderPlusIcon = ref('');
+const filePlusIcon = ref('');
+const textSearchIcon = ref('');
+const xIcon = ref('');
+const arrowLeftIcon = ref('');
+const arrowRightIcon = ref('');
+const arrowUpIcon = ref('');
+const homeIcon = ref('');
+const refreshIcon = ref('');
+const ellipsisVerticalIcon = ref('');
 
 function handleFilterAutoFocus(event: Event) {
 	event.preventDefault();
@@ -87,6 +99,20 @@ function handleFilterInteractOutside(event: Event) {
 		event.preventDefault();
 	}
 }
+
+onMounted(async () => {
+  plusIcon.value = await getSymbolSource('gtk-add');
+  folderPlusIcon.value = await getSymbolSource('folder-new');
+  filePlusIcon.value = await getSymbolSource('document-new');
+  textSearchIcon.value = await getSymbolSource('system-search');
+  xIcon.value = await getSymbolSource('dialog-close');
+  arrowLeftIcon.value = await getSymbolSource('arrow-left');
+  arrowRightIcon.value = await getSymbolSource('arrow-right');
+  arrowUpIcon.value = await getSymbolSource('arrow-up');
+  homeIcon.value = await getSymbolSource('user-home');
+  refreshIcon.value = await getSymbolSource('refreshstructure');
+  ellipsisVerticalIcon.value = await getSymbolSource('ellipsis-vertical');
+});
 </script>
 
 <template>
@@ -96,7 +122,7 @@ function handleFilterInteractOutside(event: Event) {
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="!canGoBack"
             @click="emit('goBack')">
-            <ArrowLeftIcon class="file-browser-toolbar__icon" />
+            <img :src="arrowLeftIcon" alt="Go Back" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
         <TooltipContent>'fileBrowser.goBack'</TooltipContent>
@@ -105,7 +131,7 @@ function handleFilterInteractOutside(event: Event) {
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="!canGoForward"
             @click="emit('goForward')">
-            <ArrowRightIcon class="file-browser-toolbar__icon" />
+            <img :src="arrowRightIcon" alt="Go Forward" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
         <TooltipContent>'fileBrowser.goForward'</TooltipContent>
@@ -114,7 +140,7 @@ function handleFilterInteractOutside(event: Event) {
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="!canGoUp"
             @click="emit('goUp')">
-            <ArrowUpIcon class="file-browser-toolbar__icon" />
+            <img :src="arrowUpIcon" alt="Go Up" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
         <TooltipContent>'fileBrowser.goUp'</TooltipContent>
@@ -122,7 +148,7 @@ function handleFilterInteractOutside(event: Event) {
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" @click="emit('goHome')">
-            <HomeIcon class="file-browser-toolbar__icon" />
+            <img :src="homeIcon" alt="Go Home" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
         <TooltipContent>'fileBrowser.goHome'</TooltipContent>
@@ -131,7 +157,7 @@ function handleFilterInteractOutside(event: Event) {
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="isLoading"
             @click="emit('refresh')">
-            <RefreshCwIcon class="file-browser-toolbar__icon" :class="{ 'animate-spin': isLoading }" />
+            <img :src="refreshIcon" alt="Refresh" class="file-browser-toolbar__icon" :class="{ 'animate-spin': isLoading }" />
           </button>
         </TooltipTrigger>
         <TooltipContent>'fileBrowser.refresh'</TooltipContent>
@@ -143,28 +169,28 @@ function handleFilterInteractOutside(event: Event) {
         <DropdownMenuTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button"
             :title="'settingsCategories.navigation'">
-            <EllipsisVerticalIcon class="file-browser-toolbar__icon" />
+            <img :src="ellipsisVerticalIcon" alt="Navigation Menu" class="file-browser-toolbar__icon" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="bottom" class="file-browser-toolbar__dropdown">
           <DropdownMenuItem :disabled="!canGoBack" @click="emit('goBack')">
-            <ArrowLeftIcon :size="14" />
+            <img :src="arrowLeftIcon" alt="Go Back" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
             'fileBrowser.goBack'
           </DropdownMenuItem>
           <DropdownMenuItem :disabled="!canGoForward" @click="emit('goForward')">
-            <ArrowRightIcon :size="14" />
+            <img :src="arrowRightIcon" alt="Go Forward" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
             'fileBrowser.goForward'
           </DropdownMenuItem>
           <DropdownMenuItem :disabled="!canGoUp" @click="emit('goUp')">
-            <ArrowUpIcon :size="14" />
+            <img :src="arrowUpIcon" alt="Go Up" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
             'fileBrowser.goUp'
           </DropdownMenuItem>
           <DropdownMenuItem @click="emit('goHome')">
-            <HomeIcon :size="14" />
+            <img :src="homeIcon" alt="Go Home" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
             'fileBrowser.goHome'
           </DropdownMenuItem>
           <DropdownMenuItem :disabled="isLoading" @click="emit('refresh')">
-            <RefreshCwIcon :size="14" />
+            <img :src="refreshIcon" alt="Refresh" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
             'fileBrowser.refresh'
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -180,7 +206,7 @@ function handleFilterInteractOutside(event: Event) {
           <TooltipTrigger as-child>
             <DropdownMenuTrigger as-child>
               <button type="button" class="file-browser-toolbar__create-button">
-                <PlusIcon class="file-browser-toolbar__icon" />
+                <img :src="plusIcon" alt="Create New" class="file-browser-toolbar__icon" />
               </button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
@@ -189,11 +215,11 @@ function handleFilterInteractOutside(event: Event) {
           </TooltipContent>
           <DropdownMenuContent align="end" side="bottom" class="file-browser-toolbar__dropdown">
             <DropdownMenuItem @click="emit('createNewDirectory')">
-              <FolderPlusIcon :size="14" />
+              <img :src="folderPlusIcon" alt="New Directory" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
               'navigator.newDirectory'
             </DropdownMenuItem>
             <DropdownMenuItem @click="emit('createNewFile')">
-              <FilePlusIcon :size="14" />
+              <img :src="filePlusIcon" alt="New File" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
               'navigator.newFile'
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -205,7 +231,7 @@ function handleFilterInteractOutside(event: Event) {
             <PopoverTrigger as-child>
               <button ref="filterTriggerRef" type="button" class="file-browser-toolbar__filter-button"
                 :class="{ 'file-browser-toolbar__filter-button--active': filterQuery }">
-                <TextSearchIcon class="file-browser-toolbar__icon" />
+                <img :src="textSearchIcon" alt="Filter" class="file-browser-toolbar__icon" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -221,7 +247,7 @@ function handleFilterInteractOutside(event: Event) {
                 class="file-browser-toolbar__filter-input" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
               <button v-if="filterQuery" type="button" class="file-browser-toolbar__filter-clear"
                 @click="clearFilter">
-                <XIcon :size="14" />
+                <img :src="xIcon" alt="Clear Filter" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
               </button>
             </div>
           </PopoverContent>
