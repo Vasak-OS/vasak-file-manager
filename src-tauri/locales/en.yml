@@ -1,0 +1,12 @@
+_version: 1
+settings:
+  navigator:
+    navigatorOptions: Navigator Settings
+    navigatorViewLayout: View Layout
+  infoPanel:
+    title: Info Panel
+filter:
+  showHiddenItems: Show Hidden Items
+listLayout: List
+gridLayout: Grid
+splitView: Split View

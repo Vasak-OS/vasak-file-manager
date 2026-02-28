@@ -1,0 +1,12 @@
+_version: 1
+settings:
+  navigator:
+    navigatorOptions: Opciones del Navegador
+    navigatorViewLayout: Diseño de Vista
+  infoPanel:
+    title: Panel de Información
+filter:
+  showHiddenItems: Mostrar Elementos Ocultos
+listLayout: Lista
+gridLayout: Cuadrícula
+splitView: Vista Dividida
