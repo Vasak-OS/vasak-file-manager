@@ -3,7 +3,6 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
-import I18n from '@vasakgroup/tauri-plugin-i18n';
 import type { Store } from 'pinia';
 import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
@@ -29,14 +28,15 @@ onMounted(async () => {
 	try {
 		const userPathsStore = useUserPathsStore();
 		const workspacesStore = useWorkspacesStore();
+		
+		await userPathsStore.init();
+		await workspacesStore.init();
+		
 		const configStore = useConfigStore() as Store<
 			'config',
 			{ config: any; loadConfig: () => Promise<void> }
 		>;
-		await userPathsStore.init();
-		await workspacesStore.init();
 		await configStore.loadConfig();
-		await I18n.getInstance().load();
 		unListenConfig.value = await listen('config-changed', async () => {
 			document.startViewTransition(() => {
 				configStore.loadConfig();

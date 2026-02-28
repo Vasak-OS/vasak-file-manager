@@ -42,6 +42,10 @@
     "global-shortcut:allow-unregister-all",
     "global-shortcut:allow-is-registered",
     "system-fonts:default",
-    "drag:default"
+    "drag:default",
+    "i18n:allow-load-translations",
+    "i18n:allow-get-available-locales",
+    "i18n:allow-get-locale",
+    "i18n:allow-set-locale"
   ]
 }

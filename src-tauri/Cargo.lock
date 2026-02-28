@@ -5309,9 +5309,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-i18n-vsk"
-version = "2.0.2"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51b6a54a0267f68b42f6a3495efefddaab69b5337f7cbb2fe5a2a2ab5104b713"
+checksum = "4cbe2ac7b986d984ab2d9ffb02a4265e796fcde7189bcce75b15f48e2a7620c4"
 dependencies = [
  "globwalk",
  "normpath",
