@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
 import DropdownMenuLabel from '@/components/ui/dropdown/DropdownMenuLabel.vue';
 import DropdownMenuSeparator from '@/components/ui/dropdown/DropdownMenuSeparator.vue';
-import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
@@ -16,6 +16,8 @@ import { Layout } from '@/types/navigator';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 type LayoutType = Layout;
+
+const { t } = useI18n();
 
 const props = defineProps<{
 	isSplitView: boolean;
@@ -56,10 +58,10 @@ onMounted(async () => {
     <DropdownMenu>
       <Tooltip>
         <DropdownMenuContent :side="'bottom'" :align="'end'" class="navigator-settings-menu">
-          <DropdownMenuLabel>'settings.navigator.navigatorOptions'</DropdownMenuLabel>
+          <DropdownMenuLabel>{{ t('settings.navigator.navigatorOptions') }}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem class="navigator-settings-menu__item" @select.prevent>
-            <span class="navigator-settings-menu__item-label">'filter.showHiddenItems'</span>
+            <span class="navigator-settings-menu__item-label">{{ t('filter.showHiddenItems') }}</span>
             <input
               type="checkbox"
               class="navigator-settings-menu__switch"
@@ -68,9 +70,7 @@ onMounted(async () => {
             />
           </DropdownMenuItem>
         </DropdownMenuContent>
-        <TooltipContent>
-          'settings.navigator.navigatorOptions'
-        </TooltipContent>
+        <TooltipContent>{{ t('settings.navigator.navigatorOptions') }}</TooltipContent>
       </Tooltip>
     </DropdownMenu>
 
@@ -88,17 +88,15 @@ onMounted(async () => {
             <button class="navigator-layout-option"
               :class="{ 'navigator-layout-option--active': currentLayout === 'list' }" @click="setLayout('list')">
               <img :src="layoutListIcon" alt="Show List" height="24" width="24" class="fill-primary" />
-              <span>'listLayout'</span>
+              <span>{{ t('listLayout') }}</span>
             </button>
             <button class="navigator-layout-option"
               :class="{ 'navigator-layout-option--active': currentLayout === 'grid' }" @click="setLayout('grid')">
               <img :src="layoutGridIcon" alt="Show Grid" height="24" width="24" class="fill-primary" />
-              <span>'gridLayout'</span>
+              <span>{{ t('gridLayout') }}</span>
             </button>
           </PopoverContent>
-          <TooltipContent>
-            'settings.navigator.navigatorViewLayout'
-          </TooltipContent>
+          <TooltipContent>{{ t('settings.navigator.navigatorViewLayout') }}</TooltipContent>
         </Tooltip>
       </Popover>
       <Tooltip>
@@ -112,9 +110,7 @@ onMounted(async () => {
             <img :src="splitViewIcon" alt="Toggle Split View" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>
-          'splitView'
-        </TooltipContent>
+        <TooltipContent>{{ t('splitView') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
@@ -126,9 +122,7 @@ onMounted(async () => {
             <img :src="infoPanelIcon" alt="Toggle Info Panel" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>
-          'settings.infoPanel.title'
-        </TooltipContent>
+        <TooltipContent>{{ t('settings.infoPanel.title') }}</TooltipContent>
       </Tooltip>
     </div>
 </template>
@@ -170,9 +164,6 @@ onMounted(async () => {
 
 .navigator-toolbar-actions__button--active {
   background-color: hsl(var(--secondary));
-}
-
-.navigator-toolbar-actions__button--active {
   stroke: hsl(var(--primary));
 }
 

@@ -28,7 +28,7 @@ const description = computed(() => {
 });
 
 onMounted(async () => {
-  CopyIcon.value = await getSymbolSource('copy');
+  CopyIcon.value = await getSymbolSource('edit-copy');
   FolderInputIcon.value = await getSymbolSource('folder-open');
 });
 </script>
