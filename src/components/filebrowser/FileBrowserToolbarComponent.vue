@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue';
 import { ref, onMounted } from 'vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -41,6 +42,7 @@ const emit = defineEmits<{
 }>();
 
 const shortcutsStore = useShortcutsStore();
+const { t } = useI18n();
 
 const filterInputRef = ref<HTMLInputElement | null>(null);
 const filterTriggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null);
@@ -122,45 +124,45 @@ onMounted(async () => {
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="!canGoBack"
             @click="emit('goBack')">
-            <img :src="arrowLeftIcon" alt="Go Back" class="file-browser-toolbar__icon" />
+            <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>'fileBrowser.goBack'</TooltipContent>
+        <TooltipContent>{{ t('fileBrowser.goBack') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="!canGoForward"
             @click="emit('goForward')">
-            <img :src="arrowRightIcon" alt="Go Forward" class="file-browser-toolbar__icon" />
+            <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>'fileBrowser.goForward'</TooltipContent>
+        <TooltipContent>{{ t('fileBrowser.goForward') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="!canGoUp"
             @click="emit('goUp')">
-            <img :src="arrowUpIcon" alt="Go Up" class="file-browser-toolbar__icon" />
+            <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>'fileBrowser.goUp'</TooltipContent>
+        <TooltipContent>{{ t('fileBrowser.goUp') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" @click="emit('goHome')">
-            <img :src="homeIcon" alt="Go Home" class="file-browser-toolbar__icon" />
+            <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>'fileBrowser.goHome'</TooltipContent>
+        <TooltipContent>{{ t('fileBrowser.goHome') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button" :disabled="isLoading"
             @click="emit('refresh')">
-            <img :src="refreshIcon" alt="Refresh" class="file-browser-toolbar__icon" :class="{ 'animate-spin': isLoading }" />
+            <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="file-browser-toolbar__icon" :class="{ 'animate-spin': isLoading }" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>'fileBrowser.refresh'</TooltipContent>
+        <TooltipContent>{{ t('fileBrowser.refresh') }}</TooltipContent>
       </Tooltip>
     </div>
 
@@ -168,30 +170,30 @@ onMounted(async () => {
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <button type="button" class="file-browser-toolbar__nav-button"
-            :title="'settingsCategories.navigation'">
-            <img :src="ellipsisVerticalIcon" alt="Navigation Menu" class="file-browser-toolbar__icon" />
+            :title="t('fileBrowser.navigationMenu')">
+            <img :src="ellipsisVerticalIcon" :alt="t('fileBrowser.navigationMenu')" class="file-browser-toolbar__icon" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="bottom" class="file-browser-toolbar__dropdown">
           <DropdownMenuItem :disabled="!canGoBack" @click="emit('goBack')">
-            <img :src="arrowLeftIcon" alt="Go Back" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            'fileBrowser.goBack'
+            <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+            {{ t('fileBrowser.goBack') }}
           </DropdownMenuItem>
           <DropdownMenuItem :disabled="!canGoForward" @click="emit('goForward')">
-            <img :src="arrowRightIcon" alt="Go Forward" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            'fileBrowser.goForward'
+            <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+            {{ t('fileBrowser.goForward') }}
           </DropdownMenuItem>
           <DropdownMenuItem :disabled="!canGoUp" @click="emit('goUp')">
-            <img :src="arrowUpIcon" alt="Go Up" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            'fileBrowser.goUp'
+            <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+            {{ t('fileBrowser.goUp') }}
           </DropdownMenuItem>
           <DropdownMenuItem @click="emit('goHome')">
-            <img :src="homeIcon" alt="Go Home" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            'fileBrowser.goHome'
+            <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+            {{ t('fileBrowser.goHome') }}
           </DropdownMenuItem>
           <DropdownMenuItem :disabled="isLoading" @click="emit('refresh')">
-            <img :src="refreshIcon" alt="Refresh" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            'fileBrowser.refresh'
+            <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+            {{ t('fileBrowser.refresh') }}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -206,21 +208,21 @@ onMounted(async () => {
           <TooltipTrigger as-child>
             <DropdownMenuTrigger as-child>
               <button type="button" class="file-browser-toolbar__create-button">
-                <img :src="plusIcon" alt="Create New" class="file-browser-toolbar__icon" />
+                <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="file-browser-toolbar__icon" />
               </button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            'navigator.newDirectoryFile'
+            {{ t('fileBrowser.newDirectoryFile') }}
           </TooltipContent>
           <DropdownMenuContent align="end" side="bottom" class="file-browser-toolbar__dropdown">
             <DropdownMenuItem @click="emit('createNewDirectory')">
-              <img :src="folderPlusIcon" alt="New Directory" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-              'navigator.newDirectory'
+              <img :src="folderPlusIcon" :alt="t('fileBrowser.newDirectory')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+              {{ t('fileBrowser.newDirectory') }}
             </DropdownMenuItem>
             <DropdownMenuItem @click="emit('createNewFile')">
-              <img :src="filePlusIcon" alt="New File" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-              'navigator.newFile'
+              <img :src="filePlusIcon" :alt="t('fileBrowser.newFile')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+              {{ t('fileBrowser.newFile') }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -231,23 +233,23 @@ onMounted(async () => {
             <PopoverTrigger as-child>
               <button ref="filterTriggerRef" type="button" class="file-browser-toolbar__filter-button"
                 :class="{ 'file-browser-toolbar__filter-button--active': filterQuery }">
-                <img :src="textSearchIcon" alt="Filter" class="file-browser-toolbar__icon" />
+                <img :src="textSearchIcon" :alt="t('fileBrowser.filter')" class="file-browser-toolbar__icon" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            'fileBrowser.quickSearch'
+            {{ t('fileBrowser.quickSearch') }}
             <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('toggleFilter') }}</kbd>
           </TooltipContent>
           <PopoverContent :side="'bottom'" :align="'end'" class="w-70 p-2"
             @open-auto-focus="handleFilterAutoFocus" @close-auto-focus.prevent
             @interact-outside="handleFilterInteractOutside">
             <div class="flex relative">
-              <input ref="filterInputRef" type="text" :value="filterQuery" placeholder="'fileBrowser.searchThisDirectory'"
+              <input ref="filterInputRef" type="text" :value="filterQuery" :placeholder="t('fileBrowser.searchThisDirectory')"
                 class="h-8 w-full pr-8 rounded-corner" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
               <button v-if="filterQuery" type="button" class="file-browser-toolbar__filter-clear"
                 @click="clearFilter">
-                <img :src="xIcon" alt="Clear Filter" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+                <img :src="xIcon" :alt="t('fileBrowser.clearFilter')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
               </button>
             </div>
           </PopoverContent>

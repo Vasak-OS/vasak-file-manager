@@ -7,6 +7,33 @@ settings:
     title: Panel de Información
 filter:
   showHiddenItems: Mostrar Elementos Ocultos
+fileBrowser:
+  fileCount: 1 archivo
+  directoryCount: 1 carpeta
+  matchedNOfItems: "Se encontraron {0} de {1} elementos"
+  showingNOfItems: "Mostrando {0} de {1} elementos"
+  selectedItems: "Seleccionados: {0}"
+  selectAll: Seleccionar Todo
+  deselectAll: Deseleccionar Todo
+  goBack: Volver
+  goForward: Adelante
+  goUp: Subir
+  goHome: Ir al Inicio
+  refresh: Actualizar
+  navigationMenu: Menú de Navegación
+  createNew: Crear Nuevo
+  newDirectoryFile: Nueva Carpeta/Archivo
+  newDirectory: Nueva Carpeta
+  newFile: Nuevo Archivo
+  quickSearch: Búsqueda Rápida
+  searchThisDirectory: Buscar en este directorio
+  clearFilter: Limpiar Filtro
+  filter: Filtro
+shortcuts:
+  selectAllItemsInCurrentDirectory: Seleccionar Todo
 listLayout: Lista
 gridLayout: Cuadrícula
 splitView: Vista Dividida
+showItems: Mostrar Elementos
+menu: Menú
+actions: Acciones

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import FileBrowserActionMenuComponent from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const dirSizesStore = useDirSizesStore();
+const { t } = useI18n();
 
 const showItemsPopoverOpen = ref(false);
 const itemsFilterQuery = ref('');
@@ -166,7 +168,7 @@ function openCollapsedPopover() {
   <div class="file-browser-status-bar">
     <template v-if="hasSelection">
       <span class="file-browser-status-bar__selected-count">
-        {{ `fileBrowser.selectedItems ${selectedCount}` }}
+        {{ t('fileBrowser.selectedItems').replace('{0}', String(selectedCount)) }}
         <template v-if="selectionSizeDisplay">
           <span class="file-browser-status-bar__separator">·</span>
           <span class="file-browser-status-bar__size-info">
@@ -185,29 +187,29 @@ function openCollapsedPopover() {
         <PopoverAnchor as-child>
           <div class="file-browser-status-bar__actions">
             <div class="file-browser-status-bar__actions--expanded">
-              <button type="button" class="file-browser-status-bar__button" :title="'showItems'"
+              <button type="button" class="file-browser-status-bar__button" :title="t('showItems')"
                 @click="showItemsPopoverOpen = true">
                 <EyeIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">'showItems'</span>
+                <span class="file-browser-status-bar__button-text">{{ t('showItems') }}</span>
               </button>
 
               <button type="button" class="file-browser-status-bar__button"
-                :title="'shortcuts.selectAllItemsInCurrentDirectory'" @click="emit('selectAll')">
+                :title="t('fileBrowser.selectAll')" @click="emit('selectAll')">
                 <CheckCheckIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">'fileBrowser.selectAll'</span>
+                <span class="file-browser-status-bar__button-text">{{ t('fileBrowser.selectAll') }}</span>
               </button>
 
               <button type="button" class="file-browser-status-bar__button"
-                :title="'fileBrowser.deselectAll'" @click="emit('deselectAll')">
+                :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
                 <XIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">'fileBrowser.deselectAll'</span>
+                <span class="file-browser-status-bar__button-text">{{ t('fileBrowser.deselectAll') }}</span>
               </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="file-browser-status-bar__button" :title="'menu'">
+                  <button type="button" class="file-browser-status-bar__button" :title="t('menu')">
                     <MenuIcon :size="14" />
-                    <span class="file-browser-status-bar__button-text">'menu'</span>
+                    <span class="file-browser-status-bar__button-text">{{ t('menu') }}</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="file-browser-status-bar__menu">
@@ -221,22 +223,22 @@ function openCollapsedPopover() {
             <div class="file-browser-status-bar__actions--collapsed">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="file-browser-status-bar__button" :title="'actions'">
+                  <button type="button" class="file-browser-status-bar__button" :title="t('actions')">
                     <EllipsisVerticalIcon :size="16" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="file-browser-status-bar__dropdown">
                   <DropdownMenuItem @click="openCollapsedPopover">
                     <EyeIcon :size="14" />
-                    'showItems'
+                    {{ t('showItems') }}
                   </DropdownMenuItem>
                   <DropdownMenuItem @click="emit('selectAll')">
                     <CheckCheckIcon :size="14" />
-                    'fileBrowser.selectAll'
+                    {{ t('fileBrowser.selectAll') }}
                   </DropdownMenuItem>
                   <DropdownMenuItem @click="emit('deselectAll')">
                     <XIcon :size="14" />
-                    'fileBrowser.deselectAll'
+                    {{ t('fileBrowser.deselectAll') }}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <FileBrowserActionMenuComponent :selected-entries="selectedEntriesArray"

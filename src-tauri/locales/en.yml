@@ -7,6 +7,33 @@ settings:
     title: Info Panel
 filter:
   showHiddenItems: Show Hidden Items
+fileBrowser:
+  fileCount: 1 file
+  directoryCount: 1 folder
+  matchedNOfItems: "Matched {0} of {1} items"
+  showingNOfItems: "Showing {0} of {1} items"
+  selectedItems: "Selected: {0}"
+  selectAll: Select All
+  deselectAll: Deselect All
+  goBack: Go Back
+  goForward: Go Forward
+  goUp: Go Up
+  goHome: Go Home
+  refresh: Refresh
+  navigationMenu: Navigation Menu
+  createNew: Create New
+  newDirectoryFile: New Directory/File
+  newDirectory: New Directory
+  newFile: New File
+  quickSearch: Quick Search
+  searchThisDirectory: Search this directory
+  clearFilter: Clear Filter
+  filter: Filter
+shortcuts:
+  selectAllItemsInCurrentDirectory: Select All
 listLayout: List
 gridLayout: Grid
 splitView: Split View
+showItems: Show Items
+menu: Menu
+actions: Actions
