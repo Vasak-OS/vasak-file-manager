@@ -29,8 +29,42 @@ fileBrowser:
   searchThisDirectory: Search this directory
   clearFilter: Clear Filter
   filter: Filter
+  actions:
+    rename: Rename
+    copy: Copy
+    cut: Cut
+    openWith: Open With
+    quickView: Quick View
+    openInNewTab: Open in New Tab
+    share: Share
+    addToFavorites: Add to Favorites
+    removeFromFavorites: Remove from Favorites
 shortcuts:
   selectAllItemsInCurrentDirectory: Select All
+moreOptions:
+  shellExtensions: Shell Extensions
+  loading: Loading...
+  noOptionsAvailable: No options available
+openWith:
+  loadingPrograms: Loading programs...
+  defaultApp: Default App
+  suggestedApps: Suggested Apps
+  noProgramsFound: No programs found
+  customCommandWithFlags: Open with custom command
+terminal:
+  openInTerminal: Open in Terminal
+  noTerminalsFound: No terminals found
+  defaultLabel: Default
+dialogs:
+  renameDirItemDialog:
+    renameItem: Rename Item
+    newName: New Name
+  newItemDialog:
+    newDirectory: New Directory
+    newFile: New File
+name: Name
+create: Create
+save: Save
 listLayout: List
 gridLayout: Grid
 splitView: Split View

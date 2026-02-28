@@ -6,6 +6,7 @@ import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 interface AssociatedProgram {
@@ -27,6 +28,8 @@ interface OpenWithResult {
 	success: boolean;
 	error: string | null;
 }
+
+const { t } = useI18n();
 
 const props = defineProps<{
 	selectedEntries: DirEntry[];
@@ -124,12 +127,12 @@ function handleOpenCustomDialog() {
   <ContextMenuSub>
     <ContextMenuSubTrigger>
       <ExternalLinkIcon :size="16" />
-      <span>'fileBrowser.actions.openWith'</span>
+      <span>{{ t('fileBrowser.actions.openWith') }}</span>
     </ContextMenuSubTrigger>
     <ContextMenuSubContent class="open-with-submenu">
       <div v-if="isLoading" class="open-with-submenu__loading">
         <Loader2Icon :size="16" class="open-with-submenu__spinner" />
-        <span>'openWith.loadingPrograms'</span>
+        <span>{{ t('openWith.loadingPrograms') }}</span>
       </div>
 
       <template v-else-if="loadError">
@@ -141,7 +144,7 @@ function handleOpenCustomDialog() {
       <template v-else>
         <template v-if="defaultProgram">
           <ContextMenuLabel class="open-with-submenu__label">
-            'openWith.defaultApp'
+            {{ t('openWith.defaultApp') }}
           </ContextMenuLabel>
           <ContextMenuItem class="open-with-submenu__app" @select="openWithProgram(defaultProgram.path)">
             <img v-if="defaultProgram.icon" :src="defaultProgram.icon" class="open-with-submenu__app-icon" alt="">
@@ -153,7 +156,7 @@ function handleOpenCustomDialog() {
         <template v-if="recommendedPrograms.length > 0">
           <ContextMenuSeparator v-if="defaultProgram" />
           <ContextMenuLabel class="open-with-submenu__label">
-            'openWith.suggestedApps'
+            {{ t('openWith.suggestedApps') }}
           </ContextMenuLabel>
           <ContextMenuItem v-for="program in recommendedPrograms" :key="program.path" class="open-with-submenu__app"
             @select="openWithProgram(program.path)">
@@ -165,7 +168,7 @@ function handleOpenCustomDialog() {
 
         <template v-if="!defaultProgram && recommendedPrograms.length === 0">
           <div class="open-with-submenu__empty">
-            'openWith.noProgramsFound'
+            {{ t('openWith.noProgramsFound') }}
           </div>
         </template>
 
@@ -173,7 +176,7 @@ function handleOpenCustomDialog() {
 
         <ContextMenuItem v-if="!isDirectory" class="open-with-submenu__action" @select="handleOpenCustomDialog">
           <SettingsIcon :size="16" />
-          <span>'openWith.customCommandWithFlags'</span>
+          <span>{{ t('openWith.customCommandWithFlags') }}</span>
         </ContextMenuItem>
       </template>
     </ContextMenuSubContent>

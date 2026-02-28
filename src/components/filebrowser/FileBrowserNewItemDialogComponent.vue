@@ -5,6 +5,7 @@ import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 
 const props = defineProps<{
 	type: 'directory' | 'file';
@@ -15,6 +16,8 @@ const emit = defineEmits<{
 	cancel: [];
 }>();
 
+const { t } = useI18n();
+
 const isOpen = defineModel<boolean>('open', { required: true });
 
 const inputRef = ref<HTMLInputElement | null>(null);
@@ -22,7 +25,7 @@ const name = ref('');
 const isSubmitting = ref(false);
 
 const dialogTitle = computed(() => {
-	return props.type === 'directory' ? 'navigator.newDirectory' : 'navigator.newFile';
+	return t(props.type === 'directory' ? 'dialogs.newItemDialog.newDirectory' : 'dialogs.newItemDialog.newFile');
 });
 
 const trimmedName = computed(() => name.value.trim());
@@ -87,13 +90,13 @@ function handleKeydown(event: KeyboardEvent) {
       <div class="file-browser-new-item-dialog__form">
         <div class="file-browser-new-item-dialog__field-wrapper">
           <label for="new-item-input" class="file-browser-new-item-dialog__label">
-            'name'
+            {{ t('name') }}
           </label>
           <div class="file-browser-new-item-dialog__field">
             <input id="new-item-input" ref="inputRef" v-model="name" type="text"
               :class="{ 'file-browser-new-item-dialog__input--error': name && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || isSubmitting" @click="handleSubmit">
-              'create'
+              {{ t('create') }}
             </button>
           </div>
         </div>

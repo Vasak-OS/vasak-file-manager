@@ -5,6 +5,7 @@ import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import type { DirEntry } from '@/types/dir-entry';
@@ -14,6 +15,7 @@ const props = defineProps<{
 	isShiftHeld: boolean;
 }>();
 
+const { t } = useI18n();
 const shortcutsStore = useShortcutsStore();
 const terminalsStore = useTerminalsStore();
 
@@ -50,7 +52,7 @@ async function handleOpenTerminal(terminalId: string) {
   <ContextMenuSub>
     <ContextMenuSubTrigger class="terminal-submenu__trigger">
       <TerminalSquareIcon :size="16" />
-      <span>'terminal.openInTerminal'</span>
+      <span>{{ t('terminal.openInTerminal') }}</span>
       <kbd class="shortcut terminal-submenu__shortcut">{{ shortcutsStore.getShortcutLabel('openTerminal') }}</kbd>
     </ContextMenuSubTrigger>
     <ContextMenuSubContent class="terminal-submenu">
@@ -62,7 +64,7 @@ async function handleOpenTerminal(terminalId: string) {
 
       <template v-else-if="terminalsStore.hasLoaded && terminalsStore.terminals.length === 0">
         <div class="terminal-submenu__empty">
-          'terminal.noTerminalsFound'
+          {{ t('terminal.noTerminalsFound') }}
         </div>
       </template>
 
@@ -85,7 +87,7 @@ async function handleOpenTerminal(terminalId: string) {
           <TerminalSquareIcon v-else :size="16" />
           <span>{{ terminal.name }}</span>
           <span v-if="terminal.isDefault" class="terminal-submenu__default-badge">
-            'terminal.defaultLabel'
+            {{ t('terminal.defaultLabel') }}
           </span>
         </ContextMenuItem>
       </template>

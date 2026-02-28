@@ -7,6 +7,7 @@ import TagSelector from '@/components/ui/TagSelector.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
@@ -25,6 +26,8 @@ const emit = defineEmits<{
 	action: [action: ContextMenuAction];
 	openCustomDialog: [];
 }>();
+
+const { t } = useI18n();
 
 function emitAction(action: ContextMenuAction) {
 	emit('action', action);
@@ -161,7 +164,7 @@ function handleDeleteClick() {
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        fileBrowser.actions.rename'
+        {{ t('fileBrowser.actions.rename') }}
         <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('rename') }}</kbd>
       </TooltipContent>
     </Tooltip>
@@ -173,7 +176,7 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          'fileBrowser.actions.copy'
+          {{ t('fileBrowser.actions.copy') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('copy') }}</kbd>
         </div>
       </TooltipContent>
@@ -186,7 +189,7 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          'fileBrowser.actions.move'
+          {{ t('fileBrowser.actions.cut') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('cut') }}</kbd>
         </div>
       </TooltipContent>
@@ -199,7 +202,7 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          'shortcuts.transferPreparedForCopying'
+          {{ t('shortcuts.transferPreparedForCopying') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
         </div>
       </TooltipContent>
@@ -214,11 +217,11 @@ function handleDeleteClick() {
       </TooltipTrigger>
       <TooltipContent class="file-browser-actions-menu__tooltip">
         <div class="file-browser-actions-menu__tooltip-row">
-          'shortcuts.moveSelectedItemsToTrash'
+          {{ t('shortcuts.moveSelectedItemsToTrash') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('delete') }}</kbd>
         </div>
         <div class="file-browser-actions-menu__tooltip-row">
-          'shortcuts.deleteSelectedItemsFromDrive'
+          {{ t('shortcuts.deleteSelectedItemsFromDrive') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('deletePermanently') }}</kbd>
         </div>
       </TooltipContent>
@@ -230,13 +233,13 @@ function handleDeleteClick() {
   <FileBrowserMoreOptionsSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-with') && !isContextMenu"
     @select="emitAction('open-with')" @click="emitAction('open-with')">
-    <span>'fileBrowser.actions.openWith'</span>
+    <span>{{ t('fileBrowser.actions.openWith') }}</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('quick-view')"
     class="file-browser-actions-menu__item-with-shortcut" @select="emitAction('quick-view')"
     @click="emitAction('quick-view')">
     <EyeIcon :size="16" />
-    <span>'fileBrowser.actions.quickView'</span>
+    <span>{{ t('fileBrowser.actions.quickView') }}</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('quickView') }}</kbd>
   </component>
   <FileBrowserTerminalSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" :is-shift-held="isShiftHeld" />
@@ -244,19 +247,19 @@ function handleDeleteClick() {
     class="file-browser-actions-menu__item-with-shortcut" @select="emitAction('open-in-new-tab')"
     @click="emitAction('open-in-new-tab')">
     <PlusIcon :size="16" />
-    <span>'fileBrowser.actions.openInNewTab'</span>
+    <span>{{ t('fileBrowser.actions.openInNewTab') }}</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('share')" @select="emitAction('share')"
     @click="emitAction('share')">
     <Share2Icon :size="16" />
-    <span>'fileBrowser.actions.share'</span>
+    <span>{{ t('fileBrowser.actions.share') }}</span>
   </component>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"
     @click="emitAction('toggle-favorite')">
     <StarIcon :size="16" :fill="allSelectedAreFavorites ? 'currentColor' : 'none'" />
-    <span>{{ allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites' }}</span>
+    <span>{{ t(allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites') }}</span>
   </component>
   <div v-if="isActionVisible('edit-tags')" class="file-browser-actions-menu__tag-selector">
     <TagSelector :tags="availableTags" :selected-tag-ids="selectedItemTagIds" :allow-create="true" :max-badges="1"

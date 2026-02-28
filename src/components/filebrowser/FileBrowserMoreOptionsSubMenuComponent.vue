@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 interface ShellContextMenuItem {
@@ -24,6 +25,8 @@ interface OpenWithResult {
 	success: boolean;
 	error: string | null;
 }
+
+const { t } = useI18n();
 
 const props = defineProps<{
 	selectedEntries: DirEntry[];
@@ -106,13 +109,13 @@ async function invokeMenuItem(commandId: number) {
   <ContextMenuSub>
     <ContextMenuSubTrigger>
       <MoreHorizontalIcon :size="16" />
-      <span>'moreOptions.shellExtensions'</span>
+      <span>{{ t('moreOptions.shellExtensions') }}</span>
     </ContextMenuSubTrigger>
     <ContextMenuSubContent class="more-options-submenu">
       <div class="more-options-submenu__scroll-container">
         <div v-if="isLoading" class="more-options-submenu__loading">
           <Loader2Icon :size="16" class="more-options-submenu__spinner" />
-          <span>'moreOptions.loading'</span>
+          <span>{{ t('moreOptions.loading') }}</span>
         </div>
 
         <template v-else-if="loadError">
@@ -154,7 +157,7 @@ async function invokeMenuItem(commandId: number) {
 
           <template v-else>
             <div class="more-options-submenu__empty">
-              'moreOptions.noOptionsAvailable'
+              {{ t('moreOptions.noOptionsAvailable') }}
             </div>
           </template>
         </template>

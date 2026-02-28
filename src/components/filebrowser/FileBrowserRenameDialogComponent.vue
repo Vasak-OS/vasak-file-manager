@@ -5,6 +5,7 @@ import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 const props = defineProps<{
@@ -15,6 +16,8 @@ const emit = defineEmits<{
 	confirm: [newName: string];
 	cancel: [];
 }>();
+
+const { t } = useI18n();
 
 const isOpen = defineModel<boolean>('open', { required: true });
 
@@ -122,19 +125,19 @@ function handleKeydown(event: KeyboardEvent) {
   <Dialog v-model:open="isOpen">
     <DialogContent class="file-browser-rename-dialog">
       <DialogHeader>
-        <DialogTitle>'dialogs.renameDirItemDialog.renameItem'</DialogTitle>
+        <DialogTitle>{{ t('dialogs.renameDirItemDialog.renameItem') }}</DialogTitle>
       </DialogHeader>
 
       <div class="file-browser-rename-dialog__form">
         <div class="file-browser-rename-dialog__field-wrapper">
           <label for="rename-input" class="file-browser-rename-dialog__label">
-            'dialogs.renameDirItemDialog.newName'
+            {{ t('dialogs.renameDirItemDialog.newName') }}
           </label>
           <div class="file-browser-rename-dialog__field">
             <input id="rename-input" ref="inputRef" v-model="newName" type="text"
               :class="{ 'file-browser-rename-dialog__input--error': newName && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || !hasChanges || isSubmitting" @click="handleSubmit">
-              'save'
+              {{ t('save') }}
             </button>
           </div>
         </div>

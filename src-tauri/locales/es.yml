@@ -29,8 +29,42 @@ fileBrowser:
   searchThisDirectory: Buscar en este directorio
   clearFilter: Limpiar Filtro
   filter: Filtro
+  actions:
+    rename: Renombrar
+    copy: Copiar
+    cut: Cortar
+    openWith: Abrir Con
+    quickView: Vista Rápida
+    openInNewTab: Abrir en Nueva Pestaña
+    share: Compartir
+    addToFavorites: Agregar a Favoritos
+    removeFromFavorites: Quitar de Favoritos
 shortcuts:
   selectAllItemsInCurrentDirectory: Seleccionar Todo
+moreOptions:
+  shellExtensions: Extensiones del Shell
+  loading: Cargando...
+  noOptionsAvailable: No hay opciones disponibles
+openWith:
+  loadingPrograms: Cargando programas...
+  defaultApp: Aplicación Predeterminada
+  suggestedApps: Aplicaciones Sugeridas
+  noProgramsFound: No se encontraron programas
+  customCommandWithFlags: Abrir con comando personalizado
+terminal:
+  openInTerminal: Abrir en Terminal
+  noTerminalsFound: No se encontraron terminales
+  defaultLabel: Predeterminado
+dialogs:
+  renameDirItemDialog:
+    renameItem: Renombrar Elemento
+    newName: Nuevo Nombre
+  newItemDialog:
+    newDirectory: Nueva Carpeta
+    newFile: Nuevo Archivo
+name: Nombre
+create: Crear
+save: Guardar
 listLayout: Lista
 gridLayout: Cuadrícula
 splitView: Vista Dividida
