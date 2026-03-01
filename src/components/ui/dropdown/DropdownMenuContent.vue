@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-@reference "../../../style.css";
+@reference "../../../assets/main.css";
 
 .dropdown-enter-active,
 .dropdown-leave-active {

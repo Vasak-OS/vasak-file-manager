@@ -83,7 +83,7 @@ watch(isOpen, async (open) => {
 </template>
 
 <style scoped>
-@reference "../../../style.css";
+@reference "../../../assets/main.css";
 
 .tooltip-enter-active,
 .tooltip-leave-active {

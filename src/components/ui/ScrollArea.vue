@@ -18,7 +18,7 @@ defineProps<Props>();
 </template>
 
 <style scoped>
-@reference "../../style.css";
+@reference "../../assets/main.css";
 
 .scroll-area {
 	@apply relative w-full h-full overflow-hidden;

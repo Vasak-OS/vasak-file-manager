@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-@reference "../../../style.css";
+@reference "../../../assets/main.css";
 
 .popover-enter-active,
 .popover-leave-active {
