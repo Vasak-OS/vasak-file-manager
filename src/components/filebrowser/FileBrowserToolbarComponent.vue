@@ -46,6 +46,7 @@ const { t } = useI18n();
 
 const filterInputRef = ref<HTMLInputElement | null>(null);
 const filterTriggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null);
+const isCreateMenuOpen = ref(false);
 const plusIcon = ref('');
 const folderPlusIcon = ref('');
 const filePlusIcon = ref('');
@@ -74,6 +75,16 @@ function handleFilterQueryUpdate(value: string | number | undefined) {
 function handleAddressBarNavigate(path: string) {
 	emit('update:pathInput', path);
 	emit('navigateTo', path);
+}
+
+function handleCreateMenuButtonClick(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  isCreateMenuOpen.value = !isCreateMenuOpen.value;
+}
+
+function handleCreateMenuOpenChange(value: boolean) {
+  isCreateMenuOpen.value = value;
 }
 
 function getFilterTriggerElement(): HTMLElement | null {
@@ -174,7 +185,7 @@ onMounted(async () => {
             <img :src="ellipsisVerticalIcon" :alt="t('fileBrowser.navigationMenu')" class="file-browser-toolbar__icon" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="bottom" class="file-browser-toolbar__dropdown">
+        <DropdownMenuContent align="start" side="bottom" class="min-w-30">
           <DropdownMenuItem :disabled="!canGoBack" @click="emit('goBack')">
             <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
             {{ t('fileBrowser.goBack') }}
@@ -203,30 +214,29 @@ onMounted(async () => {
     <div class="file-browser-toolbar__right">
       <AddressBarComponent :current-path="pathInput" class="file-browser-toolbar__address-bar"
         @navigate="handleAddressBarNavigate" />
-      <Tooltip>
-        <DropdownMenu>
-          <TooltipTrigger as-child>
-            <DropdownMenuTrigger as-child>
-              <button type="button" class="file-browser-toolbar__create-button">
-                <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="file-browser-toolbar__icon" />
+      <DropdownMenu :open="isCreateMenuOpen" @update:open="handleCreateMenuOpenChange">
+        <Tooltip>
+          <DropdownMenuTrigger as-child>
+            <TooltipTrigger as-child>
+              <button type="button" class="h-9 w-9 flex justify-center items-center rounded-corner background hover:bg-primary dark:hover:bg-primary-dark"
+                @click="handleCreateMenuButtonClick">
+                <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="h-6 w-6" />
               </button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>
-            {{ t('fileBrowser.newDirectoryFile') }}
-          </TooltipContent>
-          <DropdownMenuContent align="end" side="bottom" class="file-browser-toolbar__dropdown">
-            <DropdownMenuItem @click="emit('createNewDirectory')">
-              <img :src="folderPlusIcon" :alt="t('fileBrowser.newDirectory')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-              {{ t('fileBrowser.newDirectory') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem @click="emit('createNewFile')">
-              <img :src="filePlusIcon" :alt="t('fileBrowser.newFile')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-              {{ t('fileBrowser.newFile') }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </Tooltip>
+            </TooltipTrigger>
+          </DropdownMenuTrigger>
+          <TooltipContent>{{ t('fileBrowser.newDirectoryFile') }}</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end" side="bottom" class="min-w-30">
+          <DropdownMenuItem @click="emit('createNewDirectory')">
+            <img :src="folderPlusIcon" :alt="t('fileBrowser.newDirectory')" class="inline-block h-4 w-4" />
+            {{ t('fileBrowser.newDirectory') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @click="emit('createNewFile')">
+            <img :src="filePlusIcon" :alt="t('fileBrowser.newFile')" class="inline-block h-4 w-4" />
+            {{ t('fileBrowser.newFile') }}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Tooltip>
         <Popover :open="isFilterOpen" :modal="false" @update:open="emit('update:isFilterOpen', $event)">
           <TooltipTrigger as-child>
@@ -331,11 +341,6 @@ onMounted(async () => {
 }
 
 .file-browser-toolbar__filter-button {
-  width: 36px;
-  height: 36px;
-}
-
-.file-browser-toolbar__create-button {
   width: 36px;
   height: 36px;
 }

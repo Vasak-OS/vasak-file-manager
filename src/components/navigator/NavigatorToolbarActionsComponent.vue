@@ -55,49 +55,30 @@ onMounted(async () => {
 
 <template>
   <div class="navigator-toolbar-actions animate-fade-in">
-    <DropdownMenu>
-      <Tooltip>
-        <DropdownMenuContent :side="'bottom'" :align="'end'" class="navigator-settings-menu">
-          <DropdownMenuLabel>{{ t('settings.navigator.navigatorOptions') }}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem class="navigator-settings-menu__item" @select.prevent>
-            <span class="navigator-settings-menu__item-label">{{ t('filter.showHiddenItems') }}</span>
-            <input
-              type="checkbox"
-              class="navigator-settings-menu__switch"
-              :checked="showHiddenFiles"
-              @change="showHiddenFiles = !showHiddenFiles"
-            />
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-        <TooltipContent>{{ t('settings.navigator.navigatorOptions') }}</TooltipContent>
-      </Tooltip>
-    </DropdownMenu>
-
       <Popover :open="isLayoutPopoverOpen" @update:open="isLayoutPopoverOpen = $event">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <PopoverTrigger as-child>
-              <button class="navigator-toolbar-actions__button">
+        <PopoverTrigger as-child>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <button class="background rounded-corner p-1 flex justify-center items-center hover:bg-primary dark:hover:bg-primary-dark">
                 <img :src="layoutGridIcon" alt="Show Grid" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
                 <img :src="layoutListIcon" alt="Show List" v-else height="24" width="24" class="fill-primary" />
               </button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
-            <button class="navigator-layout-option"
-              :class="{ 'navigator-layout-option--active': currentLayout === 'list' }" @click="setLayout('list')">
-              <img :src="layoutListIcon" alt="Show List" height="24" width="24" class="fill-primary" />
-              <span>{{ t('listLayout') }}</span>
-            </button>
-            <button class="navigator-layout-option"
-              :class="{ 'navigator-layout-option--active': currentLayout === 'grid' }" @click="setLayout('grid')">
-              <img :src="layoutGridIcon" alt="Show Grid" height="24" width="24" class="fill-primary" />
-              <span>{{ t('gridLayout') }}</span>
-            </button>
-          </PopoverContent>
-          <TooltipContent>{{ t('settings.navigator.navigatorViewLayout') }}</TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent>{{ t('settings.navigator.navigatorViewLayout') }}</TooltipContent>
+          </Tooltip>
+        </PopoverTrigger>
+        <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
+          <button class="navigator-layout-option"
+            :class="{ 'navigator-layout-option--active': currentLayout === 'list' }" @click="setLayout('list')">
+            <img :src="layoutListIcon" alt="Show List" height="24" width="24" class="fill-primary" />
+            <span>{{ t('listLayout') }}</span>
+          </button>
+          <button class="navigator-layout-option"
+            :class="{ 'navigator-layout-option--active': currentLayout === 'grid' }" @click="setLayout('grid')">
+            <img :src="layoutGridIcon" alt="Show Grid" height="24" width="24" class="fill-primary" />
+            <span>{{ t('gridLayout') }}</span>
+          </button>
+        </PopoverContent>
       </Popover>
       <Tooltip>
         <TooltipTrigger as-child>

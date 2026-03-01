@@ -85,7 +85,10 @@ const updatePositionIfOpen = () => {
 
 const handleClickOutside = (event: MouseEvent) => {
 	const target = event.target as HTMLElement;
-	if (!target.closest('[dropdown-content]') && !target.closest('.dropdown-menu-trigger')) {
+	const clickedInsideContent = !!target.closest('[dropdown-content]');
+	const clickedOnTrigger = !!triggerElement.value?.contains(target);
+
+	if (!clickedInsideContent && !clickedOnTrigger) {
 		dropdown?.closeDropdown();
 	}
 };
@@ -116,7 +119,7 @@ onBeforeUnmount(() => {
 				:class="[$attrs.class]"
 				:style="{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }"
 				dropdown-content
-				class="min-w-[160px] rounded-corner border background shadow-lg"
+				class="min-w-30 rounded-corner border border-primary dark:border-primary-dark background shadow-lg"
 				@click="(e) => e.stopPropagation()"
 			>
 				<div class="py-1">
