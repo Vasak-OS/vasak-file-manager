@@ -16,6 +16,7 @@ import { toast } from '@/components/ui/toast/toaster';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirContents } from '@/types/dir-entry';
 
 const props = defineProps<{
@@ -25,6 +26,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	navigate: [path: string];
 }>();
+
+const { t } = useI18n();
 
 const isEditorOpen = ref(false);
 const isPinned = ref(false);
@@ -322,15 +325,15 @@ onUnmounted(() => {
         <DropdownMenuContent :side="'bottom'" :align="'start'" class="address-bar__menu">
           <DropdownMenuItem @select="copyPathToClipboard">
             <CopyIcon :size="16" />
-            <span>'settings.addressBar.copyPathToClipboard'</span>
+            <span>{{ t('settings.addressBar.copyPathToClipboard') }}</span>
           </DropdownMenuItem>
           <DropdownMenuItem @select="openCopiedPath">
             <ClipboardPasteIcon :size="16" />
-            <span>'settings.addressBar.openCopiedPath'</span>
+            <span>{{ t('settings.addressBar.openCopiedPath') }}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
         <TooltipContent>
-          'settings.addressBar.addressBarActions'
+          {{ t('settings.addressBar.addressBarActions') }}
         </TooltipContent>
       </Tooltip>
     </DropdownMenu>
@@ -353,7 +356,7 @@ onUnmounted(() => {
                 }
               }">
                 <DropdownMenuTrigger as-child>
-                  <button class="address-bar__separator" :title="'settings.addressBar.showSiblingDirectories'"
+                  <button class="address-bar__separator" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop>
                     <ChevronRightIcon :size="12"
                       :class="{ 'address-bar__separator-icon--open': openSeparatorIndex === index }" />
@@ -379,7 +382,7 @@ onUnmounted(() => {
         @pointer-down-outside="(event: Event) => { if (isPinned) event.preventDefault() }"
         @interact-outside="(event: Event) => { if (isPinned) event.preventDefault() }">
         <div class="address-bar__editor-header">
-          <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="'settings.addressBar.enterValidPath'"
+          <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="t('settings.addressBar.enterValidPath')"
             class="address-bar__path-input" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
           <Tooltip>
             <TooltipTrigger as-child>
@@ -389,10 +392,10 @@ onUnmounted(() => {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              'settings.addressBar.keepEditorOpened'
-              <span v-if="isPinned" class="address-bar__tooltip-status">'enabled'
+              {{ t('settings.addressBar.keepEditorOpened') }}
+              <span v-if="isPinned" class="address-bar__tooltip-status">{{ t('enabled') }}
               </span>
-              <span v-else class="address-bar__tooltip-status">'disabled'
+              <span v-else class="address-bar__tooltip-status">{{ t('disabled') }}
               </span>
             </TooltipContent>
           </Tooltip>
@@ -404,7 +407,7 @@ onUnmounted(() => {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              'settings.addressBar.closeEditor'
+              {{ t('settings.addressBar.closeEditor') }}
               <kbd class="shortcut">Esc</kbd>
             </TooltipContent>
           </Tooltip>
@@ -420,7 +423,7 @@ onUnmounted(() => {
         </ScrollArea>
 
         <div v-else class="address-bar__empty">
-          'settings.addressBar.noMatchingDirectories'
+          {{ t('settings.addressBar.noMatchingDirectories') }}
         </div>
 
         <div class="address-bar__editor-hints">
@@ -429,9 +432,9 @@ onUnmounted(() => {
           <span class="address-bar__hint-key">Tab</span>
           /
           <span class="address-bar__hint-key">Shift+Tab</span>
-          'settings.addressBar.toAutocomplete';
+          {{ t('settings.addressBar.toAutocomplete') }};
           <span class="address-bar__hint-key">Enter</span>
-          'settings.addressBar.toOpenThePath'
+          {{ t('settings.addressBar.toOpenThePath') }}
         </div>
       </PopoverContent>
     </Popover>
@@ -443,7 +446,7 @@ onUnmounted(() => {
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        'settings.addressBar.editAddress'
+        {{ t('settings.addressBar.editAddress') }}
         <kbd class="shortcut">Ctrl+P</kbd>
       </TooltipContent>
     </Tooltip>

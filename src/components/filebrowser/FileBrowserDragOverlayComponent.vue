@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref  } from 'vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
@@ -10,6 +11,8 @@ const props = defineProps<{
 	cursorX: number;
 	cursorY: number;
 }>();
+
+const { t } = useI18n();
 
 const CopyIcon = ref('');
 const FolderInputIcon = ref('');
@@ -43,7 +46,7 @@ onMounted(async () => {
             class="file-browser-drag-overlay__icon" />
         </div>
         <div class="file-browser-drag-overlay__hint">
-          'drag.holdShiftToChangeMode'
+          {{ t('drag.holdShiftToChangeMode') }}
         </div>
       </div>
     </Transition>

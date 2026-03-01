@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
@@ -11,6 +12,8 @@ import type { GroupedEntries } from '@/types/file-browser';
 import { formatBytes } from '@/utils/byte-parser';
 import { isImageFile, isVideoFile } from '@/utils/files';
 import { getImageSrc } from '@/utils/images';
+
+const { t } = useI18n();
 
 const ctx = useFileBrowserContext();
 
@@ -107,7 +110,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FolderIcon :size="14" />
-        <span>'fileBrowser.folders'</span>
+        <span>{{ t('fileBrowser.folders') }}</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.dirs.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">
@@ -149,7 +152,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.images.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FileImageIcon :size="14" />
-        <span>'fileBrowser.images'</span>
+        <span>{{ t('fileBrowser.images') }}</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.images.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">
@@ -183,7 +186,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.videos.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FileVideoIcon :size="14" />
-        <span>'fileBrowser.videos'</span>
+        <span>{{ t('fileBrowser.videos') }}</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.videos.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">
@@ -211,7 +214,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
           <div class="file-browser-grid-view__card-info file-browser-grid-view__card-info--overlay">
             <span class="file-browser-grid-view__card-name">{{ entry.name }}</span>
             <div class="file-browser-grid-view__card-meta">
-              <span class="file-browser-grid-view__card-type">'fileBrowser.video'</span>
+              <span class="file-browser-grid-view__card-type">{{ t('fileBrowser.video') }}</span>
               <span class="file-browser-grid-view__card-size">{{ formatBytes(entry.size) }}</span>
             </div>
           </div>
@@ -222,7 +225,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
     <template v-if="groupedEntries.others.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FileIcon :size="14" />
-        <span>'fileBrowser.otherFiles'</span>
+        <span>{{ t('fileBrowser.otherFiles') }}</span>
         <span class="file-browser-grid-view__section-count">{{ groupedEntries.others.length }}</span>
       </div>
       <div class="file-browser-grid-view__grid">

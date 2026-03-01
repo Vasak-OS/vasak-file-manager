@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 
 const props = defineProps<{
@@ -9,6 +10,8 @@ const props = defineProps<{
 	currentDirLocked: boolean;
 	targetingEntry: boolean;
 }>();
+
+const { t } = useI18n();
 
 const description = computed(() => {
 	if (props.operationType === 'copy') {
@@ -30,10 +33,10 @@ const description = computed(() => {
             class="inbound-drag-overlay__icon" />
         </div>
         <div class="inbound-drag-overlay__hint">
-          'drag.holdShiftToChangeMode'
+          {{ t('drag.holdShiftToChangeMode') }}
         </div>
         <div class="inbound-drag-overlay__hint">
-          'drag.holdCtrlForCurrentDirDrop'
+          {{ t('drag.holdCtrlForCurrentDirDrop') }}
         </div>
       </div>
     </div>

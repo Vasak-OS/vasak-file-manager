@@ -5,8 +5,23 @@ settings:
     navigatorViewLayout: Diseño de Vista
   infoPanel:
     title: Panel de Información
+  addressBar:
+    copyPathToClipboard: Copiar Ruta al Portapapeles
+    openCopiedPath: Abrir Ruta Copiada
+    addressBarActions: Acciones de la Barra de Direcciones
+    showSiblingDirectories: Mostrar Carpetas Hermanas
+    enterValidPath: Ingresa una ruta válida
+    keepEditorOpened: Mantener Editor Abierto
+    closeEditor: Cerrar Editor
+    noMatchingDirectories: No hay carpetas coincidentes
+    toAutocomplete: para completar, o presiona Enter para abrir
+    toOpenThePath: para abrir la ruta
+    editAddress: Editar Dirección
+  localShareManagerDialog:
+    addressCopiedToClipboard: Ruta copiada al portapapeles
 filter:
   showHiddenItems: Mostrar Elementos Ocultos
+  filter: Filtro
 fileBrowser:
   fileCount: 1 archivo
   directoryCount: 1 carpeta
@@ -37,8 +52,32 @@ fileBrowser:
     quickView: Vista Rápida
     openInNewTab: Abrir en Nueva Pestaña
     share: Compartir
+    delete: Eliminar
     addToFavorites: Agregar a Favoritos
     removeFromFavorites: Quitar de Favoritos
+  name: Nombre
+  size: Tamaño
+  modified: Fecha de Modificación
+  columns: Columnas
+  folders: Carpetas
+  images: Imágenes
+  videos: Vídeos
+  video: Vídeo
+  otherFiles: Otros Archivos
+  directoryIsEmpty: Carpeta Vacía
+  directoryIsEmptyDescription: Esta carpeta no contiene elementos
+  removeFromSelection: Quitar de la Selección
+  noMatchingItems: Sin elementos coincidentes
+  cannotMoveToSameDirectory: No se pueden mover elementos al mismo directorio
+  cannotPasteIntoItself: No se pueden pegar elementos en sí mismo
+  copyFailed: Copia fallida
+  moveFailed: Movimiento fallido
+  sizeTooltip:
+    title: Tamaño
+    exact: Tamaño exacto
+    loading: Calculando tamaño...
+    notCalculated: Tamaño no calculado
+    note: El tamaño es la suma de todos los contenidos
 shortcuts:
   selectAllItemsInCurrentDirectory: Seleccionar Todo
 moreOptions:
@@ -65,6 +104,66 @@ dialogs:
 name: Nombre
 create: Crear
 save: Guardar
+drag:
+  holdShiftToChangeMode: Mantén presionado Shift para cambiar el modo de arrastre
+  holdCtrlForCurrentDirDrop: Mantén presionado Ctrl para soltar en el directorio actual
+conflictDialog:
+  title: Conflicto de Archivo
+  skip: Omitir
+  keepBoth: Mantener Ambos
+  replace: Reemplazar
+notifications:
+  copyingItems: Copiando elementos...
+  copied: Elementos copiados
+  movingItems: Moviendo elementos...
+  moved: Elementos movidos
+  skippedAll: Todos los elementos omitidos
+  trashingItems: Moviendo a la papelera...
+  trashed: Elementos movidos a la papelera
+  deletingItems: Eliminando elementos...
+  deleted: Elementos eliminados
+  errorTrashItems: Error al mover elementos a la papelera
+  errorDeleteItems: Error al eliminar elementos
+  renamed: Elemento renombrado
+  failedToRenameItem: Error al renombrar el elemento
+  removedFromFavorites: Eliminado de Favoritos
+  addedToFavorites: Agregado a Favoritos
+  cannotFetchDirectoryItems: No se pueden obtener elementos del directorio
+  quickViewFileIsNotSupported: Tipo de archivo no soportado en Vista Rápida
+tabs:
+  newTab: Nueva Pestaña
+  closeOtherTabs: Cerrar Otras Pestañas
+  closeAllTabs: Cerrar Todas las Pestañas
+dialogs:
+  newDirItemDialog:
+    newDirectoryCreated: Carpeta creada
+    newFileCreated: Archivo creado
+    failedToCreateNewDirectory: Error al crear carpeta
+    failedToCreateNewFile: Error al crear archivo
+shortcuts:
+  transferPreparedForCopying: Transferencia preparada para copiar
+  transferPreparedToPane1: Transferencia preparada para panel 1
+  transferPreparedToPane2: Transferencia preparada para panel 2
+  closeOpenedDialogOverlay: Cerrar diálogo
+  focusUnfocusFilterField: Enfocar/Desenfocar filtro
+  focusUnfocusSettingsSearch: Enfocar/Desenfocar búsqueda de configuración
+  navigateBack: Navegar atrás
+  navigateForward: Navegar adelante
+  navigateUp: Navegar arriba
+  navigateDown: Navegar abajo
+  navigateLeft: Navegar izquierda
+  navigateRight: Navegar derecha
+  openCloseSelectedFileInQuickView: Abrir/Cerrar vista previa
+  openCurrentDirInNewTab: Abrir directorio actual en nueva pestaña
+  openCurrentDirInTerminal: Abrir en terminal
+  openCurrentDirInTerminalAsAdmin: Abrir en terminal como administrador
+  openSelectedEntry: Abrir elemento seleccionado
+  renameSelectedItems: Renombrar elementos seleccionados
+  setSelectedItemsForCopying: Copiar elementos seleccionados
+  setSelectedItemsForMoving: Cortar elementos seleccionados
+  showHideGlobalSearch: Mostrar/Ocultar búsqueda global
+  switchToLeftPane: Cambiar a panel izquierdo
+  switchToRightPane: Cambiar a panel derecho
 listLayout: Lista
 gridLayout: Cuadrícula
 splitView: Vista Dividida

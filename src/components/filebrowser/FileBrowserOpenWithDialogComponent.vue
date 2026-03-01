@@ -11,6 +11,7 @@ import ScrollArea from '@/components/ui/ScrollArea.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 interface CustomCommand {
@@ -33,6 +34,8 @@ const emit = defineEmits<{
 	close: [];
 	opened: [];
 }>();
+
+const { t } = useI18n();
 
 const isOpen = defineModel<boolean>('open', { required: true });
 
@@ -252,7 +255,7 @@ const canSaveCommand = computed(() => {
   <Dialog v-model:open="isOpen">
     <DialogContent class="custom-command-dialog">
       <DialogHeader>
-        <DialogTitle>'openWith.customCommands'</DialogTitle>
+        <DialogTitle>{{ t('openWith.customCommands') }}</DialogTitle>
       </DialogHeader>
 
       <div class="custom-command-dialog__content">
@@ -262,10 +265,10 @@ const canSaveCommand = computed(() => {
 
         <div class="custom-command-dialog__section">
           <div class="custom-command-dialog__section-header">
-            <span class="custom-command-dialog__section-label">'openWith.customCommands'</span>
+            <span class="custom-command-dialog__section-label">{{ t('openWith.customCommands') }}</span>
             <button type="button" @click="startAddingCommand">
               <PlusIcon :size="16" />
-              'openWith.addCustomCommand'
+              {{ t('openWith.addCustomCommand') }}
             </button>
           </div>
 
@@ -304,35 +307,35 @@ const canSaveCommand = computed(() => {
                       <Trash2Icon :size="14" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>'fileBrowser.actions.delete'</TooltipContent>
+                  <TooltipContent>{{ t('fileBrowser.actions.delete') }}</TooltipContent>
                 </Tooltip>
               </div>
             </div>
           </ScrollArea>
 
           <div v-else-if="!isAddingCommand" class="custom-command-dialog__empty">
-            'openWith.noCustomCommands'
+            {{ t('openWith.noCustomCommands') }}
           </div>
         </div>
 
         <div v-if="isAddingCommand || editingCommandId" class="custom-command-dialog__form">
           <div class="custom-command-dialog__form-header">
             <span class="custom-command-dialog__section-label">
-              {{ editingCommandId ? 'openWith.editCustomCommand' : 'openWith.addCustomCommand' }}
+              {{ t(editingCommandId ? 'openWith.editCustomCommand' : 'openWith.addCustomCommand') }}
             </span>
           </div>
 
           <div class="custom-command-dialog__field">
-            <label class="custom-command-dialog__label">'openWith.commandName'</label>
-            <input v-model="newCommandName" type="text" :placeholder="'openWith.commandNamePlaceholder'" />
+            <label class="custom-command-dialog__label">{{ t('openWith.commandName') }}</label>
+            <input v-model="newCommandName" type="text" :placeholder="t('openWith.commandNamePlaceholder')" />
           </div>
 
           <div class="custom-command-dialog__field">
-            <label class="custom-command-dialog__label">'openWith.programPath'</label>
+            <label class="custom-command-dialog__label">{{ t('openWith.programPath') }}</label>
             <div class="custom-command-dialog__path-row">
-              <input v-model="newCommandPath" type="text" :placeholder="'openWith.enterProgramPath'"
+              <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
                 class="custom-command-dialog__path-input" />
-              <button type="button" :title="'browse'" @click="handleSelectProgram">
+              <button type="button" :title="t('browse')" @click="handleSelectProgram">
                 <FolderOpenIcon :size="16" />
               </button>
             </div>
@@ -340,17 +343,17 @@ const canSaveCommand = computed(() => {
 
           <div class="custom-command-dialog__field">
             <div class="custom-command-dialog__label-row">
-              <label class="custom-command-dialog__label">'openWith.arguments'</label>
+              <label class="custom-command-dialog__label">{{ t('openWith.arguments') }}</label>
               <Tooltip>
                 <TooltipTrigger as-child>
                   <InfoIcon :size="14" class="custom-command-dialog__info-icon" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>'openWith.argumentsHint'</p>
+                  <p>{{ t('openWith.argumentsHint') }}</p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <input v-model="newCommandArgs" type="text" :placeholder="'openWith.argumentsPlaceholder'" />
+            <input v-model="newCommandArgs" type="text" :placeholder="t('openWith.argumentsPlaceholder')" />
           </div>
 
           <div class="custom-command-dialog__form-actions">

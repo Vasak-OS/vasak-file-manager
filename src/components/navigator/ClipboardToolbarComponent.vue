@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 	pasteToPane: [paneIndex: number];
 }>();
 
+const { t } = useI18n();
 const clipboardStore = useClipboardStore();
 const shortcutsStore = useShortcutsStore();
 
@@ -136,20 +138,20 @@ function openCollapsedPopover() {
               </div>
               <div class="clipboard-toolbar__text">
                 <span class="clipboard-toolbar__title">
-                  {{ clipboardStore.isCopyOperation ? 'fileBrowser.preparedForCopying' :
-                    'fileBrowser.preparedForMoving' }}
+                  {{ clipboardStore.isCopyOperation ? t('fileBrowser.preparedForCopying') :
+                    t('fileBrowser.preparedForMoving') }}
                 </span>
                 <span class="clipboard-toolbar__count-tag">
-                  {{ `fileBrowser.itemsPrepared, ${clipboardStore.itemCount}` }}
+                  {{ clipboardStore.isCopyOperation ? t('fileBrowser.itemsPrepared') : t('fileBrowser.itemsPrepared') }} {{ clipboardStore.itemCount }}
                 </span>
               </div>
             </div>
 
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--expanded">
-              <Button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('showItems')"
+              <Button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
                 @click="clipboardItemsPopoverOpen = true">
                 <EyeIcon :size="14" />
-                <span class="clipboard-toolbar__button-text">{{ 'showItems' }}</span>
+                <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.showItems') }}</span>
               </Button>
 
               <template v-if="isSplitView">
@@ -159,11 +161,11 @@ function openCollapsedPopover() {
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane1 }" :disabled="!canPasteToPane1"
                       @click="emit('pasteToPane', 0)">
                       <ClipboardPasteIcon :size="14" />
-                      <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.actions.pasteToPane1' }}</span>
+                      <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane1') }}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {{ 'shortcuts.transferPreparedToPane1' }}
+                    {{ t('shortcuts.transferPreparedToPane1') }}
                     <kbd class="clipboard-toolbar__shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
                   </TooltipContent>
                 </Tooltip>
@@ -174,11 +176,11 @@ function openCollapsedPopover() {
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane2 }" :disabled="!canPasteToPane2"
                       @click="emit('pasteToPane', 1)">
                       <ClipboardPasteIcon :size="14" />
-                      <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.actions.pasteToPane2' }}</span>
+                      <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane2') }}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {{ 'shortcuts.transferPreparedToPane2' }}
+                    {{ t('shortcuts.transferPreparedToPane2') }}
                     <kbd class="clipboard-toolbar__shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
                   </TooltipContent>
                 </Tooltip>
@@ -190,11 +192,11 @@ function openCollapsedPopover() {
                     :class="{ 'clipboard-toolbar__button--disabled': !canPaste }" :disabled="!canPaste"
                     @click="emit('paste')">
                     <ClipboardPasteIcon :size="14" />
-                    <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.actions.paste' }}</span>
+                    <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.paste') }}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {{ 'shortcuts.transferPreparedForCopying' }}
+                  {{ t('shortcuts.transferPreparedForCopying') }}
                   <kbd class="clipboard-toolbar__shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
                 </TooltipContent>
               </Tooltip>
@@ -202,40 +204,40 @@ function openCollapsedPopover() {
               <button variant="ghost" size="sm" class="clipboard-toolbar__button clipboard-toolbar__button--discard"
                 :title="t('fileBrowser.discardClipboard')" @click="clipboardStore.clearClipboard()">
                 <XIcon :size="14" />
-                <span class="clipboard-toolbar__button-text">{{ 'fileBrowser.discardClipboard' }}</span>
+                <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.discardClipboard') }}</span>
               </button>
             </div>
 
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--collapsed">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="'actions'">
+                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.actions')">
                     <EllipsisVerticalIcon :size="16" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="clipboard-toolbar__dropdown">
                   <DropdownMenuItem @click="openCollapsedPopover">
                     <EyeIcon :size="14" />
-                    {{ 'showItems' }}
+                    {{ t('fileBrowser.showItems') }}
                   </DropdownMenuItem>
                   <template v-if="isSplitView">
                     <DropdownMenuItem :disabled="!canPasteToPane1" @click="emit('pasteToPane', 0)">
                       <ClipboardPasteIcon :size="14" />
-                      {{ 'fileBrowser.actions.pasteToPane1' }}
+                      {{ t('fileBrowser.actions.pasteToPane1') }}
                     </DropdownMenuItem>
                     <DropdownMenuItem :disabled="!canPasteToPane2" @click="emit('pasteToPane', 1)">
                       <ClipboardPasteIcon :size="14" />
-                      {{ 'fileBrowser.actions.pasteToPane2' }}
+                      {{ t('fileBrowser.actions.pasteToPane2') }}
                     </DropdownMenuItem>
                   </template>
                   <DropdownMenuItem v-else :disabled="!canPaste" @click="emit('paste')">
                     <ClipboardPasteIcon :size="14" />
-                    {{ 'fileBrowser.actions.paste' }}
+                    {{ t('fileBrowser.actions.paste') }}
                   </DropdownMenuItem>
                   <DropdownMenuItem class="clipboard-toolbar__dropdown-item--discard"
                     @click="clipboardStore.clearClipboard()">
                     <XIcon :size="14" />
-                    {{ 'fileBrowser.discardClipboard' }}
+                    {{ t('fileBrowser.discardClipboard') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -245,7 +247,7 @@ function openCollapsedPopover() {
         <PopoverContent align="center" side="top" :side-offset="8" class="clipboard-toolbar__popover">
           <div class="clipboard-toolbar__popover-content">
             <div class="clipboard-toolbar__filter-wrapper">
-              <input v-model="clipboardItemsFilterQuery" :placeholder="'filter.filter'"
+              <input v-model="clipboardItemsFilterQuery" :placeholder="t('filter.filter')"
                 class="clipboard-toolbar__filter-input" />
             </div>
             <div v-if="clipboardItemsHeader" class="clipboard-toolbar__items-header">
@@ -259,12 +261,12 @@ function openCollapsedPopover() {
                     <span class="clipboard-toolbar__item-path">{{ entry.path }}</span>
                   </div>
                   <Button variant="ghost" size="icon" class="clipboard-toolbar__item-remove"
-                    :title="'fileBrowser.removeFromClipboard'" @click="removeClipboardItem(entry)">
+                    :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)">
                     <XIcon :size="18" />
                   </Button>
                 </div>
                 <div v-if="displayedClipboardItems.length === 0" class="clipboard-toolbar__no-items">
-                  {{ 'fileBrowser.noMatchingItems' }}
+                  {{ t('fileBrowser.noMatchingItems') }}
                 </div>
               </div>
             </ScrollArea>

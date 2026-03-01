@@ -14,6 +14,7 @@ import Skeleton from '@/components/ui/Skeleton.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
@@ -24,6 +25,7 @@ import { getIconSource } from '@vasakgroup/plugin-vicons';
 const props = defineProps<{
 	layout?: Layout;
 }>();
+const { t } = useI18n();
 const FolderOpenIcon = ref('');
 
 const ctx = useFileBrowserContext();
@@ -83,7 +85,7 @@ onMounted(async () => {
         <button type="button"
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-name"
           @click="handleColumnHeaderClick('name')">
-          'fileBrowser.name'
+          {{ t('fileBrowser.name') }}
           <ArrowUpIcon v-if="listSortColumn === 'name' && listSortDirection === 'asc'" :size="12"
             class="file-browser-list-view__header-sort-icon" />
           <ArrowDownIcon v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" :size="12"
@@ -103,7 +105,7 @@ onMounted(async () => {
             <button type="button"
               class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-size file-browser-list-view__header-size--with-info"
               @click="handleColumnHeaderClick('size')">
-              'fileBrowser.size'
+              {{ t('fileBrowser.size') }}
               <InfoIcon :size="12" class="file-browser-list-view__header-info-icon" />
               <ArrowUpIcon v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
                 class="file-browser-list-view__header-sort-icon" />
@@ -114,28 +116,28 @@ onMounted(async () => {
           <TooltipContent side="bottom" :side-offset="8" class="file-browser-list-view__size-tooltip">
             <div class="file-browser-list-view__size-tooltip-content">
               <div class="file-browser-list-view__size-tooltip-title">
-                'fileBrowser.sizeTooltip.title'
+                {{ t('fileBrowser.sizeTooltip.title') }}
               </div>
               <div class="file-browser-list-view__size-tooltip-body">
                 <div class="file-browser-list-view__size-tooltip-item">
                   <span class="file-browser-list-view__size-tooltip-label">{{ legendSizeText }}</span>
-                  <span class="file-browser-list-view__size-tooltip-desc">'fileBrowser.sizeTooltip.exact'</span>
+                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.exact') }}</span>
                 </div>
                 <div class="file-browser-list-view__size-tooltip-item">
                   <span
                     class="file-browser-list-view__size-tooltip-label file-browser-list-view__size-tooltip-label--loading">
                     <Skeleton class="file-browser-list-view__size-tooltip-skeleton" />
                   </span>
-                  <span class="file-browser-list-view__size-tooltip-desc">'fileBrowser.sizeTooltip.loading'</span>
+                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.loading') }}</span>
                 </div>
                 <div class="file-browser-list-view__size-tooltip-item">
                   <span
                     class="file-browser-list-view__size-tooltip-label file-browser-list-view__size-tooltip-label--empty">—</span>
-                  <span class="file-browser-list-view__size-tooltip-desc">'fileBrowser.sizeTooltip.notCalculated'</span>
+                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.notCalculated') }}</span>
                 </div>
               </div>
               <div class="file-browser-list-view__size-tooltip-note">
-                'fileBrowser.sizeTooltip.note'
+                {{ t('fileBrowser.sizeTooltip.note') }}
               </div>
             </div>
           </TooltipContent>
@@ -143,7 +145,7 @@ onMounted(async () => {
         <button v-if="columnVisibility.modified" type="button"
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-modified"
           @click="handleColumnHeaderClick('modified')">
-          'fileBrowser.modified'
+          {{ t('fileBrowser.modified') }}
           <ArrowUpIcon v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" :size="12"
             class="file-browser-list-view__header-sort-icon" />
           <ArrowDownIcon v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'" :size="12"
@@ -170,17 +172,17 @@ onMounted(async () => {
               <input id="column-size" type="checkbox" class="file-browser-list-view__columns-checkbox"
                 :checked="columnVisibility.size"
                 @change="toggleColumnVisibility('size', ($event.target as HTMLInputElement).checked)" />
-              <label for="column-size" class="file-browser-list-view__columns-label">'fileBrowser.size'</label>
+              <label for="column-size" class="file-browser-list-view__columns-label">{{ t('fileBrowser.size') }}</label>
             </div>
             <div class="file-browser-list-view__columns-option">
               <input id="column-modified" type="checkbox" class="file-browser-list-view__columns-checkbox"
                 :checked="columnVisibility.modified"
                 @change="toggleColumnVisibility('modified', ($event.target as HTMLInputElement).checked)" />
-              <label for="column-modified" class="file-browser-list-view__columns-label">'fileBrowser.modified'</label>
+              <label for="column-modified" class="file-browser-list-view__columns-label">{{ t('fileBrowser.modified') }}</label>
             </div>
           </PopoverContent>
           <TooltipContent>
-            'fileBrowser.columns'
+            {{ t('fileBrowser.columns') }}
           </TooltipContent>
         </Tooltip>
       </Popover>
@@ -191,8 +193,8 @@ onMounted(async () => {
     <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
 
     <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="file-browser__empty-state-container"
-      :icon="FolderOpenIcon" :title="'fileBrowser.directoryIsEmpty'"
-      :description="'fileBrowser.directoryIsEmptyDescription'" :bordered="false" />
+      :icon="FolderOpenIcon" :title="t('fileBrowser.directoryIsEmpty')"
+      :description="t('fileBrowser.directoryIsEmptyDescription')" :bordered="false" />
 
     <template v-else>
       <ScrollArea class="file-browser__scroll-area" @contextmenu.self.prevent>

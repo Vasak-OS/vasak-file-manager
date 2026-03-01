@@ -252,7 +252,7 @@ function openCollapsedPopover() {
         <PopoverContent align="start" side="top" class="file-browser-status-bar__popover">
           <div class="file-browser-status-bar__popover-content">
             <div class="file-browser-status-bar__filter-wrapper">
-              <input v-model="itemsFilterQuery" type="text" :placeholder="'filter.filter'"
+              <input v-model="itemsFilterQuery" type="text" :placeholder="t('filter.filter')"
                 class="file-browser-status-bar__filter-input" />
             </div>
             <div v-if="showItemsHeader" class="file-browser-status-bar__items-header">
@@ -266,12 +266,12 @@ function openCollapsedPopover() {
                     <span class="file-browser-status-bar__item-path">{{ entry.path }}</span>
                   </div>
                   <button type="button" class="file-browser-status-bar__item-remove"
-                    :title="'fileBrowser.removeFromSelection'" @click="removeItem(entry)">
+                    :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)">
                     <XIcon :size="18" />
                   </button>
                 </div>
                 <div v-if="displayedEntries.length === 0" class="file-browser-status-bar__no-items">
-                  'fileBrowser.noMatchingItems'
+                  {{ t('fileBrowser.noMatchingItems') }}
                 </div>
               </div>
             </ScrollArea>

@@ -8,6 +8,7 @@ import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { ConflictItem, ConflictResolution } from '@/stores/runtime/clipboard';
 import toReadableBytes from '@/utils/byte-parser';
 
@@ -20,6 +21,8 @@ const emit = defineEmits<{
 	resolve: [resolution: ConflictResolution];
 	cancel: [];
 }>();
+
+const { t } = useI18n();
 
 const isOpen = defineModel<boolean>('open', { required: true });
 const sizeSeparator = ' \u2192 ';
@@ -81,7 +84,7 @@ onMounted(async () => {
       <DialogHeader>
         <DialogTitle class="conflict-dialog__title">
           <AlertTriangleIcon class="conflict-dialog__title-icon" />
-          'conflictDialog.title'
+          {{ t('conflictDialog.title') }}
         </DialogTitle>
         <DialogDescription class="conflict-dialog__description">
           {{ `conflictDialog.description ${conflictCount}` }}
@@ -121,15 +124,15 @@ onMounted(async () => {
         <div class="conflict-dialog__actions">
           <button type="button" class="conflict-dialog__action-btn" @click="handleSkip">
             <SkipForwardIcon class="conflict-dialog__btn-icon" />
-            'conflictDialog.skip'
+            {{ t('conflictDialog.skip') }}
           </button>
           <button type="button" class="conflict-dialog__action-btn" @click="handleKeepBoth">
             <CopyPlusIcon class="conflict-dialog__btn-icon" />
-            'conflictDialog.keepBoth'
+            {{ t('conflictDialog.keepBoth') }}
           </button>
           <button type="button" class="conflict-dialog__action-btn conflict-dialog__action-btn--replace" @click="handleReplace">
             <ArrowRightLeftIcon class="conflict-dialog__btn-icon" />
-            'conflictDialog.replace'
+            {{ t('conflictDialog.replace') }}
           </button>
         </div>
       </DialogFooter>

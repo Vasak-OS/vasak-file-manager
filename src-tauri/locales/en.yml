@@ -5,8 +5,23 @@ settings:
     navigatorViewLayout: View Layout
   infoPanel:
     title: Info Panel
+  addressBar:
+    copyPathToClipboard: Copy Path to Clipboard
+    openCopiedPath: Open Copied Path
+    addressBarActions: Address Bar Actions
+    showSiblingDirectories: Show Sibling Directories
+    enterValidPath: Enter valid path
+    keepEditorOpened: Keep Editor Opened
+    closeEditor: Close Editor
+    noMatchingDirectories: No matching directories
+    toAutocomplete: to complete, or press Enter to open the path
+    toOpenThePath: to open the path
+    editAddress: Edit Address
+  localShareManagerDialog:
+    addressCopiedToClipboard: Address copied to clipboard
 filter:
   showHiddenItems: Show Hidden Items
+  filter: Filter
 fileBrowser:
   fileCount: 1 file
   directoryCount: 1 folder
@@ -37,8 +52,32 @@ fileBrowser:
     quickView: Quick View
     openInNewTab: Open in New Tab
     share: Share
+    delete: Delete
     addToFavorites: Add to Favorites
     removeFromFavorites: Remove from Favorites
+  name: Name
+  size: Size
+  modified: Modified Date
+  columns: Columns
+  folders: Folders
+  images: Images
+  videos: Videos
+  video: Video
+  otherFiles: Other Files
+  directoryIsEmpty: Directory is Empty
+  directoryIsEmptyDescription: This directory contains no items
+  removeFromSelection: Remove from Selection
+  noMatchingItems: No matching items
+  cannotMoveToSameDirectory: Cannot move items to the same directory
+  cannotPasteIntoItself: Cannot paste items into itself
+  copyFailed: Copy failed
+  moveFailed: Move failed
+  sizeTooltip:
+    title: Size
+    exact: Exact size
+    loading: Calculating size...
+    notCalculated: Size not calculated
+    note: Size is the sum of all contents
 shortcuts:
   selectAllItemsInCurrentDirectory: Select All
 moreOptions:
@@ -51,6 +90,28 @@ openWith:
   suggestedApps: Suggested Apps
   noProgramsFound: No programs found
   customCommandWithFlags: Open with custom command
+  customCommands: Custom Commands
+  addCustomCommand: Add Custom Command
+  editCustomCommand: Edit Custom Command
+  noCustomCommands: No custom commands added
+  commandName: Command Name
+  commandNamePlaceholder: Enter command name
+  programPath: Program Path
+  enterProgramPath: Browse or enter program path
+  arguments: Arguments
+  argumentsHint: Use {file} to refer to the selected file
+  argumentsPlaceholder: Arguments for the program
+  open: Open
+  selectProgram: Select Program
+  failedToLoadPrograms: Failed to load programs
+  failedToOpenFile: Failed to open file
+enabled: Enabled
+disabled: Disabled
+browse: Browse
+run: Run
+edit: Edit
+save: Save
+cancel: Cancel
 terminal:
   openInTerminal: Open in Terminal
   noTerminalsFound: No terminals found
@@ -65,6 +126,66 @@ dialogs:
 name: Name
 create: Create
 save: Save
+drag:
+  holdShiftToChangeMode: Hold Shift to change drag mode
+  holdCtrlForCurrentDirDrop: Hold Ctrl to drop in current directory
+conflictDialog:
+  title: File Conflict
+  skip: Skip
+  keepBoth: Keep Both
+  replace: Replace
+notifications:
+  copyingItems: Copying items...
+  copied: Items copied
+  movingItems: Moving items...
+  moved: Items moved
+  skippedAll: All items skipped
+  trashingItems: Moving to trash...
+  trashed: Items moved to trash
+  deletingItems: Deleting items...
+  deleted: Items deleted
+  errorTrashItems: Error moving items to trash
+  errorDeleteItems: Error deleting items
+  renamed: Item renamed
+  failedToRenameItem: Failed to rename item
+  removedFromFavorites: Removed from Favorites
+  addedToFavorites: Added to Favorites
+  cannotFetchDirectoryItems: Cannot fetch directory items
+  quickViewFileIsNotSupported: File type not supported in Quick View
+tabs:
+  newTab: New Tab
+  closeOtherTabs: Close Other Tabs
+  closeAllTabs: Close All Tabs
+dialogs:
+  newDirItemDialog:
+    newDirectoryCreated: Directory created
+    newFileCreated: File created
+    failedToCreateNewDirectory: Failed to create directory
+    failedToCreateNewFile: Failed to create file
+shortcuts:
+  transferPreparedForCopying: Transfer prepared for copying
+  transferPreparedToPane1: Transfer prepared for pane 1
+  transferPreparedToPane2: Transfer prepared for pane 2
+  closeOpenedDialogOverlay: Close dialog
+  focusUnfocusFilterField: Focus/Unfocus filter
+  focusUnfocusSettingsSearch: Focus/Unfocus settings search
+  navigateBack: Navigate back
+  navigateForward: Navigate forward
+  navigateUp: Navigate up
+  navigateDown: Navigate down
+  navigateLeft: Navigate left
+  navigateRight: Navigate right
+  openCloseSelectedFileInQuickView: Open/Close preview
+  openCurrentDirInNewTab: Open current directory in new tab
+  openCurrentDirInTerminal: Open in terminal
+  openCurrentDirInTerminalAsAdmin: Open in terminal as admin
+  openSelectedEntry: Open selected item
+  renameSelectedItems: Rename selected items
+  setSelectedItemsForCopying: Copy selected items
+  setSelectedItemsForMoving: Cut selected items
+  showHideGlobalSearch: Show/Hide global search
+  switchToLeftPane: Switch to left pane
+  switchToRightPane: Switch to right pane
 listLayout: List
 gridLayout: Grid
 splitView: Split View
