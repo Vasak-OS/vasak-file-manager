@@ -241,9 +241,9 @@ onMounted(async () => {
         <Popover :open="isFilterOpen" :modal="false" @update:open="emit('update:isFilterOpen', $event)">
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
-              <button ref="filterTriggerRef" type="button" class="file-browser-toolbar__filter-button"
-                :class="{ 'file-browser-toolbar__filter-button--active': filterQuery }">
-                <img :src="textSearchIcon" :alt="t('fileBrowser.filter')" class="file-browser-toolbar__icon" />
+              <button ref="filterTriggerRef" type="button" class="h-11 w-11 flex justify-center items-center rounded-corner background hover:bg-primary dark:hover:bg-primary-dark"
+                :class="{ 'bg-primary dark:bg-primary-dark': filterQuery }">
+                <img :src="textSearchIcon" :alt="t('fileBrowser.filter')" class="h-6 w-6" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -338,16 +338,6 @@ onMounted(async () => {
 .file-browser-toolbar__address-bar {
   min-width: 0;
   flex: 1;
-}
-
-.file-browser-toolbar__filter-button {
-  width: 36px;
-  height: 36px;
-}
-
-.file-browser-toolbar__filter-button--active {
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--foreground));
 }
 
 .file-browser-toolbar__filter-clear {
