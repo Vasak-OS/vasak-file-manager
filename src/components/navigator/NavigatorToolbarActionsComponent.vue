@@ -59,7 +59,7 @@ onMounted(async () => {
         <PopoverTrigger as-child>
           <Tooltip>
             <TooltipTrigger as-child>
-              <button class="background rounded-corner p-1 flex justify-center items-center hover:bg-primary dark:hover:bg-primary-dark">
+              <button class="background rounded-corner p-1 flex justify-center items-center hover:bg-primary">
                 <img :src="layoutGridIcon" alt="Show Grid" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
                 <img :src="layoutListIcon" alt="Show List" v-else height="24" width="24" class="fill-primary" />
               </button>

@@ -107,18 +107,23 @@
 }
 
 /* Override colors in dark mode */
-@theme dark {
-  --color-primary: var(--primary-dark);
-  --color-secondary: var(--secondary-dark);
-  --color-ui-bg: var(--ui-background-dark);
-  --color-ui-surface: var(--ui-surface-dark);
-  --color-ui-border: var(--ui-border-dark);
-  --color-tx-main: var(--text-main-dark);
-  --color-tx-muted: var(--text-muted-dark);
-  --color-tx-on-primary: var(--text-on-primary-dark);
-  --color-status-error: var(--status-error-dark);
-  --color-status-success: var(--status-success-dark);
-  --color-status-warning: var(--status-warning-dark);
+@layer theme {
+  :root,
+  :host {
+    @variant dark {
+      --color-primary: var(--primary-dark);
+      --color-secondary: var(--secondary-dark);
+      --color-ui-bg: var(--ui-background-dark);
+      --color-ui-surface: var(--ui-surface-dark);
+      --color-ui-border: var(--ui-border-dark);
+      --color-tx-main: var(--text-main-dark);
+      --color-tx-muted: var(--text-muted-dark);
+      --color-tx-on-primary: var(--text-on-primary-dark);
+      --color-status-error: var(--status-error-dark);
+      --color-status-success: var(--status-success-dark);
+      --color-status-warning: var(--status-warning-dark);
+    }
+  }
 }
 
 ::view-transition-old(root) {

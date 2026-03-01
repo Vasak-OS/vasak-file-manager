@@ -218,7 +218,7 @@ onMounted(async () => {
         <Tooltip>
           <DropdownMenuTrigger as-child>
             <TooltipTrigger as-child>
-              <button type="button" class="h-9 w-9 flex justify-center items-center rounded-corner background hover:bg-primary dark:hover:bg-primary-dark"
+              <button type="button" class="h-9 w-9 flex justify-center items-center rounded-corner background hover:bg-primary"
                 @click="handleCreateMenuButtonClick">
                 <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="h-6 w-6" />
               </button>
@@ -241,8 +241,8 @@ onMounted(async () => {
         <Popover :open="isFilterOpen" :modal="false" @update:open="emit('update:isFilterOpen', $event)">
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
-              <button ref="filterTriggerRef" type="button" class="h-11 w-11 flex justify-center items-center rounded-corner background hover:bg-primary dark:hover:bg-primary-dark"
-                :class="{ 'bg-primary dark:bg-primary-dark': filterQuery }">
+              <button ref="filterTriggerRef" type="button" class="h-11 w-11 flex justify-center items-center rounded-corner background hover:bg-primary"
+                :class="{ 'bg-primary': filterQuery }">
                 <img :src="textSearchIcon" :alt="t('fileBrowser.filter')" class="h-6 w-6" />
               </button>
             </PopoverTrigger>

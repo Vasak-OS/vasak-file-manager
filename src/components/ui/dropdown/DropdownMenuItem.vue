@@ -29,7 +29,7 @@ const handleClick = () => {
 			'px-3 py-2 text-sm transition-colors',
 			{
 				'opacity-50 cursor-not-allowed': disabled,
-				'cursor-pointer hover:bg-primary dark:hover:bg-primary-dark hover:text-tx-on-primary hover:dark:text-tx-on-primary-dark': !disabled,
+				'cursor-pointer hover:bg-primary hover:text-tx-on-primary': !disabled,
 			},
 			$attrs.class,
 		]"
