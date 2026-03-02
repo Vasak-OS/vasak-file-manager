@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponent.vue';
-import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserContentComponent.vue';
-import FileBrowserDragOverlayComponent from '@/components/filebrowser/FileBrowserDragOverlayComponent.vue';
-import FileBrowserInboundDragOverlayComponent from '@/components/filebrowser/FileBrowserInboundDragOverlayComponent.vue';
 import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.vue';
 import OpenWithDialogComponent from '@/components/dialogs/OpenWithDialogComponent.vue';
 import RenameDialogComponent from '@/components/dialogs/RenameDialogComponent.vue';
+import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserContentComponent.vue';
+import FileBrowserDragOverlayComponent from '@/components/filebrowser/FileBrowserDragOverlayComponent.vue';
+import FileBrowserInboundDragOverlayComponent from '@/components/filebrowser/FileBrowserInboundDragOverlayComponent.vue';
 import FileBrowserStatusBarComponent from '@/components/filebrowser/FileBrowserStatusBarComponent.vue';
 import FileBrowserToolbarComponent from '@/components/filebrowser/FileBrowserToolbarComponent.vue';
 import { useFileBrowser } from '@/composables/file-browser/use-file-browser';

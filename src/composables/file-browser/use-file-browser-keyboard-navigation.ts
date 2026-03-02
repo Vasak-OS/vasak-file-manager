@@ -1,5 +1,6 @@
 import { nextTick, type Ref } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
+import type { Layout } from '@/types/navigator';
 
 const ROW_TOLERANCE_PX = 30;
 const OVERLAP_TOLERANCE_PX = 2;
@@ -7,7 +8,7 @@ const OVERLAP_TOLERANCE_PX = 2;
 export function useFileBrowserKeyboardNavigation(options: {
 	entries: Ref<DirEntry[]>;
 	selectedEntries: Ref<DirEntry[]>;
-	layout: () => 'list' | 'grid' | undefined;
+	layout: () => Layout | undefined;
 	selectEntryByPath: (path: string) => boolean;
 	goBack: () => void;
 	openEntry: (entry: DirEntry) => void;

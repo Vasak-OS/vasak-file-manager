@@ -18,12 +18,13 @@ import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useQuickViewStore } from '@/stores/runtime/quick-view';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
+import type { Layout } from '@/types/navigator';
 import type { Tab } from '@/types/workspaces';
 import { sortFileBrowserEntries } from '@/utils/file-browser-sort';
 
 export interface UseFileBrowserOptions {
 	tab: () => Tab | undefined;
-	layout: () => 'list' | 'grid' | undefined;
+	layout: () => Layout | undefined;
 	externalEntries?: () => DirEntry[];
 	basePath?: () => string;
 	onSelectedEntriesChange: (entries: DirEntry[]) => void;
