@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import FileBrowserConflictDialogComponent from '@/components/filebrowser/FileBrowserConflictDialogComponent.vue';
+import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponent.vue';
 import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserContentComponent.vue';
 import FileBrowserDragOverlayComponent from '@/components/filebrowser/FileBrowserDragOverlayComponent.vue';
 import FileBrowserInboundDragOverlayComponent from '@/components/filebrowser/FileBrowserInboundDragOverlayComponent.vue';
-import FileBrowserNewItemDialogComponent from '@/components/filebrowser/FileBrowserNewItemDialogComponent.vue';
-import FileBrowserOpenWithDialogComponent from '@/components/filebrowser/FileBrowserOpenWithDialogComponent.vue';
-import FileBrowserRenameDialogComponent from '@/components/filebrowser/FileBrowserRenameDialogComponent.vue';
+import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.vue';
+import OpenWithDialogComponent from '@/components/dialogs/OpenWithDialogComponent.vue';
+import RenameDialogComponent from '@/components/dialogs/RenameDialogComponent.vue';
 import FileBrowserStatusBarComponent from '@/components/filebrowser/FileBrowserStatusBarComponent.vue';
 import FileBrowserToolbarComponent from '@/components/filebrowser/FileBrowserToolbarComponent.vue';
 import { useFileBrowser } from '@/composables/file-browser/use-file-browser';
@@ -108,13 +108,13 @@ defineExpose({
       :selected-entries="fb.selectedEntries.value" @select-all="fb.selectAll" @deselect-all="fb.clearSelection"
       @remove-from-selection="fb.removeFromSelection" @context-menu-action="fb.onContextMenuAction" />
 
-    <FileBrowserRenameDialogComponent v-model:open="fb.isRenameDialogOpen.value" :entry="fb.renameState.value.entry"
+    <RenameDialogComponent v-model:open="fb.isRenameDialogOpen.value" :entry="fb.renameState.value.entry"
       @confirm="fb.handleRenameConfirm" @cancel="fb.handleRenameCancel" />
 
-    <FileBrowserNewItemDialogComponent v-model:open="fb.isNewItemDialogOpen.value" :type="fb.newItemDialogState.value.type"
+    <NewItemDialogComponent v-model:open="fb.isNewItemDialogOpen.value" :type="fb.newItemDialogState.value.type"
       @confirm="fb.handleNewItemConfirm" @cancel="fb.handleNewItemCancel" />
 
-    <FileBrowserOpenWithDialogComponent v-model:open="fb.openWithState.value.isOpen" :entries="fb.openWithState.value.entries"
+    <OpenWithDialogComponent v-model:open="fb.openWithState.value.isOpen" :entries="fb.openWithState.value.entries"
       @close="fb.closeOpenWithDialog" />
 
     <FileBrowserDragOverlayComponent :is-active="fb.isDragging.value" :item-count="fb.dragItems.value.length"
@@ -128,7 +128,7 @@ defineExpose({
       :item-count="fb.externalDragItemCount.value" :operation-type="fb.externalDragOperationType.value"
       :current-dir-locked="fb.isCurrentDirLocked.value" :targeting-entry="fb.isTargetingEntry.value" />
 
-    <FileBrowserConflictDialogComponent v-model:open="fb.conflictDialogState.value.isOpen"
+    <ConflictDialogComponent v-model:open="fb.conflictDialogState.value.isOpen"
       :conflicts="fb.conflictDialogState.value.conflicts"
       :operation-type="fb.conflictDialogState.value.operationType || 'copy'" @resolve="fb.handleConflictResolution"
       @cancel="fb.handleConflictCancel" />
