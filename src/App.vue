@@ -43,8 +43,8 @@ onMounted(async () => {
 				configStore.loadConfig();
 			});
 		});
-		//disableWebViewFeatures();
-		//shortcutsStore.init();
+		disableWebViewFeatures();
+		shortcutsStore.init();
 	} catch (error: any) {
 		console.error('Error al cargar configuración en App.vue', error);
 	}
