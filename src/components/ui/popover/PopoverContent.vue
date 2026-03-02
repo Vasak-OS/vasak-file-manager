@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 interface Props {
 	side?: 'top' | 'bottom' | 'left' | 'right';
@@ -23,13 +23,13 @@ const position = ref({ top: 0, left: 0 });
 
 const calculatePosition = () => {
 	if (!triggerElement.value || !contentRef.value) return;
-	
+
 	const triggerRect = triggerElement.value.getBoundingClientRect();
 	const contentRect = contentRef.value.getBoundingClientRect();
-	
+
 	let top = 0;
 	let left = 0;
-	
+
 	switch (props.side) {
 		case 'bottom':
 			top = triggerRect.bottom + props.sideOffset;
@@ -46,7 +46,7 @@ const calculatePosition = () => {
 			top = triggerRect.top;
 			break;
 	}
-	
+
 	switch (props.align) {
 		case 'start':
 			if (props.side === 'bottom' || props.side === 'top') {
@@ -55,7 +55,7 @@ const calculatePosition = () => {
 			break;
 		case 'center':
 			if (props.side === 'bottom' || props.side === 'top') {
-				left = triggerRect.left + (triggerRect.width / 2) - (contentRect.width / 2);
+				left = triggerRect.left + triggerRect.width / 2 - contentRect.width / 2;
 			}
 			break;
 		case 'end':
@@ -64,7 +64,7 @@ const calculatePosition = () => {
 			}
 			break;
 	}
-	
+
 	position.value = { top, left };
 };
 

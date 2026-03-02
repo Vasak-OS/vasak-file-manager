@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { computed } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 
 const props = defineProps<{

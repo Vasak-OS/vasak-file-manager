@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';

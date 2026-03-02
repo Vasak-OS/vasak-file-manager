@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
-import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
-import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
-import DropdownMenuLabel from '@/components/ui/dropdown/DropdownMenuLabel.vue';
-import DropdownMenuSeparator from '@/components/ui/dropdown/DropdownMenuSeparator.vue';
+import { computed, onMounted, ref } from 'vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
@@ -13,7 +9,6 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { Layout } from '@/types/navigator';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 type LayoutType = Layout;
 
@@ -40,16 +35,15 @@ const layoutListIcon = ref('');
 const splitViewIcon = ref('');
 const infoPanelIcon = ref('');
 
-
 async function setLayout(_layoutName: LayoutType) {
 	isLayoutPopoverOpen.value = false;
 }
 
 onMounted(async () => {
-  layoutGridIcon.value = await getSymbolSource('view-grid');
-  layoutListIcon.value = await getSymbolSource('view-list-text');
-  splitViewIcon.value = await getSymbolSource('view-split-left-right');
-  infoPanelIcon.value = await getSymbolSource('swap-panels');
+	layoutGridIcon.value = await getSymbolSource('view-grid');
+	layoutListIcon.value = await getSymbolSource('view-list-text');
+	splitViewIcon.value = await getSymbolSource('view-split-left-right');
+	infoPanelIcon.value = await getSymbolSource('swap-panels');
 });
 </script>
 

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref, watch } from 'vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 interface AssociatedProgram {

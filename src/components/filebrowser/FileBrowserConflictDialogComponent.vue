@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { computed, onMounted, ref } from 'vue';
 import Dialog from '@/components/ui/dialog/Dialog.vue';
 import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogDescription from '@/components/ui/dialog/DialogDescription.vue';
@@ -8,7 +9,6 @@ import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { ConflictItem, ConflictResolution } from '@/stores/runtime/clipboard';
 import toReadableBytes from '@/utils/byte-parser';
 
@@ -27,7 +27,7 @@ const { t } = useI18n();
 const isOpen = defineModel<boolean>('open', { required: true });
 const sizeSeparator = ' \u2192 ';
 const conflictCount = computed(() => props.conflicts.length);
-const FolderIcon = ref('')
+const FolderIcon = ref('');
 const FileIcon = ref('');
 
 const visibleConflicts = computed(() => {
@@ -73,8 +73,8 @@ function handleOpenChange(open: boolean) {
 }
 
 onMounted(async () => {
-  FolderIcon.value = await getIconSource('folder');
-  FileIcon.value = await getIconSource('application-rtf');
+	FolderIcon.value = await getIconSource('folder');
+	FileIcon.value = await getIconSource('application-rtf');
 });
 </script>
 

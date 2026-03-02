@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { dirname } from '@tauri-apps/api/path';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
-import DropdownMenuSeparator from '@/components/ui/dropdown/DropdownMenuSeparator.vue';
 import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
@@ -16,7 +16,6 @@ import { toast } from '@/components/ui/toast/toaster';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirContents } from '@/types/dir-entry';
 
 const props = defineProps<{

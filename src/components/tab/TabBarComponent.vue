@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
@@ -7,7 +8,6 @@ import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import type { TabGroup, Tab as TabType } from '@/types/workspaces';
 
 const props = withDefaults(

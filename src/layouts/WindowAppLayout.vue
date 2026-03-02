@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import NavigatorBarComponent from '@/components/navigator/NavigatorBarComponent.vue';
+import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
+import TabBarComponent from '@/components/tab/TabBarComponent.vue';
+import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import type { DirEntry } from '@/types/dir-entry';
 import ContentInformation from '../components/content/ContentInformation.vue';
 import TopBarComponent from '../components/topbar/TopBarComponent.vue';
-import TabBarComponent from '@/components/tab/TabBarComponent.vue';
-import { useWorkspacesStore } from '@/stores/storage/workspaces';
-import { useGlobalSearchStore } from '@/stores/runtime/global-search';
-import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
-import type { DirEntry } from '@/types/dir-entry';
 
 const workspacesStore = useWorkspacesStore();
 const globalSearchStore = useGlobalSearchStore();
@@ -18,24 +18,24 @@ const currentDirEntry = ref<DirEntry | null>(null);
 const isInfoPanelVisible = ref(true);
 
 const isSplitView = computed(() => {
-  return (workspacesStore.currentTabGroup?.length ?? 0) > 1;
+	return (workspacesStore.currentTabGroup?.length ?? 0) > 1;
 });
 
 function handleToggleSplitView() {
-  if (globalSearchStore.isOpen) return;
-  workspacesStore.toggleSplitView();
+	if (globalSearchStore.isOpen) return;
+	workspacesStore.toggleSplitView();
 }
 
 function handleSelectedEntriesUpdate(entries: DirEntry[]) {
-  selectedEntries.value = entries;
+	selectedEntries.value = entries;
 }
 
 function handleCurrentDirEntryUpdate(entry: DirEntry | null) {
-  currentDirEntry.value = entry;
+	currentDirEntry.value = entry;
 }
 
 function handleToggleInfoPanel() {
-  isInfoPanelVisible.value = !isInfoPanelVisible.value;
+	isInfoPanelVisible.value = !isInfoPanelVisible.value;
 }
 </script>
 <template>

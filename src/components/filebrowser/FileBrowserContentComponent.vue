@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { computed, onMounted, ref } from 'vue';
 import FileBrowserContextMenu from '@/components/filebrowser/FileBrowserContextMenuComponent.vue';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
@@ -14,13 +16,11 @@ import Skeleton from '@/components/ui/Skeleton.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
 import FileBrowserListView from '@/views/filebrowser/FileBrowserListView.vue';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	layout?: Layout;
@@ -74,7 +74,7 @@ function handleColumnHeaderClick(column: ListSortColumn) {
 }
 
 onMounted(async () => {
-  FolderOpenIcon.value = await getIconSource('folder-open');
+	FolderOpenIcon.value = await getIconSource('folder-open');
 });
 </script>
 

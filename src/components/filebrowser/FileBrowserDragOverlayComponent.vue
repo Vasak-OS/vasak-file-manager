@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref  } from 'vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { computed, onMounted, ref } from 'vue';
+import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 
 const props = defineProps<{
 	isActive: boolean;
@@ -31,8 +31,8 @@ const description = computed(() => {
 });
 
 onMounted(async () => {
-  CopyIcon.value = await getSymbolSource('edit-copy');
-  FolderInputIcon.value = await getSymbolSource('folder-open');
+	CopyIcon.value = await getSymbolSource('edit-copy');
+	FolderInputIcon.value = await getSymbolSource('folder-open');
 });
 </script>
 

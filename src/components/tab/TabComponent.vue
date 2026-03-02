@@ -54,7 +54,7 @@ useEventListener(document, 'pointermove', (event: PointerEvent) => {
 
 	const deltaX = Math.abs(event.clientX - startPosition.value.x);
 	const deltaY = Math.abs(event.clientY - startPosition.value.y);
-  const distance = Math.hypot(deltaX, deltaY);
+	const distance = Math.hypot(deltaX, deltaY);
 
 	if (distance > LONG_PRESS_MOVE_THRESHOLD) {
 		stopLongPressTimer();
@@ -83,7 +83,7 @@ function handlePointerDown(event: PointerEvent) {
 }
 
 const isActive = computed(
-  () => props.tabGroup?.[0]?.id === workspacesStore.currentTabGroup?.[0]?.id
+	() => props.tabGroup?.[0]?.id === workspacesStore.currentTabGroup?.[0]?.id
 );
 
 const showCloseButton = computed(() => {
@@ -95,9 +95,9 @@ const tabName = computed(() => {
 	const firstTab = props.tabGroup?.[0];
 	const secondTab = props.tabGroup?.[1];
 
-  if (!firstTab) {
-    return '';
-  }
+	if (!firstTab) {
+		return '';
+	}
 
 	if (props.tabGroup?.length === 2 && secondTab) {
 		return `${firstTab.name || firstTab.path} | ${secondTab.name || secondTab.path}`;

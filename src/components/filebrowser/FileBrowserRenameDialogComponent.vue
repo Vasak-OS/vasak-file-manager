@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
 import Dialog from '@/components/ui/dialog/Dialog.vue';
 import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 const props = defineProps<{

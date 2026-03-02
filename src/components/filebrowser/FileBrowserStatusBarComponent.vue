@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { computed, nextTick, ref, watch } from 'vue';
 import FileBrowserActionMenuComponent from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';

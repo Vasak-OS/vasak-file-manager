@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref, watch } from 'vue';
 import Dialog from '@/components/ui/dialog/Dialog.vue';
 import DialogContent from '@/components/ui/dialog/DialogContent.vue';
@@ -11,7 +12,6 @@ import ScrollArea from '@/components/ui/ScrollArea.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 interface CustomCommand {

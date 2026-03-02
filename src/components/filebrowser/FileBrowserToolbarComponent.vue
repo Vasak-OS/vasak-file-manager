@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { ComponentPublicInstance } from 'vue';
-import { ref, onMounted } from 'vue';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import type { ComponentPublicInstance } from 'vue';
+import { onMounted, ref } from 'vue';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -14,7 +15,6 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	pathInput: string;
@@ -78,13 +78,13 @@ function handleAddressBarNavigate(path: string) {
 }
 
 function handleCreateMenuButtonClick(event: MouseEvent) {
-  event.preventDefault();
-  event.stopPropagation();
-  isCreateMenuOpen.value = !isCreateMenuOpen.value;
+	event.preventDefault();
+	event.stopPropagation();
+	isCreateMenuOpen.value = !isCreateMenuOpen.value;
 }
 
 function handleCreateMenuOpenChange(value: boolean) {
-  isCreateMenuOpen.value = value;
+	isCreateMenuOpen.value = value;
 }
 
 function getFilterTriggerElement(): HTMLElement | null {
@@ -114,17 +114,17 @@ function handleFilterInteractOutside(event: Event) {
 }
 
 onMounted(async () => {
-  plusIcon.value = await getSymbolSource('gtk-add');
-  folderPlusIcon.value = await getSymbolSource('folder-new');
-  filePlusIcon.value = await getSymbolSource('document-new');
-  textSearchIcon.value = await getSymbolSource('system-search');
-  xIcon.value = await getSymbolSource('dialog-close');
-  arrowLeftIcon.value = await getSymbolSource('arrow-left');
-  arrowRightIcon.value = await getSymbolSource('arrow-right');
-  arrowUpIcon.value = await getSymbolSource('arrow-up');
-  homeIcon.value = await getSymbolSource('user-home');
-  refreshIcon.value = await getSymbolSource('refreshstructure');
-  ellipsisVerticalIcon.value = await getSymbolSource('ellipsis-vertical');
+	plusIcon.value = await getSymbolSource('gtk-add');
+	folderPlusIcon.value = await getSymbolSource('folder-new');
+	filePlusIcon.value = await getSymbolSource('document-new');
+	textSearchIcon.value = await getSymbolSource('system-search');
+	xIcon.value = await getSymbolSource('dialog-close');
+	arrowLeftIcon.value = await getSymbolSource('arrow-left');
+	arrowRightIcon.value = await getSymbolSource('arrow-right');
+	arrowUpIcon.value = await getSymbolSource('arrow-up');
+	homeIcon.value = await getSymbolSource('user-home');
+	refreshIcon.value = await getSymbolSource('refreshstructure');
+	ellipsisVerticalIcon.value = await getSymbolSource('ellipsis-vertical');
 });
 </script>
 

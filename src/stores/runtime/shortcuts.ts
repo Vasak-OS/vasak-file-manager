@@ -1,7 +1,5 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-//import { useUserSettingsStore } from '@/stores/storage/user-settings';
-//import type { ShortcutId, ShortcutKeys, UserShortcuts } from '@/types/user-settings';
 import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
 
 export type ShortcutConditions = {

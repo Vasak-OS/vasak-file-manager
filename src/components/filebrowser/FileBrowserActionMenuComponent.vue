@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import FileBrowserMoreOptionsSubmenu from '@/components/filebrowser/FileBrowserMoreOptionsSubMenuComponent.vue';
 import FileBrowserOpenWithSubmenu from '@/components/filebrowser/FileBrowserOpenWithSubMenuComponent.vue';
@@ -7,7 +8,6 @@ import TagSelector from '@/components/ui/TagSelector.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';

@@ -24,32 +24,32 @@ const position = ref({ top: 0, left: 0 });
 
 const calculatePosition = () => {
 	if (!triggerElement.value || !contentRef.value) return;
-	
+
 	const triggerRect = triggerElement.value.getBoundingClientRect();
 	const contentRect = contentRef.value.getBoundingClientRect();
-	
+
 	let top = 0;
 	let left = 0;
-	
+
 	switch (props.side) {
 		case 'bottom':
 			top = triggerRect.bottom + props.sideOffset;
-			left = triggerRect.left + (triggerRect.width / 2) - (contentRect.width / 2);
+			left = triggerRect.left + triggerRect.width / 2 - contentRect.width / 2;
 			break;
 		case 'top':
 			top = triggerRect.top - contentRect.height - props.sideOffset;
-			left = triggerRect.left + (triggerRect.width / 2) - (contentRect.width / 2);
+			left = triggerRect.left + triggerRect.width / 2 - contentRect.width / 2;
 			break;
 		case 'left':
 			left = triggerRect.left - contentRect.width - props.sideOffset;
-			top = triggerRect.top + (triggerRect.height / 2) - (contentRect.height / 2);
+			top = triggerRect.top + triggerRect.height / 2 - contentRect.height / 2;
 			break;
 		case 'right':
 			left = triggerRect.right + props.sideOffset;
-			top = triggerRect.top + (triggerRect.height / 2) - (contentRect.height / 2);
+			top = triggerRect.top + triggerRect.height / 2 - contentRect.height / 2;
 			break;
 	}
-	
+
 	position.value = { top, left };
 };
 

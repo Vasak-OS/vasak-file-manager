@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onMounted, ref } from 'vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { DirEntry } from '@/types/dir-entry';
 
 interface ShellContextMenuItem {

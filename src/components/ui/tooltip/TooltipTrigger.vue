@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, onMounted } from 'vue';
+import { inject, onMounted, ref } from 'vue';
 
 interface Props {
 	asChild?: boolean;

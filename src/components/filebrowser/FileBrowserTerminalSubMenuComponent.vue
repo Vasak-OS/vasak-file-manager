@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import type { DirEntry } from '@/types/dir-entry';

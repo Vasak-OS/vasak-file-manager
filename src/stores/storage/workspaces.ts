@@ -39,17 +39,15 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 			currentWorkspace?.value?.tabGroups[currentWorkspace?.value?.currentTabGroupIndex || 0] || null
 	);
 
-	const currentTab: ComputedRef<Tab | null> = computed(
-		() => {
-			const tabGroup = currentTabGroup?.value;
-			if (!tabGroup?.length) {
-				return null;
-			}
-
-			const index = currentWorkspace?.value?.currentTabIndex ?? 0;
-			return tabGroup[index] ?? tabGroup[0] ?? null;
+	const currentTab: ComputedRef<Tab | null> = computed(() => {
+		const tabGroup = currentTabGroup?.value;
+		if (!tabGroup?.length) {
+			return null;
 		}
-	);
+
+		const index = currentWorkspace?.value?.currentTabIndex ?? 0;
+		return tabGroup[index] ?? tabGroup[0] ?? null;
+	});
 
 	const tabGroupCount: ComputedRef<number> = computed(
 		() => currentWorkspace.value?.tabGroups?.length || 0
@@ -546,7 +544,11 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 				await preloadDefaultTab();
 			}
 
-			if (currentWorkspace.value && !currentTabGroup.value && currentWorkspace.value.tabGroups.length > 0) {
+			if (
+				currentWorkspace.value &&
+				!currentTabGroup.value &&
+				currentWorkspace.value.tabGroups.length > 0
+			) {
 				currentWorkspace.value.currentTabGroupIndex = 0;
 				currentWorkspace.value.currentTabIndex = 0;
 			}

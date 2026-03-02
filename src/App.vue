@@ -1,14 +1,14 @@
 <script setup lang="ts">
-/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
-import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
+import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { disableWebViewFeatures } from '@/utils/web-view-features';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
 
@@ -28,10 +28,11 @@ onMounted(async () => {
 	try {
 		const userPathsStore = useUserPathsStore();
 		const workspacesStore = useWorkspacesStore();
-		
+		const shortcutsStore = useShortcutsStore();
+
 		await userPathsStore.init();
 		await workspacesStore.init();
-		
+
 		const configStore = useConfigStore() as Store<
 			'config',
 			{ config: any; loadConfig: () => Promise<void> }
@@ -42,6 +43,8 @@ onMounted(async () => {
 				configStore.loadConfig();
 			});
 		});
+		//disableWebViewFeatures();
+		//shortcutsStore.init();
 	} catch (error: any) {
 		console.error('Error al cargar configuración en App.vue', error);
 	}

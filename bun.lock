@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "vasak-file-manager",
@@ -12,7 +11,7 @@
         "@tauri-apps/plugin-opener": "~2.5.3",
         "@tauri-apps/plugin-shell": "^2.3.5",
         "@tauri-apps/plugin-store": "^2.4.2",
-        "@vasakgroup/plugin-config-manager": "^2.2.1",
+        "@vasakgroup/plugin-config-manager": "^2.2.2",
         "@vasakgroup/plugin-vicons": "^2.0.0",
         "@vasakgroup/tauri-plugin-i18n": "^2.1.0",
         "lodash.clonedeep": "^4.5.0",
@@ -27,7 +26,7 @@
         "@tailwindcss/postcss": "^4.2.1",
         "@tauri-apps/cli": "^2.10.0",
         "@types/lodash.clonedeep": "^4.5.9",
-        "@types/node": "^25.3.2",
+        "@types/node": "^25.3.3",
         "@vitejs/plugin-vue": "^6.0.4",
         "postcss": "^8.5.6",
         "tailwindcss": "^4.2.1",
