@@ -116,7 +116,7 @@ onBeforeUnmount(() => {
 				:class="[$attrs.class]"
 				:style="{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }"
 				popover-content
-				class="rounded-corner border border-primary background shadow-lg"
+				class="rounded-corner border border-primary bg-ui-bg/80 shadow-lg"
 				@click="(e) => e.stopPropagation()"
 			>
 				<slot />

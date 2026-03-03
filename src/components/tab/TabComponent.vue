@@ -180,7 +180,7 @@ onMounted(async () => {
           {{ t('tabs.closeAllTabs') }}
         </DropdownMenuItem>
       </DropdownMenuContent>
-      <TooltipContent side="bottom" class="min-w-50 max-w-100 background rounded-corner p-2">
+      <TooltipContent side="bottom" class="min-w-50 max-w-100 bg-ui-bg/80 rounded-corner p-2">
         <span>
           <div v-for="(tab, index) in props.tabGroup" :key="index">
             <div class="overflow-hidden text-ellipsis whitespace-nowrap text-primary text-base" :title="tab.name || tab.path">

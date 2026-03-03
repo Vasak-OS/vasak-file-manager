@@ -1,3 +1,3 @@
 <template>
-	<div class="background my-4 h-0.5" />
+	<div class="bg-ui-bg/80 my-4 h-0.5" />
 </template>

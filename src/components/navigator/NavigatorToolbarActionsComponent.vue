@@ -53,7 +53,7 @@ onMounted(async () => {
         <PopoverTrigger as-child>
           <Tooltip>
             <TooltipTrigger as-child>
-              <button class="background rounded-corner p-1 flex justify-center items-center hover:bg-primary">
+              <button class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary">
                 <img :src="layoutGridIcon" alt="Show Grid" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
                 <img :src="layoutListIcon" alt="Show List" v-else height="24" width="24" class="fill-primary" />
               </button>
@@ -77,7 +77,7 @@ onMounted(async () => {
       <Tooltip>
         <TooltipTrigger as-child>
           <button
-            class="background rounded-corner p-1 flex justify-center items-center hover:bg-primary"
+            class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary"
             :class="{ 'bg-primary hover:bg-secondary': props.isSplitView }"
             :disabled="props.isGlobalSearchOpen"
             @click="emit('toggle-split-view')"
@@ -90,7 +90,7 @@ onMounted(async () => {
       <Tooltip>
         <TooltipTrigger as-child>
           <button
-            class="background rounded-corner p-1 flex justify-center items-center hover:bg-primary"
+            class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary"
             :class="{ 'bg-primary hover:bg-secondary': props.showInfoPanel }"
             @click="emit('toggle-info-panel')"
           >

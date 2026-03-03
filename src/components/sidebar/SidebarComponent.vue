@@ -10,7 +10,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-screen w-10 background rounded-l-corner-window justify-between flex p-1">
+  <div class="h-screen w-10 bg-ui-bg/80 rounded-l-corner-window justify-between flex p-1">
     <div>
       <div class="mb-2 p-1">
         <img :src="folderIcon" class="h-6 w-6 inline-block" alt="Home">

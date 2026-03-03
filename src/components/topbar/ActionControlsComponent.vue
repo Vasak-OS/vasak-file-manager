@@ -16,13 +16,13 @@ onMounted(async () => {
 </script>
 <template>
   <div class="flex gap-1" data-tauri-drag-region>
-    <span class="p-1 background rounded-corner hover:bg-status-success" @click="appWindow.minimize()">
+    <span class="p-1 bg-ui-bg/80 rounded-corner hover:bg-status-success" @click="appWindow.minimize()">
       <img :src="minimizeIcon" class="h-6 w-6 inline-block" alt="Minimize">
     </span>
-    <span class="p-1 background rounded-corner hover:bg-status-warning" @click="appWindow.toggleMaximize()">
+    <span class="p-1 bg-ui-bg/80 rounded-corner hover:bg-status-warning" @click="appWindow.toggleMaximize()">
       <img :src="maximizeIcon" class="h-6 w-6 inline-block" alt="Maximize">
     </span>
-    <span class="p-1 background rounded-corner hover:bg-status-error" @click="appWindow.close()">
+    <span class="p-1 bg-ui-bg/80 rounded-corner hover:bg-status-error" @click="appWindow.close()">
       <img :src="closeIcon" class="h-6 w-6 inline-block" alt="Close">
     </span>
   </div>
