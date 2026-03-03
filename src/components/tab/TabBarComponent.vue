@@ -69,9 +69,9 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport :to="teleportTo" :disabled="teleportDisabled">
-    <div class="tab-bar animate-sigma-ui-fade-in" :class="{ 'tab-bar--compact': compact }">
-      <div ref="scrollContainerRef" class="tab-bar__base-container" @wheel.prevent="handleWheel" @scroll="onScroll">
-        <div class="tab-bar__base">
+    <div class="flex max-w-[calc(100vw-288px)] h-full items-center gap-1 animate-sigma-ui-fade-in">
+      <div ref="scrollContainerRef" class="flex overflow-auto items-center" @wheel.prevent="handleWheel" @scroll="onScroll">
+        <div class="tab-bar__base flex w-fit items-center justify-center h-fit">
           <TabDraggableComponent :items="workspacesStore.currentWorkspace?.tabGroups || []"
             :draggable-bg-color-var="'window-toolbar-color'" parent-selector=".tab-bar"
             @set="setTabs($event as TabGroup[])" @drag-start="previewEnabled = false" @drag-end="previewEnabled = true">
@@ -85,7 +85,7 @@ onBeforeUnmount(() => {
 
       <Tooltip>
         <TooltipTrigger as-child>
-          <button class="tab-bar__add-tab-button" variant="ghost" size="xs" @click="openNewTabGroup()">
+          <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" variant="ghost" size="xs" @click="openNewTabGroup()">
             <img v-if="plusIcon" :src="plusIcon" alt="Add Tab" class="w-3.5 h-3.5" />
           </button>
         </TooltipTrigger>
@@ -97,49 +97,3 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
 </template>
-
-<style>
-.tab-bar {
-  display: flex;
-  max-width: 100%;
-  height: 100%;
-  align-items: center;
-  gap: 4px;
-}
-
-.tab-bar__base-container {
-  display: flex;
-  overflow: auto;
-  align-items: center;
-  -webkit-app-region: no-drag;
-  scrollbar-width: none;
-}
-
-.tab-bar__base {
-  display: flex;
-  width: fit-content;
-  height: calc(var(--window-toolbar-height) - 4px);
-  align-items: center;
-  justify-content: center;
-}
-
-.tab-bar__add-tab-button {
-  color: hsl(var(--muted-foreground));
-}
-
-.tab-bar--compact {
-  width: 100%;
-  height: 36px;
-  padding: 4px 0;
-}
-
-.tab-bar--compact .tab-bar__base-container {
-  overflow: auto hidden;
-  min-width: 0;
-  flex: 1;
-}
-
-.tab-bar--compact .tab-bar__base {
-  height: 28px;
-}
-</style>
