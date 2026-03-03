@@ -84,9 +84,13 @@ function handlePointerDown(event: PointerEvent) {
 	startLongPressTimer();
 }
 
-const isActive = computed(
-	() => props.tabGroup?.[0]?.id === workspacesStore.currentTabGroup?.[0]?.id
-);
+const isActive = computed(() => {
+	const currentIndex = workspacesStore.currentWorkspace?.currentTabGroupIndex;
+	const tabGroupIndex = workspacesStore.currentWorkspace?.tabGroups.findIndex(
+		(tg) => tg[0]?.id === props.tabGroup?.[0]?.id
+	);
+	return currentIndex === tabGroupIndex && tabGroupIndex !== -1;
+});
 
 const showCloseButton = computed(() => {
 	const tabGroups = workspacesStore.currentWorkspace?.tabGroups ?? [];
@@ -143,12 +147,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <DropdownMenu v-model:open="isDropdownOpen">
+  <DropdownMenu v-model:open="isDropdownOpen" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive } ">
     <Tooltip :disabled="!(props.previewEnabled && showTabPreview) || isDropdownOpen"
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child :disabled="true">
-          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-28 background rounded-corner px-3 pr-2 items-center hover:bg-primary" :class="{ 'bg-secondary': isActive }"
+          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-28 rounded-corner px-3 pr-2 items-center"
             :style="{
               'width': `${props.tabGroup?.length === 2 ? NAVIGATOR_TAB_WIDTH * 2 : NAVIGATOR_TAB_WIDTH}px`
             }" @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
