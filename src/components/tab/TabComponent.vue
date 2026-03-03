@@ -129,12 +129,12 @@ function handleAuxClick(event: MouseEvent) {
 	}
 }
 
-function closeOtherTabs() {
-	workspacesStore.closeOtherTabGroups(props.tabGroup);
+async function closeOtherTabs() {
+	await workspacesStore.closeOtherTabGroups(props.tabGroup);
 }
 
-function closeAllTabs() {
-	workspacesStore.closeAllTabGroups();
+async function closeAllTabs() {
+	await workspacesStore.closeAllTabGroups();
 }
 
 onMounted(async () => {
@@ -148,20 +148,20 @@ onMounted(async () => {
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child :disabled="true">
-          <div v-if="props.tabGroup?.length" v-wave class="tab relative flex w-28 background rounded-corner px-3 pr-2 items-center hover:bg-primary" :class="{ 'bg-secondary': isActive }"
+          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-28 background rounded-corner px-3 pr-2 items-center hover:bg-primary" :class="{ 'bg-secondary': isActive }"
             :style="{
               'width': `${props.tabGroup?.length === 2 ? NAVIGATOR_TAB_WIDTH * 2 : NAVIGATOR_TAB_WIDTH}px`
             }" @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
-            <div class="tab__title">
+            <div class="w-full overflow-hidden">
               <span>
                 {{ tabName }}
               </span>
             </div>
 
-            <button v-if="showCloseButton" class="tab__close-button" x-small icon
+            <button v-if="showCloseButton"
               @click.stop="emit('close-tab', props.tabGroup)">
-              <img :src="xIcon" :size="14" />
+              <img :src="xIcon" :alt="t('tabs.close')" class="h-6 w-6" />
             </button>
           </div>
         </DropdownMenuTrigger>
@@ -191,58 +191,3 @@ onMounted(async () => {
     </Tooltip>
   </DropdownMenu>
 </template>
-
-<style>
-
-.tab:hover {
-  background-color: hsl(var(--background-2) / 70%)
-}
-
-.tab__title {
-  overflow: hidden;
-  width: calc(100% - 24px);
-  font-size: 12px;
-  text-overflow: clip;
-  white-space: nowrap;
-}
-
-.tab--no-close .tab__title {
-  width: 100%;
-}
-
-.tab__close-button {
-  position: absolute;
-  right: 3px;
-  display: flex;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-}
-
-.tab__close-button:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
-.tab__close-button:hover {
-  background-color: hsl(var(--primary) / 20%);
-}
-
-.tab__tooltip-content {
-  min-width: 200px;
-  max-width: 400px;
-}
-
-.tab__dropdown-menu {
-  min-width: 160px;
-}
-
-.tab__menu-button {
-  color: hsl(var(--muted-foreground));
-}
-
-</style>

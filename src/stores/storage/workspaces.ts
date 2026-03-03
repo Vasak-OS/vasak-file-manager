@@ -159,10 +159,15 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		currentWorkspace.value.tabGroups = [newTabGroup];
 		currentWorkspace.value.currentTabGroupIndex = 0;
 		currentWorkspace.value.currentTabIndex = 0;
-		await openTabGroup(newTabGroup);
+		try {
+			await openTabGroup(newTabGroup);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error(`Failed to open new tab group: ${errorMessage}`);
+		}
 	}
 
-	function closeOtherTabGroups(keepTabGroup?: Tab[]) {
+	async function closeOtherTabGroups(keepTabGroup?: Tab[]) {
 		if (!currentWorkspace.value) {
 			return;
 		}
@@ -177,6 +182,12 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		currentWorkspace.value.tabGroups = [tabGroupCopy];
 		currentWorkspace.value.currentTabGroupIndex = 0;
 		currentWorkspace.value.currentTabIndex = 0;
+		try {
+			await openTabGroup(tabGroupCopy);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error(`Failed to open kept tab group: ${errorMessage}`);
+		}
 	}
 
 	function setCurrentTabGroupAfterClosing(params: {
