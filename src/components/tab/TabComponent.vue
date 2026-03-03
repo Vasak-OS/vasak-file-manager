@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -11,6 +11,8 @@ import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { Tab } from '@/types/workspaces';
 import { useEventListener } from '@/utils/event-listener';
 import { useTimeoutFn } from '@/utils/timeout';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 
 interface Props {
 	tabGroup: Tab[];
@@ -22,11 +24,11 @@ type Emits = (event: 'close-tab', value: Tab[]) => void;
 const props = withDefaults(defineProps<Props>(), {
 	tabGroup: () => [],
 });
-
 const emit = defineEmits<Emits>();
+const { t } = useI18n();
 
 const workspacesStore = useWorkspacesStore();
-
+const xIcon = ref('');
 const showTabPreview = true;
 const NAVIGATOR_TAB_WIDTH = 100;
 const LONG_PRESS_DELAY = 500;
@@ -134,6 +136,10 @@ function closeOtherTabs() {
 function closeAllTabs() {
 	workspacesStore.closeAllTabGroups();
 }
+
+onMounted(async () => {
+  xIcon.value = await getSymbolSource('gtk-close');
+});
 </script>
 
 <template>
@@ -142,10 +148,10 @@ function closeAllTabs() {
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child :disabled="true">
-          <div v-if="props.tabGroup?.length" v-wave class="tab" :class="{ 'tab--no-close': !showCloseButton }"
+          <div v-if="props.tabGroup?.length" v-wave class="tab relative flex w-28 background rounded-corner px-3 pr-2 items-center hover:bg-primary" :class="{ 'bg-secondary': isActive }"
             :style="{
-              '--tab-width': `${props.tabGroup?.length === 2 ? NAVIGATOR_TAB_WIDTH * 2 : NAVIGATOR_TAB_WIDTH}px`
-            }" :is-active="isActive" @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
+              'width': `${props.tabGroup?.length === 2 ? NAVIGATOR_TAB_WIDTH * 2 : NAVIGATOR_TAB_WIDTH}px`
+            }" @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
             <div class="tab__title">
               <span>
@@ -155,28 +161,28 @@ function closeAllTabs() {
 
             <button v-if="showCloseButton" class="tab__close-button" x-small icon
               @click.stop="emit('close-tab', props.tabGroup)">
-              <XIcon :size="14" />
+              <img :src="xIcon" :size="14" />
             </button>
           </div>
         </DropdownMenuTrigger>
       </TooltipTrigger>
-      <DropdownMenuContent align="start" class="tab__dropdown-menu">
+      <DropdownMenuContent align="start" class="max-w-60">
         <DropdownMenuItem @select="closeOtherTabs">
-          <XIcon class="tab__menu-button-icon" :size="14" />
-          'tabs.closeOtherTabs'
+          <img :alt="t('tabs.closeOtherTabs')" :src="xIcon" class="mr-2 inline-block h-4 w-4" />
+          {{ t('tabs.closeOtherTabs') }}
         </DropdownMenuItem>
         <DropdownMenuItem @select="closeAllTabs">
-          <XIcon class="tab__menu-button-icon" :size="14" />
-          'tabs.closeAllTabs'
+          <img :alt="t('tabs.closeAllTabs')" :src="xIcon" class="mr-2 inline-block h-4 w-4" />
+          {{ t('tabs.closeAllTabs') }}
         </DropdownMenuItem>
       </DropdownMenuContent>
-      <TooltipContent side="bottom" class="tab__tooltip-content">
+      <TooltipContent side="bottom" class="min-w-50 max-w-100 background rounded-corner p-2">
         <span>
           <div v-for="(tab, index) in props.tabGroup" :key="index">
-            <div class="tab__tooltip-title">
+            <div class="overflow-hidden text-ellipsis whitespace-nowrap text-primary text-base" :title="tab.name || tab.path">
               {{ tab.name }}
             </div>
-            <div class="tab__tooltip-subtitle">
+            <div class="overflow-hidden text-ellipsis whitespace-nowrap text-secondary text-sm" :title="tab.path">
               {{ tab.path }}
             </div>
           </div>
@@ -187,46 +193,6 @@ function closeAllTabs() {
 </template>
 
 <style>
-.tab {
-  position: relative;
-  display: flex;
-  width: var(--tab-width, 100px);
-  min-width: 0;
-  height: var(--tab-height);
-  align-items: center;
-  padding: 0 10px;
-  padding-right: 4px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  -webkit-app-region: no-drag;
-  background-color: transparent;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  opacity: 0.9;
-  user-select: none;
-}
-
-.tab[is-active="true"] {
-  background-color: hsl(var(--background-2));
-  color: hsl(var(--foreground) / 80%);
-  opacity: 1;
-}
-
-.tab::after {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background-color: hsl(var(--background-2) / 0%);
-  box-shadow: 0 0 6px hsl(var(--background-2) / 0%);
-  content: "";
-}
-
-.tab[is-active="true"]::after {
-  background-color: hsl(var(--background-2) / 50%);
-  box-shadow: 0 0 6px hsl(var(--background-2) / 100%);
-}
 
 .tab:hover {
   background-color: hsl(var(--background-2) / 70%)
@@ -266,22 +232,6 @@ function closeAllTabs() {
   background-color: hsl(var(--primary) / 20%);
 }
 
-.tab__tooltip-title {
-  overflow: hidden;
-  color: hsl(var(--foreground));
-  font-size: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tab__tooltip-subtitle {
-  overflow: hidden;
-  color: hsl(var(--foreground) / 50%);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .tab__tooltip-content {
   min-width: 200px;
   max-width: 400px;
@@ -295,7 +245,4 @@ function closeAllTabs() {
   color: hsl(var(--muted-foreground));
 }
 
-.tab__menu-button-icon {
-  margin-right: 8px;
-}
 </style>
