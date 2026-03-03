@@ -127,9 +127,9 @@ function openCollapsedPopover() {
     <div v-if="clipboardStore.showToolbar" class="clipboard-toolbar-container">
       <Popover :open="clipboardItemsPopoverOpen" @update:open="(open) => clipboardItemsPopoverOpen = open">
         <PopoverAnchor as-child>
-          <div class="clipboard-toolbar" :class="{
-            'clipboard-toolbar--copy': clipboardStore.isCopyOperation,
-            'clipboard-toolbar--move': clipboardStore.isMoveOperation,
+          <div class="flex min-h-10 items-center justify-between px-4 rounded-corner gap-4 text-sm" :class="{
+            'bg-status-success/80': clipboardStore.isCopyOperation,
+            'bg-status-warning/80': clipboardStore.isMoveOperation,
           }">
             <div class="clipboard-toolbar__info">
               <div class="clipboard-toolbar__icon">
@@ -280,34 +280,6 @@ function openCollapsedPopover() {
 <style scoped>
 .clipboard-toolbar-container {
   container-type: inline-size;
-}
-
-.clipboard-toolbar {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  border-radius: var(--radius-sm);
-  backdrop-filter: blur(12px);
-  font-size: 13px;
-  gap: 16px;
-}
-
-.clipboard-toolbar--copy {
-  background: linear-gradient(135deg,
-      hsl(var(--success) / 20%) 0%,
-      hsl(var(--success) / 12%) 50%,
-      hsl(var(--success) / 8%) 100%);
-  color: hsl(var(--success));
-}
-
-.clipboard-toolbar--move {
-  background: linear-gradient(135deg,
-      hsl(var(--warning) / 20%) 0%,
-      hsl(var(--warning) / 12%) 50%,
-      hsl(var(--warning) / 8%) 100%);
-  color: hsl(var(--warning));
 }
 
 .clipboard-slide-enter-active {
