@@ -121,7 +121,7 @@ defineExpose({
       :operation-type="fb.dragOperationType.value" :cursor-x="fb.dragCursorX.value" :cursor-y="fb.dragCursorY.value" />
 
     <Transition name="cross-pane-drop-overlay">
-      <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary dark:border-primary-dark rounded-corner inset-0 pointer-events-none cross-pane-drop-overlay" />
+      <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary rounded-corner inset-0 pointer-events-none cross-pane-drop-overlay" />
     </Transition>
 
     <FileBrowserInboundDragOverlayComponent v-if="!fb.isExternalMode" :is-active="fb.isExternalDragActive.value"

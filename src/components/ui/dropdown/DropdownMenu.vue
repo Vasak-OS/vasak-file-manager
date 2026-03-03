@@ -46,7 +46,7 @@ provide('dropdown', {
 </script>
 
 <template>
-	<div class="relative inline-block background rounded-corner p-1 hover:bg-primary dark:hover:bg-primary-dark">
+	<div class="relative inline-block background rounded-corner p-1 hover:bg-primary">
 		<slot />
 	</div>
 </template>

@@ -8,7 +8,7 @@ defineProps<Props>();
 
 <template>
 	<div
-		:class="['px-3 py-2 text-sm font-semibold text-tx-main dark:text-tx-main-dark', $attrs.class]"
+		:class="['px-3 py-2 text-sm font-semibold text-tx-main', $attrs.class]"
 	>
 		<slot />
 	</div>
