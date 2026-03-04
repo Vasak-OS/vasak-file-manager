@@ -147,18 +147,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <DropdownMenu v-model:open="isDropdownOpen" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive } ">
+  <DropdownMenu v-model:open="isDropdownOpen">
     <Tooltip :disabled="!(props.previewEnabled && showTabPreview) || isDropdownOpen"
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child :disabled="true">
-          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-28 rounded-corner px-3 pr-2 items-center"
-            :style="{
-              'width': `${props.tabGroup?.length === 2 ? NAVIGATOR_TAB_WIDTH * 2 : NAVIGATOR_TAB_WIDTH}px`
-            }" @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
+          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-34 max-w-34 rounded-corner p-1 px-3 pr-3 items-center" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }"
+            @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
             <div class="w-full overflow-hidden">
-              <span>
+              <span class="overflow-hidden text-ellipsis whitespace-nowrap" :title="tabName">
                 {{ tabName }}
               </span>
             </div>

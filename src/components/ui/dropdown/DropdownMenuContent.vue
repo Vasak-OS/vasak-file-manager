@@ -110,8 +110,8 @@ onBeforeUnmount(() => {
 	<Teleport to="body">
 		<Transition
 			name="dropdown"
-			@enter="(el) => el.offsetHeight"
-			@leave="(el) => el.offsetHeight"
+			@enter="(el) => (el as HTMLElement).offsetHeight"
+			@leave="(el) => (el as HTMLElement).offsetHeight"
 		>
 			<div
 				v-show="isOpen"

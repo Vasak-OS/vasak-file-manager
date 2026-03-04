@@ -17,6 +17,7 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import type { DirContents } from '@/types/dir-entry';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	currentPath: string;
@@ -39,6 +40,14 @@ const pathInputRef = ref<HTMLInputElement | null>(null);
 const popoverWidth = ref(0);
 const separatorDropdowns = ref<{ [key: number]: string[] }>({});
 const openSeparatorIndex = ref<number | null>(null);
+const isActionsMenuOpen = ref(false);
+const copyIcon = ref('');
+const clipboardPasteIcon = ref('');
+const folderIcon = ref('');
+const ellipsisVerticalIcon = ref('');
+const chevronRightIcon = ref('');
+const pinIcon = ref('');
+const textCursorIcon = ref('');
 
 function updatePopoverWidth() {
 	if (addressBarRef.value) {
@@ -114,6 +123,28 @@ async function loadSeparatorDirectories(index: number) {
 
 function handleSeparatorNavigate(path: string) {
 	emit('navigate', path);
+}
+
+function handleSeparatorOpenChange(index: number, open: boolean) {
+  if (open) {
+    loadSeparatorDirectories(index);
+    openSeparatorIndex.value = index;
+    return;
+  }
+
+  if (openSeparatorIndex.value === index) {
+    openSeparatorIndex.value = null;
+  }
+}
+
+async function openSeparatorMenu(index: number) {
+  if (openSeparatorIndex.value === index) {
+    openSeparatorIndex.value = null;
+    return;
+  }
+
+  await loadSeparatorDirectories(index);
+  openSeparatorIndex.value = index;
 }
 
 function scrollSelectedIntoView() {
@@ -298,11 +329,18 @@ function handleGlobalKeydown(event: KeyboardEvent) {
 	}
 }
 
-onMounted(() => {
+onMounted(async() => {
 	nextTick(() => {
 		scrollBreadcrumbsToEnd();
 	});
 	window.addEventListener('keydown', handleGlobalKeydown);
+  copyIcon.value = await getSymbolSource('edit-copy');
+  clipboardPasteIcon.value = await getSymbolSource('edit-paste');
+  folderIcon.value = await getSymbolSource('folder');
+  ellipsisVerticalIcon.value = await getSymbolSource('view-more-symbolic');
+  chevronRightIcon.value = await getSymbolSource('arrow-right');
+  pinIcon.value = await getSymbolSource('pin');
+  textCursorIcon.value = await getSymbolSource('edit-select-text')
 });
 
 onUnmounted(() => {
@@ -311,23 +349,23 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="addressBarRef" class="address-bar">
-    <DropdownMenu>
+  <div ref="addressBarRef" class="address-bar relative flex overflow-hidden flex-1 h-10 items-center bg-ui-bg/80 rounded-corner gap-1 transition-colors p-1 border border-ui-border">
+    <DropdownMenu v-model:open="isActionsMenuOpen">
       <Tooltip>
         <TooltipTrigger as-child>
-          <DropdownMenuTrigger as-child>
-            <button type="button" class="address-bar__menu-button">
-              <EllipsisVerticalIcon :size="16" />
+          <DropdownMenuTrigger as-child :disabled="true">
+            <button type="button" class="shrink-0 h-7 w-7 p-1" @click.stop="isActionsMenuOpen = true">
+              <img :src="ellipsisVerticalIcon" :alt="t('settings.addressBar.addressBarActions')" />
             </button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
         <DropdownMenuContent :side="'bottom'" :align="'start'" class="address-bar__menu">
           <DropdownMenuItem @select="copyPathToClipboard">
-            <CopyIcon :size="16" />
+            <img :src="copyIcon" alt="copy" class="h-4 w-4 inline-block mr-2" />
             <span>{{ t('settings.addressBar.copyPathToClipboard') }}</span>
           </DropdownMenuItem>
           <DropdownMenuItem @select="openCopiedPath">
-            <ClipboardPasteIcon :size="16" />
+            <img :src="clipboardPasteIcon" alt="paste" class="h-4 w-4 inline-block mr-2" />
             <span>{{ t('settings.addressBar.openCopiedPath') }}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -336,37 +374,34 @@ onUnmounted(() => {
         </TooltipContent>
       </Tooltip>
     </DropdownMenu>
-    <Popover :open="isEditorOpen" @update:open="(open: boolean) => { if (open || !isPinned) isEditorOpen = open }">
+    <Popover :open="isEditorOpen" class="flex-1" @update:open="(open: boolean) => { if (open || !isPinned) isEditorOpen = open }">
       <PopoverTrigger as-child>
         <div ref="breadcrumbsContainerRef" class="address-bar__breadcrumbs" @wheel="handleBreadcrumbsWheel"
           @click="openEditor">
           <div class="address-bar__breadcrumbs-inner">
             <template v-for="(part, index) in addressParts" :key="index">
-              <button class="address-bar__part" :class="{ 'address-bar__part--last': part.isLast }"
+              <button class="px-1.5 py-1 rounded-corner text-sm whitespace-nowrap hover:text-primary" :class="{ 'text-secondary': part.isLast }"
                 :disabled="part.isLast" :title="part.path" @click.stop="navigateToPart(part.path)">
                 {{ part.name }}
               </button>
-              <DropdownMenu v-if="!part.isLast" @update:open="(open: boolean) => {
-                if (open) {
-                  loadSeparatorDirectories(index);
-                  openSeparatorIndex = index;
-                } else {
-                  openSeparatorIndex = null;
-                }
-              }">
+              <DropdownMenu
+                v-if="!part.isLast"
+                :open="openSeparatorIndex === index"
+                @update:open="(open: boolean) => handleSeparatorOpenChange(index, open)"
+              >
                 <DropdownMenuTrigger as-child>
                   <button class="address-bar__separator" :title="t('settings.addressBar.showSiblingDirectories')"
-                    @click.stop>
-                    <ChevronRightIcon :size="12"
+                    @click.stop="openSeparatorMenu(index)">
+                    <img :src="chevronRightIcon" alt="Chevron Right" class="h-4 w-4" :size="12"
                       :class="{ 'address-bar__separator-icon--open': openSeparatorIndex === index }" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent :side="'bottom'" :align="'start'" class="address-bar__separator-menu">
                   <ScrollArea as-child class="address-bar__separator-menu-scroll">
                     <DropdownMenuItem v-for="dirPath in separatorDropdowns[index]" :key="dirPath"
-                      @select="handleSeparatorNavigate(dirPath)">
-                      <FolderIcon :size="14" class="address-bar__separator-menu-icon" />
-                      <span class="address-bar__separator-menu-path">{{ dirPath.split('/').pop() || dirPath }}</span>
+                      @select="handleSeparatorNavigate(dirPath)" class="flex items-center justify-center">
+                      <img :src="folderIcon" :alt="dirPath" class="h-4 w-4 inline-block mr-2" />
+                      <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ dirPath.split('/').pop() || dirPath }}</span>
                     </DropdownMenuItem>
                   </ScrollArea>
                 </DropdownMenuContent>
@@ -387,7 +422,7 @@ onUnmounted(() => {
             <TooltipTrigger as-child>
               <button type="button" tabindex="-1" class="address-bar__pin-button"
                 :class="{ 'address-bar__pin-button--active': isPinned }" @click="isPinned = !isPinned">
-                <PinIcon :size="14" />
+                <img :src="pinIcon" :size="14" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -412,12 +447,12 @@ onUnmounted(() => {
           </Tooltip>
         </div>
 
-        <ScrollArea v-if="autocompleteList.length > 0" class="address-bar__suggestions">
-          <button v-for="(path, index) in autocompleteList" :key="path" tabindex="-1" class="address-bar__suggestion"
-            :class="{ 'address-bar__suggestion--selected': index === selectedIndex }" @click="handlePathSelect(path)"
+        <ScrollArea v-if="autocompleteList.length > 0">
+          <button v-for="(path, index) in autocompleteList" :key="path" tabindex="-1" class="flex no-wrap items-center w-full px-3 py-1 text-sm gap-2 text-left"
+            :class="{ 'bg-secondary': index === selectedIndex }" @click="handlePathSelect(path)"
             @mouseenter="selectedIndex = index">
-            <FolderIcon :size="14" class="address-bar__suggestion-icon" />
-            <span class="address-bar__suggestion-path">{{ path }}</span>
+            <img :src="folderIcon" :alt="path" class="h-4 w-4 inline-block mr-2" />
+            <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ path }}</span>
           </button>
         </ScrollArea>
 
@@ -440,8 +475,8 @@ onUnmounted(() => {
 
     <Tooltip>
       <TooltipTrigger as-child>
-        <button type="button" class="address-bar__edit-button" @click="openEditor">
-          <TextCursorIcon :size="14" />
+        <button type="button" class="shrink-0 h-7 w-7 p-1" @click="openEditor">
+          <img :src="textCursorIcon" :alt="t('settings.addressBar.editAddress')" />
         </button>
       </TooltipTrigger>
       <TooltipContent>
@@ -453,33 +488,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.address-bar {
-  position: relative;
-  display: flex;
-  overflow: hidden;
-  min-width: 0;
-  height: 36px;
-  flex: 1;
-  align-items: center;
-  border: 1px solid hsl(var(--border) / 50%);
-  border-radius: var(--radius-md);
-  background-color: hsl(var(--background) / 50%);
-  gap: 2px;
-  transition: background-color 0.15s, border-color 0.15s;
-}
-
-.address-bar:hover {
-  border-color: hsl(var(--border));
-  background-color: hsl(var(--muted) / 50%);
-}
-
-.address-bar__menu-button,
-.address-bar__edit-button {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-}
-
 .address-bar__breadcrumbs {
   display: flex;
   min-width: 0;
@@ -500,33 +508,6 @@ onUnmounted(() => {
   min-width: max-content;
   align-items: center;
   padding-right: 8px;
-}
-
-.address-bar__part {
-  padding: 4px 6px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: hsl(var(--foreground) / 80%);
-  cursor: pointer;
-  font-size: 13px;
-  transition: background-color 0.1s, color 0.1s;
-  white-space: nowrap;
-}
-
-.address-bar__part:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
-.address-bar__part:hover:not(:disabled) {
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--foreground));
-}
-
-.address-bar__part--last {
-  color: hsl(var(--muted-foreground));
-  cursor: default;
 }
 
 .address-bar__separator {
@@ -608,12 +589,6 @@ onUnmounted(() => {
   stroke: hsl(var(--primary));
 }
 
-.address-bar__suggestions {
-  max-height: 200px;
-  padding: 4px 0;
-  border-top: 1px solid hsl(var(--border));
-}
-
 .address-bar__suggestion {
   display: flex;
   width: 100%;
@@ -628,39 +603,6 @@ onUnmounted(() => {
   transition: background-color 0.1s;
 }
 
-.address-bar__suggestion:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: -2px;
-}
-
-.address-bar__suggestion:hover {
-  background-color: hsl(var(--primary) / 30%);
-}
-
-.address-bar__suggestion--selected {
-  background-color: hsl(var(--primary) / 15%);
-  color: hsl(var(--primary) / 90%);
-}
-
-.address-bar__suggestion--selected .address-bar__suggestion-icon {
-  color: hsl(var(--primary));
-}
-
-.address-bar__suggestion-icon {
-  flex-shrink: 0;
-  color: hsl(var(--muted-foreground));
-}
-
-.address-bar__suggestion-path {
-  overflow: hidden;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.address-bar__separator-menu-icon {
-  flex-shrink: 0;
-}
 
 .address-bar__empty {
   padding: 12px;
