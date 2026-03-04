@@ -3,9 +3,8 @@ import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
+import type { DirEntry } from '@/types/dir-entry';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
-import { DirEntry } from '@/types/dir-entry';
-
 
 const props = defineProps<{
 	isActive: boolean;
@@ -13,7 +12,7 @@ const props = defineProps<{
 	operationType: DragOperationType;
 	cursorX: number;
 	cursorY: number;
-  dragItems: DirEntry[];
+	dragItems?: DirEntry[];
 }>();
 
 const { t } = useI18n();
@@ -59,8 +58,14 @@ onMounted(async () => {
         </div>
         <div class="font-[11px] text-tx-muted">
           {{ t('drag.holdShiftToChangeMode') }}
-          <EntryIconComponent v-for="item in props.dragItems" :entry="item" :size="24" class="h-8 w-8 fixed z-50" :style="overlayIconStyle" />
-          <img :src="operationIcon" alt="Drag operation" class="h-8 w-8 fixed z-50" :style="overlayIconStyle" />
+          <EntryIconComponent
+            v-for="item in props.dragItems"
+            :key="item.path"
+            :entry="item"
+            :size="24"
+            class="h-8 w-8 fixed z-50"
+            :style="overlayIconStyle"
+          />
         </div>
       </div>
     </Transition>

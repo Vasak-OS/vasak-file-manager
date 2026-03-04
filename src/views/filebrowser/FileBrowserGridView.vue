@@ -2,7 +2,7 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
-import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
+import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
@@ -128,7 +128,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
             <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--hover" />
           </div>
           <div class="file-browser-grid-view__card-preview">
-            <FileBrowserEntryIcon :entry="entry" :size="24"
+            <EntryIconComponent :entry="entry" :size="24"
               class="file-browser-grid-view__card-icon file-browser-grid-view__card-icon--folder" />
           </div>
           <div class="file-browser-grid-view__card-info">

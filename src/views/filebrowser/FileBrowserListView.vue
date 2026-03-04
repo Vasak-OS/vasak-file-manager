@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { computed, type Ref, ref } from 'vue';
-import FileBrowserEntryIcon from '@/components/filebrowser/FileBrowserEntryIconComponent.vue';
+import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
@@ -100,7 +100,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           <div class="file-browser-list-view__overlay file-browser-list-view__overlay--hover" />
         </div>
         <div class="file-browser-list-view__entry-name">
-          <FileBrowserEntryIcon :entry="entry" :size="18" class="h-4 w-4" />
+          <EntryIconComponent :entry="entry" :size="18" class="h-4 w-4" />
           <div class="file-browser-list-view__entry-name-content">
             <span class="file-browser-list-view__entry-text">{{ entry.name }}</span>
             <span v-if="ctx.entryDescription?.(entry)" class="file-browser-list-view__entry-description">{{
