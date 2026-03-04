@@ -39,6 +39,8 @@ const clipboardItemsPopoverOpen = ref(false);
 const clipboardItemsFilterQuery = ref('');
 
 const xIcon = ref('')
+const eyeIcon = ref('');
+const clipboardPasteIcon = ref('');
 
 const canPaste = computed(() => {
 	if (!clipboardStore.hasItems || !props.currentPath) {
@@ -126,6 +128,8 @@ function openCollapsedPopover() {
 
 onMounted(async() => {
   xIcon.value = await getSymbolSource('gtk-close');
+  eyeIcon.value = await getSymbolSource('redeyes-symbolic');
+  clipboardPasteIcon.value = await getSymbolSource('edit-paste');
 });
 </script>
 
@@ -157,7 +161,7 @@ onMounted(async() => {
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--expanded">
               <Button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
                 @click="clipboardItemsPopoverOpen = true">
-                <EyeIcon :size="14" />
+                <img :src="eyeIcon" :alt="t('fileBrowser.showItems')" class="h-4 w-4 inline-block" />
                 <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.showItems') }}</span>
               </Button>
 
@@ -167,7 +171,7 @@ onMounted(async() => {
                     <button variant="ghost" size="sm" class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane1 }" :disabled="!canPasteToPane1"
                       @click="emit('pasteToPane', 0)">
-                      <ClipboardPasteIcon :size="14" />
+                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane1')" class="h-4 w-4 inline-block" />
                       <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane1') }}</span>
                     </button>
                   </TooltipTrigger>
@@ -182,7 +186,7 @@ onMounted(async() => {
                     <button variant="ghost" size="sm" class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane2 }" :disabled="!canPasteToPane2"
                       @click="emit('pasteToPane', 1)">
-                      <ClipboardPasteIcon :size="14" />
+                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane2')" class="h-4 w-4 inline-block" />
                       <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane2') }}</span>
                     </button>
                   </TooltipTrigger>
@@ -198,7 +202,7 @@ onMounted(async() => {
                   <button variant="ghost" size="sm" class="clipboard-toolbar__button"
                     :class="{ 'clipboard-toolbar__button--disabled': !canPaste }" :disabled="!canPaste"
                     @click="emit('paste')">
-                    <ClipboardPasteIcon :size="14" />
+                    <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.paste')" class="h-4 w-4 inline-block" />
                     <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.paste') }}</span>
                   </button>
                 </TooltipTrigger>
@@ -210,7 +214,7 @@ onMounted(async() => {
 
               <button variant="ghost" size="sm" class="clipboard-toolbar__button clipboard-toolbar__button--discard"
                 :title="t('fileBrowser.discardClipboard')" @click="clipboardStore.clearClipboard()">
-                <XIcon :size="14" />
+                <img :src="xIcon" :alt="t('fileBrowser.discardClipboard')" class="h-4 w-4 inline-block" />
                 <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.discardClipboard') }}</span>
               </button>
             </div>
@@ -224,26 +228,26 @@ onMounted(async() => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="clipboard-toolbar__dropdown">
                   <DropdownMenuItem @click="openCollapsedPopover">
-                    <EyeIcon :size="14" />
+                    <img :src="eyeIcon" :alt="t('fileBrowser.showItems')" class="h-4 w-4 inline-block" />
                     {{ t('fileBrowser.showItems') }}
                   </DropdownMenuItem>
                   <template v-if="isSplitView">
                     <DropdownMenuItem :disabled="!canPasteToPane1" @click="emit('pasteToPane', 0)">
-                      <ClipboardPasteIcon :size="14" />
+                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane1')" class="h-4 w-4 inline-block" />
                       {{ t('fileBrowser.actions.pasteToPane1') }}
                     </DropdownMenuItem>
                     <DropdownMenuItem :disabled="!canPasteToPane2" @click="emit('pasteToPane', 1)">
-                      <ClipboardPasteIcon :size="14" />
+                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane2')" class="h-4 w-4 inline-block" />
                       {{ t('fileBrowser.actions.pasteToPane2') }}
                     </DropdownMenuItem>
                   </template>
                   <DropdownMenuItem v-else :disabled="!canPaste" @click="emit('paste')">
-                    <ClipboardPasteIcon :size="14" />
+                    <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.paste')" class="h-4 w-4 inline-block" />
                     {{ t('fileBrowser.actions.paste') }}
                   </DropdownMenuItem>
                   <DropdownMenuItem class="clipboard-toolbar__dropdown-item--discard"
                     @click="clipboardStore.clearClipboard()">
-                    <img :src="xIcon" :alt="t('fileBrowser.discardClipboard')" class="h-4 w-4" />
+                    <img :src="xIcon" :alt="t('fileBrowser.discardClipboard')" class="h-4 w-4 inline-block" />
                     {{ t('fileBrowser.discardClipboard') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
