@@ -48,6 +48,8 @@ const ellipsisVerticalIcon = ref('');
 const chevronRightIcon = ref('');
 const pinIcon = ref('');
 const textCursorIcon = ref('');
+const xIcon = ref('');
+const ignoreNextEditorClose = ref(false);
 
 function updatePopoverWidth() {
 	if (addressBarRef.value) {
@@ -181,6 +183,11 @@ function navigateToPart(path: string) {
 }
 
 async function openEditor() {
+  ignoreNextEditorClose.value = true;
+  setTimeout(() => {
+    ignoreNextEditorClose.value = false;
+  }, 0);
+
 	const initialPath = props.currentPath;
 	pathQuery.value = initialPath;
 	selectedIndex.value = -1;
@@ -190,6 +197,16 @@ async function openEditor() {
 	await nextTick();
 	pathInputRef.value?.focus();
 	await updateAutocompleteList(initialPath);
+}
+
+function handleEditorOpenChange(open: boolean) {
+  if (!open && ignoreNextEditorClose.value) {
+    return;
+  }
+
+  if (open || !isPinned.value) {
+    isEditorOpen.value = open;
+  }
 }
 
 async function handlePathInput(value: string | number | undefined) {
@@ -341,6 +358,7 @@ onMounted(async() => {
   chevronRightIcon.value = await getSymbolSource('arrow-right');
   pinIcon.value = await getSymbolSource('pin');
   textCursorIcon.value = await getSymbolSource('edit-select-text')
+  xIcon.value = await getSymbolSource('gtk-close');
 });
 
 onUnmounted(() => {
@@ -374,7 +392,7 @@ onUnmounted(() => {
         </TooltipContent>
       </Tooltip>
     </DropdownMenu>
-    <Popover :open="isEditorOpen" class="flex-1" @update:open="(open: boolean) => { if (open || !isPinned) isEditorOpen = open }">
+    <Popover :open="isEditorOpen" class="flex-1" @update:open="handleEditorOpenChange">
       <PopoverTrigger as-child>
         <div ref="breadcrumbsContainerRef" class="address-bar__breadcrumbs" @wheel="handleBreadcrumbsWheel"
           @click="openEditor">
@@ -437,7 +455,7 @@ onUnmounted(() => {
             <TooltipTrigger as-child>
               <button type="button" tabindex="-1" class="address-bar__close-button"
                 @click="isEditorOpen = false">
-                <XIcon :size="14" />
+                <img :src="xIcon" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
