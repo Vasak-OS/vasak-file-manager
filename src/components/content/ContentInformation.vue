@@ -31,7 +31,7 @@ const infoPanelEntry = computed(() => {
 </script>
 
 <template>
-	<div class="bg-ui-bg/80 rounded-corner h-full w-60 overflow-y-auto p-4">
+	<div class="bg-ui-bg/80 rounded-corner h-full w-60 overflow-y-auto p-4 border border-ui-border">
 		<div v-if="infoPanelEntry" class="space-y-4">
 			<div>
 				<h3 class="font-semibold text-sm mb-2">{{ infoPanelEntry.name }}</h3>

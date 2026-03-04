@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import FileBrowserContextMenu from '@/components/filebrowser/FileBrowserContextMenuComponent.vue';
@@ -31,6 +31,10 @@ const FolderOpenIcon = ref('');
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
 const isColumnsPopoverOpen = ref(false);
+const arrowUpIcon = ref('');
+const arrowDownIcon = ref('');
+const infoIcon = ref('');
+const columnsIcon = ref('');
 
 const columnVisibility = ref({
 	items: true,
@@ -75,6 +79,10 @@ function handleColumnHeaderClick(column: ListSortColumn) {
 
 onMounted(async () => {
 	FolderOpenIcon.value = await getIconSource('folder-open');
+  arrowUpIcon.value = await getSymbolSource('arrow-up');
+  arrowDownIcon.value = await getSymbolSource('arrow-down');
+  infoIcon.value = await getSymbolSource('showinfo');
+  columnsIcon.value = await getSymbolSource('view-file-columns');
 });
 </script>
 
@@ -86,18 +94,18 @@ onMounted(async () => {
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-name"
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
-          <ArrowUpIcon v-if="listSortColumn === 'name' && listSortDirection === 'asc'" :size="12"
+          <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'name' && listSortDirection === 'asc'" 
             class="file-browser-list-view__header-sort-icon" />
-          <ArrowDownIcon v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" :size="12"
+          <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" 
             class="file-browser-list-view__header-sort-icon" />
         </button>
         <button v-if="showItemsColumn" type="button"
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-items"
           @click="handleColumnHeaderClick('items')">
-          'items'
-          <ArrowUpIcon v-if="listSortColumn === 'items' && listSortDirection === 'asc'" :size="12"
+          {{ t('fileBrowser.items') }}
+          <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'items' && listSortDirection === 'asc'" 
             class="file-browser-list-view__header-sort-icon" />
-          <ArrowDownIcon v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'" :size="12"
+          <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'"
             class="file-browser-list-view__header-sort-icon" />
         </button>
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
@@ -106,10 +114,10 @@ onMounted(async () => {
               class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-size file-browser-list-view__header-size--with-info"
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
-              <InfoIcon :size="12" class="file-browser-list-view__header-info-icon" />
-              <ArrowUpIcon v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
+              <img :src="infoIcon" alt="Info" class="file-browser-list-view__header-info-icon" />
+              <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
                 class="file-browser-list-view__header-sort-icon" />
-              <ArrowDownIcon v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'" :size="12"
+              <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'" :size="12"
                 class="file-browser-list-view__header-sort-icon" />
             </button>
           </TooltipTrigger>
@@ -146,9 +154,9 @@ onMounted(async () => {
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-modified"
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
-          <ArrowUpIcon v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" :size="12"
+          <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" 
             class="file-browser-list-view__header-sort-icon" />
-          <ArrowDownIcon v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'" :size="12"
+          <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'"
             class="file-browser-list-view__header-sort-icon" />
         </button>
       </div>
@@ -157,7 +165,7 @@ onMounted(async () => {
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
               <button type="button" class="file-browser-list-view__columns-button">
-                <Columns3Icon :size="14" />
+                <img :src="columnsIcon" :alt="t('fileBrowser.columns')" class="h-4 w-4" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -166,7 +174,7 @@ onMounted(async () => {
               <input id="column-items" type="checkbox" class="file-browser-list-view__columns-checkbox"
                 :checked="columnVisibility.items"
                 @change="toggleColumnVisibility('items', ($event.target as HTMLInputElement).checked)" />
-              <label for="column-items" class="file-browser-list-view__columns-label">'items'</label>
+              <label for="column-items" class="file-browser-list-view__columns-label">{{ t('fileBrowser.items') }}</label>
             </div>
             <div class="file-browser-list-view__columns-option">
               <input id="column-size" type="checkbox" class="file-browser-list-view__columns-checkbox"

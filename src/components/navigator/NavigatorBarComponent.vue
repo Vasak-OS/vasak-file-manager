@@ -525,12 +525,12 @@ onUnmounted(() => {
 
 <template>
 	
-  <div class="navigator-page">
+  <div class="h-[calc(100vh-54px)] w-full flex flex-col pr-1">
     <div class="navigator-page__main">
       <div class="navigator-page__panes-wrapper">
         <div class="navigator-page__panes-container">
           <GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
-            class="navigator-page__search-panel" @close="globalSearchStore.close()"
+            class="flex-1" @close="globalSearchStore.close()"
             @open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
           <ResizablePanelGroup direction="horizontal" class="navigator-page__panes">
             <template v-if="workspacesStore.currentTabGroup && isSplitView">

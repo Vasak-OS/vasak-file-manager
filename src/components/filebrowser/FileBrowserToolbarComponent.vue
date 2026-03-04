@@ -133,7 +133,7 @@ onMounted(async () => {
     <div class="file-browser-toolbar__nav-buttons file-browser-toolbar__nav-buttons--expanded">
       <Tooltip>
         <TooltipTrigger as-child>
-          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center" :disabled="!canGoBack"
+          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoBack"
             @click="emit('goBack')">
             <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="file-browser-toolbar__icon" />
           </button>
@@ -142,7 +142,7 @@ onMounted(async () => {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
-          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center" :disabled="!canGoForward"
+          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoForward"
             @click="emit('goForward')">
             <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="file-browser-toolbar__icon" />
           </button>
@@ -151,7 +151,7 @@ onMounted(async () => {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
-          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center" :disabled="!canGoUp"
+          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoUp"
             @click="emit('goUp')">
             <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="file-browser-toolbar__icon" />
           </button>
@@ -160,7 +160,7 @@ onMounted(async () => {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
-          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center" @click="emit('goHome')">
+          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" @click="emit('goHome')">
             <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="file-browser-toolbar__icon" />
           </button>
         </TooltipTrigger>
@@ -168,7 +168,7 @@ onMounted(async () => {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
-          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center" :disabled="isLoading"
+          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" :disabled="isLoading"
             @click="emit('refresh')">
             <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="file-browser-toolbar__icon" :class="{ 'animate-spin': isLoading }" />
           </button>
@@ -218,7 +218,7 @@ onMounted(async () => {
         <Tooltip>
           <DropdownMenuTrigger as-child>
             <TooltipTrigger as-child>
-              <button type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary"
+              <button type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
                 @click="handleCreateMenuButtonClick">
                 <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="h-6 w-6" />
               </button>
@@ -241,7 +241,7 @@ onMounted(async () => {
         <Popover :open="isFilterOpen" :modal="false" @update:open="emit('update:isFilterOpen', $event)">
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
-              <button ref="filterTriggerRef" type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary"
+              <button ref="filterTriggerRef" type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
                 :class="{ 'bg-primary': filterQuery }">
                 <img :src="textSearchIcon" :alt="t('fileBrowser.filter')" class="h-6 w-6" />
               </button>
