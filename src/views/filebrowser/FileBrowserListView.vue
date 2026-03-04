@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed, type Ref, ref } from 'vue';
+import { computed, onMounted, type Ref, ref } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
@@ -9,6 +9,7 @@ import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
 import { formatDate } from '@/utils/date-formatter';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 interface Props {
 	entries: DirEntry[];
@@ -17,7 +18,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const ctx = useFileBrowserContext();
-
+const selectedIcon = ref('');
+const loaderCircleIcon = ref('');
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
@@ -86,12 +88,17 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 		event.preventDefault();
 	}
 }
+
+onMounted(async () => {
+  selectedIcon.value = await getSymbolSource('object-select-symbolic');
+  loaderCircleIcon.value = await getSymbolSource('content-loading-symbolic');
+});
 </script>
 
 <template>
   <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
     <div :key="ctx.currentPath.value" class="flex flex-col">
-      <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left" :class="{
+      <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80" :class="{
         'opacity-50': entry.is_hidden,
       }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -100,12 +107,12 @@ function handleEntryKeydown(event: KeyboardEvent): void {
         @mouseup="ctx.onEntryMouseUp(entry, $event)" @contextmenu.prevent="ctx.handleEntryContextMenu(entry)"
         @keydown="handleEntryKeydown"
         style="grid-template-columns: var(--file-browser-list-columns); padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);">
-        <div class="file-browser-list-view__overlay-container">
-          <div class="file-browser-list-view__overlay file-browser-list-view__overlay--selected" />
-          <div class="file-browser-list-view__overlay file-browser-list-view__overlay--clipboard" />
-          <div class="file-browser-list-view__overlay file-browser-list-view__overlay--hover" />
+        <div class="absolute inset-0 z-0 pointer-events-none">
+          <div class="absolute inset-0 pointer-events-none file-browser-list-view__overlay--clipboard" />
+          <div class="absolute inset-0 pointer-events-none file-browser-list-view__overlay--hover" />
         </div>
         <div class="file-browser-list-view__entry-name">
+          <img v-if="ctx.isEntrySelected(entry)" :src="selectedIcon" alt="Selected" class="h-4 w-4" />
           <EntryIconComponent :entry="entry" :size="18" class="h-4 w-4" />
           <div class="file-browser-list-view__entry-name-content">
             <span class="file-browser-list-view__entry-text">{{ entry.name }}</span>
@@ -117,7 +124,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           {{ getItemsDisplay(entry) }}
         </span>
         <span v-if="showSizeColumn" class="file-browser-list-view__entry-size">
-          <LoaderCircleIcon v-if="isDirLoadingWithProgress(entry)" :size="12" class="file-browser-list-view__spinner" />
+          <img :src="loaderCircleIcon" alt="loading" v-if="isDirLoadingWithProgress(entry)" :size="12" class="file-browser-list-view__spinner" />
           <Skeleton v-if="getSizeDisplay(entry) === null" class="file-browser-list-view__size-skeleton" />
           <template v-else>{{ getSizeDisplay(entry) }}</template>
         </span>
@@ -214,33 +221,6 @@ function handleEntryKeydown(event: KeyboardEvent): void {
   to {
     transform: rotate(360deg);
   }
-}
-
-.file-browser-list-view__overlay-container {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  pointer-events: none;
-}
-
-.file-browser-list-view__overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.file-browser-list-view__overlay--selected {
-  background-color: hsl(var(--primary) / 12%);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 40%);
-  opacity: 0;
-}
-
-.file-browser-list-view__entry[data-selected] .file-browser-list-view__overlay--selected {
-  opacity: 1;
-}
-
-.file-browser-list-view__entry[data-in-clipboard] .file-browser-list-view__overlay--selected {
-  opacity: 0;
 }
 
 .file-browser-list-view__overlay--clipboard {
