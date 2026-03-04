@@ -29,6 +29,12 @@ fileBrowser:
   showingNOfItems: "Mostrando {0} de {1} elementos"
   selectedItems: "Seleccionados: {0}"
   selectAll: Seleccionar Todo
+  preparedForCopying: Preparado para copiar
+  preparedForMoving: Preparado para mover
+  itemsPrepared: "Elementos preparados: {0}"
+  showItems: Mostrar Elementos
+  discardClipboard: Descartar
+  removeFromClipboard: Eliminar del portapapeles
   deselectAll: Deseleccionar Todo
   goBack: Volver
   goForward: Adelante
@@ -55,6 +61,9 @@ fileBrowser:
     delete: Eliminar
     addToFavorites: Agregar a Favoritos
     removeFromFavorites: Quitar de Favoritos
+    paste: Pegar
+    pasteToPane1: Pegar en Panel 1
+    pasteToPane2: Pegar en Panel 2
   name: Nombre
   items: Elementos
   size: Tamaño
@@ -81,6 +90,29 @@ fileBrowser:
     note: El tamaño es la suma de todos los contenidos
 shortcuts:
   selectAllItemsInCurrentDirectory: Seleccionar Todo
+  transferPreparedForCopying: Transferencia preparada para copiar
+  transferPreparedToPane1: Transferencia preparada para panel 1
+  transferPreparedToPane2: Transferencia preparada para panel 2
+  closeOpenedDialogOverlay: Cerrar diálogo
+  focusUnfocusFilterField: Enfocar/Desenfocar filtro
+  focusUnfocusSettingsSearch: Enfocar/Desenfocar búsqueda de configuración
+  navigateBack: Navegar atrás
+  navigateForward: Navegar adelante
+  navigateUp: Navegar arriba
+  navigateDown: Navegar abajo
+  navigateLeft: Navegar izquierda
+  navigateRight: Navegar derecha
+  openCloseSelectedFileInQuickView: Abrir/Cerrar vista previa
+  openCurrentDirInNewTab: Abrir directorio actual en nueva pestaña
+  openCurrentDirInTerminal: Abrir en terminal
+  openCurrentDirInTerminalAsAdmin: Abrir en terminal como administrador
+  openSelectedEntry: Abrir elemento seleccionado
+  renameSelectedItems: Renombrar elementos seleccionados
+  setSelectedItemsForCopying: Copiar elementos seleccionados
+  setSelectedItemsForMoving: Cortar elementos seleccionados
+  showHideGlobalSearch: Mostrar/Ocultar búsqueda global
+  switchToLeftPane: Cambiar a panel izquierdo
+  switchToRightPane: Cambiar a panel derecho
 moreOptions:
   shellExtensions: Extensiones del Shell
   loading: Cargando...
@@ -102,6 +134,11 @@ dialogs:
   newItemDialog:
     newDirectory: Nueva Carpeta
     newFile: Nuevo Archivo
+  newDirItemDialog:
+    newDirectoryCreated: Carpeta creada
+    newFileCreated: Archivo creado
+    failedToCreateNewDirectory: Error al crear carpeta
+    failedToCreateNewFile: Error al crear archivo
 name: Nombre
 create: Crear
 save: Guardar
@@ -135,36 +172,6 @@ tabs:
   newTab: Nueva Pestaña
   closeOtherTabs: Cerrar Otras Pestañas
   closeAllTabs: Cerrar Todas las Pestañas
-dialogs:
-  newDirItemDialog:
-    newDirectoryCreated: Carpeta creada
-    newFileCreated: Archivo creado
-    failedToCreateNewDirectory: Error al crear carpeta
-    failedToCreateNewFile: Error al crear archivo
-shortcuts:
-  transferPreparedForCopying: Transferencia preparada para copiar
-  transferPreparedToPane1: Transferencia preparada para panel 1
-  transferPreparedToPane2: Transferencia preparada para panel 2
-  closeOpenedDialogOverlay: Cerrar diálogo
-  focusUnfocusFilterField: Enfocar/Desenfocar filtro
-  focusUnfocusSettingsSearch: Enfocar/Desenfocar búsqueda de configuración
-  navigateBack: Navegar atrás
-  navigateForward: Navegar adelante
-  navigateUp: Navegar arriba
-  navigateDown: Navegar abajo
-  navigateLeft: Navegar izquierda
-  navigateRight: Navegar derecha
-  openCloseSelectedFileInQuickView: Abrir/Cerrar vista previa
-  openCurrentDirInNewTab: Abrir directorio actual en nueva pestaña
-  openCurrentDirInTerminal: Abrir en terminal
-  openCurrentDirInTerminalAsAdmin: Abrir en terminal como administrador
-  openSelectedEntry: Abrir elemento seleccionado
-  renameSelectedItems: Renombrar elementos seleccionados
-  setSelectedItemsForCopying: Copiar elementos seleccionados
-  setSelectedItemsForMoving: Cortar elementos seleccionados
-  showHideGlobalSearch: Mostrar/Ocultar búsqueda global
-  switchToLeftPane: Cambiar a panel izquierdo
-  switchToRightPane: Cambiar a panel derecho
 listLayout: Lista
 gridLayout: Cuadrícula
 splitView: Vista Dividida

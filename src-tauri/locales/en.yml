@@ -29,6 +29,12 @@ fileBrowser:
   showingNOfItems: "Showing {0} of {1} items"
   selectedItems: "Selected: {0}"
   selectAll: Select All
+  preparedForCopying: Prepared for copying
+  preparedForMoving: Prepared for moving
+  itemsPrepared: "Items prepared: {0}"
+  showItems: Show Items
+  discardClipboard: Discard
+  removeFromClipboard: Remove from clipboard
   deselectAll: Deselect All
   goBack: Go Back
   goForward: Go Forward
@@ -55,6 +61,9 @@ fileBrowser:
     delete: Delete
     addToFavorites: Add to Favorites
     removeFromFavorites: Remove from Favorites
+    paste: Paste
+    pasteToPane1: Paste to Pane 1
+    pasteToPane2: Paste to Pane 2
   name: Name
   items: Items
   size: Size
@@ -81,6 +90,29 @@ fileBrowser:
     note: Size is the sum of all contents
 shortcuts:
   selectAllItemsInCurrentDirectory: Select All
+  transferPreparedForCopying: Transfer prepared for copying
+  transferPreparedToPane1: Transfer prepared for pane 1
+  transferPreparedToPane2: Transfer prepared for pane 2
+  closeOpenedDialogOverlay: Close dialog
+  focusUnfocusFilterField: Focus/Unfocus filter
+  focusUnfocusSettingsSearch: Focus/Unfocus settings search
+  navigateBack: Navigate back
+  navigateForward: Navigate forward
+  navigateUp: Navigate up
+  navigateDown: Navigate down
+  navigateLeft: Navigate left
+  navigateRight: Navigate right
+  openCloseSelectedFileInQuickView: Open/Close preview
+  openCurrentDirInNewTab: Open current directory in new tab
+  openCurrentDirInTerminal: Open in terminal
+  openCurrentDirInTerminalAsAdmin: Open in terminal as admin
+  openSelectedEntry: Open selected item
+  renameSelectedItems: Rename selected items
+  setSelectedItemsForCopying: Copy selected items
+  setSelectedItemsForMoving: Cut selected items
+  showHideGlobalSearch: Show/Hide global search
+  switchToLeftPane: Switch to left pane
+  switchToRightPane: Switch to right pane
 moreOptions:
   shellExtensions: Shell Extensions
   loading: Loading...
@@ -124,9 +156,13 @@ dialogs:
   newItemDialog:
     newDirectory: New Directory
     newFile: New File
+  newDirItemDialog:
+    newDirectoryCreated: Directory created
+    newFileCreated: File created
+    failedToCreateNewDirectory: Failed to create directory
+    failedToCreateNewFile: Failed to create file
 name: Name
 create: Create
-save: Save
 drag:
   holdShiftToChangeMode: Hold Shift to change drag mode
   holdCtrlForCurrentDirDrop: Hold Ctrl to drop in current directory
@@ -157,36 +193,6 @@ tabs:
   newTab: New Tab
   closeOtherTabs: Close Other Tabs
   closeAllTabs: Close All Tabs
-dialogs:
-  newDirItemDialog:
-    newDirectoryCreated: Directory created
-    newFileCreated: File created
-    failedToCreateNewDirectory: Failed to create directory
-    failedToCreateNewFile: Failed to create file
-shortcuts:
-  transferPreparedForCopying: Transfer prepared for copying
-  transferPreparedToPane1: Transfer prepared for pane 1
-  transferPreparedToPane2: Transfer prepared for pane 2
-  closeOpenedDialogOverlay: Close dialog
-  focusUnfocusFilterField: Focus/Unfocus filter
-  focusUnfocusSettingsSearch: Focus/Unfocus settings search
-  navigateBack: Navigate back
-  navigateForward: Navigate forward
-  navigateUp: Navigate up
-  navigateDown: Navigate down
-  navigateLeft: Navigate left
-  navigateRight: Navigate right
-  openCloseSelectedFileInQuickView: Open/Close preview
-  openCurrentDirInNewTab: Open current directory in new tab
-  openCurrentDirInTerminal: Open in terminal
-  openCurrentDirInTerminalAsAdmin: Open in terminal as admin
-  openSelectedEntry: Open selected item
-  renameSelectedItems: Rename selected items
-  setSelectedItemsForCopying: Copy selected items
-  setSelectedItemsForMoving: Cut selected items
-  showHideGlobalSearch: Show/Hide global search
-  switchToLeftPane: Switch to left pane
-  switchToRightPane: Switch to right pane
 listLayout: List
 gridLayout: Grid
 splitView: Split View
