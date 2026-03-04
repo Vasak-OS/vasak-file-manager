@@ -394,9 +394,9 @@ onUnmounted(() => {
     </DropdownMenu>
     <Popover :open="isEditorOpen" class="flex-1" @update:open="handleEditorOpenChange">
       <PopoverTrigger as-child>
-        <div ref="breadcrumbsContainerRef" class="address-bar__breadcrumbs" @wheel="handleBreadcrumbsWheel"
+        <div ref="breadcrumbsContainerRef" class="flex flex-1 h-full items-center overflow-x-auto cursor-text min-w-0" @wheel="handleBreadcrumbsWheel"
           @click="openEditor">
-          <div class="address-bar__breadcrumbs-inner">
+          <div class="flex min-w-max items-center overflow-x-auto pr-2">
             <template v-for="(part, index) in addressParts" :key="index">
               <button class="px-1.5 py-1 rounded-corner text-sm whitespace-nowrap hover:text-primary" :class="{ 'text-secondary': part.isLast }"
                 :disabled="part.isLast" :title="part.path" @click.stop="navigateToPart(part.path)">
@@ -506,28 +506,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.address-bar__breadcrumbs {
-  display: flex;
-  min-width: 0;
-  height: 100%;
-  flex: 1;
-  align-items: center;
-  cursor: text;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.address-bar__breadcrumbs::-webkit-scrollbar {
-  display: none;
-}
-
-.address-bar__breadcrumbs-inner {
-  display: flex;
-  min-width: max-content;
-  align-items: center;
-  padding-right: 8px;
-}
-
 .address-bar__separator {
   padding: 4px 6px;
   border: none;
