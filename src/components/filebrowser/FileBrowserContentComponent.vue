@@ -19,7 +19,6 @@ import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
-import type { DirEntry } from '@/types/dir-entry';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
 import FileBrowserListView from '@/views/filebrowser/FileBrowserListView.vue';
 

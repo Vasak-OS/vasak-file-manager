@@ -11,7 +11,7 @@ import { formatBytes } from '@/utils/byte-parser';
 import { formatDate } from '@/utils/date-formatter';
 
 interface Props {
-	entries?: DirEntry[];
+	entries: DirEntry[];
 }
 
 const props = defineProps<Props>();
@@ -30,8 +30,6 @@ const columnVisibility: Ref<{ items: boolean; size: boolean; modified: boolean }
 const showItemsColumn = computed(() => columnVisibility.value.items);
 const showSizeColumn = computed(() => columnVisibility.value.size);
 const showModifiedColumn = computed(() => columnVisibility.value.modified);
-
-const displayEntries = computed(() => props.entries || ctx.entries.value);
 
 const clipboardPathsMap = computed(() => {
 	if (isToolbarSuppressed.value) {
@@ -93,13 +91,13 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 <template>
   <div class="flex flex-col" style="padding-right: var(--file-browser-list-right-gutter);">
     <div :key="ctx.currentPath.value" class="flex flex-col">
-      <button v-for="entry in displayEntries" :key="entry.path" class="relative grid border-b border-ui-border text-left" :class="{
+      <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left" :class="{
         'opacity-50': entry.is_hidden,
       }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
         :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
         :data-drop-target="entry.is_dir || undefined" @mousedown="ctx.onEntryMouseDown(entry, $event)"
-        @mouseup="ctx.onEntryMouseUp(entry, $event)" @contextmenu="ctx.handleEntryContextMenu(entry)"
+        @mouseup="ctx.onEntryMouseUp(entry, $event)" @contextmenu.prevent="ctx.handleEntryContextMenu(entry)"
         @keydown="handleEntryKeydown"
         style="grid-template-columns: var(--file-browser-list-columns); padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);">
         <div class="file-browser-list-view__overlay-container">

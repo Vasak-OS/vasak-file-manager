@@ -35,6 +35,8 @@ export interface FileBrowserContext {
 
 const FILE_BROWSER_CONTEXT_KEY: InjectionKey<FileBrowserContext> = Symbol('FileBrowserContext');
 
+export { FILE_BROWSER_CONTEXT_KEY };
+
 export function provideFileBrowserContext(context: FileBrowserContext): void {
 	provide(FILE_BROWSER_CONTEXT_KEY, context);
 }
