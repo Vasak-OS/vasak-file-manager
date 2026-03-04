@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';

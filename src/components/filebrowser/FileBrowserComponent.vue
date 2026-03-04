@@ -5,8 +5,8 @@ import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.
 import OpenWithDialogComponent from '@/components/dialogs/OpenWithDialogComponent.vue';
 import RenameDialogComponent from '@/components/dialogs/RenameDialogComponent.vue';
 import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserContentComponent.vue';
-import FileBrowserDragOverlayComponent from '@/components/filebrowser/FileBrowserDragOverlayComponent.vue';
-import FileBrowserInboundDragOverlayComponent from '@/components/filebrowser/FileBrowserInboundDragOverlayComponent.vue';
+import DragOverlayComponent from '@/components/drag/DragOverlayComponent.vue';
+import InboundDragOverlayComponent from '@/components/drag/InboundDragOverlayComponent.vue';
 import FileBrowserStatusBarComponent from '@/components/filebrowser/FileBrowserStatusBarComponent.vue';
 import FileBrowserToolbarComponent from '@/components/filebrowser/FileBrowserToolbarComponent.vue';
 import { useFileBrowser } from '@/composables/file-browser/use-file-browser';
@@ -117,14 +117,14 @@ defineExpose({
     <OpenWithDialogComponent v-model:open="fb.openWithState.value.isOpen" :entries="fb.openWithState.value.entries"
       @close="fb.closeOpenWithDialog" />
 
-    <FileBrowserDragOverlayComponent :is-active="fb.isDragging.value" :item-count="fb.dragItems.value.length"
+    <DragOverlayComponent :is-active="fb.isDragging.value" :item-count="fb.dragItems.value.length"
       :operation-type="fb.dragOperationType.value" :cursor-x="fb.dragCursorX.value" :cursor-y="fb.dragCursorY.value" />
 
     <Transition name="cross-pane-drop-overlay">
       <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary rounded-corner inset-0 pointer-events-none cross-pane-drop-overlay" />
     </Transition>
 
-    <FileBrowserInboundDragOverlayComponent v-if="!fb.isExternalMode" :is-active="fb.isExternalDragActive.value"
+    <InboundDragOverlayComponent v-if="!fb.isExternalMode" :is-active="fb.isExternalDragActive.value"
       :item-count="fb.externalDragItemCount.value" :operation-type="fb.externalDragOperationType.value"
       :current-dir-locked="fb.isCurrentDirLocked.value" :targeting-entry="fb.isTargetingEntry.value" />
 
