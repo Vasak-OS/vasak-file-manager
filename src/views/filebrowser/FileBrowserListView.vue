@@ -89,7 +89,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="flex flex-col" style="padding-right: var(--file-browser-list-right-gutter);">
+  <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
     <div :key="ctx.currentPath.value" class="flex flex-col">
       <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left" :class="{
         'opacity-50': entry.is_hidden,

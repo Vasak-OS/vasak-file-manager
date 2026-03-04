@@ -165,7 +165,7 @@ function openCollapsedPopover() {
 </script>
 
 <template>
-  <div class="file-browser-status-bar">
+  <div class="flex h-10 mt-1 py-1 px-2 gap-2 items-center shrink-0 justify-between text-xs text-tx-muted rounded-corner border border-ui-border bg-ui-bg/80">
     <template v-if="hasSelection">
       <span class="file-browser-status-bar__selected-count">
         {{ t('fileBrowser.selectedItems').replace('{0}', String(selectedCount)) }}

@@ -112,7 +112,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
 </script>
 
 <template>
-  <div :key="ctx.currentPath.value" class="file-browser-grid-view file-browser-grid-view--animate">
+  <div :key="ctx.currentPath.value" class="file-browser-grid-view file-browser-grid-view--animate h-[calc(100vh-144px)]">
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="file-browser-grid-view__section-bar">
         <FolderIcon :size="14" />
