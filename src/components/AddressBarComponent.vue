@@ -17,7 +17,7 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import type { DirContents } from '@/types/dir-entry';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	currentPath: string;
@@ -353,7 +353,7 @@ onMounted(async() => {
 	window.addEventListener('keydown', handleGlobalKeydown);
   copyIcon.value = await getSymbolSource('edit-copy');
   clipboardPasteIcon.value = await getSymbolSource('edit-paste');
-  folderIcon.value = await getSymbolSource('folder');
+  folderIcon.value = await getIconSource('folder');
   ellipsisVerticalIcon.value = await getSymbolSource('view-more-symbolic');
   chevronRightIcon.value = await getSymbolSource('arrow-right');
   pinIcon.value = await getSymbolSource('pin');

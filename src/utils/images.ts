@@ -1,21 +1,22 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { FILE_EXTENSIONS } from '@/constants/file-extensions';
 import type { DirEntry } from '@/types/dir-entry';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
-export function getFileIcon(entry: DirEntry): string {
-	if (entry.is_dir) return 'FolderIcon';
+export async function getFileIcon(entry: DirEntry): Promise<string> {
+	if (entry.is_dir) return await getIconSource('folder');
 
 	const extension = entry.ext?.toLowerCase();
-	if (!extension) return 'FileIcon';
+	if (!extension) return await getIconSource('application-rtf');
 
-	if (FILE_EXTENSIONS.IMAGE.includes(extension)) return 'FileImageIcon';
-	if (FILE_EXTENSIONS.VIDEO.includes(extension)) return 'FileVideoIcon';
-	if (FILE_EXTENSIONS.AUDIO.includes(extension)) return 'FileAudioIcon';
-	if (FILE_EXTENSIONS.CODE.includes(extension)) return 'FileCodeIcon';
-	if (FILE_EXTENSIONS.ARCHIVE.includes(extension)) return 'FileArchiveIcon';
-	if (FILE_EXTENSIONS.TEXT.includes(extension)) return 'FileTextIcon';
+	if (FILE_EXTENSIONS.IMAGE.includes(extension)) return await getIconSource('image-x-generic');
+	if (FILE_EXTENSIONS.VIDEO.includes(extension)) return await getIconSource('video-x-generic');
+	if (FILE_EXTENSIONS.AUDIO.includes(extension)) return await getIconSource('audio-x-generic');
+	if (FILE_EXTENSIONS.CODE.includes(extension)) return await getIconSource('application-vnd.nokia.xml.qt.resource');
+	if (FILE_EXTENSIONS.ARCHIVE.includes(extension)) await getIconSource('application-x-archive');
+	if (FILE_EXTENSIONS.TEXT.includes(extension)) await getIconSource('text-x-generic');
 
-	return 'FileIcon';
+	return await getIconSource('application-rtf');
 }
 
 export function getImageSrc(entry: DirEntry): string {

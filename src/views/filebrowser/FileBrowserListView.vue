@@ -83,26 +83,24 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="file-browser-list-view">
-    <div :key="ctx.currentPath.value" class="file-browser-list-view__list file-browser-list-view__list--animate">
-      <button v-for="entry in ctx.entries.value" :key="entry.path" class="file-browser-list-view__entry" :class="{
-        'file-browser-list-view__entry--dir': entry.is_dir,
-        'file-browser-list-view__entry--file': entry.is_file,
-        'file-browser-list-view__entry--hidden': entry.is_hidden,
+  <div class="flex flex-col" style="padding-right: var(--file-browser-list-right-gutter);">
+    <div :key="ctx.currentPath.value" class="flex flex-col">
+      <button v-for="entry in ctx.entries.value" :key="entry.path" class="relative grid border-b border-ui-border text-left" :class="{
+        'opacity-50': entry.is_hidden,
       }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
         :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
         :data-drop-target="entry.is_dir || undefined" @mousedown="ctx.onEntryMouseDown(entry, $event)"
         @mouseup="ctx.onEntryMouseUp(entry, $event)" @contextmenu="ctx.handleEntryContextMenu(entry)"
-        @keydown="handleEntryKeydown">
+        @keydown="handleEntryKeydown"
+        style="grid-template-columns: var(--file-browser-list-columns); padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);">
         <div class="file-browser-list-view__overlay-container">
           <div class="file-browser-list-view__overlay file-browser-list-view__overlay--selected" />
           <div class="file-browser-list-view__overlay file-browser-list-view__overlay--clipboard" />
           <div class="file-browser-list-view__overlay file-browser-list-view__overlay--hover" />
         </div>
         <div class="file-browser-list-view__entry-name">
-          <FileBrowserEntryIcon :entry="entry" :size="18" class="file-browser-list-view__entry-icon"
-            :class="{ 'file-browser-list-view__entry-icon--folder': entry.is_dir }" />
+          <FileBrowserEntryIcon :entry="entry" :size="18" class="h-4 w-4" />
           <div class="file-browser-list-view__entry-name-content">
             <span class="file-browser-list-view__entry-text">{{ entry.name }}</span>
             <span v-if="ctx.entryDescription?.(entry)" class="file-browser-list-view__entry-description">{{
@@ -126,45 +124,8 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 </template>
 
 <style scoped>
-.file-browser-list-view {
-  display: flex;
-  flex-direction: column;
-  padding-right: var(--file-browser-list-right-gutter);
-}
-
-.file-browser-list-view__list {
-  display: flex;
-  flex-direction: column;
-}
-
-.file-browser-list-view__list--animate {
-  animation: sigma-ui-fade-in 0.2s ease-out;
-}
-
-.file-browser-list-view__entry {
-  position: relative;
-  display: grid;
-  padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);
-  border: none;
-  border-bottom: 1px solid hsl(var(--border) / 50%);
-  background: transparent;
-  color: hsl(var(--foreground));
-  cursor: default;
-  font-size: 13px;
-  grid-template-columns: var(--file-browser-list-columns);
-  text-align: left;
-}
-
-.file-browser-list-view__entry:last-child {
-  border-color: transparent;
-}
-
 .file-browser-list-view__entry:focus-visible {
   outline: none;
-}
-
-.file-browser-list-view__entry--hidden {
-  opacity: 0.5;
 }
 
 .file-browser-list-view__entry-name {
