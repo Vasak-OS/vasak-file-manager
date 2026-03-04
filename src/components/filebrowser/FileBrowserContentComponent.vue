@@ -19,6 +19,7 @@ import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
+import type { DirEntry } from '@/types/dir-entry';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
 import FileBrowserListView from '@/views/filebrowser/FileBrowserListView.vue';
 
@@ -65,7 +66,7 @@ function toggleColumnVisibility(column: 'items' | 'size' | 'modified', checked: 
 	columnVisibility.value[column] = checked;
 }
 
-const listSortColumn = ref<ListSortColumn | null>(null);
+const listSortColumn = ref<ListSortColumn | null>('name');
 const listSortDirection = ref<'asc' | 'desc'>('asc');
 
 function handleColumnHeaderClick(column: ListSortColumn) {
@@ -76,6 +77,54 @@ function handleColumnHeaderClick(column: ListSortColumn) {
 		listSortDirection.value = 'asc';
 	}
 }
+
+const sortedEntries = computed(() => {
+	const entries = [...ctx.entries.value];
+
+	if (!listSortColumn.value) return entries;
+
+	entries.sort((a, b) => {
+		let aValue: any;
+		let bValue: any;
+
+		switch (listSortColumn.value) {
+			case 'name':
+				aValue = a.name.toLowerCase();
+				bValue = b.name.toLowerCase();
+				break;
+			case 'size':
+				aValue = a.is_dir ? a.item_count ?? 0 : a.size;
+				bValue = b.is_dir ? b.item_count ?? 0 : b.size;
+				break;
+			case 'items':
+				aValue = a.item_count ?? 0;
+				bValue = b.item_count ?? 0;
+				break;
+			case 'modified':
+				aValue = a.modified_time;
+				bValue = b.modified_time;
+				break;
+			default:
+				return 0;
+		}
+
+		// Handle string comparisons
+		if (typeof aValue === 'string' && typeof bValue === 'string') {
+			return listSortDirection.value === 'asc'
+				? aValue.localeCompare(bValue)
+				: bValue.localeCompare(aValue);
+		}
+
+		// Handle numeric comparisons
+		if (listSortDirection.value === 'asc') {
+			return aValue - bValue;
+		} else {
+			return bValue - aValue;
+		}
+	});
+
+	return entries;
+});
 
 onMounted(async () => {
 	FolderOpenIcon.value = await getIconSource('folder-open');
@@ -209,8 +258,8 @@ onMounted(async () => {
         <ContextMenu>
           <ContextMenuTrigger as-child>
             <div :ref="ctx.setEntriesContainerRef" class="file-browser__entries-container" @contextmenu.self.prevent>
-              <FileBrowserGridView v-if="props.layout === 'grid'" />
-              <FileBrowserListView v-else />
+              <FileBrowserGridView v-if="props.layout === 'grid'" :entries="sortedEntries" />
+              <FileBrowserListView v-else :entries="sortedEntries" />
             </div>
           </ContextMenuTrigger>
           <FileBrowserContextMenu v-if="ctx.contextMenu.value.selectedEntries.length > 0" />

@@ -13,6 +13,12 @@ import { formatBytes } from '@/utils/byte-parser';
 import { isImageFile, isVideoFile } from '@/utils/files';
 import { getImageSrc } from '@/utils/images';
 
+interface Props {
+	entries?: DirEntry[];
+}
+
+const props = defineProps<Props>();
+
 const { t } = useI18n();
 
 const ctx = useFileBrowserContext();
@@ -20,6 +26,8 @@ const ctx = useFileBrowserContext();
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
+
+const displayEntries = computed(() => props.entries || ctx.entries.value);
 
 const clipboardPathsMap = computed(() => {
 	if (isToolbarSuppressed.value) {
@@ -84,7 +92,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
 	const videos: DirEntry[] = [];
 	const others: DirEntry[] = [];
 
-	for (const entry of ctx.entries.value) {
+	for (const entry of displayEntries.value) {
 		if (entry.is_dir) {
 			dirs.push(entry);
 		} else if (isImageFile(entry)) {
