@@ -37,6 +37,8 @@ export const useUserPathsStore = defineStore('userPaths', () => {
 		appUserDataWorkspacesPath: '',
 		appUserDataStatsName: '',
 		appUserDataStatsPath: '',
+		appUserDataLayoutName: '',
+		appUserDataLayoutPath: '',
 		appStorageHomeBannerMediaPath: '',
 	});
 
@@ -71,6 +73,8 @@ export const useUserPathsStore = defineStore('userPaths', () => {
 		customPaths.value.appUserDataWorkspacesPath = `${customPaths.value.appUserDataDir}/${customPaths.value.appUserDataWorkspacesName}`;
 		customPaths.value.appUserDataStatsName = 'user-stats.json';
 		customPaths.value.appUserDataStatsPath = `${customPaths.value.appUserDataDir}/${customPaths.value.appUserDataStatsName}`;
+		customPaths.value.appUserDataLayoutName = 'user-layout.json';
+		customPaths.value.appUserDataLayoutPath = `${customPaths.value.appUserDataDir}/${customPaths.value.appUserDataLayoutName}`;
 		customPaths.value.appStorageHomeBannerMediaPath = `${customPaths.value.appUserDataDir}/media/home-banner`;
 	}
 

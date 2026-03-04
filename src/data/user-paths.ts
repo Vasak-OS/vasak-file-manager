@@ -56,6 +56,8 @@ export interface CustomPaths {
 	appUserDataWorkspacesPath: string;
 	appUserDataStatsName: string;
 	appUserDataStatsPath: string;
+	appUserDataLayoutName: string;
+	appUserDataLayoutPath: string;
 	appStorageHomeBannerMediaPath: string;
 }
 

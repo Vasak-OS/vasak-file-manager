@@ -95,18 +95,18 @@ onMounted(async () => {
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
           <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'name' && listSortDirection === 'asc'" 
-            class="file-browser-list-view__header-sort-icon" />
+            class="h-4 w-4" />
           <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" 
-            class="file-browser-list-view__header-sort-icon" />
+            class="h-4 w-4" />
         </button>
         <button v-if="showItemsColumn" type="button"
           class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-items"
           @click="handleColumnHeaderClick('items')">
           {{ t('fileBrowser.items') }}
           <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'items' && listSortDirection === 'asc'" 
-            class="file-browser-list-view__header-sort-icon" />
+            class="h-4 w-4" />
           <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'"
-            class="file-browser-list-view__header-sort-icon" />
+            class="h-4 w-4" />
         </button>
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
           <TooltipTrigger as-child>
@@ -116,9 +116,9 @@ onMounted(async () => {
               {{ t('fileBrowser.size') }}
               <img :src="infoIcon" alt="Info" class="file-browser-list-view__header-info-icon" />
               <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
-                class="file-browser-list-view__header-sort-icon" />
+                class="h-4 w-4" />
               <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'" :size="12"
-                class="file-browser-list-view__header-sort-icon" />
+                class="h-4 w-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" :side-offset="8" class="file-browser-list-view__size-tooltip">
@@ -155,9 +155,9 @@ onMounted(async () => {
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
           <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" 
-            class="file-browser-list-view__header-sort-icon" />
+            class="h-4 w-4" />
           <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'"
-            class="file-browser-list-view__header-sort-icon" />
+            class="h-4 w-4" />
         </button>
       </div>
       <Popover :open="isColumnsPopoverOpen" @update:open="isColumnsPopoverOpen = $event">
@@ -291,21 +291,6 @@ onMounted(async () => {
 
 .file-browser-list-view__header-item--sortable:hover {
   color: hsl(var(--foreground));
-}
-
-.file-browser-list-view__header-sort-icon {
-  flex-shrink: 0;
-  opacity: 0.8;
-}
-
-.file-browser-list-view__header-info-icon {
-  flex-shrink: 0;
-  opacity: 0.5;
-  transition: opacity 0.15s ease;
-}
-
-.file-browser-list-view__header-size--with-info:hover .file-browser-list-view__header-info-icon {
-  opacity: 1;
 }
 
 .file-browser-list-view__size-tooltip {

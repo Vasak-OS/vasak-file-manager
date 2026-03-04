@@ -12,8 +12,9 @@ import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import type { DirEntry } from '@/types/dir-entry';
-import { Layout } from '@/types/navigator';
+import type { Layout } from '@/types/navigator';
 import GlobalSearchView from '@/views/GlobalSearchView.vue';
 
 type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
@@ -46,6 +47,7 @@ const globalSearchStore = useGlobalSearchStore();
 const shortcutsStore = useShortcutsStore();
 const terminalsStore = useTerminalsStore();
 const dirSizesStore = useDirSizesStore();
+const userLayoutStore = useUserLayoutStore();
 const paneRefsMap = ref<Map<string, FileBrowserInstance>>(new Map());
 const singlePaneRef = ref<FileBrowserInstance | null>(null);
 const globalSearchViewRef = ref<GlobalSearchViewInstance | null>(null);
@@ -74,19 +76,8 @@ function handleSmallScreenChange(event: MediaQueryListEvent) {
 	isSmallScreen.value = event.matches;
 }
 
-const currentLayout = computed<Layout | undefined>(() => {
-	// const layoutName = workspacesStore.currentLayout || LAYOUTS_TYPES.list;
-	// switch (layoutName) {
-	// 	case LAYOUTS_TYPES.list:
-	// 		return 'list';
-	// 	case LAYOUTS_TYPES.compactList:
-	// 		return 'compact-list';
-	// 	case LAYOUTS_TYPES.grid:
-	// 		return 'grid';
-	// 	default:
-	// 		return 'list';
-	// }
-	return 'list';
+const currentLayout = computed<Layout>(() => {
+	return userLayoutStore.layout;
 });
 
 const isSplitView = computed(() => {

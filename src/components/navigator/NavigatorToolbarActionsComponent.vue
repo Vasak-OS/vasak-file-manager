@@ -8,11 +8,13 @@ import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import { Layout } from '@/types/navigator';
+import { useUserLayoutStore } from '@/stores/storage/user-layout';
+import type { Layout } from '@/types/navigator';
 
 type LayoutType = Layout;
 
 const { t } = useI18n();
+const userLayoutStore = useUserLayoutStore();
 
 const props = defineProps<{
 	isSplitView: boolean;
@@ -27,7 +29,7 @@ const emit = defineEmits<{
 
 const isLayoutPopoverOpen = ref(false);
 const currentLayout = computed(() => {
-	return 'list';
+	return userLayoutStore.layout;
 });
 const showHiddenFiles = ref(true);
 const layoutGridIcon = ref('');
@@ -35,7 +37,8 @@ const layoutListIcon = ref('');
 const splitViewIcon = ref('');
 const infoPanelIcon = ref('');
 
-async function setLayout(_layoutName: LayoutType) {
+async function setLayout(layoutName: LayoutType) {
+	await userLayoutStore.setLayout(layoutName);
 	isLayoutPopoverOpen.value = false;
 }
 
