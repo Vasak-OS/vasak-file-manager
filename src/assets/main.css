@@ -142,12 +142,12 @@
   animation: circle-in 500ms;
 }
 
-body * {
-  @apply text-tx-main transition-colors duration-300;
+body {
+  @apply text-tx-main;
 }
 
-.background {
-  @apply bg-ui-bg/80;
+body * {
+  @apply transition-colors duration-300;
 }
 
 @layer base {

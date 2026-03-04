@@ -526,46 +526,44 @@ onUnmounted(() => {
 <template>
 	
   <div class="h-[calc(100vh-54px)] w-full flex flex-col pr-1">
-    <div class="navigator-page__main">
-      <div class="navigator-page__panes-wrapper">
-        <div class="navigator-page__panes-container">
-          <GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
-            class="flex-1" @close="globalSearchStore.close()"
-            @open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
-          <ResizablePanelGroup direction="horizontal" class="navigator-page__panes">
-            <template v-if="workspacesStore.currentTabGroup && isSplitView">
-              <template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">
-                <ResizablePanel :default-size="50" :min-size="15" @mousedown="handlePaneFocus(tab.id)">
-                  <FileBrowserComponent :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)" :tab="tab"
-                    :pane-index="index" :layout="currentLayout" class="navigator-page__pane"
-                    @update:selected-entries="(entries) => handleSelectionChange(entries, tab.id)"
-                    @update:current-dir-entry="handleCurrentDirChange" />
-                </ResizablePanel>
-                <ResizableHandle v-if="index === 0" with-handle />
-              </template>
-            </template>
-            <template v-else-if="workspacesStore.currentTabGroup">
-              <ResizablePanel :default-size="100">
-                <FileBrowserComponent :key="workspacesStore.currentTabGroup[0].id"
-                  :ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
-                  :tab="workspacesStore.currentTabGroup[0]" :pane-index="0" :layout="currentLayout"
-                  class="navigator-page__pane"
-                  @update:selected-entries="(entries) => handleSelectionChange(entries, workspacesStore.currentTabGroup![0].id)"
-                  @update:current-dir-entry="handleCurrentDirChange" />
-              </ResizablePanel>
-            </template>
-            <ResizablePanel v-else :default-size="100">
-              <FileBrowserComponent ref="singlePaneRef" :layout="currentLayout" class="navigator-page__pane"
-                @update:selected-entries="(entries) => handleSelectionChange(entries)"
-                @update:current-dir-entry="handleCurrentDirChange" />
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </div>
-        <ClipboardToolbarComponent :current-path="currentActivePath" :is-split-view="isSplitView"
-          :pane1-path="workspacesStore.currentTabGroup?.[0]?.path"
-          :pane2-path="workspacesStore.currentTabGroup?.[1]?.path" @paste="handlePasteShortcut"
-          @paste-to-pane="handlePasteToPane" />
-      </div>
-    </div>
+		<div class="navigator-page__panes-wrapper">
+			<div class="navigator-page__panes-container">
+				<GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
+					class="flex-1" @close="globalSearchStore.close()"
+					@open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
+				<ResizablePanelGroup direction="horizontal" class="navigator-page__panes">
+					<template v-if="workspacesStore.currentTabGroup && isSplitView">
+						<template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">
+							<ResizablePanel :default-size="50" :min-size="15" @mousedown="handlePaneFocus(tab.id)">
+								<FileBrowserComponent :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)" :tab="tab"
+									:pane-index="index" :layout="currentLayout" class="navigator-page__pane"
+									@update:selected-entries="(entries) => handleSelectionChange(entries, tab.id)"
+									@update:current-dir-entry="handleCurrentDirChange" />
+							</ResizablePanel>
+							<ResizableHandle v-if="index === 0" with-handle />
+						</template>
+					</template>
+					<template v-else-if="workspacesStore.currentTabGroup">
+						<ResizablePanel :default-size="100">
+							<FileBrowserComponent :key="workspacesStore.currentTabGroup[0].id"
+								:ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
+								:tab="workspacesStore.currentTabGroup[0]" :pane-index="0" :layout="currentLayout"
+								class="navigator-page__pane"
+								@update:selected-entries="(entries) => handleSelectionChange(entries, workspacesStore.currentTabGroup![0].id)"
+								@update:current-dir-entry="handleCurrentDirChange" />
+						</ResizablePanel>
+					</template>
+					<ResizablePanel v-else :default-size="100">
+						<FileBrowserComponent ref="singlePaneRef" :layout="currentLayout" class="navigator-page__pane"
+							@update:selected-entries="(entries) => handleSelectionChange(entries)"
+							@update:current-dir-entry="handleCurrentDirChange" />
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			</div>
+			<ClipboardToolbarComponent :current-path="currentActivePath" :is-split-view="isSplitView"
+				:pane1-path="workspacesStore.currentTabGroup?.[0]?.path"
+				:pane2-path="workspacesStore.currentTabGroup?.[1]?.path" @paste="handlePasteShortcut"
+				@paste-to-pane="handlePasteToPane" />
+		</div>
   </div>
 </template>

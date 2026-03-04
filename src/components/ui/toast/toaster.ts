@@ -56,9 +56,10 @@ function dismissAll(): void {
 }
 
 export const toast = {
-	custom: (component: Component, props: any) => {
+	custom: (component: Component, props: any = {}) => {
 		const duration = props.duration ?? 3000;
-		return add(component, props, duration);
+		const componentProps = props.componentProps ?? props;
+		return add(component, componentProps, duration);
 	},
 	dismiss,
 	dismissAll,

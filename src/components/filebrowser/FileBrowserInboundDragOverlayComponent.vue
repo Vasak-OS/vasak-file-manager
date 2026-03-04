@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 
 const props = defineProps<{
@@ -12,6 +13,8 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
+const CopyIcon = ref('');
+const FolderInputIcon = ref('');
 
 const description = computed(() => {
 	if (props.operationType === 'copy') {
@@ -19,6 +22,15 @@ const description = computed(() => {
 	}
 
 	return `drag.dropToMoveItems ${props.itemCount}`;
+});
+
+const operationIcon = computed(() =>
+  props.operationType === 'copy' ? CopyIcon.value : FolderInputIcon.value
+);
+
+onMounted(async () => {
+  CopyIcon.value = await getSymbolSource('edit-copy');
+  FolderInputIcon.value = await getSymbolSource('folder-open');
 });
 </script>
 
@@ -29,8 +41,7 @@ const description = computed(() => {
       <div class="inbound-drag-overlay__card">
         <div class="inbound-drag-overlay__content">
           <span class="inbound-drag-overlay__description">{{ description }}</span>
-          <component :is="props.operationType === 'copy' ? CopyIcon : FolderInputIcon" :size="16"
-            class="inbound-drag-overlay__icon" />
+          <img :src="operationIcon" alt="Drop operation" class="inbound-drag-overlay__icon" />
         </div>
         <div class="inbound-drag-overlay__hint">
           {{ t('drag.holdShiftToChangeMode') }}
