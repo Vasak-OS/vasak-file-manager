@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -15,6 +15,7 @@ import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import type { DirEntry } from '@/types/dir-entry';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const MAX_VISIBLE_ITEMS = 100;
 
@@ -36,6 +37,8 @@ const shortcutsStore = useShortcutsStore();
 
 const clipboardItemsPopoverOpen = ref(false);
 const clipboardItemsFilterQuery = ref('');
+
+const xIcon = ref('')
 
 const canPaste = computed(() => {
 	if (!clipboardStore.hasItems || !props.currentPath) {
@@ -120,16 +123,20 @@ function openCollapsedPopover() {
 		}, 200);
 	});
 }
+
+onMounted(async() => {
+  xIcon.value = await getSymbolSource('gtk-close');
+});
 </script>
 
 <template>
   <Transition name="clipboard-slide">
-    <div v-if="clipboardStore.showToolbar" class="clipboard-toolbar-container">
+    <div v-if="clipboardStore.showToolbar" class="clipboard-toolbar-container absolute bottom-1 left-0 right-0 z-40 flex justify-center px-4 pb-4 pointer-events-none">
       <Popover :open="clipboardItemsPopoverOpen" @update:open="(open) => clipboardItemsPopoverOpen = open">
         <PopoverAnchor as-child>
-          <div class="flex min-h-10 items-center justify-between px-4 rounded-corner gap-4 text-sm" :class="{
-            'bg-status-success/80': clipboardStore.isCopyOperation,
-            'bg-status-warning/80': clipboardStore.isMoveOperation,
+          <div class=" flex min-h-10 items-center justify-between px-4 rounded-corner gap-4 text-sm" :class="{
+            'bg-status-success/70': clipboardStore.isCopyOperation,
+            'bg-status-warning/70': clipboardStore.isMoveOperation,
           }">
             <div class="clipboard-toolbar__info">
               <div class="clipboard-toolbar__icon">
@@ -236,7 +243,7 @@ function openCollapsedPopover() {
                   </DropdownMenuItem>
                   <DropdownMenuItem class="clipboard-toolbar__dropdown-item--discard"
                     @click="clipboardStore.clearClipboard()">
-                    <XIcon :size="14" />
+                    <img :src="xIcon" :alt="t('fileBrowser.discardClipboard')" class="h-4 w-4" />
                     {{ t('fileBrowser.discardClipboard') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -262,7 +269,7 @@ function openCollapsedPopover() {
                   </div>
                   <Button variant="ghost" size="icon" class="clipboard-toolbar__item-remove"
                     :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)">
-                    <XIcon :size="18" />
+                    <img :src="xIcon" :alt="t('fileBrowser.removeFromClipboard')" class="h-4 w-4" />
                   </Button>
                 </div>
                 <div v-if="displayedClipboardItems.length === 0" class="clipboard-toolbar__no-items">
