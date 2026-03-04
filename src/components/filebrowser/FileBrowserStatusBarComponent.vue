@@ -8,6 +8,7 @@ import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
 import DropdownMenuSeparator from '@/components/ui/dropdown/DropdownMenuSeparator.vue';
 import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
+import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';

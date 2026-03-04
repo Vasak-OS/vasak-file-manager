@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -11,8 +13,6 @@ import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { Tab } from '@/types/workspaces';
 import { useEventListener } from '@/utils/event-listener';
 import { useTimeoutFn } from '@/utils/timeout';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 
 interface Props {
 	tabGroup: Tab[];
@@ -142,7 +142,7 @@ async function closeAllTabs() {
 }
 
 onMounted(async () => {
-  xIcon.value = await getSymbolSource('gtk-close');
+	xIcon.value = await getSymbolSource('gtk-close');
 });
 </script>
 

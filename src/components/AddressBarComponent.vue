@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { dirname } from '@tauri-apps/api/path';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
@@ -17,7 +18,6 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import type { DirContents } from '@/types/dir-entry';
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	currentPath: string;
@@ -128,25 +128,25 @@ function handleSeparatorNavigate(path: string) {
 }
 
 function handleSeparatorOpenChange(index: number, open: boolean) {
-  if (open) {
-    loadSeparatorDirectories(index);
-    openSeparatorIndex.value = index;
-    return;
-  }
+	if (open) {
+		loadSeparatorDirectories(index);
+		openSeparatorIndex.value = index;
+		return;
+	}
 
-  if (openSeparatorIndex.value === index) {
-    openSeparatorIndex.value = null;
-  }
+	if (openSeparatorIndex.value === index) {
+		openSeparatorIndex.value = null;
+	}
 }
 
 async function openSeparatorMenu(index: number) {
-  if (openSeparatorIndex.value === index) {
-    openSeparatorIndex.value = null;
-    return;
-  }
+	if (openSeparatorIndex.value === index) {
+		openSeparatorIndex.value = null;
+		return;
+	}
 
-  await loadSeparatorDirectories(index);
-  openSeparatorIndex.value = index;
+	await loadSeparatorDirectories(index);
+	openSeparatorIndex.value = index;
 }
 
 function scrollSelectedIntoView() {
@@ -183,10 +183,10 @@ function navigateToPart(path: string) {
 }
 
 async function openEditor() {
-  ignoreNextEditorClose.value = true;
-  setTimeout(() => {
-    ignoreNextEditorClose.value = false;
-  }, 0);
+	ignoreNextEditorClose.value = true;
+	setTimeout(() => {
+		ignoreNextEditorClose.value = false;
+	}, 0);
 
 	const initialPath = props.currentPath;
 	pathQuery.value = initialPath;
@@ -200,13 +200,13 @@ async function openEditor() {
 }
 
 function handleEditorOpenChange(open: boolean) {
-  if (!open && ignoreNextEditorClose.value) {
-    return;
-  }
+	if (!open && ignoreNextEditorClose.value) {
+		return;
+	}
 
-  if (open || !isPinned.value) {
-    isEditorOpen.value = open;
-  }
+	if (open || !isPinned.value) {
+		isEditorOpen.value = open;
+	}
 }
 
 async function handlePathInput(value: string | number | undefined) {
@@ -346,19 +346,19 @@ function handleGlobalKeydown(event: KeyboardEvent) {
 	}
 }
 
-onMounted(async() => {
+onMounted(async () => {
 	nextTick(() => {
 		scrollBreadcrumbsToEnd();
 	});
 	window.addEventListener('keydown', handleGlobalKeydown);
-  copyIcon.value = await getSymbolSource('edit-copy');
-  clipboardPasteIcon.value = await getSymbolSource('edit-paste');
-  folderIcon.value = await getIconSource('folder');
-  ellipsisVerticalIcon.value = await getSymbolSource('view-more-symbolic');
-  chevronRightIcon.value = await getSymbolSource('arrow-right');
-  pinIcon.value = await getSymbolSource('pin');
-  textCursorIcon.value = await getSymbolSource('edit-select-text')
-  xIcon.value = await getSymbolSource('gtk-close');
+	copyIcon.value = await getSymbolSource('edit-copy');
+	clipboardPasteIcon.value = await getSymbolSource('edit-paste');
+	folderIcon.value = await getIconSource('folder');
+	ellipsisVerticalIcon.value = await getSymbolSource('view-more-symbolic');
+	chevronRightIcon.value = await getSymbolSource('arrow-right');
+	pinIcon.value = await getSymbolSource('pin');
+	textCursorIcon.value = await getSymbolSource('edit-select-text');
+	xIcon.value = await getSymbolSource('gtk-close');
 });
 
 onUnmounted(() => {

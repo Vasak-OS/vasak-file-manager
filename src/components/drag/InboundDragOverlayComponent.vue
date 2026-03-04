@@ -25,12 +25,12 @@ const description = computed(() => {
 });
 
 const operationIcon = computed(() =>
-  props.operationType === 'copy' ? CopyIcon.value : FolderInputIcon.value
+	props.operationType === 'copy' ? CopyIcon.value : FolderInputIcon.value
 );
 
 onMounted(async () => {
-  CopyIcon.value = await getSymbolSource('edit-copy');
-  FolderInputIcon.value = await getSymbolSource('folder-open');
+	CopyIcon.value = await getSymbolSource('edit-copy');
+	FolderInputIcon.value = await getSymbolSource('folder-open');
 });
 </script>
 

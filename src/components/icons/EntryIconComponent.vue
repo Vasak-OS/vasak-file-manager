@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {  onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
 import { getFileIcon } from '@/utils/images';
 

@@ -4,9 +4,9 @@ import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponen
 import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.vue';
 import OpenWithDialogComponent from '@/components/dialogs/OpenWithDialogComponent.vue';
 import RenameDialogComponent from '@/components/dialogs/RenameDialogComponent.vue';
-import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserContentComponent.vue';
 import DragOverlayComponent from '@/components/drag/DragOverlayComponent.vue';
 import InboundDragOverlayComponent from '@/components/drag/InboundDragOverlayComponent.vue';
+import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserContentComponent.vue';
 import FileBrowserStatusBarComponent from '@/components/filebrowser/FileBrowserStatusBarComponent.vue';
 import FileBrowserToolbarComponent from '@/components/filebrowser/FileBrowserToolbarComponent.vue';
 import { useFileBrowser } from '@/composables/file-browser/use-file-browser';

@@ -2,10 +2,9 @@
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
-import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
+import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import { DirEntry } from '@/types/dir-entry';
-
 
 const props = defineProps<{
 	isActive: boolean;
@@ -13,7 +12,7 @@ const props = defineProps<{
 	operationType: DragOperationType;
 	cursorX: number;
 	cursorY: number;
-  dragItems: DirEntry[];
+	dragItems: DirEntry[];
 }>();
 
 const { t } = useI18n();
@@ -27,12 +26,12 @@ const overlayStyle = computed(() => ({
 }));
 
 const overlayIconStyle = computed(() => ({
-  left: `${props.cursorX - 18 }px`,
-  top: `${props.cursorY - 18 }px`,
+	left: `${props.cursorX - 18}px`,
+	top: `${props.cursorY - 18}px`,
 }));
 
 const operationIcon = computed(() =>
-  props.operationType === 'copy' ? copyIcon.value : folderInputIcon.value
+	props.operationType === 'copy' ? copyIcon.value : folderInputIcon.value
 );
 
 const description = computed(() => {

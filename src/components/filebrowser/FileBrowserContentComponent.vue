@@ -92,8 +92,8 @@ const sortedEntries = computed(() => {
 				bValue = b.name.toLowerCase();
 				break;
 			case 'size':
-				aValue = a.is_dir ? a.item_count ?? 0 : a.size;
-				bValue = b.is_dir ? b.item_count ?? 0 : b.size;
+				aValue = a.is_dir ? (a.item_count ?? 0) : a.size;
+				bValue = b.is_dir ? (b.item_count ?? 0) : b.size;
 				break;
 			case 'items':
 				aValue = a.item_count ?? 0;
@@ -127,10 +127,10 @@ const sortedEntries = computed(() => {
 
 onMounted(async () => {
 	FolderOpenIcon.value = await getIconSource('folder-open');
-  arrowUpIcon.value = await getSymbolSource('arrow-up');
-  arrowDownIcon.value = await getSymbolSource('arrow-down');
-  infoIcon.value = await getSymbolSource('showinfo');
-  columnsIcon.value = await getSymbolSource('view-file-columns');
+	arrowUpIcon.value = await getSymbolSource('arrow-up');
+	arrowDownIcon.value = await getSymbolSource('arrow-down');
+	infoIcon.value = await getSymbolSource('showinfo');
+	columnsIcon.value = await getSymbolSource('view-file-columns');
 });
 </script>
 
