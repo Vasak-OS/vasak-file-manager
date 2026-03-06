@@ -37,7 +37,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex overflow-hidden h-44 items-center justify-center rounded-corner bg-ui-bg/80">
+  <div class="flex overflow-hidden h-44 items-center justify-center rounded-corner bg-ui-surface/80">
     <div v-if="!selectedEntry" class="flex items-center justify-center">
       <img :src="fileIcon" class="h-12 w-12" />
     </div>

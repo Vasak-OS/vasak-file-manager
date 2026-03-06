@@ -194,7 +194,7 @@ const compactItems = computed<string[]>(() => {
     <div v-if="!selectedEntry" class="flex h-full items-center justify-center text-sm text-tx-muted">
       {{ t('noData') }}
     </div>
-    <div v-else class="flex flex-col gap-3 max-h-[calc(100vh-300px)] overflow-auto">
+    <div v-else class="flex flex-col gap-3 max-h-[calc(100vh-300px)] overflow-auto px-2">
       <div v-if="selectedEntry?.is_dir" class="flex flex-col gap-1">
         <div class="text-sm uppercase text-tx-muted">
           {{ t('size') }}
