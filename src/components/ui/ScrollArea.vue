@@ -7,8 +7,8 @@ defineProps<Props>();
 </script>
 
 <template>
-	<div :class="['scroll-area', $attrs.class]">
-		<div class="scroll-area__viewport">
+	<div :class="['relative w-full h-full overflow-hidden', $attrs.class]">
+		<div class="w-full h-full overflow-y-auto overflow-x-hidden scroll-area__viewport">
 			<slot />
 		</div>
 		<div class="scroll-area__scrollbar scroll-area__scrollbar--vertical">
@@ -20,14 +20,6 @@ defineProps<Props>();
 <style scoped>
 @reference "../../assets/main.css";
 
-.scroll-area {
-	@apply relative w-full h-full overflow-hidden;
-}
-
-.scroll-area__viewport {
-	@apply w-full h-full overflow-y-auto overflow-x-hidden;
-}
-
 .scroll-area__viewport::-webkit-scrollbar {
 	@apply w-2;
 }
@@ -37,11 +29,11 @@ defineProps<Props>();
 }
 
 .scroll-area__viewport::-webkit-scrollbar-thumb {
-	@apply bg-slate-300 rounded-full hover:bg-slate-400;
+	@apply bg-ui-bg/80 rounded-full hover:bg-slate-400;
 }
 
 .scroll-area__scrollbar {
-	@apply absolute top-0 right-0 w-2 h-full bg-slate-100 rounded;
+	@apply absolute top-0 right-0 w-2 h-full hover:bg-ui-bg/90 rounded;
 }
 
 .scroll-area__scrollbar--vertical {
@@ -49,6 +41,6 @@ defineProps<Props>();
 }
 
 .scroll-area__thumb {
-	@apply w-full bg-slate-400 rounded;
+	@apply w-full bg-primary hover:bg-secondary rounded;
 }
 </style>

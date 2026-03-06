@@ -39,7 +39,7 @@ function handleToggleInfoPanel() {
 }
 </script>
 <template>
-  <div class="h-screen w-screen bg-ui-bg/80 rounded-corner-window flex">
+  <div class="h-screen w-screen bg-ui-bg/80 rounded-corner-window flex border border-ui-border overflow-hidden">
     <SidebarComponent />
     <div class="flex-1 flex flex-col">
       <TopBarComponent>
