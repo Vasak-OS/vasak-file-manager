@@ -4,6 +4,7 @@ import ContentInformationHeadComponent from '@/components/content/ContentInforma
 import ContentInformationPreviewComponent from '@/components/content/ContentInformationPreviewComponent.vue';
 import { useNavigatorStore } from '@/stores/runtime/navigator';
 import type { DirEntry } from '@/types/dir-entry';
+import ContentInformationContentProperies from './ContentInformationContentProperies.vue';
 
 interface Props {
 	selectedEntries?: DirEntry[];
@@ -33,25 +34,9 @@ const infoPanelEntry = computed(() => {
 </script>
 
 <template>
-	<div class="bg-ui-bg/80 rounded-corner h-full w-60 overflow-y-auto p-2 border border-ui-border">
+	<div class="bg-ui-bg/80 rounded-corner h-[calc(100vh-52px)] w-68 overflow-hidden p-2 border border-ui-border">
 		<ContentInformationPreviewComponent :selectedEntry="infoPanelEntry" />
 		<ContentInformationHeadComponent :selectedEntry="infoPanelEntry" />
-		<div v-if="infoPanelEntry" class="space-y-4">
-			<div>
-				<h3 class="font-semibold text-sm mb-2">{{ infoPanelEntry.name }}</h3>
-				<p class="text-xs opacity-70">{{ infoPanelEntry.path }}</p>
-			</div>
-
-			<div v-if="navigatorStore.runtime.navigator.infoPanel.properties.length > 0">
-				<div v-for="prop in navigatorStore.runtime.navigator.infoPanel.properties" :key="prop.propName"
-					class="border-t border-opacity-10 pt-2 mt-2">
-					<p class="text-xs opacity-60">{{ prop.title }}</p>
-					<p class="text-sm font-medium">{{ prop.value }}</p>
-				</div>
-			</div>
-		</div>
-		<div v-else class="flex items-center justify-center h-full opacity-40">
-			<p class="text-sm">noSelection</p>
-		</div>
+		<ContentInformationContentProperies :selectedEntry="infoPanelEntry" />
 	</div>
 </template>
