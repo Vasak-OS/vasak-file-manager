@@ -31,10 +31,14 @@ const exactMatch = ref(false);
 const typoTolerance = ref(true);
 const scanDepth = ref(6);
 
-// function openSearchSettings() {
-// 	settingsStore.setCurrentTab('search');
-// 	router.push({ name: 'settings' });
-// }
+const searchIcon = ref('');
+const settingsIcon = ref('');
+const chevronDownIcon = ref('');
+const xIcon = ref('');
+//  function openSearchSettings() {
+//  	settingsStore.setCurrentTab('search');
+//  	router.push({ name: 'settings' });
+//  }
 
 function toggleOptions() {
 	showOptions.value = !showOptions.value;
@@ -183,7 +187,7 @@ function getActiveFileBrowser(): FileBrowserInstance | undefined {
 }
 
 function clearSelections() {
-	searchFileBrowserRefs.value.forEach((fileBrowser) => fileBrowser.clearSelection());
+	searchFileBrowserRefs.value.forEach((fileBrowser) => { fileBrowser.clearSelection()});
 	activeSearchDriveRoot.value = null;
 }
 
@@ -252,7 +256,7 @@ onMounted(() => {
         />
         <button v-if="globalSearchStore.query" variant="ghost" size="icon" class="global-search-view__clear-button"
           @click="clearQuery">
-          <XIcon :size="16" />
+          <img :src="xIcon" :size="16" />
         </button>
       </div>
       <div class="global-search-view__header-actions">
@@ -261,7 +265,7 @@ onMounted(() => {
           <SlidersHorizontalIcon :size="18" />
         </button>
         <button variant="outline" size="icon" class="global-search-view__close" @click="handleClose">
-          <XIcon :size="18" />
+          <img :src="xIcon" :size="18" />
         </button>
       </div>
     </div>
@@ -363,11 +367,11 @@ onMounted(() => {
       <div class="global-search-view__results">
         <div class="global-search-view__results-inner">
           <EmptyState v-if="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
-            :icon="SearchIcon" :title="'globalSearch.searchDataIncomplete'"
+            :icon="searchIcon" :title="'globalSearch.searchDataIncomplete'"
             :description="'globalSearch.noDrivesSelected'" :bordered="false" />
 
           <div v-else-if="!globalSearchStore.query.trim()" class="global-search-view__empty">
-            <SearchIcon :size="48" class="global-search-view__empty-icon" />
+            <img :src="searchIcon" :size="48" class="global-search-view__empty-icon" />
             <span class="global-search-view__empty-title">
               'globalSearch.globalSearch'
             </span>
@@ -378,14 +382,14 @@ onMounted(() => {
                   lastScanRelative
                 }`.toLowerCase() }}</template>)
             </span>
-            <Button variant="outline" size="sm" class="global-search-view__settings-button" @click="openSearchSettings">
-              <SettingsIcon :size="14" />
+            <button variant="outline" size="sm" class="global-search-view__settings-button" @click="openSearchSettings">
+              <img :src="settingsIcon" :size="14" />
               'globalSearch.showSearchSettings'
-            </Button>
+            </button>
           </div>
 
           <EmptyState v-else-if="globalSearchStore.results.length === 0 && !globalSearchStore.isSearching"
-            :icon="SearchIcon" :title="'globalSearch.searchStats.nothingFound'" :bordered="false" />
+            :icon="searchIcon" :title="'globalSearch.searchStats.nothingFound'" :bordered="false" />
 
           <template v-else-if="globalSearchStore.results.length > 0">
             <div v-for="group in groupedResults" :key="group.driveRoot" class="global-search-view__drive-group">
@@ -398,7 +402,7 @@ onMounted(() => {
                 <span class="global-search-view__drive-count">
                   {{ `item, ${group.entries.length}` }}
                 </span>
-                <ChevronDownIcon :size="16" class="global-search-view__drive-chevron"
+                <img :src="chevronDownIcon" :size="16" class="global-search-view__drive-chevron"
                   :class="{ 'global-search-view__drive-chevron--collapsed': isDriveCollapsed(group.driveRoot) }" />
               </button>
 
