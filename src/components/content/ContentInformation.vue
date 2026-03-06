@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import ContentInformationHeadComponent from '@/components/content/ContentInformationHeadComponent.vue';
+import ContentInformationPreviewComponent from '@/components/content/ContentInformationPreviewComponent.vue';
 import { useNavigatorStore } from '@/stores/runtime/navigator';
 import type { DirEntry } from '@/types/dir-entry';
-import ContentInformationHeadComponent from '@/components/content/ContentInformationHeadComponent.vue';
 
 interface Props {
 	selectedEntries?: DirEntry[];
@@ -32,7 +33,8 @@ const infoPanelEntry = computed(() => {
 </script>
 
 <template>
-	<div class="bg-ui-bg/80 rounded-corner h-full w-60 overflow-y-auto p-4 border border-ui-border">
+	<div class="bg-ui-bg/80 rounded-corner h-full w-60 overflow-y-auto p-2 border border-ui-border">
+		<ContentInformationPreviewComponent :selectedEntry="infoPanelEntry" />
 		<ContentInformationHeadComponent :selectedEntry="infoPanelEntry" />
 		<div v-if="infoPanelEntry" class="space-y-4">
 			<div>
