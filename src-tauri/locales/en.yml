@@ -25,6 +25,7 @@ filter:
 fileBrowser:
   fileCount: 1 file
   directoryCount: 1 folder
+  itemCount: "{0} items"
   matchedNOfItems: "Matched {0} of {1} items"
   showingNOfItems: "Showing {0} of {1} items"
   selectedItems: "Selected: {0}"
@@ -145,6 +146,29 @@ run: Run
 edit: Edit
 save: Save
 cancel: Cancel
+type: Type
+directory: Directory
+file: File
+path: Path
+size: Size
+items: Items
+extension: Extension
+modified: Modified
+created: Created
+accessed: Accessed
+symlink: Symlink
+yes: Yes
+hidden: Hidden
+noData: No data
+calculating: Calculating
+calculatedAgo: "Calculated {0}"
+recalculate: Recalculate
+getSize: Get size
+relativeTime:
+  justNow: Just now
+  minutesAgo: "{0} minutes ago"
+  hoursAgo: "{0} hours ago"
+  daysAgo: "{0} days ago"
 terminal:
   openInTerminal: Open in Terminal
   noTerminalsFound: No terminals found

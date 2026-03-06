@@ -25,6 +25,7 @@ filter:
 fileBrowser:
   fileCount: 1 archivo
   directoryCount: 1 carpeta
+  itemCount: "{0} elementos"
   matchedNOfItems: "Se encontraron {0} de {1} elementos"
   showingNOfItems: "Mostrando {0} de {1} elementos"
   selectedItems: "Seleccionados: {0}"
@@ -142,6 +143,29 @@ dialogs:
 name: Nombre
 create: Crear
 save: Guardar
+type: Tipo
+directory: Carpeta
+file: Archivo
+path: Ruta
+size: Tamaño
+items: Elementos
+extension: Extensión
+modified: Modificado
+created: Creado
+accessed: Accedido
+symlink: Enlace simbólico
+yes: Sí
+hidden: Oculto
+noData: Sin datos
+calculating: Calculando
+calculatedAgo: "Calculado {0}"
+recalculate: Recalcular
+getSize: Obtener tamaño
+relativeTime:
+  justNow: Justo ahora
+  minutesAgo: "Hace {0} minutos"
+  hoursAgo: "Hace {0} horas"
+  daysAgo: "Hace {0} días"
 drag:
   holdShiftToChangeMode: Mantén presionado Shift para cambiar el modo de arrastre
   holdCtrlForCurrentDirDrop: Mantén presionado Ctrl para soltar en el directorio actual
