@@ -12,7 +12,7 @@ defineProps<Props>();
 			<slot />
 		</div>
 		<div class="scroll-area__scrollbar scroll-area__scrollbar--vertical">
-			<div class="scroll-area__thumb" />
+			<div class="w-full bg-primary hover:bg-secondary rounded" />
 		</div>
 	</div>
 </template>
@@ -38,9 +38,5 @@ defineProps<Props>();
 
 .scroll-area__scrollbar--vertical {
 	@apply w-2;
-}
-
-.scroll-area__thumb {
-	@apply w-full bg-primary hover:bg-secondary rounded;
 }
 </style>
