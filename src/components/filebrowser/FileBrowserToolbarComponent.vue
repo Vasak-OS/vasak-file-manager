@@ -177,40 +177,6 @@ onMounted(async () => {
       </Tooltip>
     </div>
 
-    <div class="file-browser-toolbar__nav-buttons file-browser-toolbar__nav-buttons--collapsed">
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <button type="button" class="file-browser-toolbar__nav-button"
-            :title="t('fileBrowser.navigationMenu')">
-            <img :src="ellipsisVerticalIcon" :alt="t('fileBrowser.navigationMenu')" class="file-browser-toolbar__icon" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="bottom" class="min-w-30">
-          <DropdownMenuItem :disabled="!canGoBack" @click="emit('goBack')">
-            <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            {{ t('fileBrowser.goBack') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem :disabled="!canGoForward" @click="emit('goForward')">
-            <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            {{ t('fileBrowser.goForward') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem :disabled="!canGoUp" @click="emit('goUp')">
-            <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            {{ t('fileBrowser.goUp') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem @click="emit('goHome')">
-            <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            {{ t('fileBrowser.goHome') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem :disabled="isLoading" @click="emit('refresh')">
-            <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
-            {{ t('fileBrowser.refresh') }}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-
-    <div orientation="vertical" class="file-browser-toolbar__separator"></div>
     <div class="file-browser-toolbar__right">
       <AddressBarComponent :current-path="pathInput" class="file-browser-toolbar__address-bar"
         @navigate="handleAddressBarNavigate" />
@@ -290,15 +256,6 @@ onMounted(async () => {
   display: flex;
 }
 
-.file-browser-toolbar__nav-buttons--collapsed {
-  display: none;
-}
-
-.file-browser-toolbar__nav-button {
-  width: 36px;
-  height: 36px;
-}
-
 .file-browser-toolbar__icon {
   width: 18px;
   height: 18px;
@@ -316,15 +273,6 @@ onMounted(async () => {
   to {
     transform: rotate(360deg);
   }
-}
-
-.file-browser-toolbar__separator {
-  display: none;
-  height: 20px;
-}
-
-.file-browser-toolbar__dropdown {
-  min-width: 180px;
 }
 
 .file-browser-toolbar__right {
@@ -348,23 +296,9 @@ onMounted(async () => {
 }
 
 @container (width < 400px) {
-  .file-browser-toolbar__separator {
-    display: block;
-  }
-
   .file-browser-toolbar__nav-buttons--expanded {
     display: none;
   }
-
-  .file-browser-toolbar__nav-buttons--collapsed {
-    display: flex;
-  }
 }
 </style>
 
-<style>
-.file-browser-toolbar__filter-popover.sigma-ui-popover-content {
-  width: 280px;
-  padding: 8px;
-}
-</style>

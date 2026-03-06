@@ -26,7 +26,7 @@ const props = defineProps<{
 	layout?: Layout;
 }>();
 const { t } = useI18n();
-const FolderOpenIcon = ref('');
+const folderOpenIcon = ref('');
 
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
@@ -126,7 +126,7 @@ const sortedEntries = computed(() => {
 });
 
 onMounted(async () => {
-	FolderOpenIcon.value = await getIconSource('folder-open');
+	folderOpenIcon.value = await getIconSource('folder-open');
 	arrowUpIcon.value = await getSymbolSource('arrow-up');
 	arrowDownIcon.value = await getSymbolSource('arrow-down');
 	infoIcon.value = await getSymbolSource('showinfo');
@@ -249,7 +249,7 @@ onMounted(async () => {
     <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
 
     <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="file-browser__empty-state-container"
-      :icon="FolderOpenIcon" :title="t('fileBrowser.directoryIsEmpty')"
+      :icon="folderOpenIcon" :title="t('fileBrowser.directoryIsEmpty')"
       :description="t('fileBrowser.directoryIsEmptyDescription')" :bordered="false" />
 
     <template v-else>
