@@ -15,7 +15,7 @@
         "title": "vasak-file-manager",
         "width": 1280,
         "height": 720,
-        "minWidth": 700,
+        "minWidth": 750,
         "minHeight": 500,
         "resizable": true,
         "fullscreen": false,
