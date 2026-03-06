@@ -187,7 +187,9 @@ function getActiveFileBrowser(): FileBrowserInstance | undefined {
 }
 
 function clearSelections() {
-	searchFileBrowserRefs.value.forEach((fileBrowser) => { fileBrowser.clearSelection()});
+	searchFileBrowserRefs.value.forEach((fileBrowser) => {
+		fileBrowser.clearSelection();
+	});
 	activeSearchDriveRoot.value = null;
 }
 
