@@ -5,7 +5,6 @@ import { getFileIcon } from '@/utils/images';
 
 const props = defineProps<{
 	entry: DirEntry;
-	size: number;
 }>();
 
 const icon = ref<string>('');

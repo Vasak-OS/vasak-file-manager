@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useNavigatorStore } from '@/stores/runtime/navigator';
 import type { DirEntry } from '@/types/dir-entry';
+import ContentInformationHeadComponent from '@/components/content/ContentInformationHeadComponent.vue';
 
 interface Props {
 	selectedEntries?: DirEntry[];
@@ -32,6 +33,7 @@ const infoPanelEntry = computed(() => {
 
 <template>
 	<div class="bg-ui-bg/80 rounded-corner h-full w-60 overflow-y-auto p-4 border border-ui-border">
+		<ContentInformationHeadComponent :selectedEntry="infoPanelEntry" />
 		<div v-if="infoPanelEntry" class="space-y-4">
 			<div>
 				<h3 class="font-semibold text-sm mb-2">{{ infoPanelEntry.name }}</h3>

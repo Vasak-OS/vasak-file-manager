@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
@@ -15,7 +16,6 @@ import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import type { DirEntry } from '@/types/dir-entry';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const MAX_VISIBLE_ITEMS = 100;
 
@@ -38,7 +38,7 @@ const shortcutsStore = useShortcutsStore();
 const clipboardItemsPopoverOpen = ref(false);
 const clipboardItemsFilterQuery = ref('');
 
-const xIcon = ref('')
+const xIcon = ref('');
 const eyeIcon = ref('');
 const clipboardPasteIcon = ref('');
 
@@ -126,10 +126,10 @@ function openCollapsedPopover() {
 	});
 }
 
-onMounted(async() => {
-  xIcon.value = await getSymbolSource('gtk-close');
-  eyeIcon.value = await getSymbolSource('redeyes-symbolic');
-  clipboardPasteIcon.value = await getSymbolSource('edit-paste');
+onMounted(async () => {
+	xIcon.value = await getSymbolSource('gtk-close');
+	eyeIcon.value = await getSymbolSource('redeyes-symbolic');
+	clipboardPasteIcon.value = await getSymbolSource('edit-paste');
 });
 </script>
 

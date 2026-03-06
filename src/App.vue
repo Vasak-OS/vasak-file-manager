@@ -6,6 +6,7 @@ import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
+import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { disableWebViewFeatures } from '@/utils/web-view-features';
@@ -27,10 +28,12 @@ onErrorCaptured((err) => {
 onMounted(async () => {
 	try {
 		const userPathsStore = useUserPathsStore();
+		const userLayoutStore = useUserLayoutStore();
 		const workspacesStore = useWorkspacesStore();
 		const shortcutsStore = useShortcutsStore();
 
 		await userPathsStore.init();
+		await userLayoutStore.init();
 		await workspacesStore.init();
 
 		const configStore = useConfigStore() as Store<
@@ -43,7 +46,7 @@ onMounted(async () => {
 				configStore.loadConfig();
 			});
 		});
-		disableWebViewFeatures();
+		//disableWebViewFeatures();
 		shortcutsStore.init();
 	} catch (error: any) {
 		console.error('Error al cargar configuración en App.vue', error);

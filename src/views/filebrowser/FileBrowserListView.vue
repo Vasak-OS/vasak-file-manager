@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
@@ -9,7 +10,6 @@ import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
 import { formatDate } from '@/utils/date-formatter';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 interface Props {
 	entries: DirEntry[];
@@ -90,8 +90,8 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 }
 
 onMounted(async () => {
-  selectedIcon.value = await getSymbolSource('object-select-symbolic');
-  loaderCircleIcon.value = await getSymbolSource('content-loading-symbolic');
+	selectedIcon.value = await getSymbolSource('object-select-symbolic');
+	loaderCircleIcon.value = await getSymbolSource('content-loading-symbolic');
 });
 </script>
 
