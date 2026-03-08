@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, ComputedRef, onMounted, onUnmounted, Ref, ref } from 'vue';
+import { ComputedRef, computed, onMounted, Ref, ref } from 'vue';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
 import toReadableBytes from '@/utils/byte-parser';
@@ -31,7 +31,7 @@ const formattedSpaceInfo = computed(() => {
 	return `${available} ${t('freeOf')} ${total}`;
 });
 
-const driveIcon : ComputedRef<Ref<string>> = computed(() => {
+const driveIcon: ComputedRef<Ref<string>> = computed(() => {
 	if (props.drive.drive_type === 'Network') {
 		return networkIcon;
 	}

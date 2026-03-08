@@ -6,13 +6,23 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useDrives } from '@/composables/use-drives';
+import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 
 const { drives, refresh } = useDrives();
 const workspacesStore = useWorkspacesStore();
+const globalSearchStore = useGlobalSearchStore();
+const userPathsStore = useUserPathsStore();
+const { t } = useI18n();
+
 const folderIcon = ref('');
 const usbIcon = ref('');
 const hardDriveIcon = ref('');
+const searchIcon = ref('');
+const homeIcon = ref('');
+const rootIcon = ref('');
 
 async function openDrive(path: string) {
 	await workspacesStore.openNewTabGroup(path);
@@ -22,20 +32,56 @@ onMounted(async () => {
 	folderIcon.value = await getIconSource('folder');
 	usbIcon.value = await getIconSource('drive-removable-media-usb');
 	hardDriveIcon.value = await getIconSource('drive-harddisk');
-  refresh();
+	searchIcon.value = await getIconSource('system-search');
+	homeIcon.value = await getIconSource('user-home');
+	rootIcon.value = await getIconSource('drive-harddisk');
+	refresh();
 });
 </script>
 
 <template>
   <div class="h-screen w-10 bg-ui-bg/80 rounded-l-corner-window justify-between flex flex-col p-1 border-r border-ui-border">
-    <div>
+    <div class="flex flex-col gap-1 items-center mt-2">
       <div class="mb-2 p-1">
-        <img :src="folderIcon" class="h-6 w-6 inline-block" alt="Home">
+        <img :src="folderIcon" class="h-6 w-6 inline-block" alt="Logo">
       </div>
     </div>
-    <div>
 
+    <div>
+      <Tooltip :delay-duration="0">
+        <TooltipTrigger as-child>
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="globalSearchStore.toggle()">
+            <img :src="searchIcon" class="h-6 w-6" alt="Search" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" :side-offset="12">
+          {{ t('search') }}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip :delay-duration="0">
+        <TooltipTrigger as-child>
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive(userPathsStore.userPaths.homeDir)">
+            <img :src="homeIcon" class="h-6 w-6" alt="Home" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" :side-offset="12">
+          {{ t('home') }}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip :delay-duration="0">
+        <TooltipTrigger as-child>
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive('/')">
+            <img :src="rootIcon" class="h-6 w-6" alt="Root" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" :side-offset="12">
+          {{ t('root') }}
+        </TooltipContent>
+      </Tooltip>
     </div>
+
     <div>
       <Tooltip v-for="drive in drives" :key="drive.path" :delay-duration="0">
         <TooltipTrigger as-child>
