@@ -142,15 +142,15 @@
   animation: circle-in 500ms;
 }
 
-body {
-  @apply text-tx-main;
-}
-
-body * {
-  @apply transition-colors duration-300;
-}
-
 @layer base {
+  body {
+    @apply text-tx-main;
+  }
+
+  body * {
+    @apply transition-colors duration-300;
+  }
+
   *,
   ::after,
   ::before,

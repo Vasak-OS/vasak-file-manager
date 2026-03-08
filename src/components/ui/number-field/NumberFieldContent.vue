@@ -2,15 +2,9 @@
 </script>
 
 <template>
-	<div class="number-field-content">
+	<div class="flex items-center gap-1">
 		<slot />
 	</div>
 </template>
 
-<style scoped>
-.number-field-content {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-}
-</style>
+

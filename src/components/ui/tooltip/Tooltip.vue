@@ -47,8 +47,4 @@ provide('tooltip', {
 	</div>
 </template>
 
-<style scoped>
-.inline-block {
-	@apply inline-block;
-}
-</style>
+

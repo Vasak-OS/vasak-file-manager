@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, defineProps, inject, onMounted, onUnmounted, ref, withDefaults } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
 
 interface ResizableGroupContext {
 	registerPanel: (id: string, minSize: number) => void;
@@ -67,5 +67,4 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-</style>
+

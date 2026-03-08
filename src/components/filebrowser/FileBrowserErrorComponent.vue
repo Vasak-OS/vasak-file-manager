@@ -9,38 +9,11 @@ defineEmits<{
 </script>
 
 <template>
-  <div class="file-browser-error">
+  <div class="flex h-full flex-col items-center justify-center text-destructive gap-4">
     <AlertCircleIcon :size="32" />
     <span>{{ error }}</span>
-    <button type="button" class="file-browser-error__button" @click="$emit('goHome')">
+    <button type="button" class="rounded border border-ui-border bg-secondary text-secondary-foreground px-3 py-1.5 text-xs leading-[1.2] cursor-pointer hover:bg-secondary/90" @click="$emit('goHome')">
       'fileBrowser.goHome'
     </button>
   </div>
 </template>
-
-<style scoped>
-.file-browser-error {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: hsl(var(--destructive));
-  gap: 16px;
-}
-
-.file-browser-error__button {
-  border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
-  padding: 6px 12px;
-  font-size: 12px;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.file-browser-error__button:hover {
-  background-color: hsl(var(--secondary) / 0.9);
-}
-</style>

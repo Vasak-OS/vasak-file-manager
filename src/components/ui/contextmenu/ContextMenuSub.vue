@@ -13,13 +13,7 @@ provide('toggleContextMenuSub', toggleSub);
 </script>
 
 <template>
-  <div class="context-menu-sub">
+  <div class="relative">
     <slot />
   </div>
 </template>
-
-<style scoped>
-.context-menu-sub {
-  position: relative;
-}
-</style>

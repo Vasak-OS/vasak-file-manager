@@ -135,11 +135,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="file-browser__content" :style="{ '--file-browser-list-columns': listColumnsTemplate }">
-    <div v-if="props.layout === 'list'" class="file-browser-list-view__header-container">
-      <div class="file-browser-list-view__header">
+  <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden [--file-browser-list-row-padding-y:10px] [--file-browser-list-row-padding-x:16px] [--file-browser-list-header-padding-x:16px] [--file-browser-list-header-padding-y:10px] [--file-browser-list-cell-padding-right:16px] [--file-browser-list-right-gutter:24px]" :style="{ '--file-browser-list-columns': listColumnsTemplate }">
+    <div v-if="props.layout === 'list'" class="relative pr-[var(--file-browser-list-right-gutter)] border-b border-ui-border">
+      <div class="grid py-[var(--file-browser-list-header-padding-y)] px-[var(--file-browser-list-header-padding-x)] bg-background-3 text-muted-foreground text-xs font-medium [grid-template-columns:var(--file-browser-list-columns)] uppercase">
         <button type="button"
-          class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-name"
+          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
           <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'name' && listSortDirection === 'asc'" 
@@ -148,7 +148,7 @@ onMounted(async () => {
             class="h-4 w-4" />
         </button>
         <button v-if="showItemsColumn" type="button"
-          class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-items"
+          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
           @click="handleColumnHeaderClick('items')">
           {{ t('fileBrowser.items') }}
           <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'items' && listSortDirection === 'asc'" 
@@ -159,47 +159,47 @@ onMounted(async () => {
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
           <TooltipTrigger as-child>
             <button type="button"
-              class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-size file-browser-list-view__header-size--with-info"
+              class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
-              <img :src="infoIcon" alt="Info" class="file-browser-list-view__header-info-icon" />
+              <img :src="infoIcon" alt="Info" />
               <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
                 class="h-4 w-4" />
               <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'" :size="12"
                 class="h-4 w-4" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" :side-offset="8" class="file-browser-list-view__size-tooltip">
-            <div class="file-browser-list-view__size-tooltip-content">
-              <div class="file-browser-list-view__size-tooltip-title">
+          <TooltipContent side="bottom" :side-offset="8" class="max-w-[300px]">
+            <div class="flex max-w-[300px] flex-col gap-2.5">
+              <div class="text-foreground text-xs font-semibold tracking-[0.02em] uppercase">
                 {{ t('fileBrowser.sizeTooltip.title') }}
               </div>
-              <div class="file-browser-list-view__size-tooltip-body">
-                <div class="file-browser-list-view__size-tooltip-item">
-                  <span class="file-browser-list-view__size-tooltip-label">{{ legendSizeText }}</span>
-                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.exact') }}</span>
+              <div class="flex flex-col gap-1.5">
+                <div class="flex items-center gap-2.5">
+                  <span class="inline-flex w-[70px] shrink-0 items-center justify-center py-0.5 px-2 rounded bg-primary/15 text-primary font-mono text-[11px] font-medium">{{ legendSizeText }}</span>
+                  <span class="text-muted-foreground text-xs leading-[1.4]">{{ t('fileBrowser.sizeTooltip.exact') }}</span>
                 </div>
-                <div class="file-browser-list-view__size-tooltip-item">
+                <div class="flex items-center gap-2.5">
                   <span
-                    class="file-browser-list-view__size-tooltip-label file-browser-list-view__size-tooltip-label--loading">
-                    <Skeleton class="file-browser-list-view__size-tooltip-skeleton" />
+                    class="inline-flex w-[70px] shrink-0 items-center justify-center py-0.5 px-2 rounded font-mono text-[11px] font-medium bg-transparent">
+                    <Skeleton class="w-full h-3" />
                   </span>
-                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.loading') }}</span>
+                  <span class="text-muted-foreground text-xs leading-[1.4]">{{ t('fileBrowser.sizeTooltip.loading') }}</span>
                 </div>
-                <div class="file-browser-list-view__size-tooltip-item">
+                <div class="flex items-center gap-2.5">
                   <span
-                    class="file-browser-list-view__size-tooltip-label file-browser-list-view__size-tooltip-label--empty">—</span>
-                  <span class="file-browser-list-view__size-tooltip-desc">{{ t('fileBrowser.sizeTooltip.notCalculated') }}</span>
+                    class="inline-flex w-[70px] shrink-0 items-center justify-center py-0.5 px-2 rounded font-mono text-[11px] font-medium bg-muted/30 text-muted-foreground">—</span>
+                  <span class="text-muted-foreground text-xs leading-[1.4]">{{ t('fileBrowser.sizeTooltip.notCalculated') }}</span>
                 </div>
               </div>
-              <div class="file-browser-list-view__size-tooltip-note">
+              <div class="pt-1.5 border-t border-ui-border/50 text-muted-foreground text-[11px] italic leading-[1.4]">
                 {{ t('fileBrowser.sizeTooltip.note') }}
               </div>
             </div>
           </TooltipContent>
         </Tooltip>
         <button v-if="columnVisibility.modified" type="button"
-          class="file-browser-list-view__header-item file-browser-list-view__header-item--sortable file-browser-list-view__header-modified"
+          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
           <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" 
@@ -212,29 +212,29 @@ onMounted(async () => {
         <Tooltip>
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
-              <button type="button" class="file-browser-list-view__columns-button">
+              <button type="button" class="absolute top-1/2 right-0 w-7 h-7 text-muted-foreground -translate-y-1/2 outline-none">
                 <img :src="columnsIcon" :alt="t('fileBrowser.columns')" class="h-4 w-4" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <PopoverContent :side="'bottom'" :align="'end'" class="file-browser-list-view__columns-popover">
-            <div class="file-browser-list-view__columns-option">
-              <input id="column-items" type="checkbox" class="file-browser-list-view__columns-checkbox"
+          <PopoverContent :side="'bottom'" :align="'end'" class="flex w-auto flex-col px-3 py-2 gap-2">
+            <div class="flex items-center gap-2 capitalize">
+              <input id="column-items" type="checkbox" class="w-3.5 h-3.5 m-0 accent-primary"
                 :checked="columnVisibility.items"
                 @change="toggleColumnVisibility('items', ($event.target as HTMLInputElement).checked)" />
-              <label for="column-items" class="file-browser-list-view__columns-label">{{ t('fileBrowser.items') }}</label>
+              <label for="column-items" class="cursor-pointer text-[13px] select-none">{{ t('fileBrowser.items') }}</label>
             </div>
-            <div class="file-browser-list-view__columns-option">
-              <input id="column-size" type="checkbox" class="file-browser-list-view__columns-checkbox"
+            <div class="flex items-center gap-2 capitalize">
+              <input id="column-size" type="checkbox" class="w-3.5 h-3.5 m-0 accent-primary"
                 :checked="columnVisibility.size"
                 @change="toggleColumnVisibility('size', ($event.target as HTMLInputElement).checked)" />
-              <label for="column-size" class="file-browser-list-view__columns-label">{{ t('fileBrowser.size') }}</label>
+              <label for="column-size" class="cursor-pointer text-[13px] select-none">{{ t('fileBrowser.size') }}</label>
             </div>
-            <div class="file-browser-list-view__columns-option">
-              <input id="column-modified" type="checkbox" class="file-browser-list-view__columns-checkbox"
+            <div class="flex items-center gap-2 capitalize">
+              <input id="column-modified" type="checkbox" class="w-3.5 h-3.5 m-0 accent-primary"
                 :checked="columnVisibility.modified"
                 @change="toggleColumnVisibility('modified', ($event.target as HTMLInputElement).checked)" />
-              <label for="column-modified" class="file-browser-list-view__columns-label">{{ t('fileBrowser.modified') }}</label>
+              <label for="column-modified" class="cursor-pointer text-[13px] select-none">{{ t('fileBrowser.modified') }}</label>
             </div>
           </PopoverContent>
           <TooltipContent>
@@ -248,15 +248,15 @@ onMounted(async () => {
 
     <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
 
-    <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="file-browser__empty-state-container"
+    <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="flex flex-1 items-center justify-center p-4"
       :icon="folderOpenIcon" :title="t('fileBrowser.directoryIsEmpty')"
       :description="t('fileBrowser.directoryIsEmptyDescription')" :bordered="false" />
 
     <template v-else>
-      <ScrollArea class="file-browser__scroll-area" @contextmenu.self.prevent>
+      <ScrollArea class="relative min-h-0 flex-1" @contextmenu.self.prevent>
         <ContextMenu>
           <ContextMenuTrigger as-child>
-            <div :ref="ctx.setEntriesContainerRef" class="file-browser__entries-container" @contextmenu.self.prevent>
+            <div :ref="ctx.setEntriesContainerRef" class="min-h-full" @contextmenu.self.prevent>
               <FileBrowserGridView v-if="props.layout === 'grid'" :entries="sortedEntries" />
               <FileBrowserListView v-else :entries="sortedEntries" />
             </div>
@@ -267,192 +267,3 @@ onMounted(async () => {
     </template>
   </div>
 </template>
-
-<style scoped>
-.file-browser__content {
-  position: relative;
-  display: flex;
-  overflow: hidden;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
-
-  --file-browser-list-row-padding-y: 10px;
-  --file-browser-list-row-padding-x: 16px;
-  --file-browser-list-header-padding-x: 16px;
-  --file-browser-list-header-padding-y: 10px;
-  --file-browser-list-cell-padding-right: 16px;
-  --file-browser-list-right-gutter: 24px;
-  --file-browser-list-columns: minmax(80px, 1fr) minmax(70px, 90px) minmax(50px, 100px) minmax(60px, 160px);
-}
-
-.file-browser__empty-state-container {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.file-browser__scroll-area {
-  position: relative;
-  min-height: 0;
-  flex: 1;
-}
-
-.file-browser__entries-container {
-  min-height: 100%;
-}
-
-.file-browser-list-view__header {
-  display: grid;
-  padding: var(--file-browser-list-header-padding-y) var(--file-browser-list-header-padding-x);
-  background-color: hsl(var(--background-3));
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  font-weight: 500;
-  grid-template-columns: var(--file-browser-list-columns);
-  text-transform: uppercase;
-}
-
-.file-browser-list-view__header-container {
-  position: relative;
-  padding-right: var(--file-browser-list-right-gutter);
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.file-browser-list-view__header-item {
-  display: flex;
-  align-items: center;
-  padding-right: var(--file-browser-list-cell-padding-right);
-  gap: 8px;
-}
-
-.file-browser-list-view__header-item--sortable {
-  border: none;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  text-transform: inherit;
-}
-
-.file-browser-list-view__header-item--sortable:hover {
-  color: hsl(var(--foreground));
-}
-
-.file-browser-list-view__size-tooltip {
-  max-width: 300px;
-}
-
-.file-browser-list-view__size-tooltip-content {
-  display: flex;
-  max-width: 300px;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.file-browser-list-view__size-tooltip-title {
-  color: hsl(var(--foreground));
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.file-browser-list-view__size-tooltip-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.file-browser-list-view__size-tooltip-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.file-browser-list-view__size-tooltip-label {
-  display: inline-flex;
-  width: 70px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background-color: hsl(var(--primary) / 15%);
-  color: hsl(var(--primary));
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.file-browser-list-view__size-tooltip-label--loading {
-  background-color: transparent;
-}
-
-.file-browser-list-view__size-tooltip-skeleton {
-  width: 100%;
-  height: 12px;
-}
-
-.file-browser-list-view__size-tooltip-label--empty {
-  background-color: hsl(var(--muted) / 30%);
-  color: hsl(var(--muted-foreground));
-}
-
-.file-browser-list-view__size-tooltip-desc {
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.file-browser-list-view__size-tooltip-note {
-  padding-top: 6px;
-  border-top: 1px solid hsl(var(--border) / 50%);
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  font-style: italic;
-  line-height: 1.4;
-}
-
-.file-browser-list-view__columns-button {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  width: 28px;
-  height: 28px;
-  color: hsl(var(--muted-foreground));
-  transform: translateY(-50%);
-}
-
-.file-browser-list-view__columns-checkbox {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: hsl(var(--primary));
-}
-</style>
-
-<style>
-.file-browser-list-view__columns-popover.sigma-ui-popover-content {
-  display: flex;
-  width: auto;
-  flex-direction: column;
-  padding: 8px 12px;
-  gap: 8px;
-}
-
-.file-browser-list-view__columns-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-transform: capitalize;
-}
-
-.file-browser-list-view__columns-label {
-  cursor: pointer;
-  font-size: 13px;
-  user-select: none;
-}
-</style>

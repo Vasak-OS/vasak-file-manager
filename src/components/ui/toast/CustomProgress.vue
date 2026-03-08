@@ -79,5 +79,4 @@ const progressColor = computed(() => {
   </div>
 </template>
 
-<style scoped>
-</style>
+

@@ -37,7 +37,8 @@ const trimmedName = computed(() => name.value.trim());
 const isValid = computed(() => {
 	if (!trimmedName.value) return false;
 
-	const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: we explicitly want to match null character and other control characters
+	const invalidChars = /[<>:"/\\|?*\u0000-\u001F]/;
 
 	if (invalidChars.test(trimmedName.value)) return false;
 
@@ -86,19 +87,20 @@ function handleKeydown(event: KeyboardEvent) {
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="file-browser-new-item-dialog">
+    <DialogContent class="w-[420px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{{ dialogTitle }}</DialogTitle>
       </DialogHeader>
 
-      <div class="file-browser-new-item-dialog__form">
-        <div class="file-browser-new-item-dialog__field-wrapper">
-          <label for="new-item-input" class="file-browser-new-item-dialog__label">
+      <div class="flex w-full min-w-0 flex-col gap-4">
+        <div class="flex w-full min-w-0 flex-col gap-2">
+          <label for="new-item-input" class="text-foreground text-sm font-medium">
             {{ t('name') }}
           </label>
-          <div class="file-browser-new-item-dialog__field">
+          <div class="flex w-full min-w-0 items-center gap-2">
             <input id="new-item-input" ref="inputRef" v-model="name" type="text"
-              :class="{ 'file-browser-new-item-dialog__input--error': name && !isValid }" @keydown="handleKeydown" />
+              class="w-full min-w-0 max-w-full box-border"
+              :class="{ '!border-destructive': name && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || isSubmitting" @click="handleSubmit">
               {{ t('create') }}
             </button>
@@ -110,57 +112,3 @@ function handleKeydown(event: KeyboardEvent) {
     </DialogContent>
   </Dialog>
 </template>
-
-<style>
-.file-browser-new-item-dialog {
-  width: 420px;
-  max-width: calc(100vw - 32px);
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-.file-browser-new-item-dialog>* {
-  min-width: 0;
-}
-
-.file-browser-new-item-dialog__form {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.file-browser-new-item-dialog__field-wrapper {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.file-browser-new-item-dialog__field {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-browser-new-item-dialog__label {
-  color: hsl(var(--foreground));
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.file-browser-new-item-dialog__field .sigma-ui-input {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.file-browser-new-item-dialog__input--error {
-  border-color: hsl(var(--destructive));
-}
-</style>

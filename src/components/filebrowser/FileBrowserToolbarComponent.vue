@@ -129,13 +129,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="file-browser-toolbar">
-    <div class="file-browser-toolbar__nav-buttons file-browser-toolbar__nav-buttons--expanded">
+  <div class="@container flex h-12 items-center p-2 border-b border-ui-border gap-3">
+    <div class="hidden @[400px]:flex shrink-0 gap-1">
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoBack"
             @click="emit('goBack')">
-            <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="file-browser-toolbar__icon" />
+            <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goBack') }}</TooltipContent>
@@ -144,7 +144,7 @@ onMounted(async () => {
         <TooltipTrigger as-child>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoForward"
             @click="emit('goForward')">
-            <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="file-browser-toolbar__icon" />
+            <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goForward') }}</TooltipContent>
@@ -153,7 +153,7 @@ onMounted(async () => {
         <TooltipTrigger as-child>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoUp"
             @click="emit('goUp')">
-            <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="file-browser-toolbar__icon" />
+            <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goUp') }}</TooltipContent>
@@ -161,7 +161,7 @@ onMounted(async () => {
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" @click="emit('goHome')">
-            <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="file-browser-toolbar__icon" />
+            <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goHome') }}</TooltipContent>
@@ -170,15 +170,15 @@ onMounted(async () => {
         <TooltipTrigger as-child>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" :disabled="isLoading"
             @click="emit('refresh')">
-            <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="file-browser-toolbar__icon" :class="{ 'animate-spin': isLoading }" />
+            <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="w-[18px] h-[18px]" :class="{ 'animate-spin': isLoading }" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.refresh') }}</TooltipContent>
       </Tooltip>
     </div>
 
-    <div class="file-browser-toolbar__right">
-      <AddressBarComponent :current-path="pathInput" class="file-browser-toolbar__address-bar"
+    <div class="flex min-w-0 flex-1 items-center gap-2">
+      <AddressBarComponent :current-path="pathInput" class="min-w-0 flex-1"
         @navigate="handleAddressBarNavigate" />
       <DropdownMenu :open="isCreateMenuOpen" @update:open="handleCreateMenuOpenChange">
         <Tooltip>
@@ -223,9 +223,9 @@ onMounted(async () => {
             <div class="flex relative">
               <input ref="filterInputRef" type="text" :value="filterQuery" :placeholder="t('fileBrowser.searchThisDirectory')"
                 class="h-8 w-full pr-8 rounded-corner" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
-              <button v-if="filterQuery" type="button" class="file-browser-toolbar__filter-clear"
+              <button v-if="filterQuery" type="button" class="absolute right-1 flex h-7 w-7 items-center justify-center"
                 @click="clearFilter">
-                <img :src="xIcon" :alt="t('fileBrowser.clearFilter')" class="file-browser-toolbar__icon file-browser-toolbar__icon--small" />
+                <img :src="xIcon" :alt="t('fileBrowser.clearFilter')" class="w-[18px] h-[18px]" />
               </button>
             </div>
           </PopoverContent>
@@ -235,70 +235,5 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-.file-browser-toolbar {
-  display: flex;
-  height: 48px;
-  align-items: center;
-  padding: 8px;
-  border-bottom: 1px solid hsl(var(--border));
-  container-type: inline-size;
-  gap: 12px;
-}
 
-.file-browser-toolbar__nav-buttons {
-  display: flex;
-  flex-shrink: 0;
-  gap: 4px;
-}
-
-.file-browser-toolbar__nav-buttons--expanded {
-  display: flex;
-}
-
-.file-browser-toolbar__icon {
-  width: 18px;
-  height: 18px;
-}
-
-.file-browser-toolbar__icon.animate-spin {
-  animation: toolbar-spin 1s linear infinite;
-}
-
-@keyframes toolbar-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.file-browser-toolbar__right {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-browser-toolbar__address-bar {
-  min-width: 0;
-  flex: 1;
-}
-
-.file-browser-toolbar__filter-clear {
-  position: absolute;
-  right: 4px;
-  width: 28px;
-  height: 28px;
-}
-
-@container (width < 400px) {
-  .file-browser-toolbar__nav-buttons--expanded {
-    display: none;
-  }
-}
-</style>
 

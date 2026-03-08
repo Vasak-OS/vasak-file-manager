@@ -17,17 +17,9 @@ function handleOpenCustomDialog() {
 </script>
 
 <template>
-  <ContextMenuContent class="file-browser-context-menu">
+  <ContextMenuContent class="min-w-[250px] max-w-[300px] p-2">
     <FileBrowserActionsMenu :selected-entries="ctx.contextMenu.value.selectedEntries"
       :menu-item-component="ContextMenuItem" :menu-separator-component="ContextMenuSeparator" :is-context-menu="true"
       @action="handleAction" @open-custom-dialog="handleOpenCustomDialog" />
   </ContextMenuContent>
 </template>
-
-<style>
-.file-browser-context-menu.sigma-ui-context-menu-content {
-  min-width: 250px;
-  max-width: 300px;
-  padding: 8px;
-}
-</style>

@@ -166,16 +166,16 @@ function openCollapsedPopover() {
 </script>
 
 <template>
-  <div class="flex h-10 mt-1 py-1 px-2 gap-2 items-center shrink-0 justify-between text-xs text-tx-muted rounded-corner border border-ui-border bg-ui-bg/80">
+  <div class="@container flex h-8 shrink-0 items-center justify-between px-2 py-1 rounded-[var(--radius-sm)] border-t border-ui-border bg-background-2 text-muted-foreground text-xs gap-2">
     <template v-if="hasSelection">
-      <span class="file-browser-status-bar__selected-count">
+      <span class="flex shrink-0 flex-wrap items-center gap-1">
         {{ t('fileBrowser.selectedItems').replace('{0}', String(selectedCount)) }}
         <template v-if="selectionSizeDisplay">
-          <span class="file-browser-status-bar__separator">·</span>
-          <span class="file-browser-status-bar__size-info">
+          <span class="text-muted-foreground/50">·</span>
+          <span class="font-medium">
             <template v-if="selectionSizeDisplay.sizeStr">
               {{ selectionSizeDisplay.sizeStr }}
-              <span v-if="selectionSizeDisplay.countStr" class="file-browser-status-bar__count-detail">({{
+              <span v-if="selectionSizeDisplay.countStr" class="text-muted-foreground font-normal">({{
                 selectionSizeDisplay.countStr }})</span>
             </template>
             <template v-else>
@@ -186,34 +186,34 @@ function openCollapsedPopover() {
       </span>
       <Popover v-model:open="showItemsPopoverOpen">
         <PopoverAnchor as-child>
-          <div class="file-browser-status-bar__actions">
-            <div class="file-browser-status-bar__actions--expanded">
-              <button type="button" class="file-browser-status-bar__button" :title="t('showItems')"
+          <div class="flex shrink-0 items-center gap-1">
+            <div class="hidden @[400px]:flex items-center gap-1">
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none" :title="t('showItems')"
                 @click="showItemsPopoverOpen = true">
                 <EyeIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">{{ t('showItems') }}</span>
+                <span class="hidden @[600px]:inline">{{ t('showItems') }}</span>
               </button>
 
-              <button type="button" class="file-browser-status-bar__button"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none"
                 :title="t('fileBrowser.selectAll')" @click="emit('selectAll')">
                 <CheckCheckIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">{{ t('fileBrowser.selectAll') }}</span>
+                <span class="hidden @[600px]:inline">{{ t('fileBrowser.selectAll') }}</span>
               </button>
 
-              <button type="button" class="file-browser-status-bar__button"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none"
                 :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
                 <XIcon :size="14" />
-                <span class="file-browser-status-bar__button-text">{{ t('fileBrowser.deselectAll') }}</span>
+                <span class="hidden @[600px]:inline">{{ t('fileBrowser.deselectAll') }}</span>
               </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="file-browser-status-bar__button" :title="t('menu')">
+                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none" :title="t('menu')">
                     <MenuIcon :size="14" />
-                    <span class="file-browser-status-bar__button-text">{{ t('menu') }}</span>
+                    <span class="hidden @[600px]:inline">{{ t('menu') }}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" class="file-browser-status-bar__menu">
+                <DropdownMenuContent align="end" side="top" class="w-[200px] p-2">
                   <FileBrowserActionMenuComponent :selected-entries="selectedEntriesArray"
                     :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
                     @action="emit('contextMenuAction', $event)" />
@@ -221,14 +221,14 @@ function openCollapsedPopover() {
               </DropdownMenu>
             </div>
 
-            <div class="file-browser-status-bar__actions--collapsed">
+            <div class="flex @[400px]:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="file-browser-status-bar__button" :title="t('actions')">
+                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none" :title="t('actions')">
                     <EllipsisVerticalIcon :size="16" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" class="file-browser-status-bar__dropdown">
+                <DropdownMenuContent align="end" side="top" class="min-w-[180px]">
                   <DropdownMenuItem @click="openCollapsedPopover">
                     <EyeIcon :size="14" />
                     {{ t('showItems') }}
@@ -250,28 +250,28 @@ function openCollapsedPopover() {
             </div>
           </div>
         </PopoverAnchor>
-        <PopoverContent align="start" side="top" class="file-browser-status-bar__popover">
-          <div class="file-browser-status-bar__popover-content">
-            <div class="file-browser-status-bar__filter-wrapper">
+        <PopoverContent align="start" side="top" class="w-[320px] p-0">
+          <div class="flex flex-col gap-2">
+            <div class="px-2 pt-2">
               <input v-model="itemsFilterQuery" type="text" :placeholder="t('filter.filter')"
-                class="file-browser-status-bar__filter-input" />
+                class="w-full flex h-8 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
             </div>
-            <div v-if="showItemsHeader" class="file-browser-status-bar__items-header">
+            <div v-if="showItemsHeader" class="px-3 py-1 text-muted-foreground text-[11px]">
               {{ showItemsHeader }}
             </div>
-            <ScrollArea class="file-browser-status-bar__scroll-area">
-              <div class="file-browser-status-bar__items-list">
-                <div v-for="entry in displayedEntries" :key="entry.path" class="file-browser-status-bar__item">
-                  <div class="file-browser-status-bar__item-info">
-                    <span class="file-browser-status-bar__item-name">{{ entry.name }}</span>
-                    <span class="file-browser-status-bar__item-path">{{ entry.path }}</span>
+            <ScrollArea class="h-[200px] [&_.sigma-ui-scroll-area-scrollbar]:-right-1.5">
+              <div class="flex flex-col m-2 gap-0.5">
+                <div v-for="entry in displayedEntries" :key="entry.path" class="flex items-stretch rounded gap-2 hover:bg-secondary group/item">
+                  <div class="flex overflow-hidden min-w-0 flex-1 flex-col justify-center py-1.5 pl-2 gap-0.5">
+                    <span class="overflow-hidden text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
+                    <span class="overflow-hidden text-muted-foreground text-[11px] text-ellipsis whitespace-nowrap">{{ entry.path }}</span>
                   </div>
-                  <button type="button" class="file-browser-status-bar__item-remove"
+                  <button type="button" class="shrink-0 self-stretch w-9 flex items-center justify-center rounded-r hover:bg-destructive hover:text-destructive-foreground outline-none transition-colors"
                     :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)">
-                    <XIcon :size="18" />
+                    <XIcon :size="16" />
                   </button>
                 </div>
-                <div v-if="displayedEntries.length === 0" class="file-browser-status-bar__no-items">
+                <div v-if="displayedEntries.length === 0" class="p-4 text-muted-foreground text-xs text-center">
                   {{ t('fileBrowser.noMatchingItems') }}
                 </div>
               </div>
@@ -290,190 +290,3 @@ function openCollapsedPopover() {
     </template>
   </div>
 </template>
-
-<style scoped>
-.file-browser-status-bar {
-  display: flex;
-  height: 32px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  border-top: 1px solid hsl(var(--border));
-  background-color: hsl(var(--background-2));
-  color: hsl(var(--muted-foreground));
-  container-type: inline-size;
-  font-size: 12px;
-  gap: 8px;
-}
-
-.file-browser-status-bar__selected-count {
-  display: flex;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-.file-browser-status-bar__separator {
-  color: hsl(var(--muted-foreground) / 50%);
-}
-
-.file-browser-status-bar__size-info {
-  font-weight: 500;
-}
-
-.file-browser-status-bar__count-detail {
-  color: hsl(var(--muted-foreground));
-  font-weight: 400;
-}
-
-.file-browser-status-bar__actions {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 4px;
-}
-
-.file-browser-status-bar__actions--expanded {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.file-browser-status-bar__actions--collapsed {
-  display: none;
-}
-
-.file-browser-status-bar__button {
-  height: 26px;
-  padding: 0 8px;
-  font-size: 11px;
-  gap: 4px;
-}
-
-.file-browser-status-bar__button-text {
-  display: none;
-}
-
-@container (width >=600px) {
-  .file-browser-status-bar__button-text {
-    display: inline;
-  }
-}
-
-@container (width < 400px) {
-  .file-browser-status-bar__actions--expanded {
-    display: none;
-  }
-
-  .file-browser-status-bar__actions--collapsed {
-    display: flex;
-  }
-}
-
-.file-browser-status-bar__dropdown {
-  min-width: 180px;
-}
-
-.file-browser-status-bar__popover {
-  width: 320px;
-  padding: 0;
-}
-
-.file-browser-status-bar__popover-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.file-browser-status-bar__filter-input {
-  width: 100%;
-}
-
-.file-browser-status-bar__items-header {
-  padding: 4px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-}
-
-.file-browser-status-bar__scroll-area {
-  height: 200px;
-}
-
-.file-browser-status-bar__scroll-area :deep(.sigma-ui-scroll-area-scrollbar) {
-  right: -6px;
-}
-
-.file-browser-status-bar__items-list {
-  display: flex;
-  flex-direction: column;
-  margin: 8px;
-  gap: 2px;
-}
-
-.file-browser-status-bar__item {
-  display: flex;
-  align-items: stretch;
-  border-radius: 4px;
-  gap: 8px;
-}
-
-.file-browser-status-bar__item:hover {
-  background-color: hsl(var(--secondary));
-}
-
-.file-browser-status-bar__item-info {
-  display: flex;
-  overflow: hidden;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  justify-content: center;
-  padding: 6px 0 6px 8px;
-  gap: 2px;
-}
-
-.file-browser-status-bar__item-name {
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-browser-status-bar__item-path {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-browser-status-bar__item-remove {
-  flex-shrink: 0;
-  align-self: stretch;
-}
-
-.file-browser-status-bar__no-items {
-  padding: 16px;
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  text-align: center;
-}
-
-.file-browser-status-bar__menu {
-  width: 200px;
-  padding: 8px;
-}
-</style>
-
-<style>
-.file-browser-status-bar__item .file-browser-status-bar__item-remove.sigma-ui-button.sigma-ui-button--size-icon {
-  width: 36px;
-  height: auto;
-  min-height: 100%;
-  border-radius: 0 4px 4px 0;
-}
-</style>

@@ -49,7 +49,6 @@ const triggerClass = computed(() => {
 			return `${base} hover:bg-slate-100 text-slate-700`;
 		case 'default':
 			return `${base} bg-slate-900 text-white hover:bg-slate-800`;
-		case 'outline':
 		default:
 			return `${base} border border-slate-200 text-slate-700 hover:bg-slate-50`;
 	}

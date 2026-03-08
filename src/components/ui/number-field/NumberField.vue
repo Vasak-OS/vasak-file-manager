@@ -62,15 +62,9 @@ provide('numberField', {
 </script>
 
 <template>
-	<div class="number-field" :class="$attrs.class">
+	<div class="flex flex-col gap-1" :class="props.class">
 		<slot />
 	</div>
 </template>
 
-<style scoped>
-.number-field {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-</style>
+

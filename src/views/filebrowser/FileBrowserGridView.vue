@@ -112,41 +112,41 @@ const groupedEntries = computed<GroupedEntries>(() => {
 </script>
 
 <template>
-  <div :key="ctx.currentPath.value" class="file-browser-grid-view file-browser-grid-view--animate h-[calc(100vh-144px)]">
+  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200 h-[calc(100vh-144px)]">
     <template v-if="groupedEntries.dirs.length > 0">
-      <div class="file-browser-grid-view__section-bar">
+      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FolderIcon :size="14" />
         <span>{{ t('fileBrowser.folders') }}</span>
-        <span class="file-browser-grid-view__section-count">{{ groupedEntries.dirs.length }}</span>
+        <span class="py-0.5 px-2 rounded-corner bg-background-3 text-[11px]">{{ groupedEntries.dirs.length }}</span>
       </div>
-      <div class="file-browser-grid-view__grid">
+      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.dirs" :key="entry.path"
-          class="file-browser-grid-view__card file-browser-grid-view__card--dir"
-          :class="{ 'file-browser-grid-view__card--hidden': entry.is_hidden }" :data-entry-path="entry.path"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[52px] !flex-row items-center py-2 px-3 gap-2.5"
+          :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined" data-drop-target
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.handleEntryContextMenu(entry)" @keydown="handleEntryKeydown">
-          <div class="file-browser-grid-view__overlay-container">
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--selected" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--clipboard" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--hover" />
+          <div class="absolute z-3 inset-0 pointer-events-none">
+            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
+            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
+            <div class="absolute inset-0 rounded-corner pointer-events-none bg-foreground/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
-          <div class="file-browser-grid-view__card-preview">
+          <div class="relative z-1 flex w-auto h-auto shrink-0 items-center justify-center">
             <EntryIconComponent :entry="entry" :size="24"
-              class="file-browser-grid-view__card-icon file-browser-grid-view__card-icon--folder" />
+              class="text-primary" />
           </div>
-          <div class="file-browser-grid-view__card-info">
-            <span class="file-browser-grid-view__card-name">{{ entry.name }}</span>
-            <div class="file-browser-grid-view__card-meta">
+          <div class="relative z-1 overflow-hidden min-w-0 flex-1 flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
+            <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
+            <div class="flex items-center text-[11px] gap-1.5 text-muted-foreground opacity-100 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
               <LoaderCircleIcon v-if="isDirLoadingWithProgress(entry)" :size="12"
-                class="file-browser-grid-view__spinner" />
-              <span class="file-browser-grid-view__card-size">
+                class="shrink-0 animate-spin text-muted-foreground" />
+              <span class="inline-flex items-center">
                 <template v-if="getDirSizeDisplay(entry)">{{ getDirSizeDisplay(entry) }}</template>
                 <template v-if="shouldShowSizeSkeleton(entry)">
-                  <span v-if="entry.item_count !== null" class="file-browser-grid-view__separator" />
-                  <Skeleton class="file-browser-grid-view__size-skeleton" />
+                  <span v-if="entry.item_count !== null" class="after:content-['_\·_']" />
+                  <Skeleton class="w-[40px] h-[11px]" />
                 </template>
               </span>
             </div>
@@ -156,33 +156,33 @@ const groupedEntries = computed<GroupedEntries>(() => {
     </template>
 
     <template v-if="groupedEntries.images.length > 0">
-      <div class="file-browser-grid-view__section-bar">
+      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FileImageIcon :size="14" />
         <span>{{ t('fileBrowser.images') }}</span>
-        <span class="file-browser-grid-view__section-count">{{ groupedEntries.images.length }}</span>
+        <span class="py-0.5 px-2 rounded-[10px] bg-background-3 text-[11px]">{{ groupedEntries.images.length }}</span>
       </div>
-      <div class="file-browser-grid-view__grid">
+      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.images" :key="entry.path"
-          class="file-browser-grid-view__card file-browser-grid-view__card--file file-browser-grid-view__card--image"
-          :class="{ 'file-browser-grid-view__card--hidden': entry.is_hidden }" :data-entry-path="entry.path"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.handleEntryContextMenu(entry)" @keydown="handleEntryKeydown">
-          <div class="file-browser-grid-view__overlay-container">
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--selected" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--clipboard" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--hover" />
+          <div class="absolute z-3 inset-0 pointer-events-none">
+            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/30 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
+            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/15 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/15 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
+            <div class="absolute inset-0 rounded-corner pointer-events-none bg-foreground/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
-          <div class="file-browser-grid-view__card-preview">
-            <img :src="getImageSrc(entry)" :alt="entry.name" class="file-browser-grid-view__card-image" loading="lazy">
+          <div class="relative z-1 flex w-full h-full items-center justify-center">
+            <img :src="getImageSrc(entry)" :alt="entry.name" class="w-full h-full object-cover pointer-events-none" loading="lazy">
           </div>
-          <div class="file-browser-grid-view__card-info file-browser-grid-view__card-info--overlay">
-            <span class="file-browser-grid-view__card-name">{{ entry.name }}</span>
-            <div class="file-browser-grid-view__card-meta">
+          <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-gradient-to-t from-black/80 to-transparent text-white flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
+            <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
+            <div class="flex items-center text-[11px] gap-1.5 opacity-80 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
               <span class="file-browser-grid-view__card-type">{{ entry.ext?.toUpperCase() }}</span>
-              <span class="file-browser-grid-view__card-size">{{ formatBytes(entry.size) }}</span>
+              <span class="inline-flex items-center">{{ formatBytes(entry.size) }}</span>
             </div>
           </div>
         </button>
@@ -190,38 +190,42 @@ const groupedEntries = computed<GroupedEntries>(() => {
     </template>
 
     <template v-if="groupedEntries.videos.length > 0">
-      <div class="file-browser-grid-view__section-bar">
+      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary/50 text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FileVideoIcon :size="14" />
         <span>{{ t('fileBrowser.videos') }}</span>
-        <span class="file-browser-grid-view__section-count">{{ groupedEntries.videos.length }}</span>
+        <span class="py-0.5 px-2 rounded-[10px] bg-background-3 text-[11px]">{{ groupedEntries.videos.length }}</span>
       </div>
-      <div class="file-browser-grid-view__grid">
+      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.videos" :key="entry.path"
-          class="file-browser-grid-view__card file-browser-grid-view__card--file file-browser-grid-view__card--video"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{
-            'file-browser-grid-view__card--hidden': entry.is_hidden,
-            'file-browser-grid-view__card--image': ctx.getVideoThumbnail(entry),
-            'file-browser-grid-view__card--icon-full': !ctx.getVideoThumbnail(entry),
+            'opacity-50': entry.is_hidden,
           }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.handleEntryContextMenu(entry)" @keydown="handleEntryKeydown">
-          <div class="file-browser-grid-view__overlay-container">
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--selected" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--clipboard" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--hover" />
+          <div class="absolute z-3 inset-0 pointer-events-none">
+            <div v-if="ctx.getVideoThumbnail(entry)" class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/30 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
+            <div v-else class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
+            
+            <div v-if="ctx.getVideoThumbnail(entry)" class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/15 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/15 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
+            <div v-else class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
+
+            <div class="absolute inset-0 rounded-corner pointer-events-none bg-foreground/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
-          <div class="file-browser-grid-view__card-preview">
+          <div :class="[
+            ctx.getVideoThumbnail(entry) ? 'relative z-1 flex w-full h-full items-center justify-center' : 'absolute top-2 left-2 w-12 h-12 bg-transparent'
+          ]">
             <img v-if="ctx.getVideoThumbnail(entry)" :src="ctx.getVideoThumbnail(entry)" :alt="entry.name"
-              class="file-browser-grid-view__card-image">
-            <FileVideoIcon v-else :size="48" class="file-browser-grid-view__card-icon" />
+              class="w-full h-full object-cover pointer-events-none">
+            <FileVideoIcon v-else :size="48" class="text-muted-foreground w-12 h-12" />
           </div>
-          <div class="file-browser-grid-view__card-info file-browser-grid-view__card-info--overlay">
-            <span class="file-browser-grid-view__card-name">{{ entry.name }}</span>
-            <div class="file-browser-grid-view__card-meta">
+          <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-gradient-to-t from-black/80 to-transparent text-white flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
+            <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
+            <div class="flex items-center text-[11px] gap-1.5 opacity-80 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
               <span class="file-browser-grid-view__card-type">{{ t('fileBrowser.video') }}</span>
-              <span class="file-browser-grid-view__card-size">{{ formatBytes(entry.size) }}</span>
+              <span class="inline-flex items-center">{{ formatBytes(entry.size) }}</span>
             </div>
           </div>
         </button>
@@ -229,33 +233,33 @@ const groupedEntries = computed<GroupedEntries>(() => {
     </template>
 
     <template v-if="groupedEntries.others.length > 0">
-      <div class="file-browser-grid-view__section-bar">
+      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary/50 text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FileIcon :size="14" />
         <span>{{ t('fileBrowser.otherFiles') }}</span>
-        <span class="file-browser-grid-view__section-count">{{ groupedEntries.others.length }}</span>
+        <span class="py-0.5 px-2 rounded-[10px] bg-background-3 text-[11px]">{{ groupedEntries.others.length }}</span>
       </div>
-      <div class="file-browser-grid-view__grid">
+      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.others" :key="entry.path"
-          class="file-browser-grid-view__card file-browser-grid-view__card--file file-browser-grid-view__card--other file-browser-grid-view__card--icon-full"
-          :class="{ 'file-browser-grid-view__card--hidden': entry.is_hidden }" :data-entry-path="entry.path"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.handleEntryContextMenu(entry)" @keydown="handleEntryKeydown">
-          <div class="file-browser-grid-view__overlay-container">
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--selected" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--clipboard" />
-            <div class="file-browser-grid-view__overlay file-browser-grid-view__overlay--hover" />
+          <div class="absolute z-3 inset-0 pointer-events-none">
+            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
+            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
+            <div class="absolute inset-0 rounded-corner pointer-events-none bg-foreground/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
-          <div class="file-browser-grid-view__card-preview">
-            <FileBrowserEntryIcon :entry="entry" :size="48" class="file-browser-grid-view__card-icon" />
+          <div class="absolute top-2 left-2 w-12 h-12 bg-transparent">
+            <FileBrowserEntryIcon :entry="entry" :size="48" class="text-muted-foreground w-12 h-12" />
           </div>
-          <div class="file-browser-grid-view__card-info file-browser-grid-view__card-info--bottom">
-            <span class="file-browser-grid-view__card-name">{{ entry.name }}</span>
-            <div class="file-browser-grid-view__card-meta">
+          <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 text-foreground flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
+            <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
+            <div class="flex items-center text-[11px] gap-1.5 opacity-80 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
               <span class="file-browser-grid-view__card-type">{{ entry.ext?.toUpperCase() || 'file' }}</span>
-              <span class="file-browser-grid-view__card-size">{{ formatBytes(entry.size) }}</span>
+              <span class="inline-flex items-center">{{ formatBytes(entry.size) }}</span>
             </div>
           </div>
         </button>
@@ -263,319 +267,3 @@ const groupedEntries = computed<GroupedEntries>(() => {
     </template>
   </div>
 </template>
-
-<style scoped>
-.file-browser-grid-view {
-  display: flex;
-  flex-direction: column;
-  padding: 8px;
-  padding-right: 16px;
-  gap: 12px;
-}
-
-.file-browser-grid-view--animate {
-  animation: sigma-ui-fade-in 0.2s ease-out;
-}
-
-.file-browser-grid-view__section-bar {
-  position: sticky;
-  z-index: 5;
-  top: 0;
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  backdrop-filter: blur(var(--backdrop-filter-blur));
-  background-color: hsl(var(--secondary) / 50%);
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  font-weight: 500;
-  gap: 8px;
-  text-transform: uppercase;
-}
-
-.file-browser-grid-view__section-count {
-  padding: 2px 8px;
-  border-radius: 10px;
-  background-color: hsl(var(--background-3));
-  font-size: 11px;
-}
-
-.file-browser-grid-view__grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-}
-
-.file-browser-grid-view__card {
-  position: relative;
-  display: flex;
-  overflow: hidden;
-  flex-direction: column;
-  border: 1px solid hsl(var(--border));
-  border-radius: 8px;
-  background: hsl(var(--background-2));
-  cursor: default;
-  text-align: left;
-}
-
-.file-browser-grid-view__card:focus-visible {
-  outline: none;
-}
-
-.file-browser-grid-view__card--hidden {
-  opacity: 0.5;
-}
-
-.file-browser-grid-view__card--dir {
-  height: 52px;
-  flex-direction: row;
-  align-items: center;
-  padding: 8px 12px;
-  gap: 10px;
-}
-
-.file-browser-grid-view__card--dir .file-browser-grid-view__card-preview {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  width: auto;
-  height: auto;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-}
-
-.file-browser-grid-view__card--dir .file-browser-grid-view__card-info {
-  position: relative;
-  z-index: 1;
-  overflow: hidden;
-  min-width: 0;
-  flex: 1;
-}
-
-.file-browser-grid-view__card--file {
-  height: 120px;
-}
-
-.file-browser-grid-view__card-preview {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-}
-
-.file-browser-grid-view__card-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
-}
-
-.file-browser-grid-view__card-icon {
-  color: hsl(var(--muted-foreground));
-}
-
-.file-browser-grid-view__card-icon--folder {
-  color: hsl(var(--primary));
-}
-
-.file-browser-grid-view__card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.file-browser-grid-view__card-info--overlay {
-  position: absolute;
-  z-index: 2;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  padding: 8px 10px;
-  background: linear-gradient(to top, hsl(0deg 0% 0% / 80%) 0%, transparent 100%);
-  color: white;
-}
-
-.file-browser-grid-view__card--other .file-browser-grid-view__card-info--bottom {
-  position: absolute;
-  z-index: 2;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  padding: 8px 10px;
-  color: hsl(var(--foreground));
-}
-
-.file-browser-grid-view__card--icon-full .file-browser-grid-view__card-preview {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 48px;
-  height: 48px;
-  background-color: transparent;
-}
-
-.file-browser-grid-view__card--icon-full .file-browser-grid-view__card-icon {
-  width: 48px;
-  height: 48px;
-}
-
-.file-browser-grid-view__card-name {
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 500;
-  overflow-wrap: break-word;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-browser-grid-view__card-meta {
-  display: flex;
-  align-items: center;
-  font-size: 11px;
-  gap: 6px;
-  opacity: 0.8;
-}
-
-.file-browser-grid-view__card--dir .file-browser-grid-view__card-meta {
-  color: hsl(var(--muted-foreground));
-  opacity: 1;
-}
-
-.file-browser-grid-view__spinner {
-  flex-shrink: 0;
-  animation: file-browser-grid-view-spin 1s linear infinite;
-  color: hsl(var(--muted-foreground));
-}
-
-@keyframes file-browser-grid-view-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.file-browser-grid-view__card-size {
-  display: inline-flex;
-  align-items: center;
-}
-
-.file-browser-grid-view__separator::after {
-  content: ' · ';
-}
-
-.file-browser-grid-view__size-skeleton {
-  width: 40px;
-  height: 11px;
-}
-
-.file-browser-grid-view__overlay-container {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  pointer-events: none;
-}
-
-.file-browser-grid-view__overlay {
-  position: absolute;
-  border-radius: 7px;
-  inset: 0;
-  pointer-events: none;
-}
-
-.file-browser-grid-view__overlay--selected {
-  background-color: hsl(var(--primary) / 12%);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 50%);
-  opacity: 0;
-}
-
-.file-browser-grid-view__card[data-selected] .file-browser-grid-view__overlay--selected {
-  opacity: 1;
-}
-
-.file-browser-grid-view__card[data-in-clipboard] .file-browser-grid-view__overlay--selected {
-  opacity: 0;
-}
-
-.file-browser-grid-view__card--image[data-selected] .file-browser-grid-view__overlay--selected {
-  background-color: hsl(var(--primary) / 30%);
-}
-
-.file-browser-grid-view__overlay--clipboard {
-  opacity: 0;
-}
-
-.file-browser-grid-view__card[data-in-clipboard][data-clipboard-type="copy"] .file-browser-grid-view__overlay--clipboard {
-  background-color: hsl(var(--success) / 6%);
-  box-shadow: inset 0 0 0 2px hsl(var(--success) / 40%);
-  opacity: 1;
-}
-
-.file-browser-grid-view__card[data-in-clipboard][data-clipboard-type="move"] .file-browser-grid-view__overlay--clipboard {
-  background-color: hsl(var(--warning) / 6%);
-  box-shadow: inset 0 0 0 2px hsl(var(--warning) / 40%);
-  opacity: 1;
-}
-
-.file-browser-grid-view__card[data-selected][data-in-clipboard][data-clipboard-type="copy"] .file-browser-grid-view__overlay--clipboard {
-  background-color: hsl(var(--success) / 10%);
-  box-shadow: inset 0 0 0 2px hsl(var(--success) / 60%);
-  opacity: 1;
-}
-
-.file-browser-grid-view__card[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-grid-view__overlay--clipboard {
-  background-color: hsl(var(--warning) / 10%);
-  box-shadow: inset 0 0 0 2px hsl(var(--warning) / 60%);
-  opacity: 1;
-}
-
-.file-browser-grid-view__card[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-grid-view__card-name,
-.file-browser-grid-view__card[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-grid-view__card-meta {
-  color: hsl(var(--warning));
-}
-
-.file-browser-grid-view__card[data-in-clipboard][data-clipboard-type="copy"] .file-browser-grid-view__card-name,
-.file-browser-grid-view__card[data-in-clipboard][data-clipboard-type="copy"] .file-browser-grid-view__card-meta {
-  color: hsl(var(--success));
-}
-
-.file-browser-grid-view__card[data-in-clipboard][data-clipboard-type="move"] .file-browser-grid-view__card-name,
-.file-browser-grid-view__card[data-in-clipboard][data-clipboard-type="move"] .file-browser-grid-view__card-meta {
-  color: hsl(var(--warning));
-}
-
-.file-browser-grid-view__card--image[data-in-clipboard][data-clipboard-type="copy"] .file-browser-grid-view__overlay--clipboard {
-  background-color: hsl(var(--success) / 15%);
-  opacity: 1;
-}
-
-.file-browser-grid-view__card--image[data-in-clipboard][data-clipboard-type="move"] .file-browser-grid-view__overlay--clipboard {
-  background-color: hsl(var(--warning) / 15%);
-  opacity: 1;
-}
-
-.file-browser-grid-view__overlay--hover {
-  background-color: hsl(var(--foreground) / 5%);
-  opacity: 0;
-  transition: opacity 0.15s ease-out;
-}
-
-.file-browser-grid-view__card:hover .file-browser-grid-view__overlay--hover {
-  opacity: 1;
-  transition: opacity 0s;
-}
-
-.file-browser-grid-view__card[data-drag-over] .file-browser-grid-view__overlay--hover {
-  background-color: hsl(var(--primary) / 15%);
-  box-shadow: inset 0 0 0 2px hsl(var(--primary) / 60%);
-  opacity: 1;
-  transition: opacity 0s;
-}
-</style>

@@ -106,18 +106,6 @@ async function openWithProgram(programPath: string) {
 	}
 }
 
-async function handleOpenNativeDialog() {
-	if (!firstEntry.value) return;
-
-	try {
-		await invoke<OpenWithResult>('open_native_open_with_dialog', {
-			filePath: firstEntry.value.path,
-		});
-	} catch (invokeError) {
-		console.error('Failed to open native dialog:', invokeError);
-	}
-}
-
 function handleOpenCustomDialog() {
 	emit('openCustomDialog');
 }
@@ -129,52 +117,52 @@ function handleOpenCustomDialog() {
       <ExternalLinkIcon :size="16" />
       <span>{{ t('fileBrowser.actions.openWith') }}</span>
     </ContextMenuSubTrigger>
-    <ContextMenuSubContent class="open-with-submenu">
-      <div v-if="isLoading" class="open-with-submenu__loading">
-        <Loader2Icon :size="16" class="open-with-submenu__spinner" />
+    <ContextMenuSubContent class="min-w-[200px] max-w-[280px]">
+      <div v-if="isLoading" class="flex items-center px-3 py-2 text-muted-foreground text-[13px] gap-2">
+        <Loader2Icon :size="16" class="animate-spin" />
         <span>{{ t('openWith.loadingPrograms') }}</span>
       </div>
 
       <template v-else-if="loadError">
-        <div class="open-with-submenu__error">
+        <div class="px-3 py-2 text-destructive text-[13px]">
           {{ loadError }}
         </div>
       </template>
 
       <template v-else>
         <template v-if="defaultProgram">
-          <ContextMenuLabel class="open-with-submenu__label">
+          <ContextMenuLabel class="px-2 py-1 text-muted-foreground text-[11px] font-medium tracking-[0.03em] uppercase">
             {{ t('openWith.defaultApp') }}
           </ContextMenuLabel>
-          <ContextMenuItem class="open-with-submenu__app" @select="openWithProgram(defaultProgram.path)">
-            <img v-if="defaultProgram.icon" :src="defaultProgram.icon" class="open-with-submenu__app-icon" alt="">
-            <FileIcon v-else :size="16" class="open-with-submenu__app-icon-fallback" />
+          <ContextMenuItem class="flex items-center gap-2" @select="openWithProgram(defaultProgram.path)">
+            <img v-if="defaultProgram.icon" :src="defaultProgram.icon" class="w-4 h-4 shrink-0 object-contain" alt="">
+            <FileIcon v-else :size="16" class="w-4 h-4 shrink-0 text-muted-foreground" />
             <span>{{ defaultProgram.name }}</span>
           </ContextMenuItem>
         </template>
 
         <template v-if="recommendedPrograms.length > 0">
           <ContextMenuSeparator v-if="defaultProgram" />
-          <ContextMenuLabel class="open-with-submenu__label">
+          <ContextMenuLabel class="px-2 py-1 text-muted-foreground text-[11px] font-medium tracking-[0.03em] uppercase">
             {{ t('openWith.suggestedApps') }}
           </ContextMenuLabel>
-          <ContextMenuItem v-for="program in recommendedPrograms" :key="program.path" class="open-with-submenu__app"
+          <ContextMenuItem v-for="program in recommendedPrograms" :key="program.path" class="flex items-center gap-2"
             @select="openWithProgram(program.path)">
-            <img v-if="program.icon" :src="program.icon" class="open-with-submenu__app-icon" alt="">
-            <FileIcon v-else :size="16" class="open-with-submenu__app-icon-fallback" />
+            <img v-if="program.icon" :src="program.icon" class="w-4 h-4 shrink-0 object-contain" alt="">
+            <FileIcon v-else :size="16" class="w-4 h-4 shrink-0 text-muted-foreground" />
             <span>{{ program.name }}</span>
           </ContextMenuItem>
         </template>
 
         <template v-if="!defaultProgram && recommendedPrograms.length === 0">
-          <div class="open-with-submenu__empty">
+          <div class="px-3 py-2 text-muted-foreground text-[13px]">
             {{ t('openWith.noProgramsFound') }}
           </div>
         </template>
 
         <ContextMenuSeparator v-if="!isDirectory" />
 
-        <ContextMenuItem v-if="!isDirectory" class="open-with-submenu__action" @select="handleOpenCustomDialog">
+        <ContextMenuItem v-if="!isDirectory" class="flex items-center gap-2" @select="handleOpenCustomDialog">
           <SettingsIcon :size="16" />
           <span>{{ t('openWith.customCommandWithFlags') }}</span>
         </ContextMenuItem>
@@ -182,80 +170,3 @@ function handleOpenCustomDialog() {
     </ContextMenuSubContent>
   </ContextMenuSub>
 </template>
-
-<style>
-.open-with-submenu {
-  min-width: 200px;
-  max-width: 280px;
-}
-
-.open-with-submenu__loading {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 13px;
-  gap: 8px;
-}
-
-.open-with-submenu__spinner {
-  animation: open-with-spin 1s linear infinite;
-}
-
-@keyframes open-with-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.open-with-submenu__error {
-  padding: 8px 12px;
-  color: hsl(var(--destructive));
-  font-size: 13px;
-}
-
-.open-with-submenu__empty {
-  padding: 8px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 13px;
-}
-
-.open-with-submenu__label {
-  padding: 4px 8px;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.open-with-submenu__app {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.open-with-submenu__app-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.open-with-submenu__app-icon-fallback {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  color: hsl(var(--muted-foreground));
-}
-
-.open-with-submenu__action {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-</style>

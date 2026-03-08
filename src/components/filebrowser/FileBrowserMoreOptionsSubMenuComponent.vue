@@ -111,15 +111,15 @@ async function invokeMenuItem(commandId: number) {
       <MoreHorizontalIcon :size="16" />
       <span>{{ t('moreOptions.shellExtensions') }}</span>
     </ContextMenuSubTrigger>
-    <ContextMenuSubContent class="more-options-submenu">
-      <div class="more-options-submenu__scroll-container">
-        <div v-if="isLoading" class="more-options-submenu__loading">
-          <Loader2Icon :size="16" class="more-options-submenu__spinner" />
+    <ContextMenuSubContent class="min-w-[200px] max-w-[320px] py-1">
+      <div class="max-h-[400px] overflow-y-auto [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-border">
+        <div v-if="isLoading" class="flex items-center px-3 py-2 text-muted-foreground text-[13px] gap-2">
+          <Loader2Icon :size="16" class="animate-spin" />
           <span>{{ t('moreOptions.loading') }}</span>
         </div>
 
         <template v-else-if="loadError">
-          <div class="more-options-submenu__error">
+          <div class="px-3 py-2 text-destructive text-[13px]">
             {{ loadError }}
           </div>
         </template>
@@ -128,27 +128,27 @@ async function invokeMenuItem(commandId: number) {
           <template v-if="menuItems.length > 0">
             <template v-for="item in menuItems" :key="item.id || item.name">
               <ContextMenuSub v-if="item.children && item.children.length > 0">
-                <ContextMenuSubTrigger class="more-options-submenu__item">
-                  <span class="more-options-submenu__item-icon">
-                    <img v-if="item.icon" :src="item.icon" class="more-options-submenu__item-icon-img">
+                <ContextMenuSubTrigger class="flex items-center gap-2">
+                  <span class="flex w-4 h-4 shrink-0 items-center justify-center">
+                    <img v-if="item.icon" :src="item.icon" class="w-4 h-4 object-contain">
                   </span>
                   <span>{{ item.name }}</span>
                 </ContextMenuSubTrigger>
-                <ContextMenuSubContent class="more-options-submenu more-options-submenu--nested">
-                  <div class="more-options-submenu__scroll-container more-options-submenu__scroll-container--nested">
-                    <ContextMenuItem v-for="child in item.children" :key="child.id" class="more-options-submenu__item"
+                <ContextMenuSubContent class="min-w-[200px] max-w-[320px] py-1">
+                  <div class="max-h-[300px] overflow-y-auto [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-border">
+                    <ContextMenuItem v-for="child in item.children" :key="child.id" class="flex items-center gap-2"
                       @select="invokeMenuItem(child.id)">
-                      <span class="more-options-submenu__item-icon">
-                        <img v-if="child.icon" :src="child.icon" class="more-options-submenu__item-icon-img">
+                      <span class="flex w-4 h-4 shrink-0 items-center justify-center">
+                        <img v-if="child.icon" :src="child.icon" class="w-4 h-4 object-contain">
                       </span>
                       <span>{{ child.name }}</span>
                     </ContextMenuItem>
                   </div>
                 </ContextMenuSubContent>
               </ContextMenuSub>
-              <ContextMenuItem v-else class="more-options-submenu__item" @select="invokeMenuItem(item.id)">
-                <span class="more-options-submenu__item-icon">
-                  <img v-if="item.icon" :src="item.icon" class="more-options-submenu__item-icon-img">
+              <ContextMenuItem v-else class="flex items-center gap-2" @select="invokeMenuItem(item.id)">
+                <span class="flex w-4 h-4 shrink-0 items-center justify-center">
+                  <img v-if="item.icon" :src="item.icon" class="w-4 h-4 object-contain">
                 </span>
                 <span>{{ item.name }}</span>
               </ContextMenuItem>
@@ -156,7 +156,7 @@ async function invokeMenuItem(commandId: number) {
           </template>
 
           <template v-else>
-            <div class="more-options-submenu__empty">
+            <div class="px-3 py-2 text-muted-foreground text-[13px]">
               {{ t('moreOptions.noOptionsAvailable') }}
             </div>
           </template>
@@ -165,91 +165,3 @@ async function invokeMenuItem(commandId: number) {
     </ContextMenuSubContent>
   </ContextMenuSub>
 </template>
-
-<style>
-.more-options-submenu {
-  min-width: 200px;
-  max-width: 320px;
-  padding: 4px 0;
-}
-
-.more-options-submenu__scroll-container {
-  max-height: 400px;
-  overflow-y: auto;
-  scrollbar-color: hsl(var(--border)) transparent;
-  scrollbar-width: thin;
-}
-
-.more-options-submenu__scroll-container--nested {
-  max-height: 300px;
-}
-
-.more-options-submenu__scroll-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.more-options-submenu__scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.more-options-submenu__scroll-container::-webkit-scrollbar-thumb {
-  border-radius: 4px;
-  background-color: hsl(var(--border));
-}
-
-.more-options-submenu__loading {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 13px;
-  gap: 8px;
-}
-
-.more-options-submenu__spinner {
-  animation: more-options-spin 1s linear infinite;
-}
-
-@keyframes more-options-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.more-options-submenu__error {
-  padding: 8px 12px;
-  color: hsl(var(--destructive));
-  font-size: 13px;
-}
-
-.more-options-submenu__empty {
-  padding: 8px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 13px;
-}
-
-.more-options-submenu__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.more-options-submenu__item-icon {
-  display: flex;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-}
-
-.more-options-submenu__item-icon-img {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-}
-</style>

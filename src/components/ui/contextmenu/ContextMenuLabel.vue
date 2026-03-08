@@ -2,17 +2,7 @@
 </script>
 
 <template>
-  <div class="context-menu-label">
+  <div class="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
     <slot />
   </div>
 </template>
-
-<style scoped>
-.context-menu-label {
-  padding: 0.375rem 0.5rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
-}
-</style>

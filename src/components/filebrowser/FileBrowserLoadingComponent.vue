@@ -11,73 +11,17 @@ const columnVisibility = ref({
 </script>
 
 <template>
-  <ScrollArea class="file-browser-loading">
-    <div class="file-browser-loading__list">
-      <div v-for="skeletonIndex in 12" :key="skeletonIndex" class="file-browser-loading__row">
-        <div class="file-browser-loading__name">
-          <Skeleton class="file-browser-loading__icon" />
-          <Skeleton class="file-browser-loading__text" />
+  <ScrollArea class="animate-in fade-in duration-1000">
+    <div class="flex flex-col pr-[var(--file-browser-list-right-gutter)]">
+      <div v-for="skeletonIndex in 12" :key="skeletonIndex" class="grid py-[var(--file-browser-list-row-padding-y)] px-[var(--file-browser-list-row-padding-x)] [grid-template-columns:var(--file-browser-list-columns)]">
+        <div class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-[10px]">
+          <Skeleton class="w-[18px] h-[18px] shrink-0 rounded" />
+          <Skeleton class="w-[60%] h-[14px] rounded" />
         </div>
-        <Skeleton v-if="columnVisibility.items" class="file-browser-loading__items" />
-        <Skeleton v-if="columnVisibility.size" class="file-browser-loading__size" />
-        <Skeleton v-if="columnVisibility.modified" class="file-browser-loading__modified" />
+        <Skeleton v-if="columnVisibility.items" class="w-[30px] h-[14px] rounded" />
+        <Skeleton v-if="columnVisibility.size" class="w-[50px] h-[14px] rounded" />
+        <Skeleton v-if="columnVisibility.modified" class="w-[100px] h-[14px] rounded" />
       </div>
     </div>
   </ScrollArea>
 </template>
-
-<style scoped>
-.file-browser-loading {
-  animation: sigma-ui-fade-in 1s ease-out;
-}
-
-.file-browser-loading__list {
-  display: flex;
-  flex-direction: column;
-  padding-right: var(--file-browser-list-right-gutter);
-}
-
-.file-browser-loading__row {
-  display: grid;
-  padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);
-  grid-template-columns: var(--file-browser-list-columns);
-}
-
-.file-browser-loading__name {
-  display: flex;
-  align-items: center;
-  padding-right: var(--file-browser-list-cell-padding-right);
-  gap: 10px;
-}
-
-.file-browser-loading__icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  border-radius: 4px;
-}
-
-.file-browser-loading__text {
-  width: 60%;
-  height: 14px;
-  border-radius: 4px;
-}
-
-.file-browser-loading__items {
-  width: 30px;
-  height: 14px;
-  border-radius: 4px;
-}
-
-.file-browser-loading__size {
-  width: 50px;
-  height: 14px;
-  border-radius: 4px;
-}
-
-.file-browser-loading__modified {
-  width: 100px;
-  height: 14px;
-  border-radius: 4px;
-}
-</style>

@@ -66,7 +66,10 @@ watch(isOpen, async (open) => {
 <template>
 	<Teleport to="body">
 		<Transition
-			name="tooltip"
+			enter-active-class="transition-all duration-200 ease-in-out"
+			leave-active-class="transition-all duration-200 ease-in-out"
+			enter-from-class="opacity-0 scale-95"
+			leave-to-class="opacity-0 scale-95"
 			@enter="(el) => (el as HTMLElement).offsetHeight"
 			@leave="(el) => (el as HTMLElement).offsetHeight"
 		>
@@ -82,19 +85,4 @@ watch(isOpen, async (open) => {
 	</Teleport>
 </template>
 
-<style scoped>
-@reference "../../../assets/main.css";
 
-.tooltip-enter-active,
-.tooltip-leave-active {
-	@apply transition-all duration-200 ease-in-out;
-}
-
-.tooltip-enter-from {
-	@apply opacity-0 scale-95;
-}
-
-.tooltip-leave-to {
-	@apply opacity-0 scale-95;
-}
-</style>

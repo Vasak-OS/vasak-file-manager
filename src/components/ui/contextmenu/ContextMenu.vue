@@ -15,13 +15,7 @@ provide('closeContextMenu', closeMenu);
 </script>
 
 <template>
-  <div class="context-menu-root">
+  <div class="relative">
     <slot />
   </div>
 </template>
-
-<style scoped>
-.context-menu-root {
-  position: relative;
-}
-</style>

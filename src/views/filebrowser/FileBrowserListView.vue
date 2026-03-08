@@ -98,7 +98,7 @@ onMounted(async () => {
 <template>
   <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
     <div :key="ctx.currentPath.value" class="flex flex-col">
-      <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80" :class="{
+      <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5" :class="{
         'opacity-50': entry.is_hidden,
       }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -108,192 +108,30 @@ onMounted(async () => {
         @keydown="handleEntryKeydown"
         style="grid-template-columns: var(--file-browser-list-columns); padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);">
         <div class="absolute inset-0 z-0 pointer-events-none">
-          <div class="absolute inset-0 pointer-events-none file-browser-list-view__overlay--clipboard" />
-          <div class="absolute inset-0 pointer-events-none file-browser-list-view__overlay--hover" />
+          <div class="absolute inset-0 pointer-events-none opacity-0 data-[in-clipboard]:data-[clipboard-type='copy']:opacity-100 data-[in-clipboard]:data-[clipboard-type='copy']:bg-success/5 data-[in-clipboard]:data-[clipboard-type='copy']:shadow-[inset_0_0_0_1px_hsl(var(--success)/0.3),inset_3px_0_0_0_hsl(var(--success)/0.5)] data-[selected]:data-[in-clipboard]:data-[clipboard-type='copy']:bg-success/10 data-[selected]:data-[in-clipboard]:data-[clipboard-type='copy']:shadow-[inset_0_0_0_1px_hsl(var(--success)/0.5),inset_3px_0_0_0_hsl(var(--success)/0.7)] data-[in-clipboard]:data-[clipboard-type='move']:opacity-100 data-[in-clipboard]:data-[clipboard-type='move']:bg-warning/5 data-[in-clipboard]:data-[clipboard-type='move']:shadow-[inset_0_0_0_1px_hsl(var(--warning)/0.3),inset_3px_0_0_0_hsl(var(--warning)/0.5)] data-[selected]:data-[in-clipboard]:data-[clipboard-type='move']:bg-warning/10 data-[selected]:data-[in-clipboard]:data-[clipboard-type='move']:shadow-[inset_0_0_0_1px_hsl(var(--warning)/0.5),inset_3px_0_0_0_hsl(var(--warning)/0.7)]" />
+          <div class="absolute inset-0 pointer-events-none bg-foreground/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
         </div>
-        <div class="file-browser-list-view__entry-name">
+        <div class="relative z-10 flex overflow-hidden items-center pr-4 gap-2.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
           <img v-if="ctx.isEntrySelected(entry)" :src="selectedIcon" alt="Selected" class="h-4 w-4" />
-          <EntryIconComponent :entry="entry" :size="18" class="h-4 w-4" />
-          <div class="file-browser-list-view__entry-name-content">
-            <span class="file-browser-list-view__entry-text">{{ entry.name }}</span>
-            <span v-if="ctx.entryDescription?.(entry)" class="file-browser-list-view__entry-description">{{
+          <EntryIconComponent :entry="entry" :size="18" class="h-4 w-4 shrink-0 text-muted-foreground" :class="{'text-primary': entry.is_dir}" />
+          <div class="flex overflow-hidden min-w-0 flex-1 flex-col gap-0.5">
+            <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
+            <span v-if="ctx.entryDescription?.(entry)" class="overflow-hidden text-muted-foreground text-[11px] text-ellipsis whitespace-nowrap">{{
               ctx.entryDescription!(entry) }}</span>
           </div>
         </div>
-        <span v-if="showItemsColumn" class="file-browser-list-view__entry-items">
+        <span v-if="showItemsColumn" class="relative z-10 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-muted-foreground text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
           {{ getItemsDisplay(entry) }}
         </span>
-        <span v-if="showSizeColumn" class="file-browser-list-view__entry-size">
-          <img :src="loaderCircleIcon" alt="loading" v-if="isDirLoadingWithProgress(entry)" :size="12" class="file-browser-list-view__spinner" />
-          <Skeleton v-if="getSizeDisplay(entry) === null" class="file-browser-list-view__size-skeleton" />
+        <span v-if="showSizeColumn" class="relative z-10 flex items-center gap-1.5 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-muted-foreground text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
+          <img :src="loaderCircleIcon" alt="loading" v-if="isDirLoadingWithProgress(entry)" :size="12" class="shrink-0 animate-spin text-muted-foreground" />
+          <Skeleton v-if="getSizeDisplay(entry) === null" class="w-[50px] h-3" />
           <template v-else>{{ getSizeDisplay(entry) }}</template>
         </span>
-        <span v-if="showModifiedColumn" class="file-browser-list-view__entry-modified">
+        <span v-if="showModifiedColumn" class="relative z-10 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-muted-foreground text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
           {{ formatDate(entry.modified_time) }}
         </span>
       </button>
     </div>
   </div>
 </template>
-
-<style scoped>
-.file-browser-list-view__entry:focus-visible {
-  outline: none;
-}
-
-.file-browser-list-view__entry-name {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  overflow: hidden;
-  align-items: center;
-  padding-right: 16px;
-  gap: 10px;
-}
-
-.file-browser-list-view__entry-icon {
-  flex-shrink: 0;
-  color: hsl(var(--muted-foreground));
-}
-
-.file-browser-list-view__entry-icon--folder {
-  color: hsl(var(--primary));
-}
-
-.file-browser-list-view__entry-name-content {
-  display: flex;
-  overflow: hidden;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.file-browser-list-view__entry-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-browser-list-view__entry-description {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-browser-list-view__entry-items,
-.file-browser-list-view__entry-size,
-.file-browser-list-view__entry-modified {
-  position: relative;
-  z-index: 1;
-  overflow: hidden;
-  padding-right: var(--file-browser-list-cell-padding-right);
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-browser-list-view__entry-size {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.file-browser-list-view__size-skeleton {
-  width: 50px;
-  height: 12px;
-}
-
-.file-browser-list-view__spinner {
-  flex-shrink: 0;
-  animation: file-browser-list-view-spin 1s linear infinite;
-  color: hsl(var(--muted-foreground));
-}
-
-@keyframes file-browser-list-view-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.file-browser-list-view__overlay--clipboard {
-  opacity: 0;
-}
-
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="copy"] .file-browser-list-view__overlay--clipboard {
-  background-color: hsl(var(--success) / 6%);
-  box-shadow: inset 0 0 0 1px hsl(var(--success) / 30%), inset 3px 0 0 0 hsl(var(--success) / 50%);
-  opacity: 1;
-}
-
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__overlay--clipboard {
-  background-color: hsl(var(--warning) / 6%);
-  box-shadow: inset 0 0 0 1px hsl(var(--warning) / 30%), inset 3px 0 0 0 hsl(var(--warning) / 50%);
-  opacity: 1;
-}
-
-.file-browser-list-view__entry[data-selected][data-in-clipboard][data-clipboard-type="copy"] .file-browser-list-view__overlay--clipboard {
-  background-color: hsl(var(--success) / 10%);
-  box-shadow: inset 0 0 0 1px hsl(var(--success) / 50%), inset 3px 0 0 0 hsl(var(--success) / 70%);
-  opacity: 1;
-}
-
-.file-browser-list-view__entry[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__overlay--clipboard {
-  background-color: hsl(var(--warning) / 10%);
-  box-shadow: inset 0 0 0 1px hsl(var(--warning) / 50%), inset 3px 0 0 0 hsl(var(--warning) / 70%);
-  opacity: 1;
-}
-
-.file-browser-list-view__entry[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-text,
-.file-browser-list-view__entry[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-items,
-.file-browser-list-view__entry[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-size,
-.file-browser-list-view__entry[data-selected][data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-modified {
-  color: hsl(var(--warning));
-}
-
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="copy"] .file-browser-list-view__entry-text,
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="copy"] .file-browser-list-view__entry-items,
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="copy"] .file-browser-list-view__entry-size,
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="copy"] .file-browser-list-view__entry-modified {
-  color: hsl(var(--success));
-}
-
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-text,
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-items,
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-size,
-.file-browser-list-view__entry[data-in-clipboard][data-clipboard-type="move"] .file-browser-list-view__entry-modified {
-  color: hsl(var(--warning));
-}
-
-.file-browser-list-view__overlay--hover {
-  background-color: hsl(var(--foreground) / 5%);
-  opacity: 0;
-  transition: opacity 0.15s ease-out;
-}
-
-.file-browser-list-view__entry:hover .file-browser-list-view__overlay--hover {
-  opacity: 1;
-  transition: opacity 0s;
-}
-
-.file-browser-list-view__entry[data-drag-over] .file-browser-list-view__overlay--hover {
-  background-color: hsl(var(--primary) / 15%);
-  box-shadow: inset 0 0 0 2px hsl(var(--primary) / 60%);
-  opacity: 1;
-  transition: opacity 0s;
-}
-
-.file-browser-list-view__header-size--with-info {
-  display: flex;
-  align-items: center;
-  cursor: help;
-  gap: 4px;
-}
-</style>

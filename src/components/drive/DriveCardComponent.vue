@@ -93,24 +93,24 @@ onMounted(async () => {
 </script>
 
 <template>
-  <button type="button" class="drive-card relative grid rounded-corner overflow-hidden w-full h-full items-center gap-0 bg-ui-bg/80 border border-secondary" :class="{
-    'drive-card--unmounted': !drive.is_mounted,
+  <button type="button" class="relative grid rounded-corner overflow-hidden w-full h-full items-center gap-0 bg-ui-bg/80 border border-secondary pr-2 cursor-pointer [grid-template-columns:56px_1fr_auto] text-left hover:bg-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 transition-all" :class="{
+    'opacity-60 hover:opacity-100': !drive.is_mounted,
   }" @click="handleClick">
-    <div class="drive-card__preview">
-        <img :src="driveIcon.value" :size="20" class="drive-card__icon h-5 w-5" />
-        <span v-if="drive.is_mounted" class="drive-card__percent">
+    <div class="relative flex w-[56px] h-[56px] flex-col shrink-0 items-center justify-center gap-[2px]">
+        <img :src="driveIcon.value" :size="20" class="text-tx-muted h-5 w-5" />
+        <span v-if="drive.is_mounted" class="text-tx-muted text-[11px] font-medium">
           {{ drive.percent_used }}%
         </span>
     </div>
 
-    <div class="drive-card__content">
-      <div class="drive-card__name">
+    <div class="flex min-w-0 flex-1 flex-col py-2 gap-1">
+      <div class="overflow-hidden text-seccondary text-[13px] font-medium text-ellipsis whitespace-nowrap">
         {{ drive.name }}
       </div>
 
       <LinearBar :percent-used="drive.percent_used" :is-low-space="isLowSpace" />
 
-      <div class="drive-card__space-info">
+      <div class="text-muted-foreground text-xs">
         <template v-if="isMounting">
           {{ t('mounting') }}...
         </template>
@@ -119,107 +119,5 @@ onMounted(async () => {
         </template>
       </div>
     </div>
-
   </button>
 </template>
-
-<style>
-.drive-card {
-  padding: 0 8px 0 0;
-  cursor: pointer;
-  grid-template-columns: 56px 1fr auto;
-  text-align: left;
-}
-
-.drive-card:hover {
-  background-color: hsl(var(--muted));
-}
-
-.drive-card:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
-.drive-card--unmounted {
-  opacity: 0.6;
-}
-
-.drive-card--unmounted:hover {
-  opacity: 1;
-}
-
-.drive-card__preview {
-  position: relative;
-  display: flex;
-  width: 56px;
-  height: 56px;
-  flex-direction: column;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.drive-card--circular .drive-card__preview {
-  width: 60px;
-  height: 60px;
-}
-
-.drive-card__icon {
-  color: hsl(var(--muted-foreground));
-}
-
-.drive-card__percent {
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.drive-card__content {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  padding: 8px 0;
-  gap: 4px;
-}
-
-.drive-card__name {
-  overflow: hidden;
-  color: hsl(var(--foreground));
-  font-size: 13px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.drive-card__space-info {
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-}
-
-.drive-card__eject {
-  display: flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius);
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
-}
-
-.drive-card:hover .drive-card__eject {
-  opacity: 1;
-}
-
-.drive-card__eject:hover {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-</style>

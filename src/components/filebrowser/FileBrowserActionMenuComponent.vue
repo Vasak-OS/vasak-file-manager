@@ -156,10 +156,10 @@ function handleDeleteClick() {
 </script>
 
 <template>
-  <div class="file-browser-actions-menu__quick-actions">
+  <div class="flex justify-center gap-1">
     <Tooltip :delay-duration="300" v-if="isActionVisible('rename')">
       <TooltipTrigger as-child>
-        <button type="button" class="file-browser-actions-menu__icon-button" @click="emitAction('rename')">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
           <PencilIcon :size="16" />
         </button>
       </TooltipTrigger>
@@ -170,12 +170,12 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('copy')">
       <TooltipTrigger as-child>
-        <button type="button" class="file-browser-actions-menu__icon-button" @click="handleCopyClick">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
           <CopyIcon :size="16" />
         </button>
       </TooltipTrigger>
-      <TooltipContent class="file-browser-actions-menu__tooltip">
-        <div class="file-browser-actions-menu__tooltip-row">
+      <TooltipContent class="flex flex-col gap-1">
+        <div class="flex items-center justify-between gap-3">
           {{ t('fileBrowser.actions.copy') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('copy') }}</kbd>
         </div>
@@ -183,12 +183,12 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('cut')">
       <TooltipTrigger as-child>
-        <button type="button" class="file-browser-actions-menu__icon-button" @click="handleCutClick">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
           <FolderInputIcon :size="16" />
         </button>
       </TooltipTrigger>
-      <TooltipContent class="file-browser-actions-menu__tooltip">
-        <div class="file-browser-actions-menu__tooltip-row">
+      <TooltipContent class="flex flex-col gap-1">
+        <div class="flex items-center justify-between gap-3">
           {{ t('fileBrowser.actions.cut') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('cut') }}</kbd>
         </div>
@@ -196,12 +196,12 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="canPasteToSelectedDirectory">
       <TooltipTrigger as-child>
-        <button type="button" class="file-browser-actions-menu__icon-button" @click="emitAction('paste')">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
           <ClipboardPasteIcon :size="16" />
         </button>
       </TooltipTrigger>
-      <TooltipContent class="file-browser-actions-menu__tooltip">
-        <div class="file-browser-actions-menu__tooltip-row">
+      <TooltipContent class="flex flex-col gap-1">
+        <div class="flex items-center justify-between gap-3">
           {{ t('shortcuts.transferPreparedForCopying') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
         </div>
@@ -209,18 +209,18 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('delete')">
       <TooltipTrigger as-child>
-        <button type="button" class="file-browser-actions-menu__icon-button file-browser-actions-menu__action--danger"
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
           @click="handleDeleteClick">
           <ShredderIcon v-if="isShiftHeld" :size="16" />
           <Trash2Icon v-else :size="16" />
         </button>
       </TooltipTrigger>
-      <TooltipContent class="file-browser-actions-menu__tooltip">
-        <div class="file-browser-actions-menu__tooltip-row">
+      <TooltipContent class="flex flex-col gap-1">
+        <div class="flex items-center justify-between gap-3">
           {{ t('shortcuts.moveSelectedItemsToTrash') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('delete') }}</kbd>
         </div>
-        <div class="file-browser-actions-menu__tooltip-row">
+        <div class="flex items-center justify-between gap-3">
           {{ t('shortcuts.deleteSelectedItemsFromDrive') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('deletePermanently') }}</kbd>
         </div>
@@ -236,7 +236,7 @@ function handleDeleteClick() {
     <span>{{ t('fileBrowser.actions.openWith') }}</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('quick-view')"
-    class="file-browser-actions-menu__item-with-shortcut" @select="emitAction('quick-view')"
+    class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('quick-view')"
     @click="emitAction('quick-view')">
     <EyeIcon :size="16" />
     <span>{{ t('fileBrowser.actions.quickView') }}</span>
@@ -244,7 +244,7 @@ function handleDeleteClick() {
   </component>
   <FileBrowserTerminalSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" :is-shift-held="isShiftHeld" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-in-new-tab')"
-    class="file-browser-actions-menu__item-with-shortcut" @select="emitAction('open-in-new-tab')"
+    class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('open-in-new-tab')"
     @click="emitAction('open-in-new-tab')">
     <PlusIcon :size="16" />
     <span>{{ t('fileBrowser.actions.openInNewTab') }}</span>
@@ -261,71 +261,9 @@ function handleDeleteClick() {
     <StarIcon :size="16" :fill="allSelectedAreFavorites ? 'currentColor' : 'none'" />
     <span>{{ t(allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites') }}</span>
   </component>
-  <div v-if="isActionVisible('edit-tags')" class="file-browser-actions-menu__tag-selector">
+  <div v-if="isActionVisible('edit-tags')" class="py-1.5">
     <TagSelector :tags="availableTags" :selected-tag-ids="selectedItemTagIds" :allow-create="true" :max-badges="1"
       :full-width="true" trigger-variant="default" @toggle-tag="handleToggleTag" @create-tag="handleCreateTag"
       @delete-tag="handleDeleteTag" />
   </div>
 </template>
-
-<style>
-.file-browser-actions-menu__quick-actions {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-}
-
-.file-browser-actions-menu__icon-button {
-  display: inline-flex;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: var(--radius-sm, 6px);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.file-browser-actions-menu__icon-button:hover {
-  background-color: hsl(var(--muted) / 60%);
-}
-
-.file-browser-actions-menu__icon-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.file-browser-actions-menu__action--danger:hover {
-  color: hsl(var(--destructive));
-}
-
-.file-browser-actions-menu__tooltip {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.file-browser-actions-menu__tooltip-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.file-browser-actions-menu__tag-selector {
-  padding: 6px 0;
-}
-
-.file-browser-actions-menu__item-with-shortcut {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-browser-actions-menu__item-with-shortcut .shortcut {
-  margin-left: auto;
-  opacity: 0.6;
-}
-</style>

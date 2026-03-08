@@ -253,37 +253,37 @@ const canSaveCommand = computed(() => {
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="custom-command-dialog">
+    <DialogContent class="w-[480px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{{ t('openWith.customCommands') }}</DialogTitle>
       </DialogHeader>
 
-      <div class="custom-command-dialog__content">
-        <div v-if="loadError" class="custom-command-dialog__error">
+      <div class="flex w-full min-w-0 flex-col gap-4">
+        <div v-if="loadError" class="p-3 rounded-md bg-destructive/10 text-destructive text-[13px]">
           {{ loadError }}
         </div>
 
-        <div class="custom-command-dialog__section">
-          <div class="custom-command-dialog__section-header">
-            <span class="custom-command-dialog__section-label">{{ t('openWith.customCommands') }}</span>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-muted-foreground text-xs font-medium tracking-wide uppercase">{{ t('openWith.customCommands') }}</span>
             <button type="button" @click="startAddingCommand">
               <PlusIcon :size="16" />
               {{ t('openWith.addCustomCommand') }}
             </button>
           </div>
 
-          <ScrollArea v-if="customCommands.length > 0" class="custom-command-dialog__commands-list">
-            <div v-for="command in customCommands" :key="command.id" class="custom-command-dialog__command"
-              :class="{ 'custom-command-dialog__command--selected': selectedCommandId === command.id }"
+          <ScrollArea v-if="customCommands.length > 0" class="max-h-[200px]">
+            <div v-for="command in customCommands" :key="command.id" class="group flex items-center justify-between px-3 py-2 rounded-md bg-transparent cursor-pointer gap-2 transition-colors duration-150 hover:bg-muted/50"
+              :class="{ '!bg-primary/15 hover:!bg-primary/20': selectedCommandId === command.id }"
               @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
-              <div class="custom-command-dialog__command-info">
-                <FileIcon :size="16" class="custom-command-dialog__command-icon" />
-                <div class="custom-command-dialog__command-details">
-                  <span class="custom-command-dialog__command-name">{{ command.name }}</span>
-                  <span class="custom-command-dialog__command-path">{{ command.programPath }}</span>
+              <div class="flex overflow-hidden flex-1 items-center gap-2.5">
+                <FileIcon :size="16" class="shrink-0 text-muted-foreground" />
+                <div class="flex overflow-hidden flex-col gap-0.5">
+                  <span class="text-foreground text-sm font-medium">{{ command.name }}</span>
+                  <span class="overflow-hidden text-muted-foreground text-xs text-ellipsis whitespace-nowrap">{{ command.programPath }}</span>
                 </div>
               </div>
-              <div class="custom-command-dialog__command-actions">
+              <div class="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <button type="button" @click.stop="runCommand(command)">
@@ -302,7 +302,7 @@ const canSaveCommand = computed(() => {
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger as-child>
-                    <button type="button" class="custom-command-dialog__delete-btn"
+                    <button type="button" class="hover:text-destructive"
                       @click.stop="deleteCommand(command.id)">
                       <Trash2Icon :size="14" />
                     </button>
@@ -313,40 +313,40 @@ const canSaveCommand = computed(() => {
             </div>
           </ScrollArea>
 
-          <div v-else-if="!isAddingCommand" class="custom-command-dialog__empty">
+          <div v-else-if="!isAddingCommand" class="p-6 border border-dashed border-ui-border rounded-md text-muted-foreground text-[13px] text-center">
             {{ t('openWith.noCustomCommands') }}
           </div>
         </div>
 
-        <div v-if="isAddingCommand || editingCommandId" class="custom-command-dialog__form">
-          <div class="custom-command-dialog__form-header">
-            <span class="custom-command-dialog__section-label">
+        <div v-if="isAddingCommand || editingCommandId" class="flex flex-col p-4 border border-ui-border rounded-md bg-muted/30 gap-3">
+          <div class="mb-1">
+            <span class="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               {{ t(editingCommandId ? 'openWith.editCustomCommand' : 'openWith.addCustomCommand') }}
             </span>
           </div>
 
-          <div class="custom-command-dialog__field">
-            <label class="custom-command-dialog__label">{{ t('openWith.commandName') }}</label>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-foreground text-[13px] font-medium">{{ t('openWith.commandName') }}</label>
             <input v-model="newCommandName" type="text" :placeholder="t('openWith.commandNamePlaceholder')" />
           </div>
 
-          <div class="custom-command-dialog__field">
-            <label class="custom-command-dialog__label">{{ t('openWith.programPath') }}</label>
-            <div class="custom-command-dialog__path-row">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-foreground text-[13px] font-medium">{{ t('openWith.programPath') }}</label>
+            <div class="flex gap-2">
               <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
-                class="custom-command-dialog__path-input" />
+                class="flex-1" />
               <button type="button" :title="t('browse')" @click="handleSelectProgram">
                 <FolderOpenIcon :size="16" />
               </button>
             </div>
           </div>
 
-          <div class="custom-command-dialog__field">
-            <div class="custom-command-dialog__label-row">
-              <label class="custom-command-dialog__label">{{ t('openWith.arguments') }}</label>
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center gap-1.5">
+              <label class="text-foreground text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <InfoIcon :size="14" class="custom-command-dialog__info-icon" />
+                  <InfoIcon :size="14" class="text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{{ t('openWith.argumentsHint') }}</p>
@@ -356,7 +356,7 @@ const canSaveCommand = computed(() => {
             <input v-model="newCommandArgs" type="text" :placeholder="t('openWith.argumentsPlaceholder')" />
           </div>
 
-          <div class="custom-command-dialog__form-actions">
+          <div class="flex justify-end mt-2 gap-2">
             <button type="button" @click="cancelEditing">
               'cancel'
             </button>
@@ -367,224 +367,15 @@ const canSaveCommand = computed(() => {
         </div>
       </div>
 
-      <DialogFooter class="custom-command-dialog__footer">
+      <DialogFooter class="flex justify-end gap-2">
         <button type="button" :disabled="isOpening" @click="handleClose">
           'cancel'
         </button>
         <button type="button" :disabled="!canRun || isOpening" @click="handleRunSelected">
-          <Loader2Icon v-if="isOpening" :size="16" class="custom-command-dialog__spinner" />
+          <Loader2Icon v-if="isOpening" :size="16" class="animate-spin" />
           'openWith.open'
         </button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
-
-<style>
-.custom-command-dialog {
-  width: 480px;
-  max-width: calc(100vw - 32px);
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-.custom-command-dialog>* {
-  min-width: 0;
-}
-
-.custom-command-dialog__content {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.custom-command-dialog__error {
-  padding: 12px;
-  border-radius: var(--radius);
-  background-color: hsl(var(--destructive) / 10%);
-  color: hsl(var(--destructive));
-  font-size: 13px;
-}
-
-.custom-command-dialog__section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.custom-command-dialog__section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.custom-command-dialog__section-label {
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.custom-command-dialog__commands-list {
-  max-height: 200px;
-}
-
-.custom-command-dialog__command {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  background: transparent;
-  cursor: pointer;
-  gap: 8px;
-  transition: background-color 0.15s ease;
-}
-
-.custom-command-dialog__command:hover {
-  background-color: hsl(var(--muted) / 50%);
-}
-
-.custom-command-dialog__command--selected {
-  background-color: hsl(var(--primary) / 15%);
-}
-
-.custom-command-dialog__command--selected:hover {
-  background-color: hsl(var(--primary) / 20%);
-}
-
-.custom-command-dialog__command-info {
-  display: flex;
-  overflow: hidden;
-  flex: 1;
-  align-items: center;
-  gap: 10px;
-}
-
-.custom-command-dialog__command-icon {
-  flex-shrink: 0;
-  color: hsl(var(--muted-foreground));
-}
-
-.custom-command-dialog__command-details {
-  display: flex;
-  overflow: hidden;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.custom-command-dialog__command-name {
-  color: hsl(var(--foreground));
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.custom-command-dialog__command-path {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.custom-command-dialog__command-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.custom-command-dialog__command:hover .custom-command-dialog__command-actions {
-  opacity: 1;
-}
-
-.custom-command-dialog__delete-btn:hover {
-  color: hsl(var(--destructive));
-}
-
-.custom-command-dialog__empty {
-  padding: 24px;
-  border: 1px dashed hsl(var(--border));
-  border-radius: var(--radius);
-  color: hsl(var(--muted-foreground));
-  font-size: 13px;
-  text-align: center;
-}
-
-.custom-command-dialog__form {
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  background-color: hsl(var(--muted) / 30%);
-  gap: 12px;
-}
-
-.custom-command-dialog__form-header {
-  margin-bottom: 4px;
-}
-
-.custom-command-dialog__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.custom-command-dialog__label-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.custom-command-dialog__label {
-  color: hsl(var(--foreground));
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.custom-command-dialog__info-icon {
-  color: hsl(var(--muted-foreground));
-  cursor: help;
-}
-
-.custom-command-dialog__path-row {
-  display: flex;
-  gap: 8px;
-}
-
-.custom-command-dialog__path-input {
-  flex: 1;
-}
-
-.custom-command-dialog__form-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-  gap: 8px;
-}
-
-.custom-command-dialog__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.custom-command-dialog__spinner {
-  animation: custom-command-spin 1s linear infinite;
-}
-
-@keyframes custom-command-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>

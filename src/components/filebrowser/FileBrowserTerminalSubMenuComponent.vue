@@ -50,43 +50,43 @@ async function handleOpenTerminal(terminalId: string) {
 
 <template>
   <ContextMenuSub>
-    <ContextMenuSubTrigger class="terminal-submenu__trigger">
+    <ContextMenuSubTrigger class="flex items-center gap-2">
       <TerminalSquareIcon :size="16" />
       <span>{{ t('terminal.openInTerminal') }}</span>
-      <kbd class="shortcut terminal-submenu__shortcut">{{ shortcutsStore.getShortcutLabel('openTerminal') }}</kbd>
+      <kbd class="ml-auto opacity-60">{{ shortcutsStore.getShortcutLabel('openTerminal') }}</kbd>
     </ContextMenuSubTrigger>
-    <ContextMenuSubContent class="terminal-submenu">
+    <ContextMenuSubContent class="min-w-[200px] max-w-[350px]">
       <template v-if="terminalsStore.loadError">
-        <div class="terminal-submenu__error">
+        <div class="px-3 py-2 text-destructive text-[13px]">
           {{ terminalsStore.loadError }}
         </div>
       </template>
 
       <template v-else-if="terminalsStore.hasLoaded && terminalsStore.terminals.length === 0">
-        <div class="terminal-submenu__empty">
+        <div class="px-3 py-2 text-muted-foreground text-[13px]">
           {{ t('terminal.noTerminalsFound') }}
         </div>
       </template>
 
       <template v-else>
-        <ContextMenuLabel class="terminal-submenu__hint">
+        <ContextMenuLabel class="flex items-center px-2 py-1 text-muted-foreground text-[11px] italic gap-2">
           <i18n-t keypath="terminal.holdModifierForAdmin" tag="span">
             <template #modifier>
               <kbd>{{ ADMIN_MODIFIER_KEY }}</kbd>
             </template>
           </i18n-t>
-          <kbd class="shortcut terminal-submenu__hint-shortcut">{{ shortcutsStore.getShortcutLabel('openTerminalAdmin')
+          <kbd class="ml-auto not-italic opacity-60">{{ shortcutsStore.getShortcutLabel('openTerminalAdmin')
             }}</kbd>
         </ContextMenuLabel>
 
         <ContextMenuSeparator />
 
-        <ContextMenuItem v-for="terminal in terminalsStore.terminals" :key="terminal.id" class="terminal-submenu__item"
+        <ContextMenuItem v-for="terminal in terminalsStore.terminals" :key="terminal.id" class="flex items-center gap-2"
           @select="handleOpenTerminal(terminal.id)">
-          <img v-if="terminal.icon" :src="terminal.icon" class="terminal-submenu__icon">
+          <img v-if="terminal.icon" :src="terminal.icon" class="w-4 h-4 shrink-0 object-contain">
           <TerminalSquareIcon v-else :size="16" />
           <span>{{ terminal.name }}</span>
-          <span v-if="terminal.isDefault" class="terminal-submenu__default-badge">
+          <span v-if="terminal.isDefault" class="ml-auto text-muted-foreground text-[11px] opacity-70">
             {{ t('terminal.defaultLabel') }}
           </span>
         </ContextMenuItem>
@@ -94,69 +94,3 @@ async function handleOpenTerminal(terminalId: string) {
     </ContextMenuSubContent>
   </ContextMenuSub>
 </template>
-
-<style>
-.terminal-submenu {
-  min-width: 200px;
-  max-width: 350px;
-}
-
-.terminal-submenu__trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.terminal-submenu__shortcut {
-  margin-left: auto;
-  opacity: 0.6;
-}
-
-.terminal-submenu__error {
-  padding: 8px 12px;
-  color: hsl(var(--destructive));
-  font-size: 13px;
-}
-
-.terminal-submenu__empty {
-  padding: 8px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 13px;
-}
-
-.terminal-submenu__hint {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  font-style: italic;
-  gap: 8px;
-}
-
-.terminal-submenu__hint-shortcut {
-  margin-left: auto;
-  font-style: normal;
-  opacity: 0.6;
-}
-
-.terminal-submenu__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.terminal-submenu__icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.terminal-submenu__default-badge {
-  margin-left: auto;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  opacity: 0.7;
-}
-</style>

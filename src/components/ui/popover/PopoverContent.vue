@@ -106,9 +106,12 @@ onBeforeUnmount(() => {
 <template>
 	<Teleport to="body">
 		<Transition
-			name="popover"
-			@enter="(el) => el.offsetHeight"
-			@leave="(el) => el.offsetHeight"
+			enter-active-class="transition-all duration-150 ease-in-out"
+			leave-active-class="transition-all duration-150 ease-in-out"
+			enter-from-class="opacity-0 scale-95"
+			leave-to-class="opacity-0 scale-95"
+			@enter="(el) => (el as HTMLElement).offsetHeight"
+			@leave="(el) => (el as HTMLElement).offsetHeight"
 		>
 			<div
 				v-show="isOpen"
@@ -125,19 +128,4 @@ onBeforeUnmount(() => {
 	</Teleport>
 </template>
 
-<style scoped>
-@reference "../../../assets/main.css";
 
-.popover-enter-active,
-.popover-leave-active {
-	@apply transition-all duration-150 ease-in-out;
-}
-
-.popover-enter-from {
-	@apply opacity-0 scale-95;
-}
-
-.popover-leave-to {
-	@apply opacity-0 scale-95;
-}
-</style>

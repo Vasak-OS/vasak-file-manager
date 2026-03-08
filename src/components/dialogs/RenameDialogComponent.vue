@@ -49,7 +49,8 @@ const isValid = computed(() => {
 
 	if (!trimmed) return false;
 
-	const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: we explicitly want to match null character and other control characters
+	const invalidChars = /[<>:"/\\|?*\u0000-\u001F]/;
 
 	if (invalidChars.test(trimmed)) return false;
 
@@ -123,19 +124,20 @@ function handleKeydown(event: KeyboardEvent) {
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="file-browser-rename-dialog">
+    <DialogContent class="w-[420px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{{ t('dialogs.renameDirItemDialog.renameItem') }}</DialogTitle>
       </DialogHeader>
 
-      <div class="file-browser-rename-dialog__form">
-        <div class="file-browser-rename-dialog__field-wrapper">
-          <label for="rename-input" class="file-browser-rename-dialog__label">
+      <div class="flex w-full min-w-0 flex-col gap-4">
+        <div class="flex w-full min-w-0 flex-col gap-2">
+          <label for="rename-input" class="text-foreground text-sm font-medium">
             {{ t('dialogs.renameDirItemDialog.newName') }}
           </label>
-          <div class="file-browser-rename-dialog__field">
+          <div class="flex w-full min-w-0 items-center gap-2">
             <input id="rename-input" ref="inputRef" v-model="newName" type="text"
-              :class="{ 'file-browser-rename-dialog__input--error': newName && !isValid }" @keydown="handleKeydown" />
+              class="w-full min-w-0 max-w-full box-border"
+              :class="{ '!border-destructive': newName && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || !hasChanges || isSubmitting" @click="handleSubmit">
               {{ t('save') }}
             </button>
@@ -147,81 +149,3 @@ function handleKeydown(event: KeyboardEvent) {
     </DialogContent>
   </Dialog>
 </template>
-
-<style>
-.file-browser-rename-dialog {
-  width: 420px;
-  max-width: calc(100vw - 32px);
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-
-.file-browser-rename-dialog>* {
-  min-width: 0;
-}
-
-.file-browser-rename-dialog__form {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.file-browser-rename-dialog__field-wrapper {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.file-browser-rename-dialog__field {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-browser-rename-dialog__label {
-  color: hsl(var(--foreground));
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.file-browser-rename-dialog__field .sigma-ui-input {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.file-browser-rename-dialog__input--error {
-  border-color: hsl(var(--destructive));
-}
-
-.file-browser-rename-dialog__current-name {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  flex-direction: column;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  background-color: hsl(var(--muted) / 50%);
-  font-size: 13px;
-  gap: 4px;
-}
-
-.file-browser-rename-dialog__current-label {
-  flex-shrink: 0;
-  color: hsl(var(--muted-foreground));
-}
-
-.file-browser-rename-dialog__current-value {
-  min-width: 0;
-  color: hsl(var(--foreground));
-  font-family: monospace;
-  overflow-wrap: break-word;
-}
-</style>

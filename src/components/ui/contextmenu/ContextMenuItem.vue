@@ -15,7 +15,7 @@ function handleClick() {
 
 <template>
   <div
-    class="context-menu-item"
+    class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
     role="menuitem"
     tabindex="0"
     @click="handleClick"
@@ -25,29 +25,3 @@ function handleClick() {
     <slot />
   </div>
 </template>
-
-<style scoped>
-.context-menu-item {
-  position: relative;
-  display: flex;
-  cursor: pointer;
-  user-select: none;
-  align-items: center;
-  border-radius: 0.25rem;
-  padding: 0.375rem 0.5rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  outline: none;
-  transition: background-color 0.2s;
-}
-
-.context-menu-item:hover {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-
-.context-menu-item:focus {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-</style>

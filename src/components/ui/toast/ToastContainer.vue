@@ -10,7 +10,14 @@ const toastList = computed(() => Array.from(toasts.value.values()));
 <template>
   <Teleport to="body">
     <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-      <TransitionGroup name="toast" tag="div">
+      <TransitionGroup
+        tag="div"
+        enter-active-class="transition-all duration-300 ease"
+        leave-active-class="transition-all duration-300 ease"
+        enter-from-class="opacity-0 translate-x-[30px]"
+        leave-to-class="opacity-0 translate-x-[30px]"
+        move-class="transition-transform duration-300 ease"
+      >
         <div v-for="toast in toastList" :key="toast.id" class="pointer-events-auto">
           <component :is="toast.component" v-bind="toast.componentProps" />
         </div>
@@ -19,19 +26,4 @@ const toastList = computed(() => Array.from(toasts.value.values()));
   </Teleport>
 </template>
 
-<style scoped>
-.toast-enter-active,
-.toast-leave-active {
-	transition: all 0.3s ease;
-}
 
-.toast-enter-from,
-.toast-leave-to {
-	opacity: 0;
-	transform: translateX(30px);
-}
-
-.toast-move {
-	transition: transform 0.3s ease;
-}
-</style>

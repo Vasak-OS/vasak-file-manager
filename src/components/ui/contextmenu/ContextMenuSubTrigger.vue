@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { inject, type Ref, ref } from 'vue';
+import { inject, ref } from 'vue';
 
-const isSubOpen = inject<Ref<boolean>>('contextMenuSubOpen');
 const toggleSub = inject<(value: boolean) => void>('toggleContextMenuSub');
 
 const triggerRef = ref<HTMLDivElement | null>(null);
@@ -24,7 +23,7 @@ function handleMouseLeave() {
 <template>
   <div
     ref="triggerRef"
-    class="context-menu-subtrigger"
+    class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group"
     role="menuitem"
     tabindex="0"
     @mouseenter="handleMouseEnter"
@@ -32,7 +31,7 @@ function handleMouseLeave() {
   >
     <slot />
     <svg
-      class="context-menu-subtrigger-icon"
+      class="ml-auto h-4 w-4"
       width="15"
       height="15"
       viewBox="0 0 15 15"
@@ -48,35 +47,3 @@ function handleMouseLeave() {
     </svg>
   </div>
 </template>
-
-<style scoped>
-.context-menu-subtrigger {
-  position: relative;
-  display: flex;
-  cursor: pointer;
-  user-select: none;
-  align-items: center;
-  border-radius: 0.25rem;
-  padding: 0.375rem 0.5rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  outline: none;
-  transition: background-color 0.2s;
-}
-
-.context-menu-subtrigger:hover {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-
-.context-menu-subtrigger:focus {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-
-.context-menu-subtrigger-icon {
-  margin-left: auto;
-  width: 1rem;
-  height: 1rem;
-}
-</style>

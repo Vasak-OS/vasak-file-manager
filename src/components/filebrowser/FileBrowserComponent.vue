@@ -37,8 +37,8 @@ const fileBrowserRef = ref<HTMLElement | null>(null);
 const fb = useFileBrowser({
 	tab: () => props.tab,
 	layout: () => props.layout,
-	externalEntries: props.externalEntries ? () => props.externalEntries! : undefined,
-	basePath: props.basePath !== undefined ? () => props.basePath! : undefined,
+	externalEntries: props.externalEntries ? () => props.externalEntries as never : undefined,
+	basePath: props.basePath !== undefined ? () => props.basePath as never : undefined,
 	onSelectedEntriesChange: (entries) => emit('update:selectedEntries', entries),
 	onCurrentDirEntryChange: (entry) => emit('update:currentDirEntry', entry),
 	onOpenEntry: (entry) => emit('openEntry', entry),
@@ -121,8 +121,11 @@ defineExpose({
       :operation-type="fb.dragOperationType.value" :cursor-x="fb.dragCursorX.value" :cursor-y="fb.dragCursorY.value"
       :drag-items="fb.dragItems.value" />
 
-    <Transition name="cross-pane-drop-overlay">
-      <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary rounded-corner inset-0 pointer-events-none cross-pane-drop-overlay" />
+    <Transition enter-active-class="transition-opacity duration-150 ease-out"
+      leave-active-class="transition-opacity duration-100 ease-in"
+      enter-from-class="opacity-0"
+      leave-to-class="opacity-0">
+      <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary rounded-corner inset-0 pointer-events-none" />
     </Transition>
 
     <InboundDragOverlayComponent v-if="!fb.isExternalMode" :is-active="fb.isExternalDragActive.value"
@@ -135,17 +138,3 @@ defineExpose({
       @cancel="fb.handleConflictCancel" />
   </div>
 </template>
-<style scoped>
-.cross-pane-drop-overlay-enter-active {
-  transition: opacity 0.15s ease-out;
-}
-
-.cross-pane-drop-overlay-leave-active {
-  transition: opacity 0.1s ease-in;
-}
-
-.cross-pane-drop-overlay-enter-from,
-.cross-pane-drop-overlay-leave-to {
-  opacity: 0;
-}
-</style>

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, defineProps, provide, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 
 interface Panel {
 	id: string;
@@ -50,7 +50,7 @@ function resizeTo(panelId: string, sizePercent: number) {
 	}
 }
 
-function startDrag(e: MouseEvent, handleIndex: number) {
+function startDrag(e: MouseEvent) {
 	isDragging.value = true;
 	dragStartX.value = e.clientX;
 	dragStartY.value = e.clientY;
@@ -125,5 +125,4 @@ provide('resizable-panel-group', {
   </div>
 </template>
 
-<style scoped>
-</style>
+

@@ -377,7 +377,7 @@ onUnmounted(() => {
             </button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <DropdownMenuContent :side="'bottom'" :align="'start'" class="address-bar__menu">
+        <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[200px] [&_[role=menuitem]]:max-w-none [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex [&_[role=menuitem]]:gap-2">
           <DropdownMenuItem @select="copyPathToClipboard">
             <img :src="copyIcon" alt="copy" class="h-4 w-4 inline-block mr-2" />
             <span>{{ t('settings.addressBar.copyPathToClipboard') }}</span>
@@ -408,17 +408,17 @@ onUnmounted(() => {
                 @update:open="(open: boolean) => handleSeparatorOpenChange(index, open)"
               >
                 <DropdownMenuTrigger as-child>
-                  <button class="address-bar__separator" :title="t('settings.addressBar.showSiblingDirectories')"
+                  <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-muted-foreground/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop="openSeparatorMenu(index)">
-                    <img :src="chevronRightIcon" alt="Chevron Right" class="h-4 w-4" :size="12"
-                      :class="{ 'address-bar__separator-icon--open': openSeparatorIndex === index }" />
+                    <img :src="chevronRightIcon" alt="Chevron Right" class="h-4 w-4 transition-transform duration-100 ease-in-out" :size="12"
+                      :class="{ 'rotate-90': openSeparatorIndex === index }" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent :side="'bottom'" :align="'start'" class="address-bar__separator-menu">
-                  <ScrollArea as-child class="address-bar__separator-menu-scroll">
+                <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[180px] max-w-[300px] p-0 [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-1.5 [&_[role=menuitem]]:text-xs [&_[role=menuitem]]:gap-2 [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex">
+                  <ScrollArea as-child class="max-h-[250px] py-1">
                     <DropdownMenuItem v-for="dirPath in separatorDropdowns[index]" :key="dirPath"
-                      @select="handleSeparatorNavigate(dirPath)" class="flex items-center justify-center">
-                      <img :src="folderIcon" :alt="dirPath" class="h-4 w-4 inline-block mr-2" />
+                      @select="handleSeparatorNavigate(dirPath)" class="flex items-center justify-start">
+                      <img :src="folderIcon" :alt="dirPath" class="h-4 w-4 inline-block shrink-0 mr-2" />
                       <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ dirPath.split('/').pop() || dirPath }}</span>
                     </DropdownMenuItem>
                   </ScrollArea>
@@ -428,34 +428,34 @@ onUnmounted(() => {
           </div>
         </div>
       </PopoverTrigger>
-      <PopoverContent class="address-bar__editor" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
+      <PopoverContent class="min-w-[300px] p-0 border border-ui-border rounded-lg bg-background-3 shadow-[0_10px_40px_hsl(var(--foreground)/10%)] text-popover-foreground" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
         :align="'end'" :side-offset="4" @open-auto-focus.prevent
         @escape-key-down="(event: KeyboardEvent) => { if (isPinned) event.preventDefault(); else isEditorOpen = false }"
         @pointer-down-outside="(event: Event) => { if (isPinned) event.preventDefault() }"
         @interact-outside="(event: Event) => { if (isPinned) event.preventDefault() }">
-        <div class="address-bar__editor-header">
+        <div class="flex items-center p-2 gap-1">
           <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="t('settings.addressBar.enterValidPath')"
-            class="address-bar__path-input" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
+            class="h-8 flex-1 mr-2 text-[13px] bg-transparent outline-none" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
           <Tooltip>
             <TooltipTrigger as-child>
-              <button type="button" tabindex="-1" class="address-bar__pin-button"
-                :class="{ 'address-bar__pin-button--active': isPinned }" @click="isPinned = !isPinned">
-                <img :src="pinIcon" :size="14" />
+              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-sm"
+                :class="{ 'bg-primary/15 text-primary stroke-primary': isPinned }" @click="isPinned = !isPinned">
+                <img :src="pinIcon" :size="14" class="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
               {{ t('settings.addressBar.keepEditorOpened') }}
-              <span v-if="isPinned" class="address-bar__tooltip-status">{{ t('enabled') }}
+              <span v-if="isPinned" class="ml-1.5 text-primary font-medium">{{ t('enabled') }}
               </span>
-              <span v-else class="address-bar__tooltip-status">{{ t('disabled') }}
+              <span v-else class="ml-1.5 text-primary font-medium">{{ t('disabled') }}
               </span>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger as-child>
-              <button type="button" tabindex="-1" class="address-bar__close-button"
+              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-sm text-foreground/70 hover:text-foreground"
                 @click="isEditorOpen = false">
-                <img :src="xIcon" />
+                <img :src="xIcon" class="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -466,7 +466,7 @@ onUnmounted(() => {
         </div>
 
         <ScrollArea v-if="autocompleteList.length > 0">
-          <button v-for="(path, index) in autocompleteList" :key="path" tabindex="-1" class="flex no-wrap items-center w-full px-3 py-1 text-sm gap-2 text-left"
+          <button v-for="(path, index) in autocompleteList" :key="path" tabindex="-1" class="flex no-wrap items-center w-full px-3 py-1.5 text-sm gap-2 text-left"
             :class="{ 'bg-secondary': index === selectedIndex }" @click="handlePathSelect(path)"
             @mouseenter="selectedIndex = index">
             <img :src="folderIcon" :alt="path" class="h-4 w-4 inline-block mr-2" />
@@ -474,18 +474,18 @@ onUnmounted(() => {
           </button>
         </ScrollArea>
 
-        <div v-else class="address-bar__empty">
+        <div v-else class="p-3 border-t border-ui-border text-muted-foreground text-xs text-center">
           {{ t('settings.addressBar.noMatchingDirectories') }}
         </div>
 
-        <div class="address-bar__editor-hints">
-          <span class="address-bar__hint-key">↑↓</span>
+        <div class="px-2.5 py-1.5 border-t border-ui-border text-muted-foreground text-[10px]">
+          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">↑↓</span>
           /
-          <span class="address-bar__hint-key">Tab</span>
+          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">Tab</span>
           /
-          <span class="address-bar__hint-key">Shift+Tab</span>
+          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">Shift+Tab</span>
           {{ t('settings.addressBar.toAutocomplete') }};
-          <span class="address-bar__hint-key">Enter</span>
+          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">Enter</span>
           {{ t('settings.addressBar.toOpenThePath') }}
         </div>
       </PopoverContent>
@@ -504,150 +504,3 @@ onUnmounted(() => {
     </Tooltip>
   </div>
 </template>
-
-<style scoped>
-.address-bar__separator {
-  padding: 4px 6px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: hsl(var(--muted-foreground) / 60%);
-  cursor: pointer;
-  font-size: 13px;
-  transition: background-color 0.1s, color 0.1s;
-}
-
-.address-bar__separator:hover {
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--foreground));
-}
-
-.address-bar__separator:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
-.address-bar__separator-icon--open {
-  transform: rotate(90deg);
-}
-
-.address-bar__separator svg {
-  transition: transform 0.1s ease-in-out;
-}
-</style>
-
-<style>
-.address-bar__menu.sigma-ui-dropdown-menu-content {
-  min-width: 200px;
-}
-
-.address-bar__menu .sigma-ui-dropdown-menu-item {
-  gap: 8px;
-}
-
-.address-bar__editor.sigma-ui-popover-content {
-  min-width: 300px;
-  padding: 0;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  background-color: hsl(var(--background-3));
-  box-shadow: 0 10px 40px hsl(var(--foreground) / 10%);
-  color: hsl(var(--popover-foreground));
-}
-
-.address-bar__editor-header {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  gap: 4px;
-}
-
-.address-bar__path-input {
-  height: 32px;
-  flex: 1;
-  margin-right: 8px;
-  font-size: 13px;
-}
-
-.address-bar__pin-button,
-.address-bar__close-button {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.address-bar__pin-button--active {
-  background-color: hsl(var(--primary) / 15%);
-  color: hsl(var(--primary));
-}
-
-.address-bar__pin-button--active svg {
-  stroke: hsl(var(--primary));
-}
-
-.address-bar__suggestion {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  padding: 4px 12px;
-  border: none;
-  background: transparent;
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  gap: 8px;
-  text-align: left;
-  transition: background-color 0.1s;
-}
-
-
-.address-bar__empty {
-  padding: 12px;
-  border-top: 1px solid hsl(var(--border));
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  text-align: center;
-}
-
-.address-bar__editor-hints {
-  padding: 6px 10px;
-  border-top: 1px solid hsl(var(--border));
-  color: hsl(var(--muted-foreground));
-  font-size: 10px;
-}
-
-.address-bar__hint-key {
-  padding: 2px 5px;
-  border-radius: var(--radius-sm);
-  background-color: hsl(var(--muted));
-  font-size: 10px;
-}
-
-.address-bar__tooltip-status {
-  margin-left: 6px;
-  color: hsl(var(--primary));
-  font-weight: 500;
-}
-
-.address-bar__separator-menu.sigma-ui-dropdown-menu-content {
-  min-width: 180px;
-  max-width: 300px;
-  padding: 0;
-}
-
-.address-bar__separator-menu-scroll {
-  max-height: 250px;
-  padding: 4px 0;
-}
-
-.address-bar__separator-menu .sigma-ui-dropdown-menu-item {
-  padding: 6px 12px;
-  font-size: 12px;
-  gap: 8px;
-}
-
-.address-bar__separator-menu-path {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-</style>

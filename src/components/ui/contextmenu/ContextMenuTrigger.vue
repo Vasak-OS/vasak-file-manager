@@ -16,13 +16,7 @@ function handleContextMenu(event: MouseEvent) {
 </script>
 
 <template>
-  <div class="context-menu-trigger" @contextmenu="handleContextMenu">
+  <div class="contents" @contextmenu="handleContextMenu">
     <slot />
   </div>
 </template>
-
-<style scoped>
-.context-menu-trigger {
-  display: contents;
-}
-</style>

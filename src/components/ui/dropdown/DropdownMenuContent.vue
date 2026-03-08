@@ -109,7 +109,10 @@ onBeforeUnmount(() => {
 <template>
 	<Teleport to="body">
 		<Transition
-			name="dropdown"
+			enter-active-class="transition-all duration-150 ease-in-out"
+			leave-active-class="transition-all duration-150 ease-in-out"
+			enter-from-class="opacity-0 scale-95"
+			leave-to-class="opacity-0 scale-95"
 			@enter="(el) => (el as HTMLElement).offsetHeight"
 			@leave="(el) => (el as HTMLElement).offsetHeight"
 		>
@@ -130,19 +133,4 @@ onBeforeUnmount(() => {
 	</Teleport>
 </template>
 
-<style scoped>
-@reference "../../../assets/main.css";
 
-.dropdown-enter-active,
-.dropdown-leave-active {
-	@apply transition-all duration-150 ease-in-out;
-}
-
-.dropdown-enter-from {
-	@apply opacity-0 scale-95;
-}
-
-.dropdown-leave-to {
-	@apply opacity-0 scale-95;
-}
-</style>

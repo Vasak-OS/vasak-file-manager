@@ -46,7 +46,7 @@ onMounted(() => {
 <template>
 	<div
 		ref="triggerRef"
-		class="tooltip-trigger"
+		class="inline-block"
 		@mouseenter="handleMouseEnter"
 		@mouseleave="handleMouseLeave"
 		@focus="handleFocus"
@@ -56,8 +56,4 @@ onMounted(() => {
 	</div>
 </template>
 
-<style scoped>
-.tooltip-trigger {
-	@apply inline-block;
-}
-</style>
+

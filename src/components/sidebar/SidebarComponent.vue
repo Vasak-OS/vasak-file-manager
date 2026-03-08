@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onMounted, ref } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
@@ -9,7 +10,6 @@ import { useDrives } from '@/composables/use-drives';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 
 const { drives, refresh } = useDrives();
 const workspacesStore = useWorkspacesStore();
