@@ -117,11 +117,11 @@ const groupedEntries = computed<GroupedEntries>(() => {
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FolderIcon :size="14" />
         <span>{{ t('fileBrowser.folders') }}</span>
-        <span class="py-0.5 px-2 rounded-corner bg-background-3 text-[11px]">{{ groupedEntries.dirs.length }}</span>
+        <span class="py-0.5 px-2 rounded-corner bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.dirs.length }}</span>
       </div>
       <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.dirs" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[52px] !flex-row items-center py-2 px-3 gap-2.5"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-ui-bg/80-2 cursor-default text-left focus-visible:outline-none group h-[52px] !flex-row items-center py-2 px-3 gap-2.5"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -159,11 +159,11 @@ const groupedEntries = computed<GroupedEntries>(() => {
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FileImageIcon :size="14" />
         <span>{{ t('fileBrowser.images') }}</span>
-        <span class="py-0.5 px-2 rounded-[10px] bg-background-3 text-[11px]">{{ groupedEntries.images.length }}</span>
+        <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.images.length }}</span>
       </div>
       <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.images" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-ui-bg/80-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -193,11 +193,11 @@ const groupedEntries = computed<GroupedEntries>(() => {
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary/50 text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FileVideoIcon :size="14" />
         <span>{{ t('fileBrowser.videos') }}</span>
-        <span class="py-0.5 px-2 rounded-[10px] bg-background-3 text-[11px]">{{ groupedEntries.videos.length }}</span>
+        <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.videos.length }}</span>
       </div>
       <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.videos" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-ui-bg/80-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{
             'opacity-50': entry.is_hidden,
           }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
@@ -236,11 +236,11 @@ const groupedEntries = computed<GroupedEntries>(() => {
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-[var(--radius-sm)] backdrop-blur bg-secondary/50 text-muted-foreground text-xs font-medium gap-2 uppercase">
         <FileIcon :size="14" />
         <span>{{ t('fileBrowser.otherFiles') }}</span>
-        <span class="py-0.5 px-2 rounded-[10px] bg-background-3 text-[11px]">{{ groupedEntries.others.length }}</span>
+        <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.others.length }}</span>
       </div>
       <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.others" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-background-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          class="relative flex overflow-hidden flex-col border border-ui-border rounded-lg bg-ui-bg/80-2 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"

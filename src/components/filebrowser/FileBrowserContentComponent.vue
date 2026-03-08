@@ -137,7 +137,7 @@ onMounted(async () => {
 <template>
   <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden [--file-browser-list-row-padding-y:10px] [--file-browser-list-row-padding-x:16px] [--file-browser-list-header-padding-x:16px] [--file-browser-list-header-padding-y:10px] [--file-browser-list-cell-padding-right:16px] [--file-browser-list-right-gutter:24px]" :style="{ '--file-browser-list-columns': listColumnsTemplate }">
     <div v-if="props.layout === 'list'" class="relative pr-[var(--file-browser-list-right-gutter)] border-b border-ui-border">
-      <div class="grid py-[var(--file-browser-list-header-padding-y)] px-[var(--file-browser-list-header-padding-x)] bg-background-3 text-muted-foreground text-xs font-medium [grid-template-columns:var(--file-browser-list-columns)] uppercase">
+      <div class="grid py-[var(--file-browser-list-header-padding-y)] px-[var(--file-browser-list-header-padding-x)] bg-ui-bg/80-3 text-muted-foreground text-xs font-medium [grid-template-columns:var(--file-browser-list-columns)] uppercase">
         <button type="button"
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
           @click="handleColumnHeaderClick('name')">

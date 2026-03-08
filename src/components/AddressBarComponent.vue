@@ -428,7 +428,7 @@ onUnmounted(() => {
           </div>
         </div>
       </PopoverTrigger>
-      <PopoverContent class="min-w-[300px] p-0 border border-ui-border rounded-lg bg-background-3 shadow-[0_10px_40px_hsl(var(--foreground)/10%)] text-popover-foreground" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
+      <PopoverContent class="min-w-[300px] p-0 border border-ui-border rounded-lg bg-ui-bg/80-3 shadow-[0_10px_40px_hsl(var(--foreground)/10%)] text-popover-foreground" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
         :align="'end'" :side-offset="4" @open-auto-focus.prevent
         @escape-key-down="(event: KeyboardEvent) => { if (isPinned) event.preventDefault(); else isEditorOpen = false }"
         @pointer-down-outside="(event: Event) => { if (isPinned) event.preventDefault() }"

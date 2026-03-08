@@ -166,7 +166,7 @@ function openCollapsedPopover() {
 </script>
 
 <template>
-  <div class="@container flex h-8 shrink-0 items-center justify-between px-2 py-1 rounded-[var(--radius-sm)] border-t border-ui-border bg-background-2 text-muted-foreground text-xs gap-2">
+  <div class="@container flex h-8 shrink-0 items-center justify-between px-2 py-1 rounded-[var(--radius-sm)] border-t border-ui-border bg-ui-bg/80-2 text-muted-foreground text-xs gap-2">
     <template v-if="hasSelection">
       <span class="flex shrink-0 flex-wrap items-center gap-1">
         {{ t('fileBrowser.selectedItems').replace('{0}', String(selectedCount)) }}
@@ -254,7 +254,7 @@ function openCollapsedPopover() {
           <div class="flex flex-col gap-2">
             <div class="px-2 pt-2">
               <input v-model="itemsFilterQuery" type="text" :placeholder="t('filter.filter')"
-                class="w-full flex h-8 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
+                class="w-full flex h-8 w-full rounded-md border border-input bg-ui-bg/80 px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
             </div>
             <div v-if="showItemsHeader" class="px-3 py-1 text-muted-foreground text-[11px]">
               {{ showItemsHeader }}

@@ -46,7 +46,7 @@ onMounted(() => {
 <template>
 	<div
 		ref="triggerRef"
-		class="inline-block"
+		class="inline-block "
 		@mouseenter="handleMouseEnter"
 		@mouseleave="handleMouseLeave"
 		@focus="handleFocus"

@@ -93,7 +93,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <button type="button" class="relative grid rounded-corner overflow-hidden w-full h-full items-center gap-0 bg-ui-bg/80 border border-secondary pr-2 cursor-pointer [grid-template-columns:56px_1fr_auto] text-left hover:bg-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 transition-all" :class="{
+  <button type="button" class="relative grid overflow-hidden w-full h-full items-center gap-0 pr-2 cursor-pointer [grid-template-columns:56px_1fr_auto] text-left hover:bg-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 transition-all" :class="{
     'opacity-60 hover:opacity-100': !drive.is_mounted,
   }" @click="handleClick">
     <div class="relative flex w-[56px] h-[56px] flex-col shrink-0 items-center justify-center gap-[2px]">
