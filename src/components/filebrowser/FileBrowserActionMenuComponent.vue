@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
-import FileBrowserMoreOptionsSubmenu from '@/components/filebrowser/FileBrowserMoreOptionsSubMenuComponent.vue';
-import FileBrowserOpenWithSubmenu from '@/components/filebrowser/FileBrowserOpenWithSubMenuComponent.vue';
-import FileBrowserTerminalSubmenu from '@/components/filebrowser/FileBrowserTerminalSubMenuComponent.vue';
+import MoreOptionsSubmenu from '@/components/menu/MoreOptionsSubMenuComponent.vue';
+import OpenWithSubmenu from '@/components/menu/OpenWithSubMenuComponent.vue';
+import TerminalSubmenu from '@/components/menu/TerminalSubMenuComponent.vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
@@ -14,6 +14,7 @@ import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { ContextMenuAction } from '@/types/contextMenu';
 import type { DirEntry } from '@/types/dir-entry';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	selectedEntries: DirEntry[];
@@ -48,6 +49,17 @@ function handleCutClick() {
 const clipboardStore = useClipboardStore();
 const userStatsStore = useUserStatsStore();
 const shortcutsStore = useShortcutsStore();
+
+const pencilIcon = ref('');
+const copyIcon = ref('');
+const cutIcon = ref('');
+const clipboardPasteIcon = ref('');
+const shredderIcon = ref('');
+const trash2Icon = ref('');
+const eyeIcon = ref('');
+const plusIcon = ref('');
+const share2Icon = ref('');
+const starIcon = ref('');
 
 const { isActionVisible } = useContextMenuItems(toRef(props, 'selectedEntries'));
 
@@ -140,9 +152,20 @@ function handleKeyUp(event: KeyboardEvent) {
 	}
 }
 
-onMounted(() => {
+onMounted(async() => {
 	window.addEventListener('keydown', handleKeyDown);
 	window.addEventListener('keyup', handleKeyUp);
+
+  pencilIcon.value = await getSymbolSource('edit-rename');
+  copyIcon.value = await getSymbolSource('edit-copy');
+  cutIcon.value = await getSymbolSource('edit-cut');
+  clipboardPasteIcon.value = await getSymbolSource('edit-paste');
+  shredderIcon.value = await getSymbolSource('edit-delete-shred');
+  trash2Icon.value = await getSymbolSource('user-trash');
+  starIcon.value = await getSymbolSource('emblem-favorite');
+  eyeIcon.value = await getSymbolSource('quickview');
+  plusIcon.value = await getSymbolSource('gtk-add');
+  share2Icon.value = await getSymbolSource('emblem-shared');
 });
 
 onUnmounted(() => {
@@ -159,8 +182,8 @@ function handleDeleteClick() {
   <div class="flex justify-center gap-1">
     <Tooltip :delay-duration="300" v-if="isActionVisible('rename')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
-          <PencilIcon :size="16" />
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
+          <img :src="pencilIcon" />
         </button>
       </TooltipTrigger>
       <TooltipContent>
@@ -170,8 +193,8 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('copy')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
-          <CopyIcon :size="16" />
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
+          <img :src="copyIcon" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
@@ -183,8 +206,8 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('cut')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
-          <FolderInputIcon :size="16" />
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
+          <img :src="cutIcon" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
@@ -196,8 +219,8 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="canPasteToSelectedDirectory">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
-          <ClipboardPasteIcon :size="16" />
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
+          <img :src="clipboardPasteIcon" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
@@ -209,10 +232,10 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('delete')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-[var(--radius-sm,6px)] bg-transparent text-inherit cursor-pointer hover:bg-muted/60 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
           @click="handleDeleteClick">
-          <ShredderIcon v-if="isShiftHeld" :size="16" />
-          <Trash2Icon v-else :size="16" />
+          <img :src="shredderIcon" v-if="isShiftHeld" />
+          <img :src="trash2Icon" v-else />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
@@ -228,9 +251,9 @@ function handleDeleteClick() {
     </Tooltip>
   </div>
   <component :is="menuSeparatorComponent" />
-  <FileBrowserOpenWithSubmenu v-if="isActionVisible('open-with') && isContextMenu" :selected-entries="selectedEntries"
+  <OpenWithSubmenu v-if="isActionVisible('open-with') && isContextMenu" :selected-entries="selectedEntries"
     @open-custom-dialog="handleOpenCustomDialog" />
-  <FileBrowserMoreOptionsSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" />
+  <MoreOptionsSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-with') && !isContextMenu"
     @select="emitAction('open-with')" @click="emitAction('open-with')">
     <span>{{ t('fileBrowser.actions.openWith') }}</span>
@@ -238,27 +261,27 @@ function handleDeleteClick() {
   <component :is="menuItemComponent" v-if="isActionVisible('quick-view')"
     class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('quick-view')"
     @click="emitAction('quick-view')">
-    <EyeIcon :size="16" />
+    <img :src="eyeIcon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.quickView') }}</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('quickView') }}</kbd>
   </component>
-  <FileBrowserTerminalSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" :is-shift-held="isShiftHeld" />
+  <TerminalSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" :is-shift-held="isShiftHeld" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-in-new-tab')"
     class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('open-in-new-tab')"
     @click="emitAction('open-in-new-tab')">
-    <PlusIcon :size="16" />
+    <img :src="plusIcon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.openInNewTab') }}</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('share')" @select="emitAction('share')"
-    @click="emitAction('share')">
-    <Share2Icon :size="16" />
+    @click="emitAction('share')" class="flex items-center gap-2">
+    <img :src="share2Icon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.share') }}</span>
   </component>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"
-    @click="emitAction('toggle-favorite')">
-    <StarIcon :size="16" :fill="allSelectedAreFavorites ? 'currentColor' : 'none'" />
+    @click="emitAction('toggle-favorite')" class="flex items-center gap-2">
+    <img :src="starIcon" class="h-4 w-4" :fill="allSelectedAreFavorites ? 'currentColor' : 'none'" />
     <span>{{ t(allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites') }}</span>
   </component>
   <div v-if="isActionVisible('edit-tags')" class="py-1.5">

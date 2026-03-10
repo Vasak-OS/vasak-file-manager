@@ -2,7 +2,7 @@
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
-import FileBrowserContextMenu from '@/components/filebrowser/FileBrowserContextMenuComponent.vue';
+import ContextMenuComponent from '@/components/menu/ContextMenuComponent.vue';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
 import ContextMenu from '@/components/ui/contextmenu/ContextMenu.vue';
@@ -261,7 +261,7 @@ onMounted(async () => {
               <FileBrowserListView v-else :entries="sortedEntries" />
             </div>
           </ContextMenuTrigger>
-          <FileBrowserContextMenu v-if="ctx.contextMenu.value.selectedEntries.length > 0" />
+          <ContextMenuComponent v-if="ctx.contextMenu.value.selectedEntries.length > 0" />
         </ContextMenu>
       </ScrollArea>
     </template>

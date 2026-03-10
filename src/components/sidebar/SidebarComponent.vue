@@ -41,6 +41,7 @@ onMounted(async () => {
 
 <template>
   <div class="h-screen w-10 bg-ui-bg/80 rounded-l-corner-window justify-between flex flex-col p-1 border-r border-ui-border">
+    
     <div class="flex flex-col gap-1 items-center mt-2">
       <div class="mb-2 p-1">
         <img :src="folderIcon" class="h-6 w-6 inline-block" alt="Logo">
