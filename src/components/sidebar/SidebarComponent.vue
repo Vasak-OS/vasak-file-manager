@@ -49,7 +49,7 @@ onMounted(async () => {
     </div>
 
     <div>
-      <Tooltip :delay-duration="0">
+      <!--<Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
           <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="globalSearchStore.toggle()">
             <img :src="searchIcon" class="h-6 w-6" alt="Search" />
@@ -58,7 +58,7 @@ onMounted(async () => {
         <TooltipContent side="right" :side-offset="12">
           {{ t('search') }}
         </TooltipContent>
-      </Tooltip>
+      </Tooltip>-->
 
       <Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
