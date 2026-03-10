@@ -12,7 +12,7 @@ function handleMouseLeave() {
 <template>
   <div
     v-if="isSubOpen"
-    class="absolute left-full top-0 z-51 min-w-[200px] overflow-hidden ml-1 rounded-md border border-ui-border bg-popover p-1 text-popover-foreground shadow-[0_10px_15px_-3px_rgb(0_0_0/0.1),0_4px_6px_-4px_rgb(0_0_0/0.1)]"
+    class="absolute left-full top-0 z-51 min-w-50 overflow-hidden ml-1 rounded-corner border border-ui-border bg-ui-bg/80 p-1 text-popover-foreground shadow-lg backdrop-blur-md context-menu-subcontent"
     @mouseleave="handleMouseLeave"
   >
     <slot />

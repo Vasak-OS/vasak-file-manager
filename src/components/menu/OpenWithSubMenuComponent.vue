@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
+import ContextMenuSub from '@/components/ui/contextmenu/ContextMenuSub.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
 import type { DirEntry } from '@/types/dir-entry';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 interface AssociatedProgram {
 	name: string;
@@ -47,6 +49,11 @@ const loadError = ref<string | null>(null);
 const firstEntry = computed(() => props.selectedEntries[0]);
 const isDirectory = computed(() => firstEntry.value?.is_dir ?? false);
 const lastLoadedPath = ref<string | null>(null);
+
+const fileIcon = ref('');
+const settingsIcon = ref('');
+const externalLinkIcon = ref('');
+const loaderIcon = ref('');
 
 async function loadAssociatedPrograms() {
 	if (!firstEntry.value) return;
@@ -109,17 +116,24 @@ async function openWithProgram(programPath: string) {
 function handleOpenCustomDialog() {
 	emit('openCustomDialog');
 }
+
+onMounted(async () => {
+	fileIcon.value = await getSymbolSource('text-x-generic');
+	settingsIcon.value = await getSymbolSource('settings-configure');
+	externalLinkIcon.value = await getSymbolSource('external-link-symbolic');
+	loaderIcon.value = await getSymbolSource('content-loading-symbolic');
+});
 </script>
 
 <template>
   <ContextMenuSub>
-    <ContextMenuSubTrigger>
-      <ExternalLinkIcon :size="16" />
+    <ContextMenuSubTrigger class="flex gap-2">
+      <img :src="externalLinkIcon" class="h-4 w-4" />
       <span>{{ t('fileBrowser.actions.openWith') }}</span>
     </ContextMenuSubTrigger>
-    <ContextMenuSubContent class="min-w-50 max-w-70">
+	<ContextMenuSubContent class="min-w-50 max-w-70 overflow-visible">
       <div v-if="isLoading" class="flex items-center px-3 py-2 text-muted-foreground text-[13px] gap-2">
-        <Loader2Icon :size="16" class="animate-spin" />
+        <img :src="loaderIcon" class="animate-spin h-4 w-4" />
         <span>{{ t('openWith.loadingPrograms') }}</span>
       </div>
 
@@ -136,7 +150,7 @@ function handleOpenCustomDialog() {
           </ContextMenuLabel>
           <ContextMenuItem class="flex items-center gap-2" @select="openWithProgram(defaultProgram.path)">
             <img v-if="defaultProgram.icon" :src="defaultProgram.icon" class="w-4 h-4 shrink-0 object-contain" alt="">
-            <FileIcon v-else :size="16" class="w-4 h-4 shrink-0 text-muted-foreground" />
+            <img :src="fileIcon" v-else class="w-4 h-4 shrink-0 text-muted-foreground" />
             <span>{{ defaultProgram.name }}</span>
           </ContextMenuItem>
         </template>
@@ -149,7 +163,7 @@ function handleOpenCustomDialog() {
           <ContextMenuItem v-for="program in recommendedPrograms" :key="program.path" class="flex items-center gap-2"
             @select="openWithProgram(program.path)">
             <img v-if="program.icon" :src="program.icon" class="w-4 h-4 shrink-0 object-contain" alt="">
-            <FileIcon v-else :size="16" class="w-4 h-4 shrink-0 text-muted-foreground" />
+            <img :src="fileIcon" v-else class="w-4 h-4 shrink-0 text-muted-foreground" />
             <span>{{ program.name }}</span>
           </ContextMenuItem>
         </template>
@@ -163,7 +177,7 @@ function handleOpenCustomDialog() {
         <ContextMenuSeparator v-if="!isDirectory" />
 
         <ContextMenuItem v-if="!isDirectory" class="flex items-center gap-2" @select="handleOpenCustomDialog">
-          <SettingsIcon :size="16" />
+          <img :src="settingsIcon" class="h-4 w-4" />
           <span>{{ t('openWith.customCommandWithFlags') }}</span>
         </ContextMenuItem>
       </template>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { inject, ref } from 'vue';
+import { inject, ref, type Ref } from 'vue';
 
 const toggleSub = inject<(value: boolean) => void>('toggleContextMenuSub');
+const isSubOpen = inject<Ref<boolean>>('contextMenuSubOpen');
 
 const triggerRef = ref<HTMLDivElement | null>(null);
 
@@ -18,6 +19,19 @@ function handleMouseLeave() {
 		}
 	}, 100);
 }
+
+function handleClick(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  toggleSub?.(!isSubOpen?.value);
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    toggleSub?.(true);
+  }
+}
 </script>
 
 <template>
@@ -28,6 +42,8 @@ function handleMouseLeave() {
     tabindex="0"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
+    @click="handleClick"
+    @keydown="handleKeydown"
   >
     <slot />
     <svg

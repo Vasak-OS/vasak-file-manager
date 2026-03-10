@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
-import MoreOptionsSubmenu from '@/components/menu/MoreOptionsSubMenuComponent.vue';
 import OpenWithSubmenu from '@/components/menu/OpenWithSubMenuComponent.vue';
 import TerminalSubmenu from '@/components/menu/TerminalSubMenuComponent.vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
@@ -253,7 +252,6 @@ function handleDeleteClick() {
   <component :is="menuSeparatorComponent" />
   <OpenWithSubmenu v-if="isActionVisible('open-with') && isContextMenu" :selected-entries="selectedEntries"
     @open-custom-dialog="handleOpenCustomDialog" />
-  <MoreOptionsSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-with') && !isContextMenu"
     @select="emitAction('open-with')" @click="emitAction('open-with')">
     <span>{{ t('fileBrowser.actions.openWith') }}</span>

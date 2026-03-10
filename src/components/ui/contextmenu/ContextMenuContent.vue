@@ -37,7 +37,7 @@ if (isOpen) {
     <div
       v-if="isOpen"
       ref="menuRef"
-      class="fixed z-50 min-w-50 overflow-hidden rounded-corner border border-ui-border p-1 text-popover-foreground shadow-lg bg-ui-bg/80 backdrop-blur-md"
+			class="fixed z-50 min-w-50 overflow-visible rounded-corner border border-ui-border p-1 text-popover-foreground shadow-lg bg-ui-bg/80 backdrop-blur-md"
       :style="{
         left: position ? `${position.x}px` : '0px',
         top: position ? `${position.y}px` : '0px',
