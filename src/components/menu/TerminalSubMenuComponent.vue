@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
+import ContextMenuSub from '@/components/ui/contextmenu/ContextMenuSub.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
@@ -18,6 +20,8 @@ const props = defineProps<{
 const { t } = useI18n();
 const shortcutsStore = useShortcutsStore();
 const terminalsStore = useTerminalsStore();
+
+const terminalIcon = ref('');
 
 const ADMIN_MODIFIER_KEY = 'Shift';
 
@@ -46,16 +50,20 @@ async function handleOpenTerminal(terminalId: string) {
 
 	await terminalsStore.openTerminal(targetDirectoryPath.value, terminalId, props.isShiftHeld);
 }
+
+onMounted(async () => {
+	terminalIcon.value = await getSymbolSource('utilities-terminal');
+});
 </script>
 
 <template>
   <ContextMenuSub>
     <ContextMenuSubTrigger class="flex items-center gap-2">
-      <TerminalSquareIcon :size="16" />
+      <img :src="terminalIcon" class="w-4 h-4" />
       <span>{{ t('terminal.openInTerminal') }}</span>
       <kbd class="ml-auto opacity-60">{{ shortcutsStore.getShortcutLabel('openTerminal') }}</kbd>
     </ContextMenuSubTrigger>
-    <ContextMenuSubContent class="min-w-[200px] max-w-[350px]">
+    <ContextMenuSubContent class="min-w-50 max-w-87.5">
       <template v-if="terminalsStore.loadError">
         <div class="px-3 py-2 text-destructive text-[13px]">
           {{ terminalsStore.loadError }}
@@ -84,7 +92,7 @@ async function handleOpenTerminal(terminalId: string) {
         <ContextMenuItem v-for="terminal in terminalsStore.terminals" :key="terminal.id" class="flex items-center gap-2"
           @select="handleOpenTerminal(terminal.id)">
           <img v-if="terminal.icon" :src="terminal.icon" class="w-4 h-4 shrink-0 object-contain">
-          <TerminalSquareIcon v-else :size="16" />
+          <img :src="terminalIcon" class="w-4 h-4" />
           <span>{{ terminal.name }}</span>
           <span v-if="terminal.isDefault" class="ml-auto text-muted-foreground text-[11px] opacity-70">
             {{ t('terminal.defaultLabel') }}

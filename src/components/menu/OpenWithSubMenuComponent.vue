@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
@@ -9,7 +10,6 @@ import ContextMenuSub from '@/components/ui/contextmenu/ContextMenuSub.vue';
 import ContextMenuSubContent from '@/components/ui/contextmenu/ContextMenuSubContent.vue';
 import ContextMenuSubTrigger from '@/components/ui/contextmenu/ContextMenuSubTrigger.vue';
 import type { DirEntry } from '@/types/dir-entry';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 interface AssociatedProgram {
 	name: string;

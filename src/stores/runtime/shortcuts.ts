@@ -166,20 +166,6 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		isReadOnly: true,
 	},
 	{
-		id: 'quickView',
-		labelKey: 'shortcuts.openCloseSelectedFileInQuickView',
-		defaultKeys: {
-			key: ' ',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-			dirItemIsSelected: true,
-		},
-		isReadOnly: false,
-	},
-	{
 		id: 'openNewTab',
 		labelKey: 'shortcuts.openCurrentDirInNewTab',
 		defaultKeys: {

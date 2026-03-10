@@ -2,9 +2,9 @@
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
-import ContextMenuComponent from '@/components/menu/ContextMenuComponent.vue';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
+import ContextMenuComponent from '@/components/menu/ContextMenuComponent.vue';
 import ContextMenu from '@/components/ui/contextmenu/ContextMenu.vue';
 import ContextMenuTrigger from '@/components/ui/contextmenu/ContextMenuTrigger.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';

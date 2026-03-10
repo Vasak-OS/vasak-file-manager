@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, type Ref } from 'vue';
+import { inject, type Ref, ref } from 'vue';
 
 const toggleSub = inject<(value: boolean) => void>('toggleContextMenuSub');
 const isSubOpen = inject<Ref<boolean>>('contextMenuSubOpen');
@@ -21,16 +21,16 @@ function handleMouseLeave() {
 }
 
 function handleClick(event: MouseEvent) {
-  event.preventDefault();
-  event.stopPropagation();
-  toggleSub?.(!isSubOpen?.value);
+	event.preventDefault();
+	event.stopPropagation();
+	toggleSub?.(!isSubOpen?.value);
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowRight') {
-    event.preventDefault();
-    toggleSub?.(true);
-  }
+	if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowRight') {
+		event.preventDefault();
+		toggleSub?.(true);
+	}
 }
 </script>
 

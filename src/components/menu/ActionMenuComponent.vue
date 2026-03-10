@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import OpenWithSubmenu from '@/components/menu/OpenWithSubMenuComponent.vue';
@@ -13,7 +14,6 @@ import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { ContextMenuAction } from '@/types/contextMenu';
 import type { DirEntry } from '@/types/dir-entry';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 const props = defineProps<{
 	selectedEntries: DirEntry[];
@@ -55,7 +55,6 @@ const cutIcon = ref('');
 const clipboardPasteIcon = ref('');
 const shredderIcon = ref('');
 const trash2Icon = ref('');
-const eyeIcon = ref('');
 const plusIcon = ref('');
 const share2Icon = ref('');
 const starIcon = ref('');
@@ -151,20 +150,19 @@ function handleKeyUp(event: KeyboardEvent) {
 	}
 }
 
-onMounted(async() => {
+onMounted(async () => {
 	window.addEventListener('keydown', handleKeyDown);
 	window.addEventListener('keyup', handleKeyUp);
 
-  pencilIcon.value = await getSymbolSource('edit-rename');
-  copyIcon.value = await getSymbolSource('edit-copy');
-  cutIcon.value = await getSymbolSource('edit-cut');
-  clipboardPasteIcon.value = await getSymbolSource('edit-paste');
-  shredderIcon.value = await getSymbolSource('edit-delete-shred');
-  trash2Icon.value = await getSymbolSource('user-trash');
-  starIcon.value = await getSymbolSource('emblem-favorite');
-  eyeIcon.value = await getSymbolSource('quickview');
-  plusIcon.value = await getSymbolSource('gtk-add');
-  share2Icon.value = await getSymbolSource('emblem-shared');
+	pencilIcon.value = await getSymbolSource('edit-rename');
+	copyIcon.value = await getSymbolSource('edit-copy');
+	cutIcon.value = await getSymbolSource('edit-cut');
+	clipboardPasteIcon.value = await getSymbolSource('edit-paste');
+	shredderIcon.value = await getSymbolSource('edit-delete-shred');
+	trash2Icon.value = await getSymbolSource('user-trash');
+	starIcon.value = await getSymbolSource('emblem-favorite');
+	plusIcon.value = await getSymbolSource('gtk-add');
+	share2Icon.value = await getSymbolSource('emblem-shared');
 });
 
 onUnmounted(() => {
@@ -255,13 +253,6 @@ function handleDeleteClick() {
   <component :is="menuItemComponent" v-if="isActionVisible('open-with') && !isContextMenu"
     @select="emitAction('open-with')" @click="emitAction('open-with')">
     <span>{{ t('fileBrowser.actions.openWith') }}</span>
-  </component>
-  <component :is="menuItemComponent" v-if="isActionVisible('quick-view')"
-    class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('quick-view')"
-    @click="emitAction('quick-view')">
-    <img :src="eyeIcon" class="h-4 w-4" />
-    <span>{{ t('fileBrowser.actions.quickView') }}</span>
-    <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('quickView') }}</kbd>
   </component>
   <TerminalSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" :is-shift-held="isShiftHeld" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-in-new-tab')"

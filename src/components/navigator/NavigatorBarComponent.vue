@@ -378,18 +378,6 @@ function hasSelectedItems(): boolean {
 	return selectedEntries.value.length > 0;
 }
 
-async function handleQuickViewShortcut() {
-	const pane = getActivePaneRef();
-
-	if (pane && selectedEntries.value.length > 0) {
-		const lastSelected = selectedEntries.value[selectedEntries.value.length - 1];
-
-		if (lastSelected.is_file) {
-			await pane.quickView(lastSelected);
-		}
-	}
-}
-
 async function openTerminalWithOptions(asAdmin: boolean) {
 	if (!currentActivePath.value) return;
 
@@ -483,9 +471,6 @@ function registerShortcutHandlers() {
 		{ checkItemSelected: hasSelectedItems }
 	);
 	shortcutsStore.registerHandler('escape', handleEscapeKey);
-	shortcutsStore.registerHandler('quickView', handleQuickViewShortcut, {
-		checkItemSelected: hasSelectedItems,
-	});
 	shortcutsStore.registerHandler('openNewTab', handleOpenNewTabShortcut);
 	shortcutsStore.registerHandler('openTerminal', handleOpenTerminalShortcut);
 	shortcutsStore.registerHandler('openTerminalAdmin', handleOpenTerminalAdminShortcut);

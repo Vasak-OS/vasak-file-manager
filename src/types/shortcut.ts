@@ -10,7 +10,6 @@ export type ShortcutId =
 	| 'deletePermanently'
 	| 'rename'
 	| 'escape'
-	| 'quickView'
 	| 'openNewTab'
 	| 'openTerminal'
 	| 'openTerminalAdmin'
