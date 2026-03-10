@@ -2,7 +2,7 @@ mod types;
 mod utils;
 mod linux;
 
-pub use types::{GetAssociatedProgramsResult, GetShellContextMenuResult, OpenWithResult};
+pub use types::{GetAssociatedProgramsResult, OpenWithResult};
 
 use std::path::Path;
 use std::process::Command;
@@ -98,25 +98,4 @@ pub fn open_with_default(file_path: String) -> OpenWithResult {
     
 }
 
-#[tauri::command]
-pub fn open_native_open_with_dialog(file_path: String) -> OpenWithResult {
 
-        let _ = file_path;
-        OpenWithResult {
-            success: false,
-            error: Some("Native Open With dialog is only supported on Windows".to_string()),
-        }
-    
-}
-
-#[tauri::command]
-pub fn get_shell_context_menu(file_path: String) -> GetShellContextMenuResult {
-
-        let _ = file_path;
-        GetShellContextMenuResult {
-            success: false,
-            items: vec![],
-            error: Some("Shell context menu is only supported on Windows".to_string()),
-        }
-    
-}

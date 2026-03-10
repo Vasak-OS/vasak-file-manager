@@ -52,6 +52,7 @@ async function handleOpenTerminal(terminalId: string) {
 }
 
 onMounted(async () => {
+	terminalsStore.init();
 	terminalIcon.value = await getSymbolSource('utilities-terminal');
 });
 </script>

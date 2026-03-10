@@ -42,15 +42,15 @@ const visibleBadges = computed(() => selectedTags.value.slice(0, props.maxBadges
 const hiddenCount = computed(() => Math.max(selectedTags.value.length - props.maxBadges, 0));
 
 const triggerClass = computed(() => {
-	const base = 'inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors';
+	const base = 'inline-flex items-center gap-2 rounded-corner px-2 py-1 text-xs transition-colors';
 
 	switch (props.triggerVariant) {
 		case 'ghost':
-			return `${base} hover:bg-slate-100 text-slate-700`;
+			return `${base} hover:bg-secondary text-ui-text`;
 		case 'default':
-			return `${base} bg-slate-900 text-white hover:bg-slate-800`;
+			return `${base} bg-ui-surface text-tx-main hover:bg-primary`;
 		default:
-			return `${base} border border-slate-200 text-slate-700 hover:bg-slate-50`;
+			return `${base} border border-ui-border text-tx-primary hover:bg-primary`;
 	}
 });
 
@@ -103,7 +103,7 @@ onUnmounted(() => {
 				>
 					{{ tag.name }}
 				</span>
-				<span v-if="hiddenCount > 0" class="text-[10px] text-slate-500">
+				<span v-if="hiddenCount > 0" class="text-[10px] text-tx-muted">
 					+{{ hiddenCount }}
 				</span>
 			</div>
@@ -111,16 +111,16 @@ onUnmounted(() => {
 
 		<div
 			v-if="isOpen"
-			class="absolute z-50 mt-2 w-64 rounded-md border border-slate-200 bg-white p-2 shadow-lg"
+			class="absolute z-50 mt-2 w-64 rounded-corner border border-ui-border bg-ui-bg/80 p-2 shadow-lg"
 		>
-			<div v-if="tags.length === 0" class="px-2 py-2 text-xs text-slate-500">
+			<div v-if="tags.length === 0" class="px-2 py-2 text-xs text-tx-muted">
 				No tags available
 			</div>
 			<div v-else class="flex flex-col gap-1">
 				<div
 					v-for="tag in tags"
 					:key="tag.id"
-					class="flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-slate-50"
+					class="flex items-center justify-between rounded-corner px-2 py-1 text-xs hover:bg-primary"
 				>
 					<button
 						type="button"
@@ -128,13 +128,13 @@ onUnmounted(() => {
 						@click="handleToggleTag(tag.id)"
 					>
 						<span class="h-2 w-2 rounded-full" :style="{ backgroundColor: tag.color }" />
-						<span :class="{ 'font-semibold text-slate-900': selectedTagIds.includes(tag.id) }">
+						<span :class="{ 'font-semibold': selectedTagIds.includes(tag.id) }">
 							{{ tag.name }}
 						</span>
 					</button>
 					<button
 						type="button"
-						class="rounded px-1 text-[10px] text-slate-400 hover:text-slate-700"
+						class="rounded px-1 text-[10px] text-tx-muted hover:text-tx-primary"
 						@click="handleDeleteTag(tag.id)"
 					>
 						Delete
@@ -142,17 +142,17 @@ onUnmounted(() => {
 				</div>
 			</div>
 
-			<div v-if="allowCreate" class="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
+			<div v-if="allowCreate" class="mt-2 flex items-center gap-2 border-t border-ui-border pt-2">
 				<input
 					v-model="newTagName"
 					type="text"
 					placeholder="New tag"
-					class="w-full rounded-md border border-slate-200 px-2 py-1 text-xs focus:border-slate-400 focus:outline-none"
+					class="w-full rounded-md border border-ui-border px-2 py-1 text-xs focus:border-ui-secondary focus:outline-none"
 					@keydown.enter.prevent="handleCreateTag"
 				/>
 				<button
 					type="button"
-					class="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+					class="rounded-md border border-ui-border px-2 py-1 text-xs text-tx-primary hover:bg-primary"
 					@click="handleCreateTag"
 				>
 					Add

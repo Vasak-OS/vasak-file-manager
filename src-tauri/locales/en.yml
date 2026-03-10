@@ -56,7 +56,6 @@ fileBrowser:
     copy: Copy
     cut: Cut
     openWith: Open With
-    quickView: Quick View
     openInNewTab: Open in New Tab
     share: Share
     delete: Delete

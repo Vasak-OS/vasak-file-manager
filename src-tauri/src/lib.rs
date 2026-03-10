@@ -64,8 +64,6 @@ pub fn run() {
             open_with::get_associated_programs,
             open_with::open_with_program,
             open_with::open_with_default,
-            open_with::open_native_open_with_dialog,
-            open_with::get_shell_context_menu,
             system_icons::get_system_icon,
             terminal::get_available_terminals,
             terminal::get_terminal_icons,
