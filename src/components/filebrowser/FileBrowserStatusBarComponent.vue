@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
-import FileBrowserActionMenuComponent from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
+import ActionMenuComponent from '@/components/menu/ActionMenuComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -214,7 +214,7 @@ function openCollapsedPopover() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="w-[200px] p-2">
-                  <FileBrowserActionMenuComponent :selected-entries="selectedEntriesArray"
+                  <ActionMenuComponent :selected-entries="selectedEntriesArray"
                     :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
                     @action="emit('contextMenuAction', $event)" />
                 </DropdownMenuContent>
@@ -242,7 +242,7 @@ function openCollapsedPopover() {
                     {{ t('fileBrowser.deselectAll') }}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <FileBrowserActionMenuComponent :selected-entries="selectedEntriesArray"
+                  <ActionMenuComponent :selected-entries="selectedEntriesArray"
                     :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
                     @action="emit('contextMenuAction', $event)" />
                 </DropdownMenuContent>

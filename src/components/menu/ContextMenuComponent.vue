@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import FileBrowserActionsMenu from '@/components/filebrowser/FileBrowserActionMenuComponent.vue';
+import ActionsMenu from '@/components/menu/ActionMenuComponent.vue';
 import ContextMenuContent from '@/components/ui/contextmenu/ContextMenuContent.vue';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
@@ -18,7 +18,7 @@ function handleOpenCustomDialog() {
 
 <template>
   <ContextMenuContent class="min-w-62 max-w-75 p-2 bg-ui-bg/80">
-    <FileBrowserActionsMenu :selected-entries="ctx.contextMenu.value.selectedEntries"
+    <ActionsMenu :selected-entries="ctx.contextMenu.value.selectedEntries"
       :menu-item-component="ContextMenuItem" :menu-separator-component="ContextMenuSeparator" :is-context-menu="true"
       @action="handleAction" @open-custom-dialog="handleOpenCustomDialog" />
   </ContextMenuContent>

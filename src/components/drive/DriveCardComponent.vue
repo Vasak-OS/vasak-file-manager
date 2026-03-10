@@ -96,8 +96,8 @@ onMounted(async () => {
   <button type="button" class="relative grid overflow-hidden w-full h-full items-center gap-0 pr-2 cursor-pointer [grid-template-columns:56px_1fr_auto] text-left hover:bg-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 transition-all" :class="{
     'opacity-60 hover:opacity-100': !drive.is_mounted,
   }" @click="handleClick">
-    <div class="relative flex w-[56px] h-[56px] flex-col shrink-0 items-center justify-center gap-[2px]">
-        <img :src="driveIcon.value" :size="20" class="text-tx-muted h-5 w-5" />
+    <div class="relative flex w-14 h-14 flex-col shrink-0 items-center justify-center gap-0.5">
+        <img :src="driveIcon.value" class="text-tx-muted h-5 w-5" />
         <span v-if="drive.is_mounted" class="text-tx-muted text-[11px] font-medium">
           {{ drive.percent_used }}%
         </span>
@@ -108,7 +108,18 @@ onMounted(async () => {
         {{ drive.name }}
       </div>
 
-      <LinearBar :percent-used="drive.percent_used" :is-low-space="isLowSpace" />
+			<div class="flex items-center gap-2">
+				<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
+					<div
+						class="h-full rounded-full transition-all"
+						:class="isLowSpace ? 'bg-destructive' : 'bg-primary'"
+						:style="{ width: `${Math.min(100, Math.max(0, drive.percent_used))}%` }"
+					/>
+				</div>
+				<span class="text-[11px] font-medium tabular-nums" :class="isLowSpace ? 'text-destructive' : 'text-tx-muted'">
+					{{ drive.percent_used }}%
+				</span>
+			</div>
 
       <div class="text-muted-foreground text-xs">
         <template v-if="isMounting">
