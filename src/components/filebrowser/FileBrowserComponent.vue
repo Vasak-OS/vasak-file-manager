@@ -87,7 +87,6 @@ defineExpose({
 	pasteItems: fb.pasteItems,
 	deleteItems: fb.deleteItems,
 	startRename: fb.startRename,
-	quickView: fb.quickView,
 });
 </script>
 
