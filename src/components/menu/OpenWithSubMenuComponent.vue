@@ -117,7 +117,7 @@ function handleOpenCustomDialog() {
       <ExternalLinkIcon :size="16" />
       <span>{{ t('fileBrowser.actions.openWith') }}</span>
     </ContextMenuSubTrigger>
-    <ContextMenuSubContent class="min-w-[200px] max-w-[280px]">
+    <ContextMenuSubContent class="min-w-50 max-w-70">
       <div v-if="isLoading" class="flex items-center px-3 py-2 text-muted-foreground text-[13px] gap-2">
         <Loader2Icon :size="16" class="animate-spin" />
         <span>{{ t('openWith.loadingPrograms') }}</span>

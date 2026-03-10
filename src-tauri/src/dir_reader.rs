@@ -337,6 +337,154 @@ fn mount_point_last_component(mount_point: &str) -> String {
         .to_string()
 }
 
+fn get_mounted_device_paths() -> std::collections::HashSet<String> {
+    fs::read_to_string("/proc/mounts")
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| {
+            let device = line.split_whitespace().next()?;
+            let canonical = fs::canonicalize(device)
+                .unwrap_or_else(|_| std::path::PathBuf::from(device))
+                .to_string_lossy()
+                .to_string();
+            Some([device.to_string(), canonical])
+        })
+        .flatten()
+        .collect()
+}
+
+fn linux_get_unmounted_drive_infos(
+    seen_device_paths: &mut std::collections::HashSet<String>,
+) -> Vec<DriveInfo> {
+    let mounted_devices = get_mounted_device_paths();
+    let sys_block = Path::new("/sys/block");
+    let mut drives: Vec<DriveInfo> = Vec::new();
+
+    let block_entries = match fs::read_dir(sys_block) {
+        Ok(entries) => entries,
+        Err(_) => return drives,
+    };
+
+    for block_entry in block_entries.flatten() {
+        let block_name = block_entry.file_name().to_string_lossy().to_string();
+
+        if block_name.starts_with("loop")
+            || block_name.starts_with("ram")
+            || block_name.starts_with("dm-")
+            || block_name.starts_with("zram")
+        {
+            continue;
+        }
+
+        let block_path = block_entry.path();
+        let removable_flag = fs::read_to_string(block_path.join("removable"))
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        let is_removable = removable_flag == "1"
+            || fs::canonicalize(&block_path)
+                .map(|resolved| resolved.to_string_lossy().contains("/usb"))
+                .unwrap_or(false);
+
+        let is_read_only = fs::read_to_string(block_path.join("ro"))
+            .unwrap_or_default()
+            .trim()
+            == "1";
+
+        let rotational = fs::read_to_string(block_path.join("queue").join("rotational"))
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+
+        let drive_type = match rotational.as_str() {
+            "0" => "SSD".to_string(),
+            "1" => "HDD".to_string(),
+            _ => "Unknown".to_string(),
+        };
+
+        let mut partitions: Vec<String> = Vec::new();
+        if let Ok(sub_entries) = fs::read_dir(&block_path) {
+            for sub_entry in sub_entries.flatten() {
+                let sub_name = sub_entry.file_name().to_string_lossy().to_string();
+                if sub_name.starts_with(&block_name) && sub_entry.path().join("partition").exists()
+                {
+                    partitions.push(sub_name);
+                }
+            }
+        }
+
+        if partitions.is_empty() {
+            partitions.push(block_name.clone());
+        }
+
+        for partition_name in &partitions {
+            let dev_path = format!("/dev/{}", partition_name);
+            if !Path::new(&dev_path).exists() {
+                continue;
+            }
+
+            let canonical = fs::canonicalize(&dev_path)
+                .unwrap_or_else(|_| std::path::PathBuf::from(&dev_path))
+                .to_string_lossy()
+                .to_string();
+
+            if mounted_devices.contains(&dev_path) || mounted_devices.contains(&canonical) {
+                continue;
+            }
+
+            if seen_device_paths.contains(&dev_path) || seen_device_paths.contains(&canonical) {
+                continue;
+            }
+
+            let fs_type = get_partition_fs_type(partition_name);
+            if fs_type.is_none() {
+                continue;
+            }
+
+            let size_sectors: u64 = fs::read_to_string(
+                sys_block
+                    .join(&block_name)
+                    .join(partition_name)
+                    .join("size"),
+            )
+            .or_else(|_| fs::read_to_string(sys_block.join(&block_name).join("size")))
+            .unwrap_or_default()
+            .trim()
+            .parse()
+            .unwrap_or(0);
+
+            let total_space = size_sectors.saturating_mul(512);
+            if total_space == 0 {
+                continue;
+            }
+
+            let label = get_device_label(&dev_path).unwrap_or_else(|| partition_name.to_uppercase());
+            let file_system = fs_type.unwrap_or_default();
+
+            drives.push(DriveInfo {
+                name: label,
+                path: normalize_path(&dev_path),
+                mount_point: String::new(),
+                file_system,
+                drive_type: drive_type.clone(),
+                total_space,
+                available_space: 0,
+                used_space: 0,
+                percent_used: 0.0,
+                is_removable,
+                is_read_only,
+                is_mounted: false,
+                device_path: dev_path.clone(),
+            });
+
+            seen_device_paths.insert(dev_path);
+            seen_device_paths.insert(canonical);
+        }
+    }
+
+    drives
+}
+
 // ---------------------------------------------------------------------------
 // Main drive listing command
 // ---------------------------------------------------------------------------
@@ -346,6 +494,7 @@ pub fn get_system_drives() -> Result<Vec<DriveInfo>, String> {
     let disks = Disks::new_with_refreshed_list();
     let mut drives: Vec<DriveInfo> = Vec::new();
     let mut seen_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut seen_device_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     for disk in disks.iter() {
         let mount_point = disk.mount_point().to_string_lossy().to_string();
@@ -407,6 +556,13 @@ pub fn get_system_drives() -> Result<Vec<DriveInfo>, String> {
         };
 
         let device_path = disk.name().to_string_lossy().to_string();
+        let canonical_device_path = fs::canonicalize(&device_path)
+            .unwrap_or_else(|_| std::path::PathBuf::from(&device_path))
+            .to_string_lossy()
+            .to_string();
+
+        seen_device_paths.insert(device_path.clone());
+        seen_device_paths.insert(canonical_device_path);
 
         drives.push(DriveInfo {
             name: display_name,
@@ -424,6 +580,8 @@ pub fn get_system_drives() -> Result<Vec<DriveInfo>, String> {
             device_path,
         });
     }
+
+    drives.extend(linux_get_unmounted_drive_infos(&mut seen_device_paths));
 
     drives.sort_by(|first, second| first.path.cmp(&second.path));
 
