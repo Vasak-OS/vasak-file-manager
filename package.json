@@ -27,15 +27,15 @@
     "path": "^0.12.7",
     "pinia": "^3.0.4",
     "url": "^0.11.4",
-    "vue": "^3.5.29",
+    "vue": "^3.5.30",
     "vue3-smooth-dnd": "^0.0.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.5",
+    "@biomejs/biome": "^2.4.6",
     "@tailwindcss/postcss": "^4.2.1",
     "@tauri-apps/cli": "^2.10.1",
     "@types/lodash.clonedeep": "^4.5.9",
-    "@types/node": "^25.3.3",
+    "@types/node": "^25.4.0",
     "@vitejs/plugin-vue": "^6.0.4",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
