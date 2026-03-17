@@ -30,7 +30,6 @@ const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const xIcon = ref('');
 const showTabPreview = true;
-const NAVIGATOR_TAB_WIDTH = 100;
 const LONG_PRESS_DELAY = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 
