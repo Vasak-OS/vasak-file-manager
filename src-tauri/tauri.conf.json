@@ -42,6 +42,7 @@
         "files": {}
       },
       "deb": {
+        "desktopTemplate": "./vasak-file-manager.desktop.hbs",
         "depends": [
           "vasak-desktop-settings",
           "libcairo2",
