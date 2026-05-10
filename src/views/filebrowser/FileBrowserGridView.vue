@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, ref } from 'vue';
@@ -12,7 +13,6 @@ import type { GroupedEntries } from '@/types/file-browser';
 import { formatBytes } from '@/utils/byte-parser';
 import { isImageFile, isVideoFile } from '@/utils/files';
 import { getImageSrc } from '@/utils/images';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 
 interface Props {
 	entries: DirEntry[];
@@ -115,11 +115,11 @@ const groupedEntries = computed<GroupedEntries>(() => {
 });
 
 onMounted(async () => {
-  fileIcon.value = await getIconSource('text-x-generic');
-  fileImageIcon.value = await getIconSource('image-x-generic');
-  fileVideoIcon.value = await getIconSource('video-x-generic');
-  loaderIcon.value = await getIconSource('process-working');
-  folderIcon.value = await getIconSource('folder');
+	fileIcon.value = await getIconSource('text-x-generic');
+	fileImageIcon.value = await getIconSource('image-x-generic');
+	fileVideoIcon.value = await getIconSource('video-x-generic');
+	loaderIcon.value = await getIconSource('process-working');
+	folderIcon.value = await getIconSource('folder');
 });
 </script>
 

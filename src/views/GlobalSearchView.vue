@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted, ref, watch } from 'vue';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import NumberField from '@/components/ui/number-field/NumberField.vue';
@@ -12,7 +13,6 @@ import { getDriveByPath } from '@/composables/use-drives';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import type { DirEntry } from '@/types/dir-entry';
 import type { DriveInfo } from '@/types/drive-info';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 type FileBrowserInstance = InstanceType<typeof FileBrowserComponent>;
 
@@ -240,14 +240,14 @@ onActivated(async () => {
 	}
 });
 
-onMounted(async() => {
+onMounted(async () => {
 	focusInput();
-  searchIcon.value = await getSymbolSource('search');
-  settingsIcon.value = await getSymbolSource('settings-configure');
-  chevronDownIcon.value = await getSymbolSource('arrow-down');
-  xIcon.value = await getSymbolSource('gtk-close');
-  loaderIcon.value = await getSymbolSource('content-loading-symbolic');
-  slidersHorizontalIcon.value = await getSymbolSource('dialog-filters');
+	searchIcon.value = await getSymbolSource('search');
+	settingsIcon.value = await getSymbolSource('settings-configure');
+	chevronDownIcon.value = await getSymbolSource('arrow-down');
+	xIcon.value = await getSymbolSource('gtk-close');
+	loaderIcon.value = await getSymbolSource('content-loading-symbolic');
+	slidersHorizontalIcon.value = await getSymbolSource('dialog-filters');
 });
 </script>
 
