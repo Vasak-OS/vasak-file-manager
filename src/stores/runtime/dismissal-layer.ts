@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, reactive } from 'vue';
 
 export type DismissalLayerType = 'clipboard' | 'selection' | 'filter' | 'drag' | 'custom';
 
@@ -11,13 +11,13 @@ export interface DismissalLayer {
 }
 
 export const useDismissalLayerStore = defineStore('dismissalLayer', () => {
-	const layers = ref<Map<string, DismissalLayer>>(new Map());
+	const layers = reactive(new Map<string, DismissalLayer>());
 	let idCounter = 0;
 
-	const hasLayers = computed(() => layers.value.size > 0);
+	const hasLayers = computed(() => layers.size > 0);
 
 	const sortedLayers = computed(() => {
-		return Array.from(layers.value.values()).sort(
+		return Array.from(layers.values()).sort(
 			(layerA, layerB) => layerB.priority - layerA.priority
 		);
 	});
@@ -33,7 +33,7 @@ export const useDismissalLayerStore = defineStore('dismissalLayer', () => {
 		customId?: string
 	): string {
 		const layerId = customId || generateId();
-		layers.value.set(layerId, {
+		layers.set(layerId, {
 			id: layerId,
 			type,
 			priority,
@@ -43,11 +43,11 @@ export const useDismissalLayerStore = defineStore('dismissalLayer', () => {
 	}
 
 	function unregisterLayer(layerId: string) {
-		layers.value.delete(layerId);
+		layers.delete(layerId);
 	}
 
 	function hasLayerOfType(type: DismissalLayerType): boolean {
-		return Array.from(layers.value.values()).some((layer) => layer.type === type);
+		return Array.from(layers.values()).some((layer) => layer.type === type);
 	}
 
 	function dismissTopLayer(): boolean {
@@ -63,7 +63,7 @@ export const useDismissalLayerStore = defineStore('dismissalLayer', () => {
 	}
 
 	function dismissLayerOfType(type: DismissalLayerType): boolean {
-		const layersOfType = Array.from(layers.value.values())
+		const layersOfType = Array.from(layers.values())
 			.filter((layer) => layer.type === type)
 			.sort((layerA, layerB) => layerB.priority - layerA.priority);
 

@@ -26,11 +26,7 @@ function getParentOfPath(path: string): string | null {
 	return parent.includes(':') ? `${parent}/` : `/${parent}`;
 }
 
-function replacePathPrefix(path: string, oldPrefix: string, newPrefix: string): string | null {
-	if (path === oldPrefix) return newPrefix;
-	if (path.startsWith(`${oldPrefix}/`)) return newPrefix + path.slice(oldPrefix.length);
-	return null;
-}
+import { replacePathPrefix } from '@/utils/path';
 
 export function useFileBrowserNavigation(
 	tab: () => Tab | undefined,

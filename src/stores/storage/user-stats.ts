@@ -11,6 +11,7 @@ import type {
 	UserStats,
 } from '@/types/user-stats';
 import { DEFAULT_USER_STATS } from '@/types/user-stats';
+import { replacePathPrefix } from '@/utils/path';
 import { useUserPathsStore } from './user-paths';
 
 const HISTORY_MAX_ITEMS = 200;
@@ -335,12 +336,6 @@ export const useUserStatsStore = defineStore('userStats', () => {
 		if (hasChanges) {
 			await saveStats();
 		}
-	}
-
-	function replacePathPrefix(path: string, oldPrefix: string, newPrefix: string): string | null {
-		if (path === oldPrefix) return newPrefix;
-		if (path.startsWith(`${oldPrefix}/`)) return newPrefix + path.slice(oldPrefix.length);
-		return null;
 	}
 
 	function isPathAffectedByDeletion(path: string, deletedPaths: string[]): boolean {

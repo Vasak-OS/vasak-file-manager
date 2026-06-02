@@ -14,8 +14,8 @@ export async function getFileIcon(entry: DirEntry): Promise<string> {
 	if (FILE_EXTENSIONS.AUDIO.includes(extension)) return await getIconSource('audio-x-generic');
 	if (FILE_EXTENSIONS.CODE.includes(extension))
 		return await getIconSource('application-vnd.nokia.xml.qt.resource');
-	if (FILE_EXTENSIONS.ARCHIVE.includes(extension)) await getIconSource('application-x-archive');
-	if (FILE_EXTENSIONS.TEXT.includes(extension)) await getIconSource('text-x-generic');
+	if (FILE_EXTENSIONS.ARCHIVE.includes(extension)) return await getIconSource('application-x-archive');
+	if (FILE_EXTENSIONS.TEXT.includes(extension)) return await getIconSource('text-x-generic');
 
 	return await getIconSource('application-rtf');
 }

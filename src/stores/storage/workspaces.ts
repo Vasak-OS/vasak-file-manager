@@ -14,6 +14,7 @@ import {
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Tab, TabGroup, Workspace } from '@/types/workspaces';
+import { replacePathPrefix } from '@/utils/path';
 import clone from '@/utils/clone';
 import { useDebounceFn } from '@/utils/debounce';
 import uniqueId from '@/utils/unique-id';
@@ -420,12 +421,6 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 			oldPath,
 			newPath,
 		};
-	}
-
-	function replacePathPrefix(path: string, oldPrefix: string, newPrefix: string): string | null {
-		if (path === oldPrefix) return newPrefix;
-		if (path.startsWith(`${oldPrefix}/`)) return newPrefix + path.slice(oldPrefix.length);
-		return null;
 	}
 
 	function handlePathsDeleted(paths: string[]) {

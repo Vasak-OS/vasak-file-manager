@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, reactive } from 'vue';
 
 export type OperationType = 'dir-size' | 'copy' | 'move' | 'delete';
 export type OperationStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled' | 'error';
@@ -23,10 +23,10 @@ export interface OperationGroup {
 }
 
 export const useStatusCenterStore = defineStore('status-center', () => {
-	const operations = ref<Map<string, Operation>>(new Map());
+	const operations = reactive(new Map<string, Operation>());
 	const isOpen = ref(false);
 
-	const operationsList = computed(() => Array.from(operations.value.values()));
+	const operationsList = computed(() => Array.from(operations.values()));
 
 	const activeOperations = computed(() =>
 		operationsList.value.filter((op) => op.status === 'in-progress' || op.status === 'pending')
@@ -69,15 +69,15 @@ export const useStatusCenterStore = defineStore('status-center', () => {
 			...operation,
 			startedAt: Date.now(),
 		};
-		operations.value.set(op.id, op);
+		operations.set(op.id, op);
 		return op;
 	}
 
 	function updateOperation(id: string, updates: Partial<Operation>) {
-		const existing = operations.value.get(id);
+		const existing = operations.get(id);
 
 		if (existing) {
-			operations.value.set(id, {
+			operations.set(id, {
 				...existing,
 				...updates,
 			});
@@ -97,19 +97,19 @@ export const useStatusCenterStore = defineStore('status-center', () => {
 	}
 
 	function removeOperation(id: string) {
-		operations.value.delete(id);
+		operations.delete(id);
 	}
 
 	function clearCompleted() {
-		for (const [id, op] of operations.value) {
+		for (const [id, op] of operations) {
 			if (op.status === 'completed' || op.status === 'cancelled' || op.status === 'error') {
-				operations.value.delete(id);
+				operations.delete(id);
 			}
 		}
 	}
 
 	function clearAll() {
-		operations.value.clear();
+		operations.clear();
 	}
 
 	function open() {

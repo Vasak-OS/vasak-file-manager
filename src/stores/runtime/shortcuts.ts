@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, reactive } from 'vue';
 import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
 
 export type ShortcutConditions = {
@@ -444,7 +444,7 @@ type HandlerRegistration = {
 
 export const useShortcutsStore = defineStore('shortcuts', () => {
 	const definitions = ref<ShortcutDefinition[]>(DEFAULT_SHORTCUTS);
-	const handlers = ref<Map<ShortcutId, HandlerRegistration>>(new Map());
+	const handlers = reactive(new Map<ShortcutId, HandlerRegistration>());
 	const isInitialized = ref(false);
 	const isListenerActive = ref(false);
 
@@ -494,14 +494,14 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 		handler: ShortcutHandler,
 		options?: { checkItemSelected?: () => boolean }
 	): void {
-		handlers.value.set(shortcutId, {
+		handlers.set(shortcutId, {
 			handler,
 			checkItemSelected: options?.checkItemSelected,
 		});
 	}
 
 	function unregisterHandler(shortcutId: ShortcutId): void {
-		handlers.value.delete(shortcutId);
+		handlers.delete(shortcutId);
 	}
 
 	function findMatchingShortcut(event: KeyboardEvent): ShortcutId | null {
@@ -557,7 +557,7 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 			const definition = getShortcutDefinition(shortcutId);
 			if (!definition) continue;
 
-			const registration = handlers.value.get(shortcutId);
+			const registration = handlers.get(shortcutId);
 			if (!registration) continue;
 
 			if (!checkConditions(definition, registration)) {
@@ -608,7 +608,7 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 
 	function cleanup(): void {
 		stopGlobalListener();
-		handlers.value.clear();
+		handlers.clear();
 		isInitialized.value = false;
 	}
 

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, reactive } from 'vue';
 import { useStatusCenterStore } from '@/stores/runtime/status-center';
 
 export type SizeStatus = 'Complete' | 'Error' | 'Loading';
@@ -23,14 +23,14 @@ export interface DirSizeResult {
 }
 
 export const useDirSizesStore = defineStore('dir-sizes', () => {
-	const sizes = ref<Map<string, DirSizeInfo>>(new Map());
+	const sizes = reactive(new Map<string, DirSizeInfo>());
 	const pendingPaths = ref<Set<string>>(new Set());
-	const progressIntervals = ref<Map<string, ReturnType<typeof setInterval>>>(new Map());
+	const progressIntervals = reactive(new Map<string, ReturnType<typeof setInterval>>());
 
 	const pendingCount = computed(() => pendingPaths.value.size);
 
 	function getSize(path: string): DirSizeInfo | undefined {
-		return sizes.value.get(path);
+		return sizes.get(path);
 	}
 
 	function getSizeValue(path: string): number | null {
@@ -55,11 +55,11 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	function setSize(path: string, result: DirSizeResult) {
 		if (result.status !== 'Complete') {
 			pendingPaths.value.delete(path);
-			sizes.value.delete(path);
+			sizes.delete(path);
 			return;
 		}
 
-		sizes.value.set(path, {
+		sizes.set(path, {
 			size: result.size,
 			status: 'Complete',
 			fileCount: result.file_count,
@@ -72,10 +72,10 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	function setLoading(path: string) {
 		pendingPaths.value.add(path);
 
-		const existing = sizes.value.get(path);
+		const existing = sizes.get(path);
 
 		if (!existing) {
-			sizes.value.set(path, {
+			sizes.set(path, {
 				size: 0,
 				status: 'Loading',
 				fileCount: 0,
@@ -93,7 +93,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 				const progress = await invoke<DirSizeResult | null>('get_dir_size_progress', { path });
 
 				if (progress && progress.size > 0) {
-					sizes.value.set(path, {
+					sizes.set(path, {
 						size: progress.size,
 						status: 'Loading',
 						fileCount: progress.file_count,
@@ -104,21 +104,21 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 			} catch {}
 		}, 1000);
 
-		progressIntervals.value.set(path, interval);
+		progressIntervals.set(path, interval);
 	}
 
 	function stopProgressPolling(path: string) {
-		const interval = progressIntervals.value.get(path);
+		const interval = progressIntervals.get(path);
 
 		if (interval) {
 			clearInterval(interval);
-			progressIntervals.value.delete(path);
+			progressIntervals.delete(path);
 		}
 	}
 
 	async function requestSize(path: string, forceRecalculate = false): Promise<DirSizeInfo | null> {
 		if (!forceRecalculate) {
-			const existing = sizes.value.get(path);
+			const existing = sizes.get(path);
 
 			if (existing?.status === 'Complete') {
 				return existing;
@@ -141,7 +141,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 			return getSize(path) ?? null;
 		} catch (error) {
 			pendingPaths.value.delete(path);
-			sizes.value.delete(path);
+			sizes.delete(path);
 			console.error('Failed to get directory size:', error);
 			return null;
 		}
@@ -188,7 +188,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 			stopProgressPolling(path);
 
 			pendingPaths.value.delete(path);
-			sizes.value.delete(path);
+			sizes.delete(path);
 
 			statusCenterStore.completeOperation(operationId, 'error', String(error));
 
@@ -199,7 +199,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 
 	async function requestSizesBatch(paths: string[]): Promise<void> {
 		const pathsToFetch = paths.filter((path) => {
-			const existing = sizes.value.get(path);
+			const existing = sizes.get(path);
 			const isPending = pendingPaths.value.has(path);
 			const hasValidCache = existing?.status === 'Complete';
 			return !isPending && !hasValidCache;
@@ -241,7 +241,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 			if (cancelled) {
 				stopProgressPolling(path);
 				pendingPaths.value.delete(path);
-				sizes.value.delete(path);
+				sizes.delete(path);
 
 				const operationId = `dir-size-${path}`;
 				statusCenterStore.completeOperation(operationId, 'cancelled');
@@ -256,7 +256,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 
 	function invalidate(paths: string[]) {
 		for (const path of paths) {
-			sizes.value.delete(path);
+			sizes.delete(path);
 			pendingPaths.value.delete(path);
 		}
 
@@ -266,7 +266,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	}
 
 	function invalidateAll() {
-		sizes.value.clear();
+		sizes.clear();
 		pendingPaths.value.clear();
 
 		invoke('clear_dir_size_cache').catch((error) => {
@@ -275,7 +275,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	}
 
 	function clearLocalCache() {
-		sizes.value.clear();
+		sizes.clear();
 		pendingPaths.value.clear();
 	}
 
@@ -295,7 +295,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 
 			for (const calc of activeCalcs) {
 				pendingPaths.value.add(calc.path);
-				sizes.value.set(calc.path, {
+				sizes.set(calc.path, {
 					size: calc.size,
 					status: 'Loading',
 					fileCount: calc.file_count,
@@ -335,7 +335,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 
 				if (progress) {
 					// Still running, update the size
-					sizes.value.set(path, {
+					sizes.set(path, {
 						size: progress.size,
 						status: 'Loading',
 						fileCount: progress.file_count,
