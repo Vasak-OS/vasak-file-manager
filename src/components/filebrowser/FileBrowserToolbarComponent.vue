@@ -2,7 +2,8 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { ComponentPublicInstance } from 'vue';
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -47,17 +48,17 @@ const { t } = useI18n();
 const filterInputRef = ref<HTMLInputElement | null>(null);
 const filterTriggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null);
 const isCreateMenuOpen = ref(false);
-const plusIcon = ref('');
-const folderPlusIcon = ref('');
-const filePlusIcon = ref('');
-const textSearchIcon = ref('');
-const xIcon = ref('');
-const arrowLeftIcon = ref('');
-const arrowRightIcon = ref('');
-const arrowUpIcon = ref('');
-const homeIcon = ref('');
-const refreshIcon = ref('');
-const ellipsisVerticalIcon = ref('');
+const plusIcon = useReactiveIcon(() => getSymbolSource('gtk-add'));
+const folderPlusIcon = useReactiveIcon(() => getSymbolSource('folder-new'));
+const filePlusIcon = useReactiveIcon(() => getSymbolSource('document-new'));
+const textSearchIcon = useReactiveIcon(() => getSymbolSource('system-search'));
+const xIcon = useReactiveIcon(() => getSymbolSource('dialog-close'));
+const arrowLeftIcon = useReactiveIcon(() => getSymbolSource('arrow-left'));
+const arrowRightIcon = useReactiveIcon(() => getSymbolSource('arrow-right'));
+const arrowUpIcon = useReactiveIcon(() => getSymbolSource('arrow-up'));
+const homeIcon = useReactiveIcon(() => getSymbolSource('user-home'));
+const refreshIcon = useReactiveIcon(() => getSymbolSource('refreshstructure'));
+const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('view-more-symbolic'));
 
 function handleFilterAutoFocus(event: Event) {
 	event.preventDefault();
@@ -113,19 +114,7 @@ function handleFilterInteractOutside(event: Event) {
 	}
 }
 
-onMounted(async () => {
-	plusIcon.value = await getSymbolSource('gtk-add');
-	folderPlusIcon.value = await getSymbolSource('folder-new');
-	filePlusIcon.value = await getSymbolSource('document-new');
-	textSearchIcon.value = await getSymbolSource('system-search');
-	xIcon.value = await getSymbolSource('dialog-close');
-	arrowLeftIcon.value = await getSymbolSource('arrow-left');
-	arrowRightIcon.value = await getSymbolSource('arrow-right');
-	arrowUpIcon.value = await getSymbolSource('arrow-up');
-	homeIcon.value = await getSymbolSource('user-home');
-	refreshIcon.value = await getSymbolSource('refreshstructure');
-	ellipsisVerticalIcon.value = await getSymbolSource('view-more-symbolic');
-});
+
 </script>
 
 <template>

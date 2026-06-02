@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -28,7 +29,7 @@ const emit = defineEmits<Emits>();
 const { t } = useI18n();
 
 const workspacesStore = useWorkspacesStore();
-const xIcon = ref('');
+const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const showTabPreview = true;
 const LONG_PRESS_DELAY = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
@@ -140,9 +141,7 @@ async function closeAllTabs() {
 	await workspacesStore.closeAllTabGroups();
 }
 
-onMounted(async () => {
-	xIcon.value = await getSymbolSource('gtk-close');
-});
+
 </script>
 
 <template>

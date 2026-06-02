@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
 import { getFileIcon } from '@/utils/images';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 
 const props = defineProps<{
 	entry: DirEntry;
 }>();
 
-const icon = ref<string>('');
-
-onMounted(async () => {
-	icon.value = await getFileIcon(props.entry);
-});
+const icon = useReactiveIcon(() => getFileIcon(props.entry));
 </script>
 
 <template>

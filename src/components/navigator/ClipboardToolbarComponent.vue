@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -38,9 +39,9 @@ const shortcutsStore = useShortcutsStore();
 const clipboardItemsPopoverOpen = ref(false);
 const clipboardItemsFilterQuery = ref('');
 
-const xIcon = ref('');
-const eyeIcon = ref('');
-const clipboardPasteIcon = ref('');
+const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
+const eyeIcon = useReactiveIcon(() => getSymbolSource('redeyes-symbolic'));
+const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
 
 const canPaste = computed(() => {
 	if (!clipboardStore.hasItems || !props.currentPath) {
@@ -126,11 +127,7 @@ function openCollapsedPopover() {
 	});
 }
 
-onMounted(async () => {
-	xIcon.value = await getSymbolSource('gtk-close');
-	eyeIcon.value = await getSymbolSource('redeyes-symbolic');
-	clipboardPasteIcon.value = await getSymbolSource('edit-paste');
-});
+
 </script>
 
 <template>

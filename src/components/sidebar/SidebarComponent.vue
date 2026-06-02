@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { onMounted, ref } from 'vue';
+import { onMounted } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
@@ -17,24 +18,18 @@ const globalSearchStore = useGlobalSearchStore();
 const userPathsStore = useUserPathsStore();
 const { t } = useI18n();
 
-const folderIcon = ref('');
-const usbIcon = ref('');
-const hardDriveIcon = ref('');
-const searchIcon = ref('');
-const homeIcon = ref('');
-const rootIcon = ref('');
+const folderIcon = useReactiveIcon(() => getIconSource('folder'));
+const usbIcon = useReactiveIcon(() => getIconSource('drive-removable-media-usb'));
+const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
+const searchIcon = useReactiveIcon(() => getIconSource('system-search'));
+const homeIcon = useReactiveIcon(() => getIconSource('user-home'));
+const rootIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
 
 async function openDrive(path: string) {
 	await workspacesStore.openNewTabGroup(path);
 }
 
 onMounted(async () => {
-	folderIcon.value = await getIconSource('folder');
-	usbIcon.value = await getIconSource('drive-removable-media-usb');
-	hardDriveIcon.value = await getIconSource('drive-harddisk');
-	searchIcon.value = await getIconSource('system-search');
-	homeIcon.value = await getIconSource('user-home');
-	rootIcon.value = await getIconSource('drive-harddisk');
 	refresh();
 });
 </script>

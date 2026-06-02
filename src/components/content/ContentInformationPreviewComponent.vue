@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import type { DirEntry } from '@/types/dir-entry';
 import { isImageFile as checkIsImage, isVideoFile as checkIsVideo } from '@/utils/files';
@@ -11,7 +12,7 @@ const props = defineProps<{
 	isCurrentDir?: boolean;
 }>();
 
-const fileIcon = ref('');
+const fileIcon = useReactiveIcon(() => getIconSource('folder'));
 
 const isImageFile = computed(() => {
 	if (!props.selectedEntry) return false;
@@ -31,9 +32,7 @@ const mediaSrc = computed(() => {
 	return convertFileSrc(props.selectedEntry.path);
 });
 
-onMounted(async () => {
-	fileIcon.value = await getIconSource('folder');
-});
+
 </script>
 
 <template>

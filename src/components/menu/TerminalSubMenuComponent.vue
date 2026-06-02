@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
@@ -21,7 +22,7 @@ const { t } = useI18n();
 const shortcutsStore = useShortcutsStore();
 const terminalsStore = useTerminalsStore();
 
-const terminalIcon = ref('');
+const terminalIcon = useReactiveIcon(() => getSymbolSource('utilities-terminal'));
 
 const ADMIN_MODIFIER_KEY = 'Shift';
 
@@ -53,7 +54,6 @@ async function handleOpenTerminal(terminalId: string) {
 
 onMounted(async () => {
 	terminalsStore.init();
-	terminalIcon.value = await getSymbolSource('utilities-terminal');
 });
 </script>
 

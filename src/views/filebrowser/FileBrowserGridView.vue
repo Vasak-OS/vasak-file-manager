@@ -2,7 +2,8 @@
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
@@ -25,11 +26,11 @@ const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
 
-const fileIcon = ref('');
-const fileImageIcon = ref('');
-const fileVideoIcon = ref('');
-const loaderIcon = ref('');
-const folderIcon = ref('');
+const fileIcon = useReactiveIcon(() => getIconSource('text-x-generic'));
+const fileImageIcon = useReactiveIcon(() => getIconSource('image-x-generic'));
+const fileVideoIcon = useReactiveIcon(() => getIconSource('video-x-generic'));
+const loaderIcon = useReactiveIcon(() => getIconSource('process-working'));
+const folderIcon = useReactiveIcon(() => getIconSource('folder'));
 
 const clipboardPathsMap = computed(() => {
 	if (isToolbarSuppressed.value) {
@@ -114,13 +115,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
 	};
 });
 
-onMounted(async () => {
-	fileIcon.value = await getIconSource('text-x-generic');
-	fileImageIcon.value = await getIconSource('image-x-generic');
-	fileVideoIcon.value = await getIconSource('video-x-generic');
-	loaderIcon.value = await getIconSource('process-working');
-	folderIcon.value = await getIconSource('folder');
-});
+
 </script>
 
 <template>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
@@ -32,22 +33,17 @@ const currentLayout = computed(() => {
 	return userLayoutStore.layout;
 });
 const showHiddenFiles = ref(true);
-const layoutGridIcon = ref('');
-const layoutListIcon = ref('');
-const splitViewIcon = ref('');
-const infoPanelIcon = ref('');
+const layoutGridIcon = useReactiveIcon(() => getSymbolSource('view-grid'));
+const layoutListIcon = useReactiveIcon(() => getSymbolSource('view-list-text'));
+const splitViewIcon = useReactiveIcon(() => getSymbolSource('view-split-left-right'));
+const infoPanelIcon = useReactiveIcon(() => getSymbolSource('swap-panels'));
 
 async function setLayout(layoutName: LayoutType) {
 	await userLayoutStore.setLayout(layoutName);
 	isLayoutPopoverOpen.value = false;
 }
 
-onMounted(async () => {
-	layoutGridIcon.value = await getSymbolSource('view-grid');
-	layoutListIcon.value = await getSymbolSource('view-list-text');
-	splitViewIcon.value = await getSymbolSource('view-split-left-right');
-	infoPanelIcon.value = await getSymbolSource('swap-panels');
-});
+
 </script>
 
 <template>

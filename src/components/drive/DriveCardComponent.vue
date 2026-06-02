@@ -2,7 +2,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ComputedRef, computed, onMounted, Ref, ref } from 'vue';
+import { ComputedRef, computed, Ref, ref } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
 import toReadableBytes from '@/utils/byte-parser';
@@ -15,9 +16,9 @@ const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const isMounting = ref(false);
 const LOW_SPACE_THRESHOLD = 15;
-const networkIcon: Ref<string> = ref('');
-const usbIcon: Ref<string> = ref('');
-const hardDriveIcon: Ref<string> = ref('');
+const networkIcon = useReactiveIcon(() => getIconSource('preferences-system-network-iscsi'));
+const usbIcon = useReactiveIcon(() => getIconSource('drive-removable-media-usb'));
+const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
 
 const isLowSpace = computed(() => props.drive.percent_used >= 100 - LOW_SPACE_THRESHOLD);
 
@@ -85,11 +86,7 @@ async function handleUnmount(clickEvent: MouseEvent) {
 	}
 }
 
-onMounted(async () => {
-	networkIcon.value = await getIconSource('preferences-system-network-iscsi');
-	usbIcon.value = await getIconSource('drive-removable-media-usb');
-	hardDriveIcon.value = await getIconSource('drive-harddisk');
-});
+
 </script>
 
 <template>

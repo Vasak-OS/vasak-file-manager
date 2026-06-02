@@ -4,6 +4,7 @@ import { dirname } from '@tauri-apps/api/path';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -41,14 +42,14 @@ const popoverWidth = ref(0);
 const separatorDropdowns = ref<{ [key: number]: string[] }>({});
 const openSeparatorIndex = ref<number | null>(null);
 const isActionsMenuOpen = ref(false);
-const copyIcon = ref('');
-const clipboardPasteIcon = ref('');
-const folderIcon = ref('');
-const ellipsisVerticalIcon = ref('');
-const chevronRightIcon = ref('');
-const pinIcon = ref('');
-const textCursorIcon = ref('');
-const xIcon = ref('');
+const copyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
+const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
+const folderIcon = useReactiveIcon(() => getIconSource('folder'));
+const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('view-more-symbolic'));
+const chevronRightIcon = useReactiveIcon(() => getSymbolSource('arrow-right'));
+const pinIcon = useReactiveIcon(() => getSymbolSource('pin'));
+const textCursorIcon = useReactiveIcon(() => getSymbolSource('edit-select-text'));
+const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const ignoreNextEditorClose = ref(false);
 
 function updatePopoverWidth() {
@@ -351,14 +352,6 @@ onMounted(async () => {
 		scrollBreadcrumbsToEnd();
 	});
 	window.addEventListener('keydown', handleGlobalKeydown);
-	copyIcon.value = await getSymbolSource('edit-copy');
-	clipboardPasteIcon.value = await getSymbolSource('edit-paste');
-	folderIcon.value = await getIconSource('folder');
-	ellipsisVerticalIcon.value = await getSymbolSource('view-more-symbolic');
-	chevronRightIcon.value = await getSymbolSource('arrow-right');
-	pinIcon.value = await getSymbolSource('pin');
-	textCursorIcon.value = await getSymbolSource('edit-select-text');
-	xIcon.value = await getSymbolSource('gtk-close');
 });
 
 onUnmounted(() => {

@@ -2,6 +2,7 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import NumberField from '@/components/ui/number-field/NumberField.vue';
@@ -35,12 +36,12 @@ const exactMatch = ref(false);
 const typoTolerance = ref(true);
 const scanDepth = ref(6);
 
-const searchIcon = ref('');
-const settingsIcon = ref('');
-const chevronDownIcon = ref('');
-const xIcon = ref('');
-const loaderIcon = ref('');
-const slidersHorizontalIcon = ref('');
+const searchIcon = useReactiveIcon(() => getSymbolSource('search'));
+const settingsIcon = useReactiveIcon(() => getSymbolSource('settings-configure'));
+const chevronDownIcon = useReactiveIcon(() => getSymbolSource('arrow-down'));
+const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
+const loaderIcon = useReactiveIcon(() => getSymbolSource('content-loading-symbolic'));
+const slidersHorizontalIcon = useReactiveIcon(() => getSymbolSource('dialog-filters'));
 
 function openSearchSettings() {}
 
@@ -242,12 +243,6 @@ onActivated(async () => {
 
 onMounted(async () => {
 	focusInput();
-	searchIcon.value = await getSymbolSource('search');
-	settingsIcon.value = await getSymbolSource('settings-configure');
-	chevronDownIcon.value = await getSymbolSource('arrow-down');
-	xIcon.value = await getSymbolSource('gtk-close');
-	loaderIcon.value = await getSymbolSource('content-loading-symbolic');
-	slidersHorizontalIcon.value = await getSymbolSource('dialog-filters');
 });
 </script>
 

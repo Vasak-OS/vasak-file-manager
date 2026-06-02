@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import { DirEntry } from '@/types/dir-entry';
@@ -17,8 +18,8 @@ const props = defineProps<{
 
 const { t } = useI18n();
 
-const copyIcon = ref('');
-const folderInputIcon = ref('');
+const copyIcon = useReactiveIcon(() => getIconSource('edit-copy'));
+const folderInputIcon = useReactiveIcon(() => getIconSource('folder-open'));
 
 const overlayStyle = computed(() => ({
 	left: `${props.cursorX + 16}px`,
@@ -42,10 +43,7 @@ const description = computed(() => {
 	return `drag.moveItems ${props.itemCount}`;
 });
 
-onMounted(async () => {
-	copyIcon.value = await getIconSource('edit-copy');
-	folderInputIcon.value = await getIconSource('folder-open');
-});
+
 </script>
 
 <template>

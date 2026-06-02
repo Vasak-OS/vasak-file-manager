@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 
 const props = defineProps<{
@@ -13,8 +14,8 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const CopyIcon = ref('');
-const FolderInputIcon = ref('');
+const CopyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
+const FolderInputIcon = useReactiveIcon(() => getSymbolSource('folder-open'));
 
 const description = computed(() => {
 	if (props.operationType === 'copy') {
@@ -28,10 +29,7 @@ const operationIcon = computed(() =>
 	props.operationType === 'copy' ? CopyIcon.value : FolderInputIcon.value
 );
 
-onMounted(async () => {
-	CopyIcon.value = await getSymbolSource('edit-copy');
-	FolderInputIcon.value = await getSymbolSource('folder-open');
-});
+
 </script>
 
 <template>

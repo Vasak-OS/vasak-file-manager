@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
@@ -30,7 +31,7 @@ const { openNewTabGroup, closeTabGroup, setTabs } = workspacesStore;
 
 const previewEnabled = ref(true);
 const scrollContainerRef = ref<HTMLElement | null>(null);
-const plusIcon = ref('');
+const plusIcon = useReactiveIcon(() => getSymbolSource('gtk-add'));
 let scrollDisableTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 function handleScrollActivity() {
@@ -55,10 +56,6 @@ function handleWheel(event: WheelEvent) {
 function onScroll() {
 	handleScrollActivity();
 }
-
-onMounted(async () => {
-	plusIcon.value = await getSymbolSource('gtk-add');
-});
 
 onBeforeUnmount(() => {
 	if (scrollDisableTimeoutId !== null) {

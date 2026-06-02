@@ -2,6 +2,7 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import OpenWithSubmenu from '@/components/menu/OpenWithSubMenuComponent.vue';
 import TerminalSubmenu from '@/components/menu/TerminalSubMenuComponent.vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
@@ -49,15 +50,15 @@ const clipboardStore = useClipboardStore();
 const userStatsStore = useUserStatsStore();
 const shortcutsStore = useShortcutsStore();
 
-const pencilIcon = ref('');
-const copyIcon = ref('');
-const cutIcon = ref('');
-const clipboardPasteIcon = ref('');
-const shredderIcon = ref('');
-const trash2Icon = ref('');
-const plusIcon = ref('');
-const share2Icon = ref('');
-const starIcon = ref('');
+const pencilIcon = useReactiveIcon(() => getSymbolSource('edit-rename'));
+const copyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
+const cutIcon = useReactiveIcon(() => getSymbolSource('edit-cut'));
+const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
+const shredderIcon = useReactiveIcon(() => getSymbolSource('edit-delete-shred'));
+const trash2Icon = useReactiveIcon(() => getSymbolSource('user-trash'));
+const starIcon = useReactiveIcon(() => getSymbolSource('emblem-favorite'));
+const plusIcon = useReactiveIcon(() => getSymbolSource('gtk-add'));
+const share2Icon = useReactiveIcon(() => getSymbolSource('emblem-shared'));
 
 const { isActionVisible } = useContextMenuItems(toRef(props, 'selectedEntries'));
 
@@ -154,15 +155,6 @@ onMounted(async () => {
 	window.addEventListener('keydown', handleKeyDown);
 	window.addEventListener('keyup', handleKeyUp);
 
-	pencilIcon.value = await getSymbolSource('edit-rename');
-	copyIcon.value = await getSymbolSource('edit-copy');
-	cutIcon.value = await getSymbolSource('edit-cut');
-	clipboardPasteIcon.value = await getSymbolSource('edit-paste');
-	shredderIcon.value = await getSymbolSource('edit-delete-shred');
-	trash2Icon.value = await getSymbolSource('user-trash');
-	starIcon.value = await getSymbolSource('emblem-favorite');
-	plusIcon.value = await getSymbolSource('gtk-add');
-	share2Icon.value = await getSymbolSource('emblem-shared');
 });
 
 onUnmounted(() => {

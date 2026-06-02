@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
 import ContextMenuComponent from '@/components/menu/ContextMenuComponent.vue';
@@ -26,15 +27,15 @@ const props = defineProps<{
 	layout?: Layout;
 }>();
 const { t } = useI18n();
-const folderOpenIcon = ref('');
+const folderOpenIcon = useReactiveIcon(() => getIconSource('folder-open'));
 
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
 const isColumnsPopoverOpen = ref(false);
-const arrowUpIcon = ref('');
-const arrowDownIcon = ref('');
-const infoIcon = ref('');
-const columnsIcon = ref('');
+const arrowUpIcon = useReactiveIcon(() => getSymbolSource('arrow-up'));
+const arrowDownIcon = useReactiveIcon(() => getSymbolSource('arrow-down'));
+const infoIcon = useReactiveIcon(() => getSymbolSource('showinfo'));
+const columnsIcon = useReactiveIcon(() => getSymbolSource('view-file-columns'));
 
 const columnVisibility = ref({
 	items: true,
@@ -125,13 +126,7 @@ const sortedEntries = computed(() => {
 	return entries;
 });
 
-onMounted(async () => {
-	folderOpenIcon.value = await getIconSource('folder-open');
-	arrowUpIcon.value = await getSymbolSource('arrow-up');
-	arrowDownIcon.value = await getSymbolSource('arrow-down');
-	infoIcon.value = await getSymbolSource('showinfo');
-	columnsIcon.value = await getSymbolSource('view-file-columns');
-});
+
 </script>
 
 <template>

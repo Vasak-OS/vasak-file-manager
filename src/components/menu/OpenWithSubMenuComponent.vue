@@ -2,7 +2,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import ContextMenuItem from '@/components/ui/contextmenu/ContextMenuItem.vue';
 import ContextMenuLabel from '@/components/ui/contextmenu/ContextMenuLabel.vue';
 import ContextMenuSeparator from '@/components/ui/contextmenu/ContextMenuSeparator.vue';
@@ -50,10 +51,10 @@ const firstEntry = computed(() => props.selectedEntries[0]);
 const isDirectory = computed(() => firstEntry.value?.is_dir ?? false);
 const lastLoadedPath = ref<string | null>(null);
 
-const fileIcon = ref('');
-const settingsIcon = ref('');
-const externalLinkIcon = ref('');
-const loaderIcon = ref('');
+const fileIcon = useReactiveIcon(() => getSymbolSource('text-x-generic'));
+const settingsIcon = useReactiveIcon(() => getSymbolSource('settings-configure'));
+const externalLinkIcon = useReactiveIcon(() => getSymbolSource('external-link-symbolic'));
+const loaderIcon = useReactiveIcon(() => getSymbolSource('content-loading-symbolic'));
 
 async function loadAssociatedPrograms() {
 	if (!firstEntry.value) return;
@@ -117,12 +118,7 @@ function handleOpenCustomDialog() {
 	emit('openCustomDialog');
 }
 
-onMounted(async () => {
-	fileIcon.value = await getSymbolSource('text-x-generic');
-	settingsIcon.value = await getSymbolSource('settings-configure');
-	externalLinkIcon.value = await getSymbolSource('external-link-symbolic');
-	loaderIcon.value = await getSymbolSource('content-loading-symbolic');
-});
+
 </script>
 
 <template>

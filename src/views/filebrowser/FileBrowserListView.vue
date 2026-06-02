@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, type Ref, ref } from 'vue';
+import { computed, type Ref, ref } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
@@ -18,8 +19,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const ctx = useFileBrowserContext();
-const selectedIcon = ref('');
-const loaderCircleIcon = ref('');
+const selectedIcon = useReactiveIcon(() => getSymbolSource('object-select-symbolic'));
+const loaderCircleIcon = useReactiveIcon(() => getSymbolSource('content-loading-symbolic'));
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
@@ -89,10 +90,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 	}
 }
 
-onMounted(async () => {
-	selectedIcon.value = await getSymbolSource('object-select-symbolic');
-	loaderCircleIcon.value = await getSymbolSource('content-loading-symbolic');
-});
+
 </script>
 
 <template>

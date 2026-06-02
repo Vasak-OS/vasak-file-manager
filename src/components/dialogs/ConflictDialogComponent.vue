@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import Dialog from '@/components/ui/dialog/Dialog.vue';
 import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogDescription from '@/components/ui/dialog/DialogDescription.vue';
@@ -27,8 +28,8 @@ const { t } = useI18n();
 const isOpen = defineModel<boolean>('open', { required: true });
 const sizeSeparator = ' \u2192 ';
 const conflictCount = computed(() => props.conflicts.length);
-const FolderIcon = ref('');
-const FileIcon = ref('');
+const FolderIcon = useReactiveIcon(() => getIconSource('folder'));
+const FileIcon = useReactiveIcon(() => getIconSource('application-rtf'));
 
 const visibleConflicts = computed(() => {
 	return props.conflicts.slice(0, 5);
@@ -72,10 +73,7 @@ function handleOpenChange(open: boolean) {
 	}
 }
 
-onMounted(async () => {
-	FolderIcon.value = await getIconSource('folder');
-	FileIcon.value = await getIconSource('application-rtf');
-});
+
 </script>
 
 <template>
