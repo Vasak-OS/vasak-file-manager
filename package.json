@@ -1,7 +1,7 @@
 {
   "name": "vasak-file-manager",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "scripts": {
     "dev": "bunx --bun vite",
@@ -20,8 +20,8 @@
     "@tauri-apps/plugin-opener": "~2.5.4",
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-store": "^2.4.3",
-    "@vasakgroup/plugin-config-manager": "^2.2.4",
-    "@vasakgroup/plugin-vicons": "^2.0.0",
+    "@vasakgroup/plugin-config-manager": "^2.2.6",
+    "@vasakgroup/plugin-vicons": "^2.1.2",
     "@vasakgroup/tauri-plugin-i18n": "^2.1.0",
     "lodash.clonedeep": "^4.5.0",
     "path": "^0.12.7",
