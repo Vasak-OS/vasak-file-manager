@@ -780,6 +780,12 @@ export function useFileBrowserSelection(
 				}
 
 				break;
+			case 'extract-here':
+				if (entries.length === 1) {
+					void extractArchive(entries[0], currentPathRef.value);
+				}
+
+				break;
 		}
 
 		closeContextMenu();
@@ -806,6 +812,28 @@ export function useFileBrowserSelection(
 				description: '',
 			},
 		});
+	}
+
+	async function extractArchive(entry: DirEntry, destDir: string) {
+		try {
+			await invoke('extract_archive', {
+				archivePath: entry.path,
+				destDir,
+			});
+			toast.custom(markRaw(CustomSimple), {
+				componentProps: {
+					title: 'notifications.archiveExtracted',
+					description: '',
+				},
+			});
+		} catch (error) {
+			toast.custom(markRaw(CustomSimple), {
+				componentProps: {
+					title: 'notifications.archiveExtractFailed',
+					description: String(error),
+				},
+			});
+		}
 	}
 
 	function resetMouseState() {

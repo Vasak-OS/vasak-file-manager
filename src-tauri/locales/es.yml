@@ -64,6 +64,7 @@ fileBrowser:
     paste: Pegar
     pasteToPane1: Pegar en Panel 1
     pasteToPane2: Pegar en Panel 2
+    extractHere: Extraer aquí
   name: Nombre
   items: Elementos
   size: Tamaño
@@ -191,6 +192,8 @@ notifications:
   addedToFavorites: Agregado a Favoritos
   cannotFetchDirectoryItems: No se pueden obtener elementos del directorio
   quickViewFileIsNotSupported: Tipo de archivo no soportado en Vista Rápida
+  archiveExtracted: Archivo extraído correctamente
+  archiveExtractFailed: Error al extraer el archivo
 tabs:
   newTab: Nueva Pestaña
   closeOtherTabs: Cerrar Otras Pestañas

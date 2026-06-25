@@ -17,4 +17,5 @@ export type ContextMenuAction =
 	| 'share'
 	| 'open-in-new-tab'
 	| 'toggle-favorite'
-	| 'edit-tags';
+	| 'edit-tags'
+	| 'extract-here';

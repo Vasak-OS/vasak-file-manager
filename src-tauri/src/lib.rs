@@ -1,6 +1,7 @@
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;
+mod extract;
 mod file_operations;
 mod global_search;
 mod open_with;
@@ -71,6 +72,7 @@ pub fn run() {
             dir_watcher::watch_directory,
             dir_watcher::unwatch_directory,
             dir_watcher::get_watched_directories,
+            extract::extract_archive,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

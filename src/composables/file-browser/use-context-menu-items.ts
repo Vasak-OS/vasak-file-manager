@@ -6,6 +6,7 @@ import type {
 	EntryType,
 	SelectionType,
 } from '@/types/file-browser';
+import { FILE_EXTENSIONS } from '@/constants/file-extensions';
 
 const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 	{
@@ -63,6 +64,12 @@ const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 		selectionTypes: ['single', 'multiple'],
 		entryTypes: ['file', 'directory'],
 	},
+	{
+		action: 'extract-here',
+		selectionTypes: ['single'],
+		entryTypes: ['file'],
+		extensions: FILE_EXTENSIONS.ARCHIVE as unknown as string[],
+	},
 ];
 
 export function useContextMenuItems(selectedEntries: Ref<DirEntry[]>) {
@@ -99,8 +106,14 @@ export function useContextMenuItems(selectedEntries: Ref<DirEntry[]>) {
 		const allEntriesMatchAllowedTypes = stats.entryTypes.every((entryType) =>
 			config.entryTypes.includes(entryType)
 		);
+		if (!allEntriesMatchAllowedTypes) return false;
 
-		return allEntriesMatchAllowedTypes;
+		if (config.extensions && entries.length === 1) {
+			const ext = entries[0].ext?.toLowerCase();
+			return !!ext && config.extensions.includes(ext);
+		}
+
+		return true;
 	}
 
 	return {

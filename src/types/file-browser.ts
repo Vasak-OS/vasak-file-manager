@@ -59,7 +59,8 @@ export type ContextMenuAction =
 	| 'share'
 	| 'open-in-new-tab'
 	| 'toggle-favorite'
-	| 'edit-tags';
+	| 'edit-tags'
+	| 'extract-here';
 
 export type SelectionType = 'single' | 'multiple';
 export type EntryType = 'file' | 'directory';
@@ -68,6 +69,7 @@ export interface ContextMenuItemConfig {
 	action: ContextMenuAction;
 	selectionTypes: SelectionType[];
 	entryTypes: EntryType[];
+	extensions?: readonly string[];
 }
 
 export type ListSortColumn = 'name' | 'items' | 'size' | 'modified';

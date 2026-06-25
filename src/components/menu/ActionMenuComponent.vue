@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
@@ -59,6 +59,7 @@ const trash2Icon = useReactiveIcon(() => getSymbolSource('user-trash'));
 const starIcon = useReactiveIcon(() => getSymbolSource('emblem-favorite'));
 const plusIcon = useReactiveIcon(() => getSymbolSource('gtk-add'));
 const share2Icon = useReactiveIcon(() => getSymbolSource('emblem-shared'));
+const extractIcon = useReactiveIcon(() => getIconSource('application-x-archive'));
 
 const { isActionVisible } = useContextMenuItems(toRef(props, 'selectedEntries'));
 
@@ -258,6 +259,11 @@ function handleDeleteClick() {
     @click="emitAction('share')" class="flex items-center gap-2">
     <img :src="share2Icon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.share') }}</span>
+  </component>
+  <component :is="menuItemComponent" v-if="isActionVisible('extract-here')"
+    @select="emitAction('extract-here')" @click="emitAction('extract-here')" class="flex items-center gap-2">
+    <img :src="extractIcon" class="h-4 w-4" />
+    <span>{{ t('fileBrowser.actions.extractHere') }}</span>
   </component>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"

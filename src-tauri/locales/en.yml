@@ -64,6 +64,7 @@ fileBrowser:
     paste: Paste
     pasteToPane1: Paste to Pane 1
     pasteToPane2: Paste to Pane 2
+    extractHere: Extract Here
   name: Name
   items: Items
   size: Size
@@ -212,6 +213,8 @@ notifications:
   addedToFavorites: Added to Favorites
   cannotFetchDirectoryItems: Cannot fetch directory items
   quickViewFileIsNotSupported: File type not supported in Quick View
+  archiveExtracted: Archive extracted successfully
+  archiveExtractFailed: Failed to extract archive
 tabs:
   newTab: New Tab
   closeOtherTabs: Close Other Tabs
