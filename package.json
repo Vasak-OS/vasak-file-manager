@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@crabnebula/tauri-plugin-drag": "^2.1.0",
-    "@tailwindcss/vite": "^4.3.0",
-    "@tauri-apps/api": "^2.11.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "~2.7.1",
     "@tauri-apps/plugin-opener": "~2.5.4",
     "@tauri-apps/plugin-shell": "^2.3.5",
@@ -27,20 +27,20 @@
     "path": "^0.12.7",
     "pinia": "^3.0.4",
     "url": "^0.11.4",
-    "vue": "^3.5.35",
+    "vue": "^3.5.39",
     "vue3-smooth-dnd": "^0.0.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
-    "@tailwindcss/postcss": "^4.3.0",
-    "@tauri-apps/cli": "^2.11.2",
+    "@biomejs/biome": "^2.5.1",
+    "@tailwindcss/postcss": "^4.3.1",
+    "@tauri-apps/cli": "^2.11.3",
     "@types/lodash.clonedeep": "^4.5.9",
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.4",
     "@vitejs/plugin-vue": "^6.0.7",
     "postcss": "^8.5.15",
-    "tailwindcss": "^4.3.0",
+    "tailwindcss": "^4.3.1",
     "typescript": "^5.9.3",
-    "vite": "^7.3.5",
-    "vue-tsc": "^3.3.3"
+    "vite": "^7.3.6",
+    "vue-tsc": "^3.3.5"
   }
 }
