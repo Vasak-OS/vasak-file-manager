@@ -43,25 +43,25 @@ const progressColor = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 w-full max-w-md p-4 rounded-lg bg-slate-950 border border-slate-800">
+  <div class="flex flex-col gap-3 w-full max-w-md p-4 rounded-corner bg-ui-bg/80 border border-ui-border">
     <!-- Header -->
     <div class="flex items-start justify-between gap-3">
       <div class="flex-1 min-w-0">
-        <h3 class="font-semibold text-sm text-white truncate">{{ data.title }}</h3>
-        <p v-if="data.description" class="text-xs text-slate-400 mt-1">{{ data.description }}</p>
+        <h3 class="font-semibold text-sm text-tx-main truncate">{{ data.title }}</h3>
+        <p v-if="data.description" class="text-xs text-tx-muted mt-1">{{ data.description }}</p>
       </div>
-      <button v-if="!isComplete" @click="onAction" class="px-2 py-1 text-xs font-medium text-slate-300 hover:text-white transition-colors flex-shrink-0">
+      <button v-if="!isComplete" @click="onAction" class="px-2 py-1 text-xs font-medium text-tx-muted hover:text-tx-main transition-colors flex-shrink-0">
         {{ data.actionText }}
       </button>
     </div>
 
     <!-- Progress Bar -->
     <div class="flex flex-col gap-2">
-      <div class="flex items-center justify-between text-xs text-slate-400">
+      <div class="flex items-center justify-between text-xs text-tx-muted">
         <span>{{ operationLabel }} {{ data.itemCount }} {{ data.itemCount === 1 ? 'archivo' : 'archivos' }}</span>
         <span class="font-medium">{{ displayProgress }}%</span>
       </div>
-      <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+      <div class="w-full h-2 bg-ui-surface rounded-full overflow-hidden">
         <div
           :class="[progressColor, 'h-full transition-all duration-300']"
           :style="{ width: `${displayProgress}%` }"
@@ -70,9 +70,9 @@ const progressColor = computed(() => {
     </div>
 
     <!-- Complete State -->
-    <div v-if="isComplete" class="flex items-center justify-between pt-2 border-t border-slate-800">
-      <span class="text-xs text-green-400">✓ Completado</span>
-      <button @click="onAction" class="px-2 py-1 text-xs font-medium text-slate-300 hover:text-white transition-colors">
+    <div v-if="isComplete" class="flex items-center justify-between pt-2 border-t border-ui-border">
+      <span class="text-xs text-status-success">✓ Completado</span>
+      <button @click="onAction" class="px-2 py-1 text-xs font-medium text-tx-muted hover:text-tx-main transition-colors">
         {{ data.actionText }}
       </button>
     </div>
