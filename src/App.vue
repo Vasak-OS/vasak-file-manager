@@ -13,16 +13,24 @@ import { disableWebViewFeatures } from '@/utils/web-view-features';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
 
-onErrorCaptured((err) => {
+onErrorCaptured((err, instance, info) => {
 	// Handle nextSibling and emitsOptions errors gracefully
 	if (err instanceof TypeError) {
 		const message = String(err);
 		if (message.includes('nextSibling') || message.includes('emitsOptions')) {
 			console.warn('Recovered from DOM/component error:', message);
-			return false; // Prevent error from propagating
+			return false;
 		}
 	}
-	return true; // Let other errors propagate normally
+	if (err instanceof DOMException || String(err).includes('InvalidCharacterError')) {
+		console.error('[InvalidCharacterError captured]', err, 'info:', info);
+		return false;
+	}
+	return true;
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+	console.error('[Unhandled Rejection]', event.reason, 'stack:', event.reason?.stack);
 });
 
 onMounted(async () => {

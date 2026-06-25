@@ -1,5 +1,5 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { getCurrentInstance, onMounted, onUnmounted, ref, watch } from 'vue';
 
 let unlisten: UnlistenFn | null = null;
 let subscribers = 0;
@@ -11,7 +11,11 @@ export function useReactiveIcon(fetcher: () => Promise<string>) {
   watch(
     version,
     async () => {
-      source.value = await fetcher();
+      try {
+        source.value = await fetcher();
+      } catch {
+        source.value = '';
+      }
     },
     { immediate: true }
   );

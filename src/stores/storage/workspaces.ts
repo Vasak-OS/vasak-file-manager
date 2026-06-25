@@ -228,7 +228,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		const tabGroup = workspace.tabGroups[tabGroupIndex];
 
 		if (tabGroup) {
-			tabGroup.splice(tabIndex, 1);
+			workspace.tabGroups[tabGroupIndex] = tabGroup.filter((_, i) => i !== tabIndex);
 			setCurrentTabIndex(0);
 		}
 	}
@@ -352,42 +352,46 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		}
 	}
 
-	function isTabGroupSplit(tabGroup: TabGroup) {
-		return tabGroup.length > 1;
+	function isTabGroupSplit(tabGroup: TabGroup | undefined): boolean {
+		return (tabGroup?.length ?? 0) > 1;
 	}
 
 	function toggleSplitView() {
-		if (!currentWorkspace.value) {
-			return;
-		}
-
-		const tabGroup = getCurrentTabGroup(currentWorkspace.value);
+		if (!currentWorkspace.value) return;
+		const workspace = currentWorkspace.value;
+		const tabGroup = getCurrentTabGroup(workspace);
+		if (!tabGroup) return;
 
 		if (isTabGroupSplit(tabGroup)) {
-			disableSplitView(currentWorkspace.value, tabGroup);
+			disableSplitView(workspace, tabGroup);
 		} else {
-			enableSplitView(tabGroup);
+			enableSplitView(workspace, tabGroup);
 		}
 	}
 
 	function disableSplitView(workspace: Workspace, tabGroup: TabGroup) {
 		closeTab(workspace, workspace.currentTabGroupIndex, tabGroup.length - 1);
-		adjustSplitViewPanes(tabGroup);
+		const remaining = workspace.tabGroups[workspace.currentTabGroupIndex || 0];
+		if (remaining) adjustSplitViewPanes(remaining);
 	}
 
-	function enableSplitView(tabGroup: TabGroup) {
-		const maxPaneCountReached = tabGroup.length >= 2;
-
-		if (tabGroup && !maxPaneCountReached) {
-			splitTabGroup(tabGroup);
-			adjustSplitViewPanes(tabGroup);
-		}
+	function enableSplitView(workspace: Workspace, tabGroup: TabGroup) {
+		if (tabGroup.length >= 2) return;
+		splitTabGroup(workspace, tabGroup);
+		const updated = workspace.tabGroups[workspace.currentTabGroupIndex || 0];
+		if (updated) adjustSplitViewPanes(updated);
 	}
 
-	function splitTabGroup(tabGroup: TabGroup) {
-		const newTab = clone(tabGroup[0]);
-		newTab.id = uniqueId();
-		tabGroup.push(newTab);
+	function splitTabGroup(workspace: Workspace, tabGroup: TabGroup) {
+		const source = tabGroup[0];
+		const newTab: Tab = {
+			...clone(source),
+			id: uniqueId(),
+			dirEntries: [],
+			selectedDirEntries: [],
+		};
+		const index = workspace.currentTabGroupIndex || 0;
+		workspace.tabGroups[index] = [...tabGroup, newTab];
 	}
 
 	function adjustSplitViewPanes(tabGroup: TabGroup) {
