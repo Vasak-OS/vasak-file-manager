@@ -552,24 +552,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		{ deep: true }
 	);
 
-	watch(
-		() => /*userSettingsStore.userSettings.globalSearch.ignoredPaths*/ [],
-		async (newPaths, oldPaths) => {
-			if (!isInitialized.value) return;
-
-			const pathsChanged = JSON.stringify(newPaths) !== JSON.stringify(oldPaths);
-
-			if (pathsChanged) {
-				if (isScanInProgress.value) {
-					await cancelScan();
-				}
-
-				startScan();
-			}
-		},
-		{ deep: true }
-	);
-
 	return {
 		isOpen,
 		query,

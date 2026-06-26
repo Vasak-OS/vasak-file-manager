@@ -73,12 +73,18 @@ pub async fn watch_directory(app: AppHandle, path: String) -> Result<(), String>
             Ok(watcher) => watcher,
             Err(err) => {
                 log::error!("Failed to create watcher for {}: {}", path_for_thread, err);
+                if let Ok(mut watchers) = ACTIVE_WATCHERS.lock() {
+                    watchers.remove(&path_for_thread);
+                }
                 return;
             }
         };
 
         if let Err(err) = watcher.watch(&watch_path, RecursiveMode::NonRecursive) {
             log::error!("Failed to watch {}: {}", path_for_thread, err);
+            if let Ok(mut watchers) = ACTIVE_WATCHERS.lock() {
+                watchers.remove(&path_for_thread);
+            }
             return;
         }
 

@@ -3,7 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { onMounted, onUnmounted, ref } from 'vue';
 import type { DriveInfo } from '@/types/drive-info';
 
-const DRIVE_POLL_INTERVAL_MS = 1000;
+const DRIVE_POLL_INTERVAL_MS = 5000;
 
 const drives = ref<DriveInfo[]>([]);
 const isLoading = ref(false);

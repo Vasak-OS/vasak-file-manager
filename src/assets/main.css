@@ -147,9 +147,7 @@
     @apply text-tx-main;
   }
 
-  body * {
-    @apply transition-colors duration-300;
-  }
+
 
   *,
   ::after,

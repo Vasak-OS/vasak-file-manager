@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, defineProps, inject, withDefaults } from 'vue';
+import { computed, inject } from 'vue';
 
 interface ResizableGroupContext {
 	startDrag: (e: MouseEvent, handleIndex: number) => void;

@@ -102,7 +102,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 					});
 				}
 			} catch {}
-		}, 1000);
+		}, 2000);
 
 		progressIntervals.set(path, interval);
 	}
@@ -371,7 +371,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 				pendingPaths.value.delete(path);
 				statusCenterStore.completeOperation(operationId, 'error');
 			}
-		}, 1000);
+		}, 2000);
 	}
 
 	return {
