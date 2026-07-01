@@ -1,6 +1,7 @@
 import { nextTick, type Ref } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Layout } from '@/types/navigator';
+import { entryPathSelector } from '@/utils/css-escape';
 
 const ROW_TOLERANCE_PX = 30;
 const OVERLAP_TOLERANCE_PX = 2;
@@ -27,7 +28,7 @@ export function useFileBrowserKeyboardNavigation(options: {
 
 		if (!container) return null;
 
-		return container.querySelector<HTMLElement>(`[data-entry-path="${CSS.escape(path)}"]`);
+		return container.querySelector<HTMLElement>(`[data-entry-path="${entryPathSelector(path)}"]`);
 	}
 
 	function getLastSelectedEntry(): DirEntry | null {

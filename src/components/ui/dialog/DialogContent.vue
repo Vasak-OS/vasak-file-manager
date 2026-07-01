@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { inject, onUnmounted, ref, type WritableComputedRef, watch } from 'vue';
 
+interface Props {
+	class?: string;
+}
+
+const props = defineProps<Props>();
+
 const dialogOpen = inject<WritableComputedRef<boolean>>('dialogOpen');
 const setDialogOpen = inject<(value: boolean) => void>('setDialogOpen');
 
@@ -45,7 +51,7 @@ onUnmounted(() => {
       <div class="absolute inset-0 bg-black/40"></div>
       <div
         ref="contentRef"
-        class="relative z-10 w-full max-w-lg rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-6 text-[hsl(var(--popover-foreground))] shadow-lg"
+        :class="[props.class, 'relative z-10 w-full max-w-lg rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-6 text-[hsl(var(--popover-foreground))] shadow-lg']"
         role="dialog"
         aria-modal="true"
       >

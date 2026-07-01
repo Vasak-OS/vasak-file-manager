@@ -11,10 +11,42 @@ mod system_icons;
 mod terminal;
 pub mod utils;
 
+use gtk::prelude::*;
+use tauri::Manager;
+use webkit2gtk::{SettingsExt, WebViewExt};
+
+fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView> {
+    for child in container.children() {
+        if child.type_().name() == "WebKitWebView" {
+            return child.downcast::<webkit2gtk::WebView>().ok();
+        }
+        if let Some(child_container) = child.downcast_ref::<gtk::Container>() {
+            if let Some(found) = find_webkit_webview(child_container) {
+                return Some(found);
+            }
+        }
+    }
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            #[cfg(debug_assertions)]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Ok(gtk_window) = window.gtk_window() {
+                    let container = gtk_window.upcast::<gtk::Container>();
+                    if let Some(wv) = find_webkit_webview(&container) {
+                        if let Some(settings) = WebViewExt::settings(&wv) {
+                            settings.set_enable_developer_extras(true);
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())

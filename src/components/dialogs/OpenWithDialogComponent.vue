@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref, watch } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import Dialog from '@/components/ui/dialog/Dialog.vue';
 import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
@@ -13,6 +15,14 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import type { DirEntry } from '@/types/dir-entry';
+
+const plusIcon = useReactiveIcon(() => getSymbolSource('list-add'));
+const fileIcon = useReactiveIcon(() => getSymbolSource('application-x-executable'));
+const playIcon = useReactiveIcon(() => getSymbolSource('media-playback-start'));
+const infoIcon = useReactiveIcon(() => getSymbolSource('dialog-information'));
+const trash2Icon = useReactiveIcon(() => getSymbolSource('edit-delete'));
+const folderOpenIcon = useReactiveIcon(() => getSymbolSource('folder-open'));
+const loader2Icon = useReactiveIcon(() => getSymbolSource('process-working'));
 
 interface CustomCommand {
 	id: string;
@@ -267,7 +277,7 @@ const canSaveCommand = computed(() => {
           <div class="flex items-center justify-between">
             <span class="text-muted-foreground text-xs font-medium tracking-wide uppercase">{{ t('openWith.customCommands') }}</span>
             <button type="button" @click="startAddingCommand">
-              <PlusIcon :size="16" />
+              <component :is="plusIcon" class="w-4 h-4" />
               {{ t('openWith.addCustomCommand') }}
             </button>
           </div>
@@ -277,7 +287,7 @@ const canSaveCommand = computed(() => {
               :class="{ '!bg-primary/15 hover:!bg-primary/20': selectedCommandId === command.id }"
               @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
               <div class="flex overflow-hidden flex-1 items-center gap-2.5">
-                <FileIcon :size="16" class="shrink-0 text-muted-foreground" />
+                <component :is="fileIcon" class="w-4 h-4 shrink-0 text-muted-foreground" />
                 <div class="flex overflow-hidden flex-col gap-0.5">
                   <span class="text-foreground text-sm font-medium">{{ command.name }}</span>
                   <span class="overflow-hidden text-muted-foreground text-xs text-ellipsis whitespace-nowrap">{{ command.programPath }}</span>
@@ -287,24 +297,24 @@ const canSaveCommand = computed(() => {
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <button type="button" @click.stop="runCommand(command)">
-                      <PlayIcon :size="14" />
+                      <component :is="playIcon" class="w-3.5 h-3.5" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>'run'</TooltipContent>
+                  <TooltipContent>{{ t('run') }}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <button type="button" @click.stop="startEditingCommand(command)">
-                      <InfoIcon :size="14" />
+                      <component :is="infoIcon" class="w-3.5 h-3.5" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>'edit'</TooltipContent>
+                  <TooltipContent>{{ t('edit') }}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <button type="button" class="hover:text-destructive"
                       @click.stop="deleteCommand(command.id)">
-                      <Trash2Icon :size="14" />
+                      <component :is="trash2Icon" class="w-3.5 h-3.5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{{ t('fileBrowser.actions.delete') }}</TooltipContent>
@@ -336,7 +346,7 @@ const canSaveCommand = computed(() => {
               <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
                 class="flex-1" />
               <button type="button" :title="t('browse')" @click="handleSelectProgram">
-                <FolderOpenIcon :size="16" />
+                <component :is="folderOpenIcon" class="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -346,7 +356,7 @@ const canSaveCommand = computed(() => {
               <label class="text-foreground text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <InfoIcon :size="14" class="text-muted-foreground cursor-help" />
+                  <component :is="infoIcon" class="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{{ t('openWith.argumentsHint') }}</p>
@@ -358,10 +368,10 @@ const canSaveCommand = computed(() => {
 
           <div class="flex justify-end mt-2 gap-2">
             <button type="button" @click="cancelEditing">
-              'cancel'
+              {{ t('cancel') }}
             </button>
             <button type="button" :disabled="!canSaveCommand" @click="saveCommand">
-              'save'
+              {{ t('save') }}
             </button>
           </div>
         </div>
@@ -369,11 +379,11 @@ const canSaveCommand = computed(() => {
 
       <DialogFooter class="flex justify-end gap-2">
         <button type="button" :disabled="isOpening" @click="handleClose">
-          'cancel'
+          {{ t('cancel') }}
         </button>
         <button type="button" :disabled="!canRun || isOpening" @click="handleRunSelected">
-          <Loader2Icon v-if="isOpening" :size="16" class="animate-spin" />
-          'openWith.open'
+          <component :is="loader2Icon" v-if="isOpening" class="w-4 h-4 animate-spin" />
+          {{ t('openWith.open') }}
         </button>
       </DialogFooter>
     </DialogContent>

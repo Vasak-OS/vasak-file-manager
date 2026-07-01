@@ -2,6 +2,7 @@
 import { computed, inject, nextTick, ref, watch } from 'vue';
 
 interface Props {
+	class?: string;
 	side?: 'top' | 'bottom' | 'left' | 'right';
 	align?: 'start' | 'center' | 'end';
 	sideOffset?: number;
@@ -77,7 +78,7 @@ watch(isOpen, async (open) => {
 				v-show="isOpen"
 				ref="contentRef"
 				:style="{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }"
-				class="pointer-events-none whitespace-nowrap rounded-corner px-2 py-1 text-sm shadow-md bg-ui-bg/80 border border-secondary"
+				:class="[props.class, 'pointer-events-none whitespace-nowrap rounded-corner px-2 py-1 text-sm shadow-md bg-ui-bg/80 border border-secondary']"
 			>
 				<slot />
 			</div>

@@ -1,5 +1,6 @@
 import { type ComponentPublicInstance, nextTick, type Ref, ref, watch } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
+import { entryPathSelector } from '@/utils/css-escape';
 
 type PendingFocusRequest =
 	| {
@@ -33,8 +34,7 @@ export function useFileBrowserFocus(options: {
 			return null;
 		}
 
-		const escapedPath =
-			typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(path) : path.replace(/"/g, '\\"');
+		const escapedPath = entryPathSelector(path);
 
 		return container.querySelector<HTMLElement>(`[data-entry-path="${escapedPath}"]`);
 	}

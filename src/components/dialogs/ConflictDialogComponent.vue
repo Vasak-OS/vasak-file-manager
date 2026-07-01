@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
@@ -30,6 +30,10 @@ const sizeSeparator = ' \u2192 ';
 const conflictCount = computed(() => props.conflicts.length);
 const FolderIcon = useReactiveIcon(() => getIconSource('folder'));
 const FileIcon = useReactiveIcon(() => getIconSource('application-rtf'));
+const AlertTriangleIcon = useReactiveIcon(() => getSymbolSource('dialog-warning'));
+const SkipForwardIcon = useReactiveIcon(() => getSymbolSource('media-skip-forward'));
+const CopyPlusIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
+const ArrowRightLeftIcon = useReactiveIcon(() => getSymbolSource('go-jump'));
 
 const visibleConflicts = computed(() => {
 	return props.conflicts.slice(0, 5);
@@ -81,7 +85,7 @@ function handleOpenChange(open: boolean) {
     <DialogContent class="w-[520px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
-          <AlertTriangleIcon class="w-5 h-5 shrink-0 text-warning" />
+          <component :is="AlertTriangleIcon" class="w-5 h-5 shrink-0 text-warning" />
           {{ t('conflictDialog.title') }}
         </DialogTitle>
         <DialogDescription class="text-muted-foreground text-sm leading-normal">
@@ -121,15 +125,15 @@ function handleOpenChange(open: boolean) {
       <DialogFooter class="pt-1">
         <div class="flex w-full flex-wrap justify-end gap-1.5">
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleSkip">
-            <SkipForwardIcon class="w-3.5 h-3.5 shrink-0" />
+            <component :is="SkipForwardIcon" class="w-3.5 h-3.5 shrink-0" />
             {{ t('conflictDialog.skip') }}
           </button>
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleKeepBoth">
-            <CopyPlusIcon class="w-3.5 h-3.5 shrink-0" />
+            <component :is="CopyPlusIcon" class="w-3.5 h-3.5 shrink-0" />
             {{ t('conflictDialog.keepBoth') }}
           </button>
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleReplace">
-            <ArrowRightLeftIcon class="w-3.5 h-3.5 shrink-0" />
+            <component :is="ArrowRightLeftIcon" class="w-3.5 h-3.5 shrink-0" />
             {{ t('conflictDialog.replace') }}
           </button>
         </div>

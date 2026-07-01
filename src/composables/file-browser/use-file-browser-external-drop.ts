@@ -2,6 +2,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
+import { entryPathSelector } from '@/utils/css-escape';
 import type { DragOperationType } from './use-file-browser-drag';
 
 interface DropTargetInfo {
@@ -95,7 +96,7 @@ export function useFileBrowserExternalDrop(options: {
 
 		if (targetPath) {
 			const targetElement = container.querySelector(
-				`[data-entry-path="${CSS.escape(targetPath)}"]`
+				`[data-entry-path="${entryPathSelector(targetPath)}"]`
 			);
 
 			if (targetElement) {

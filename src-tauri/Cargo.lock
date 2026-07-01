@@ -5919,6 +5919,7 @@ dependencies = [
  "tokio",
  "trash",
  "walkdir",
+ "webkit2gtk",
 ]
 
 [[package]]

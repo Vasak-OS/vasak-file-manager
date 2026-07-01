@@ -13,6 +13,7 @@ import { useFileBrowserNavigation } from '@/composables/file-browser/use-file-br
 import { useFileBrowserSelection } from '@/composables/file-browser/use-file-browser-selection';
 import { useVideoThumbnails } from '@/composables/file-browser/use-video-thumbnails';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
+import { entryPathSelector } from '@/utils/css-escape';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
@@ -317,7 +318,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 
 		if (entriesContainerRef.value) {
 			const element = entriesContainerRef.value.querySelector<HTMLElement>(
-				`[data-entry-path="${CSS.escape(firstEntry.path)}"]`
+				`[data-entry-path="${entryPathSelector(firstEntry.path)}"]`
 			);
 
 			if (element) {

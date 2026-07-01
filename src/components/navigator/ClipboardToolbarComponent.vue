@@ -42,6 +42,9 @@ const clipboardItemsFilterQuery = ref('');
 const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const eyeIcon = useReactiveIcon(() => getSymbolSource('redeyes-symbolic'));
 const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
+const copyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
+const folderInputIcon = useReactiveIcon(() => getSymbolSource('folder-open'));
+const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('overflow-menu'));
 
 const canPaste = computed(() => {
 	if (!clipboardStore.hasItems || !props.currentPath) {
@@ -141,8 +144,8 @@ function openCollapsedPopover() {
           }">
             <div class="clipboard-toolbar__info">
               <div class="clipboard-toolbar__icon">
-                <CopyIcon v-if="clipboardStore.isCopyOperation" :size="18" />
-                <FolderInputIcon v-else :size="18" />
+                <img :src="copyIcon" v-if="clipboardStore.isCopyOperation" class="h-[18px] w-[18px] inline-block" />
+                <img :src="folderInputIcon" v-else class="h-[18px] w-[18px] inline-block" />
               </div>
               <div class="clipboard-toolbar__text">
                 <span class="clipboard-toolbar__title">
@@ -156,11 +159,11 @@ function openCollapsedPopover() {
             </div>
 
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--expanded">
-              <Button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
+              <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
                 @click="clipboardItemsPopoverOpen = true">
                 <img :src="eyeIcon" :alt="t('fileBrowser.showItems')" class="h-4 w-4 inline-block" />
                 <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.showItems') }}</span>
-              </Button>
+              </button>
 
               <template v-if="isSplitView">
                 <Tooltip :delay-duration="300">
@@ -220,7 +223,7 @@ function openCollapsedPopover() {
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.actions')">
-                    <EllipsisVerticalIcon :size="16" />
+                    <img :src="ellipsisVerticalIcon" class="h-4 w-4 inline-block" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="clipboard-toolbar__dropdown">
@@ -268,10 +271,10 @@ function openCollapsedPopover() {
                     <span class="clipboard-toolbar__item-name">{{ entry.name }}</span>
                     <span class="clipboard-toolbar__item-path">{{ entry.path }}</span>
                   </div>
-                  <Button variant="ghost" size="icon" class="clipboard-toolbar__item-remove"
+                  <button variant="ghost" size="icon" class="clipboard-toolbar__item-remove"
                     :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)">
                     <img :src="xIcon" :alt="t('fileBrowser.removeFromClipboard')" class="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
                 <div v-if="displayedClipboardItems.length === 0" class="clipboard-toolbar__no-items">
                   {{ t('fileBrowser.noMatchingItems') }}

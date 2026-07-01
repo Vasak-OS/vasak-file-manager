@@ -6,6 +6,7 @@ interface Props {
 	align?: 'start' | 'center' | 'end';
 	sideOffset?: number;
 	class?: string;
+	style?: any;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -13,6 +14,14 @@ const props = withDefaults(defineProps<Props>(), {
 	align: 'center',
 	sideOffset: 4,
 });
+
+const emit = defineEmits<{
+	openAutoFocus: [e?: Event];
+	escapeKeyDown: [e?: Event];
+	pointerDownOutside: [e?: Event];
+	interactOutside: [e?: Event];
+	closeAutoFocus: [e?: Event];
+}>();
 
 const popover = inject<any>('popover');
 const triggerElement = computed(() => popover?.triggerElement?.value ?? null);
@@ -116,10 +125,9 @@ onBeforeUnmount(() => {
 			<div
 				v-show="isOpen"
 				ref="contentRef"
-				:class="[$attrs.class]"
-				:style="{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }"
+				:class="[props.class, 'rounded-corner border border-primary bg-ui-bg/80 shadow-lg']"
+				:style="[{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }, props.style]"
 				popover-content
-				class="rounded-corner border border-primary bg-ui-bg/80 shadow-lg"
 				@click="(e) => e.stopPropagation()"
 			>
 				<slot />

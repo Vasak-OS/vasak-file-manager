@@ -2,6 +2,7 @@ import { startDrag as tauriStartDrag } from '@vasakgroup/plugin-drag-and-drop-wa
 import { resolveResource } from '@tauri-apps/api/path';
 import { computed, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
+import { entryPathSelector } from '@/utils/css-escape';
 import type { DirEntry } from '@/types/dir-entry';
 
 export type DragOperationType = 'move' | 'copy';
@@ -140,7 +141,7 @@ export function useFileBrowserDrag(options: {
 				if (!container) continue;
 
 				const foundElement = container.querySelector(
-					`[data-entry-path="${CSS.escape(targetPath)}"]`
+					`[data-entry-path="${entryPathSelector(targetPath)}"]`
 				);
 
 				if (foundElement) {

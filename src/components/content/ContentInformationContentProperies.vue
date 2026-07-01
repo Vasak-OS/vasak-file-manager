@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, watch } from 'vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
@@ -14,6 +16,10 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const dirSizesStore = useDirSizesStore();
+
+const loaderCircleIcon = useReactiveIcon(() => getSymbolSource('sync'));
+const xIcon = useReactiveIcon(() => getSymbolSource('window-close'));
+const refreshCwIcon = useReactiveIcon(() => getSymbolSource('view-refresh'));
 
 const dirSizeInfo = computed(() => {
 	if (!props.selectedEntry?.is_dir) return null;
@@ -201,13 +207,13 @@ const compactItems = computed<string[]>(() => {
         </div>
         <div class="break-all flex items-center gap-2 h-10">
           <template v-if="isDirSizeLoading">
-            <LoaderCircleIcon :size="14" class="info-panel-properties__spinner" />
+            <img :src="loaderCircleIcon" class="h-3.5 w-3.5 info-panel-properties__spinner" />
             <div class="info-panel-properties__size-content">
               <span v-if="dirSizeDisplay">{{ dirSizeDisplay }}</span>
               <span v-else>{{ t('calculating') }}...</span>
             </div>
             <button size="xs" variant="ghost" class="info-panel-properties__cancel-btn" @click="handleCancelSize">
-              <XIcon :size="14" />
+              <img :src="xIcon" class="h-3.5 w-3.5" />
             </button>
           </template>
           <template v-else-if="dirSizeDisplay && !showGetSizeButton">
@@ -216,14 +222,14 @@ const compactItems = computed<string[]>(() => {
               <span v-if="calculatedAgo" class="info-panel-properties__calculated-ago">{{ t('calculatedAgo').replace('{0}',
                 calculatedAgo) }}</span>
             </div>
-            <Button v-if="showRecalculateButton" size="xs" variant="ghost"
+            <button v-if="showRecalculateButton" size="xs" variant="ghost"
               class="info-panel-properties__recalculate-btn" :title="t('recalculate')" @click="handleGetSize">
-              <RefreshCwIcon :size="12" />
-            </Button>
+              <img :src="refreshCwIcon" class="h-3 w-3" />
+            </button>
           </template>
-          <Button v-else-if="showGetSizeButton" size="xs" variant="secondary" @click="handleGetSize">
+          <button v-else-if="showGetSizeButton" size="xs" variant="secondary" @click="handleGetSize">
             {{ t('getSize') }}
-          </Button>
+          </button>
         </div>
       </div>
 
