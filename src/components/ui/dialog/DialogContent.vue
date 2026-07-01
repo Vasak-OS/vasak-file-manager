@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, onUnmounted, ref, type WritableComputedRef, watch } from 'vue';
+import { computed, inject, onUnmounted, ref, type WritableComputedRef, watch } from 'vue';
 
 interface Props {
 	class?: string;
@@ -9,6 +9,7 @@ const props = defineProps<Props>();
 
 const dialogOpen = inject<WritableComputedRef<boolean>>('dialogOpen');
 const setDialogOpen = inject<(value: boolean) => void>('setDialogOpen');
+const isOpen = computed(() => dialogOpen?.value ?? false);
 
 const contentRef = ref<HTMLDivElement | null>(null);
 
@@ -28,7 +29,7 @@ function handleKeydown(event: KeyboardEvent) {
 	}
 }
 
-watch(() => dialogOpen?.value, (value) => {
+watch(isOpen, (value) => {
 	if (value) {
 		document.addEventListener('keydown', handleKeydown);
 	} else {
@@ -43,20 +44,35 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="(dialogOpen as any)?.value"
-      class="fixed inset-0 z-50 flex items-center justify-center"
-      @click="handleOverlayClick"
-    >
-      <div class="absolute inset-0 bg-black/40"></div>
+    <Transition name="dialog">
       <div
-        ref="contentRef"
-        :class="[props.class, 'relative z-10 w-full max-w-lg rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-6 text-[hsl(var(--popover-foreground))] shadow-lg']"
-        role="dialog"
-        aria-modal="true"
+        v-if="isOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center"
+        @click="handleOverlayClick"
       >
-        <slot />
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div
+          ref="contentRef"
+          :class="[props.class, 'relative z-10 w-full max-w-lg rounded-corner border border-ui-border bg-ui-bg/80 p-6 text-tx-main shadow-lg']"
+          role="dialog"
+          aria-modal="true"
+        >
+          <slot />
+        </div>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 </template>
+
+<style>
+.dialog-enter-active {
+  transition: opacity 0.2s ease-out;
+}
+.dialog-leave-active {
+  transition: opacity 0.15s ease-in;
+}
+.dialog-enter-from,
+.dialog-leave-to {
+  opacity: 0;
+}
+</style>
