@@ -65,6 +65,7 @@
       }
     },
     "icon": [
+      "icons/icon.png",
       "icons/folder.svg"
     ]
   }

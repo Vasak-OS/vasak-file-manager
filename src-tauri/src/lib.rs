@@ -34,15 +34,17 @@ fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            #[cfg(debug_assertions)]
             if let Some(window) = app.get_webview_window("main") {
                 if let Ok(gtk_window) = window.gtk_window() {
-                    let container = gtk_window.upcast::<gtk::Container>();
+                    let container = gtk_window.clone().upcast::<gtk::Container>();
+                    #[cfg(debug_assertions)]
                     if let Some(wv) = find_webkit_webview(&container) {
                         if let Some(settings) = WebViewExt::settings(&wv) {
                             settings.set_enable_developer_extras(true);
                         }
                     }
+                    let icon_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("icons/icon.png");
+                    let _ = gtk_window.set_icon_from_file(&icon_path);
                 }
             }
             Ok(())
