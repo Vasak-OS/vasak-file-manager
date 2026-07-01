@@ -22,9 +22,23 @@ settings:
 filter:
   showHiddenItems: Mostrar Elementos Ocultos
   filter: Filtro
+globalSearch:
+  exactMatch: Coincidencia Exacta
+  globalSearch: Búsqueda Global
+  noDrivesSelected: Sin unidades seleccionadas
+  options: Opciones
+  resultLimit: Límite de Resultados
+  results: Resultados
+  searchDataIncomplete: Datos de búsqueda incompletos
+  searchStats:
+    nothingFound: Sin resultados
+  showDirectories: Mostrar Carpetas
+  showFiles: Mostrar Archivos
+  showSearchSettings: Mostrar Configuración de Búsqueda
+  typoTolerance: Tolerancia a Errores
 fileBrowser:
-  fileCount: 1 archivo
-  directoryCount: 1 carpeta
+  fileCount: "{0} archivos"
+  directoryCount: "{0} carpetas"
   itemCount: "{0} elementos"
   matchedNOfItems: "Se encontraron {0} de {1} elementos"
   showingNOfItems: "Mostrando {0} de {1} elementos"
@@ -79,6 +93,8 @@ fileBrowser:
   directoryIsEmptyDescription: Esta carpeta no contiene elementos
   removeFromSelection: Quitar de la Selección
   noMatchingItems: Sin elementos coincidentes
+  itemsTotal: "Elementos: {0}"
+  showingFiltered: "Mostrando filtrados: {0}, total: {1}"
   cannotMoveToSameDirectory: No se pueden mover elementos al mismo directorio
   cannotPasteIntoItself: No se pueden pegar elementos en sí mismo
   copyFailed: Copia fallida
@@ -114,6 +130,8 @@ shortcuts:
   showHideGlobalSearch: Mostrar/Ocultar búsqueda global
   switchToLeftPane: Cambiar a panel izquierdo
   switchToRightPane: Cambiar a panel derecho
+  deleteSelectedItemsFromDrive: Eliminar elementos seleccionados del disco
+  moveSelectedItemsToTrash: Mover elementos seleccionados a la papelera
 moreOptions:
   shellExtensions: Extensiones del Shell
   loading: Cargando...
@@ -124,10 +142,23 @@ openWith:
   suggestedApps: Aplicaciones Sugeridas
   noProgramsFound: No se encontraron programas
   customCommandWithFlags: Abrir con comando personalizado
+  customCommands: Comandos Personalizados
+  addCustomCommand: Agregar Comando Personalizado
+  editCustomCommand: Editar Comando Personalizado
+  noCustomCommands: Sin comandos personalizados
+  commandName: Nombre del Comando
+  commandNamePlaceholder: Ingrese nombre del comando
+  programPath: Ruta del Programa
+  enterProgramPath: Examinar o ingresar ruta del programa
+  arguments: Argumentos
+  argumentsHint: Use {file} para referirse al archivo seleccionado
+  argumentsPlaceholder: Argumentos para el programa
+  open: Abrir
 terminal:
   openInTerminal: Abrir en Terminal
   noTerminalsFound: No se encontraron terminales
   defaultLabel: Predeterminado
+  holdModifierForAdmin: Mantén {modifier} para ejecutar como administrador
 dialogs:
   renameDirItemDialog:
     renameItem: Renombrar Elemento
@@ -142,6 +173,12 @@ dialogs:
     failedToCreateNewFile: Error al crear archivo
 name: Nombre
 create: Crear
+cancel: Cancelar
+edit: Editar
+enabled: Habilitado
+disabled: Deshabilitado
+browse: Examinar
+run: Ejecutar
 save: Guardar
 type: Tipo
 directory: Carpeta
@@ -196,6 +233,7 @@ notifications:
   archiveExtractFailed: Error al extraer el archivo
 tabs:
   newTab: Nueva Pestaña
+  close: Cerrar
   closeOtherTabs: Cerrar Otras Pestañas
   closeAllTabs: Cerrar Todas las Pestañas
 listLayout: Lista
@@ -204,3 +242,9 @@ splitView: Vista Dividida
 showItems: Mostrar Elementos
 menu: Menú
 actions: Acciones
+home: Inicio
+root: Raíz
+search: Buscar
+driveNotMounted: Unidad no montada
+freeOf: libres de
+mounting: Montando

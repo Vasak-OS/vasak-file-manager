@@ -7,6 +7,7 @@ mod file_operations;
 mod global_search;
 mod open_with;
 mod polkit;
+mod read_file;
 mod system_icons;
 mod terminal;
 pub mod utils;
@@ -35,16 +36,20 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
+                #[cfg(debug_assertions)]
                 if let Ok(gtk_window) = window.gtk_window() {
                     let container = gtk_window.clone().upcast::<gtk::Container>();
-                    #[cfg(debug_assertions)]
                     if let Some(wv) = find_webkit_webview(&container) {
                         if let Some(settings) = WebViewExt::settings(&wv) {
                             settings.set_enable_developer_extras(true);
                         }
                     }
-                    let icon_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("icons/icon.png");
-                    let _ = gtk_window.set_icon_from_file(&icon_path);
+                }
+                let icon_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("icons/icon.png");
+                if icon_path.exists() {
+                    if let Ok(image) = tauri::image::Image::from_path(&icon_path) {
+                        let _ = window.set_icon(image);
+                    }
                 }
             }
             Ok(())
@@ -107,6 +112,8 @@ pub fn run() {
             dir_watcher::unwatch_directory,
             dir_watcher::get_watched_directories,
             extract::extract_archive,
+            read_file::read_text_file,
+            read_file::read_pdf_preview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

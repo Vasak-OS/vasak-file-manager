@@ -95,11 +95,11 @@ const selectionSizeDisplay = computed(() => {
 	const parts = [];
 
 	if (fileCount > 0) {
-		parts.push(`fileBrowser.fileCount ${fileCount}`);
+		parts.push(t('fileBrowser.fileCount').replace('{0}', String(fileCount)));
 	}
 
 	if (dirCount > 0) {
-		parts.push(`fileBrowser.directoryCount ${dirCount}`);
+		parts.push(t('fileBrowser.directoryCount').replace('{0}', String(dirCount)));
 	}
 
 	const countStr = parts.join(', ');
@@ -290,10 +290,10 @@ function openCollapsedPopover() {
     </template>
     <template v-else>
       <span v-if="isFiltered">
-        {{  `fileBrowser.showingFiltered ${ hiddenCount} , total: ${totalCount}` }}
+        {{ t('fileBrowser.showingFiltered').replace('{0}', String(hiddenCount)).replace('{1}', String(totalCount)) }}
       </span>
       <span v-else>
-        {{  `fileBrowser.itemsTotal ${ totalCount }` }}
+        {{ t('fileBrowser.itemsTotal').replace('{0}', String(totalCount)) }}
       </span>
     </template>
   </div>

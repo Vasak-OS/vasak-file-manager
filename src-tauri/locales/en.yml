@@ -22,9 +22,23 @@ settings:
 filter:
   showHiddenItems: Show Hidden Items
   filter: Filter
+globalSearch:
+  exactMatch: Exact Match
+  globalSearch: Global Search
+  noDrivesSelected: No drives selected
+  options: Options
+  resultLimit: Result Limit
+  results: Results
+  searchDataIncomplete: Search data incomplete
+  searchStats:
+    nothingFound: Nothing found
+  showDirectories: Show Directories
+  showFiles: Show Files
+  showSearchSettings: Show Search Settings
+  typoTolerance: Typo Tolerance
 fileBrowser:
-  fileCount: 1 file
-  directoryCount: 1 folder
+  fileCount: "{0} files"
+  directoryCount: "{0} folders"
   itemCount: "{0} items"
   matchedNOfItems: "Matched {0} of {1} items"
   showingNOfItems: "Showing {0} of {1} items"
@@ -79,6 +93,8 @@ fileBrowser:
   directoryIsEmptyDescription: This directory contains no items
   removeFromSelection: Remove from Selection
   noMatchingItems: No matching items
+  itemsTotal: "Items: {0}"
+  showingFiltered: "Showing filtered: {0}, total: {1}"
   cannotMoveToSameDirectory: Cannot move items to the same directory
   cannotPasteIntoItself: Cannot paste items into itself
   copyFailed: Copy failed
@@ -114,6 +130,8 @@ shortcuts:
   showHideGlobalSearch: Show/Hide global search
   switchToLeftPane: Switch to left pane
   switchToRightPane: Switch to right pane
+  deleteSelectedItemsFromDrive: Delete selected items from drive
+  moveSelectedItemsToTrash: Move selected items to trash
 moreOptions:
   shellExtensions: Shell Extensions
   loading: Loading...
@@ -173,6 +191,7 @@ terminal:
   openInTerminal: Open in Terminal
   noTerminalsFound: No terminals found
   defaultLabel: Default
+  holdModifierForAdmin: Hold {modifier} to run as admin
 dialogs:
   renameDirItemDialog:
     renameItem: Rename Item
@@ -217,6 +236,7 @@ notifications:
   archiveExtractFailed: Failed to extract archive
 tabs:
   newTab: New Tab
+  close: Close
   closeOtherTabs: Close Other Tabs
   closeAllTabs: Close All Tabs
 listLayout: List
@@ -225,3 +245,9 @@ splitView: Split View
 showItems: Show Items
 menu: Menu
 actions: Actions
+home: Home
+root: Root
+search: Search
+driveNotMounted: Drive not mounted
+freeOf: free of
+mounting: Mounting
