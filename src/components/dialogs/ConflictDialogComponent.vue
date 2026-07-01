@@ -85,7 +85,7 @@ function handleOpenChange(open: boolean) {
     <DialogContent class="w-[520px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
-          <component :is="AlertTriangleIcon" class="w-5 h-5 shrink-0 text-warning" />
+          <img :src="AlertTriangleIcon" class="w-5 h-5 shrink-0 text-warning" />
           {{ t('conflictDialog.title') }}
         </DialogTitle>
         <DialogDescription class="text-muted-foreground text-sm leading-normal">
@@ -96,7 +96,7 @@ function handleOpenChange(open: boolean) {
       <ScrollArea class="max-h-[220px]">
         <div class="flex flex-col py-1 gap-0.5">
           <div v-for="conflict in visibleConflicts" :key="conflict.source_path" class="flex items-center px-3 py-2 rounded-md bg-muted/40 gap-2.5">
-            <component :is="conflict.source_is_dir ? FolderIcon : FileIcon" class="w-4 h-4 shrink-0 text-muted-foreground" />
+            <img :src="conflict.source_is_dir ? FolderIcon : FileIcon" class="w-4 h-4 shrink-0 text-muted-foreground" />
             <div class="flex min-w-0 flex-col gap-0.5">
               <span class="overflow-hidden text-foreground text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ conflict.source_name }}</span>
               <span v-if="conflict.source_size !== null || conflict.destination_size !== null"
@@ -125,15 +125,15 @@ function handleOpenChange(open: boolean) {
       <DialogFooter class="pt-1">
         <div class="flex w-full flex-wrap justify-end gap-1.5">
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleSkip">
-            <component :is="SkipForwardIcon" class="w-3.5 h-3.5 shrink-0" />
+            <img :src="SkipForwardIcon" class="w-3.5 h-3.5 shrink-0" />
             {{ t('conflictDialog.skip') }}
           </button>
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleKeepBoth">
-            <component :is="CopyPlusIcon" class="w-3.5 h-3.5 shrink-0" />
+            <img :src="CopyPlusIcon" class="w-3.5 h-3.5 shrink-0" />
             {{ t('conflictDialog.keepBoth') }}
           </button>
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleReplace">
-            <component :is="ArrowRightLeftIcon" class="w-3.5 h-3.5 shrink-0" />
+            <img :src="ArrowRightLeftIcon" class="w-3.5 h-3.5 shrink-0" />
             {{ t('conflictDialog.replace') }}
           </button>
         </div>

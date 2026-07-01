@@ -277,7 +277,7 @@ const canSaveCommand = computed(() => {
           <div class="flex items-center justify-between">
             <span class="text-muted-foreground text-xs font-medium tracking-wide uppercase">{{ t('openWith.customCommands') }}</span>
             <button type="button" @click="startAddingCommand">
-              <component :is="plusIcon" class="w-4 h-4" />
+              <img :src="plusIcon" class="w-4 h-4" />
               {{ t('openWith.addCustomCommand') }}
             </button>
           </div>
@@ -287,7 +287,7 @@ const canSaveCommand = computed(() => {
               :class="{ '!bg-primary/15 hover:!bg-primary/20': selectedCommandId === command.id }"
               @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
               <div class="flex overflow-hidden flex-1 items-center gap-2.5">
-                <component :is="fileIcon" class="w-4 h-4 shrink-0 text-muted-foreground" />
+                <img :src="fileIcon" class="w-4 h-4 shrink-0 text-muted-foreground" />
                 <div class="flex overflow-hidden flex-col gap-0.5">
                   <span class="text-foreground text-sm font-medium">{{ command.name }}</span>
                   <span class="overflow-hidden text-muted-foreground text-xs text-ellipsis whitespace-nowrap">{{ command.programPath }}</span>
@@ -297,7 +297,7 @@ const canSaveCommand = computed(() => {
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <button type="button" @click.stop="runCommand(command)">
-                      <component :is="playIcon" class="w-3.5 h-3.5" />
+                      <img :src="playIcon" class="w-3.5 h-3.5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{{ t('run') }}</TooltipContent>
@@ -305,7 +305,7 @@ const canSaveCommand = computed(() => {
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <button type="button" @click.stop="startEditingCommand(command)">
-                      <component :is="infoIcon" class="w-3.5 h-3.5" />
+                      <img :src="infoIcon" class="w-3.5 h-3.5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{{ t('edit') }}</TooltipContent>
@@ -314,7 +314,7 @@ const canSaveCommand = computed(() => {
                   <TooltipTrigger as-child>
                     <button type="button" class="hover:text-destructive"
                       @click.stop="deleteCommand(command.id)">
-                      <component :is="trash2Icon" class="w-3.5 h-3.5" />
+                      <img :src="trash2Icon" class="w-3.5 h-3.5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{{ t('fileBrowser.actions.delete') }}</TooltipContent>
@@ -346,7 +346,7 @@ const canSaveCommand = computed(() => {
               <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
                 class="flex-1" />
               <button type="button" :title="t('browse')" @click="handleSelectProgram">
-                <component :is="folderOpenIcon" class="w-4 h-4" />
+                <img :src="folderOpenIcon" class="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -356,7 +356,7 @@ const canSaveCommand = computed(() => {
               <label class="text-foreground text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <component :is="infoIcon" class="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  <img :src="infoIcon" class="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{{ t('openWith.argumentsHint') }}</p>
@@ -382,7 +382,7 @@ const canSaveCommand = computed(() => {
           {{ t('cancel') }}
         </button>
         <button type="button" :disabled="!canRun || isOpening" @click="handleRunSelected">
-          <component :is="loader2Icon" v-if="isOpening" class="w-4 h-4 animate-spin" />
+          <img :src="loader2Icon" v-if="isOpening" class="w-4 h-4 animate-spin" />
           {{ t('openWith.open') }}
         </button>
       </DialogFooter>

@@ -28,7 +28,7 @@ function handleKeydown(event: KeyboardEvent) {
 	}
 }
 
-watch(dialogOpen, (value) => {
+watch(() => dialogOpen?.value, (value) => {
 	if (value) {
 		document.addEventListener('keydown', handleKeydown);
 	} else {
@@ -44,7 +44,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div
-      v-if="dialogOpen?.value"
+      v-if="(dialogOpen as any)?.value"
       class="fixed inset-0 z-50 flex items-center justify-center"
       @click="handleOverlayClick"
     >

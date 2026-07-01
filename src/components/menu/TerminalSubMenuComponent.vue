@@ -26,6 +26,10 @@ const terminalIcon = useReactiveIcon(() => getSymbolSource('utilities-terminal')
 
 const ADMIN_MODIFIER_KEY = 'Shift';
 
+const holdModifierParts = computed(() => {
+	return t('terminal.holdModifierForAdmin').split('{modifier}');
+});
+
 const targetDirectoryPath = computed(() => {
 	const firstEntry = props.selectedEntries[0];
 	if (!firstEntry) return null;
@@ -79,11 +83,11 @@ onMounted(async () => {
 
       <template v-else>
         <ContextMenuLabel class="flex items-center px-2 py-1 text-muted-foreground text-[11px] italic gap-2">
-          <i18n-t keypath="terminal.holdModifierForAdmin" tag="span">
-            <template #modifier>
-              <kbd>{{ ADMIN_MODIFIER_KEY }}</kbd>
+          <span>
+            <template v-for="(part, idx) in holdModifierParts" :key="idx">
+              {{ part }}<kbd v-if="idx < holdModifierParts.length - 1">{{ ADMIN_MODIFIER_KEY }}</kbd>
             </template>
-          </i18n-t>
+          </span>
           <kbd class="ml-auto not-italic opacity-60">{{ shortcutsStore.getShortcutLabel('openTerminalAdmin')
             }}</kbd>
         </ContextMenuLabel>

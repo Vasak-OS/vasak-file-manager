@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { inject, type Ref, ref, watch } from 'vue';
 
+interface Props {
+	class?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	class: '',
+});
+
 const isOpen = inject<Ref<boolean>>('contextMenuOpen');
 const position = inject<Ref<{ x: number; y: number }>>('contextMenuPosition');
 const closeMenu = inject<() => void>('closeContextMenu');
@@ -37,7 +45,7 @@ if (isOpen) {
     <div
       v-if="isOpen"
       ref="menuRef"
-			class="fixed z-50 min-w-50 overflow-visible rounded-corner border border-ui-border p-1 text-popover-foreground shadow-lg bg-ui-bg/80 backdrop-blur-md"
+			:class="[props.class, 'fixed z-50 min-w-50 overflow-visible rounded-corner border border-ui-border p-1 text-popover-foreground shadow-lg bg-ui-bg/80 backdrop-blur-md']"
       :style="{
         left: position ? `${position.x}px` : '0px',
         top: position ? `${position.y}px` : '0px',

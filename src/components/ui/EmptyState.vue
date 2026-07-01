@@ -20,12 +20,7 @@ withDefaults(defineProps<Props>(), {
 			},
 		]"
 	>
-		<component
-			v-if="icon"
-			:is="icon"
-			:size="48"
-			class="text-muted-foreground/30 mb-2 shrink-0"
-		/>
+		<img v-if="icon" :src="icon" class="w-12 h-12 mb-2 shrink-0 opacity-30" />
 		<h3 v-if="title" class="m-0 text-foreground text-base font-medium">
 			{{ title }}
 		</h3>

@@ -23,7 +23,12 @@ onErrorCaptured((err, instance, info) => {
 		}
 	}
 	if (err instanceof DOMException || String(err).includes('InvalidCharacterError')) {
-		console.error('[InvalidCharacterError captured]', err, 'info:', info, 'component:', instance?.type);
+		console.error('[InvalidCharacterError captured]', {
+			name: err.name,
+			message: err.message,
+			code: (err as any).code,
+			stack: err.stack?.split('\n').slice(0, 5).join('\n'),
+		}, 'info:', info, 'component:', (instance as any)?.type?.__name || (instance as any)?.type?.name);
 		return false;
 	}
 	return true;
