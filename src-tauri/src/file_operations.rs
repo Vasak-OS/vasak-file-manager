@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use crate::polkit;
 use crate::utils::normalize_path;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,7 +44,13 @@ impl ConflictResolution {
 
 fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<(), String> {
     if !destination.exists() {
-        fs::create_dir_all(destination).map_err(|error| error.to_string())?;
+        if let Err(error) = fs::create_dir_all(destination) {
+            if polkit::is_permission_denied(&error.to_string()) {
+                polkit::create_dir_with_pkexec(destination)?;
+            } else {
+                return Err(error.to_string());
+            }
+        }
     }
 
     for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
@@ -54,8 +61,12 @@ fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<(), String> {
 
         if source_path.is_dir() {
             copy_dir_recursive(&source_path, &dest_path)?;
-        } else {
-            fs::copy(&source_path, &dest_path).map_err(|error| error.to_string())?;
+        } else if let Err(error) = fs::copy(&source_path, &dest_path) {
+            if polkit::is_permission_denied(&error.to_string()) {
+                polkit::copy_with_pkexec(&source_path, &dest_path)?;
+            } else {
+                return Err(error.to_string());
+            }
         }
     }
 
@@ -146,10 +157,20 @@ pub fn check_conflicts(source_paths: Vec<String>, destination_path: String) -> V
 }
 
 fn remove_dir_or_file(path: &Path) -> Result<(), String> {
-    if path.is_dir() {
+    let result = if path.is_dir() {
         fs::remove_dir_all(path).map_err(|error| error.to_string())
     } else {
         fs::remove_file(path).map_err(|error| error.to_string())
+    };
+    match result {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            if polkit::is_permission_denied(&error) {
+                polkit::remove_with_pkexec(path)
+            } else {
+                Err(error)
+            }
+        }
     }
 }
 
@@ -237,11 +258,27 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
         };
 
         let result = if source.is_dir() {
-            copy_dir_recursive(source, &dest_path)
+            match copy_dir_recursive(source, &dest_path) {
+                Ok(()) => Ok(()),
+                Err(error) => {
+                    if polkit::is_permission_denied(&error) {
+                        polkit::copy_with_pkexec(source, &dest_path)
+                    } else {
+                        Err(error)
+                    }
+                }
+            }
         } else {
-            fs::copy(source, &dest_path)
-                .map(|_| ())
-                .map_err(|error| error.to_string())
+            match fs::copy(source, &dest_path) {
+                Ok(_) => Ok(()),
+                Err(error) => {
+                    if polkit::is_permission_denied(&error.to_string()) {
+                        polkit::copy_with_pkexec(source, &dest_path)
+                    } else {
+                        Err(error.to_string())
+                    }
+                }
+            }
         };
 
         match result {
@@ -346,34 +383,47 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
             dest_path
         };
 
-        let result = fs::rename(source, &final_dest_path);
+        let result = match fs::rename(source, &final_dest_path) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                let cross_device = error.raw_os_error() == Some(17) || error.raw_os_error() == Some(18);
+                if cross_device {
+                    let copy_ok = if source.is_dir() {
+                        match copy_dir_recursive(source, &final_dest_path) {
+                            Ok(()) => true,
+                            Err(e) if polkit::is_permission_denied(&e) => {
+                                polkit::copy_with_pkexec(source, &final_dest_path).is_ok()
+                            }
+                            Err(_) => false,
+                        }
+                    } else {
+                        match fs::copy(source, &final_dest_path) {
+                            Ok(_) => true,
+                            Err(e) if polkit::is_permission_denied(&e.to_string()) => {
+                                polkit::copy_with_pkexec(source, &final_dest_path).is_ok()
+                            }
+                            Err(_) => false,
+                        }
+                    };
+                    if copy_ok {
+                        let _ = remove_dir_or_file(source);
+                        Ok(())
+                    } else {
+                        Err("Failed to copy across devices even with elevation.".into())
+                    }
+                } else if polkit::is_permission_denied(&error.to_string()) {
+                    polkit::move_with_pkexec(source, &final_dest_path)
+                } else {
+                    Err(error.to_string())
+                }
+            }
+        };
 
         match result {
             Ok(()) => moved_count += 1,
             Err(error) => {
-                if error.raw_os_error() == Some(17) || error.raw_os_error() == Some(18) {
-                    let copy_result = if source.is_dir() {
-                        copy_dir_recursive(source, &final_dest_path)
-                    } else {
-                        fs::copy(source, &final_dest_path)
-                            .map(|_| ())
-                            .map_err(|copy_error| copy_error.to_string())
-                    };
-
-                    match copy_result {
-                        Ok(()) => {
-                            let _ = remove_dir_or_file(source);
-                            moved_count += 1;
-                        }
-                        Err(copy_error) => {
-                            failed_count += 1;
-                            last_error = Some(copy_error);
-                        }
-                    }
-                } else {
-                    failed_count += 1;
-                    last_error = Some(error.to_string());
-                }
+                failed_count += 1;
+                last_error = Some(error);
             }
         }
     }
@@ -434,13 +484,34 @@ pub fn rename_item(source_path: String, new_name: String) -> FileOperationResult
             failed_count: Some(0),
             skipped_count: Some(0),
         },
-        Err(error) => FileOperationResult {
-            success: false,
-            error: Some(error.to_string()),
-            copied_count: None,
-            failed_count: Some(1),
-            skipped_count: None,
-        },
+        Err(error) => {
+            if polkit::is_permission_denied(&error.to_string()) {
+                match polkit::rename_with_pkexec(source, &dest_path) {
+                    Ok(()) => FileOperationResult {
+                        success: true,
+                        error: None,
+                        copied_count: Some(1),
+                        failed_count: Some(0),
+                        skipped_count: Some(0),
+                    },
+                    Err(e) => FileOperationResult {
+                        success: false,
+                        error: Some(e),
+                        copied_count: None,
+                        failed_count: Some(1),
+                        skipped_count: None,
+                    },
+                }
+            } else {
+                FileOperationResult {
+                    success: false,
+                    error: Some(error.to_string()),
+                    copied_count: None,
+                    failed_count: Some(1),
+                    skipped_count: None,
+                }
+            }
+        }
     }
 }
 
@@ -460,11 +531,35 @@ pub fn delete_items(paths: Vec<String>, use_trash: bool) -> FileOperationResult 
         }
 
         let result = if use_trash {
-            trash::delete(path).map_err(|error| error.to_string())
+            trash::delete(path).map_err(|error| error.to_string()).or_else(|error| {
+                if polkit::is_permission_denied(&error) {
+                    polkit::remove_with_pkexec(path)
+                } else {
+                    Err(error)
+                }
+            })
         } else if path.is_dir() {
-            fs::remove_dir_all(path).map_err(|error| error.to_string())
+            match fs::remove_dir_all(path) {
+                Ok(()) => Ok(()),
+                Err(error) => {
+                    if polkit::is_permission_denied(&error.to_string()) {
+                        polkit::remove_with_pkexec(path)
+                    } else {
+                        Err(error.to_string())
+                    }
+                }
+            }
         } else {
-            fs::remove_file(path).map_err(|error| error.to_string())
+            match fs::remove_file(path) {
+                Ok(()) => Ok(()),
+                Err(error) => {
+                    if polkit::is_permission_denied(&error.to_string()) {
+                        polkit::remove_with_pkexec(path)
+                    } else {
+                        Err(error.to_string())
+                    }
+                }
+            }
         };
 
         match result {
@@ -497,13 +592,34 @@ pub fn ensure_directory(directory_path: String) -> FileOperationResult {
             failed_count: Some(0),
             skipped_count: Some(0),
         },
-        Err(error) => FileOperationResult {
-            success: false,
-            error: Some(error.to_string()),
-            copied_count: None,
-            failed_count: Some(1),
-            skipped_count: None,
-        },
+        Err(error) => {
+            if polkit::is_permission_denied(&error.to_string()) {
+                match polkit::create_dir_with_pkexec(directory) {
+                    Ok(()) => FileOperationResult {
+                        success: true,
+                        error: None,
+                        copied_count: Some(1),
+                        failed_count: Some(0),
+                        skipped_count: Some(0),
+                    },
+                    Err(e) => FileOperationResult {
+                        success: false,
+                        error: Some(e),
+                        copied_count: None,
+                        failed_count: Some(1),
+                        skipped_count: None,
+                    },
+                }
+            } else {
+                FileOperationResult {
+                    success: false,
+                    error: Some(error.to_string()),
+                    copied_count: None,
+                    failed_count: Some(1),
+                    skipped_count: None,
+                }
+            }
+        }
     }
 }
 
@@ -566,14 +682,31 @@ pub fn create_item(directory_path: String, name: String, is_directory: bool) -> 
     }
 
     let result = if is_directory {
-        fs::create_dir(&dest_path).map_err(|error| error.to_string())
+        match fs::create_dir(&dest_path) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                if polkit::is_permission_denied(&error.to_string()) {
+                    polkit::create_dir_with_pkexec(&dest_path)
+                } else {
+                    Err(error.to_string())
+                }
+            }
+        }
     } else {
-        fs::OpenOptions::new()
+        match fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&dest_path)
-            .map(|_| ())
-            .map_err(|error| error.to_string())
+        {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                if polkit::is_permission_denied(&error.to_string()) {
+                    polkit::create_file_with_pkexec(&dest_path)
+                } else {
+                    Err(error.to_string())
+                }
+            }
+        }
     };
 
     match result {

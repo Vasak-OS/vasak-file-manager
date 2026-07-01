@@ -741,7 +741,7 @@ fn linux_get_mountable_devices() -> Vec<MountableDevice> {
 pub fn mount_drive(device_path: String) -> Result<String, String> {
 
         if let Ok(output) = std::process::Command::new("udisksctl")
-            .args(["mount", "-b", &device_path, "--no-user-interaction"])
+            .args(["mount", "-b", &device_path])
             .output()
         {
             if output.status.success() {
@@ -781,7 +781,7 @@ pub fn unmount_drive(device_path: String, mount_point: String) -> Result<(), Str
 fn linux_unmount(device_path: &str, mount_point: &str) -> Result<(), String> {
     if device_path.starts_with("/dev/") {
         if let Ok(output) = std::process::Command::new("udisksctl")
-            .args(["unmount", "-b", device_path, "--no-user-interaction"])
+            .args(["unmount", "-b", device_path])
             .output()
         {
             if output.status.success() {

@@ -6,6 +6,7 @@ mod extract;
 mod file_operations;
 mod global_search;
 mod open_with;
+mod polkit;
 mod system_icons;
 mod terminal;
 pub mod utils;
