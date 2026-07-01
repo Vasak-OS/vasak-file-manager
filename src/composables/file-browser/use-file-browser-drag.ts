@@ -1,4 +1,4 @@
-import { startDrag as startOutboundDrag } from '@crabnebula/tauri-plugin-drag';
+import { startDrag as tauriStartDrag } from '@vasakgroup/plugin-drag-and-drop-wayland';
 import { resolveResource } from '@tauri-apps/api/path';
 import { computed, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
@@ -165,6 +165,20 @@ export function useFileBrowserDrag(options: {
 		);
 	}
 
+	function isCursorNearViewportEdge(clientX: number, clientY: number): boolean {
+		const margin = 30;
+		return (
+			clientX <= margin ||
+			clientY <= margin ||
+			clientX >= window.innerWidth - margin ||
+			clientY >= window.innerHeight - margin
+		);
+	}
+
+	function getDragDistance(clientX: number, clientY: number): number {
+		return Math.hypot(clientX - mouseDownX, clientY - mouseDownY);
+	}
+
 	function findCrossPanePath(
 		clientX: number,
 		clientY: number
@@ -209,11 +223,15 @@ export function useFileBrowserDrag(options: {
 
 		cleanup();
 
-		await startOutboundDrag({
-			item: filePaths,
-			icon: iconPath,
-			mode: dragMode,
-		});
+		try {
+			await tauriStartDrag(
+				filePaths,
+				iconPath,
+				{ mode: dragMode },
+			);
+		} catch (error) {
+			console.error('Outbound drag failed:', error);
+		}
 
 		isOutboundDragActive = false;
 	}
@@ -252,10 +270,18 @@ export function useFileBrowserDrag(options: {
 		cursorY.value = event.clientY;
 		operationType.value = event.shiftKey ? 'copy' : 'move';
 
-		if (isCursorOutsideViewport(event.clientX, event.clientY)) {
-			initiateOutboundDrag();
-			return;
+		if (!isOutboundDragActive) {
+			const dragDist = getDragDistance(event.clientX, event.clientY);
+			const nearEdge = isCursorNearViewportEdge(event.clientX, event.clientY);
+			const outside = isCursorOutsideViewport(event.clientX, event.clientY);
+
+			if (outside || nearEdge || dragDist > 200) {
+				initiateOutboundDrag();
+				return;
+			}
 		}
+
+		if (isOutboundDragActive) return;
 
 		const target = findDropTarget(event.clientX, event.clientY);
 		let newTargetPath = target ? target.path : '';

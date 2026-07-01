@@ -1,6 +1,7 @@
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;
+
 mod extract;
 mod file_operations;
 mod global_search;
@@ -20,18 +21,16 @@ pub fn run() {
         .plugin(tauri_plugin_config_manager::init())
         .plugin(tauri_plugin_vicons::init())
         .plugin(tauri_plugin_i18n_vsk::init(None))
-        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_denylist(&["quick-view"])
                 .build(),
         )
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_system_fonts::init())
-        .plugin(tauri_plugin_drag::init())
+        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_drag_and_drop_wayland::init())
         .invoke_handler(tauri::generate_handler![
             dir_reader::read_dir,
             dir_reader::get_system_drives,

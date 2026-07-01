@@ -1,8 +1,11 @@
 import I18n from '@vasakgroup/tauri-plugin-i18n';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
+import { attachConsole } from '@tauri-apps/plugin-log';
 import App from '@/App.vue';
 import '@/assets/main.css';
+
+const detach = await attachConsole();
 
 const i18n = I18n.getInstance();
 const app = createApp(App);
