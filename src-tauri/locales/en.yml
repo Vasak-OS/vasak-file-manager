@@ -216,6 +216,10 @@ create: Create
 drag:
   holdShiftToChangeMode: Hold Shift to change drag mode
   holdCtrlForCurrentDirDrop: Hold Ctrl to drop in current directory
+  copy: Copy
+  move: Move
+  item: item
+  items: items
 conflictDialog:
   title: File Conflict
   skip: Skip

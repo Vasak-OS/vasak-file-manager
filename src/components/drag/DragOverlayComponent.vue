@@ -35,12 +35,12 @@ const operationIcon = computed(() =>
 	props.operationType === 'copy' ? copyIcon.value : folderInputIcon.value
 );
 
-const description = computed(() => {
-	if (props.operationType === 'copy') {
-		return `drag.copyItems ${props.itemCount}`;
-	}
+const operationLabel = computed(() =>
+	props.operationType === 'copy' ? t('drag.copy') : t('drag.move')
+);
 
-	return `drag.moveItems ${props.itemCount}`;
+const description = computed(() => {
+	return `${operationLabel.value} ${props.itemCount} ${props.itemCount === 1 ? t('drag.item') : t('drag.items')}`;
 });
 
 
@@ -49,15 +49,16 @@ const description = computed(() => {
 <template>
   <Teleport to="body">
     <Transition name="file-browser-drag-overlay">
-      <div v-if="props.isActive" class="px-4 py-2 whitespace-nowrap fixed z-50 border border-ui-border bg-ui-bg/80 flex flex-col rounded-corner gap-1" :style="overlayStyle">
-        <div class="flex items-center gap-2 text-primary font-medium">
+      <div v-if="props.isActive" class="px-4 py-2 whitespace-nowrap fixed z-50 border border-ui-border bg-ui-bg/80 backdrop-blur-sm flex flex-col rounded-corner gap-1 pointer-events-none" :style="overlayStyle">
+        <div class="flex items-center gap-2 text-primary font-medium text-sm">
+          <img :src="operationIcon" alt="Drag operation" class="h-4 w-4 flex-shrink-0" />
           <span>{{ description }}</span>
-          <img :src="operationIcon" alt="Drag operation" class="h-4 w-4" />
         </div>
-        <div class="font-[11px] text-tx-muted">
+        <div class="text-[11px] text-tx-muted">
           {{ t('drag.holdShiftToChangeMode') }}
-          <EntryIconComponent v-for="item in props.dragItems" :entry="item" :size="24" class="h-8 w-8 fixed z-50" :style="overlayIconStyle" />
-          <img :src="operationIcon" alt="Drag operation" class="h-8 w-8 fixed z-50" :style="overlayIconStyle" />
+        </div>
+        <div class="fixed z-50 pointer-events-none" :style="overlayIconStyle">
+          <EntryIconComponent v-if="props.dragItems.length > 0" :entry="props.dragItems[0]" :size="24" class="h-8 w-8" />
         </div>
       </div>
     </Transition>

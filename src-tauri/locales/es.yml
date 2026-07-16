@@ -213,6 +213,10 @@ relativeTime:
 drag:
   holdShiftToChangeMode: Mantén presionado Shift para cambiar el modo de arrastre
   holdCtrlForCurrentDirDrop: Mantén presionado Ctrl para soltar en el directorio actual
+  copy: Copiar
+  move: Mover
+  item: elemento
+  items: elementos
 conflictDialog:
   title: Conflicto de Archivo
   skip: Omitir

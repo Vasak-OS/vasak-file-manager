@@ -30,7 +30,8 @@ export type ShortcutId =
 	| 'focusNextZone'
 	| 'focusPreviousZone'
 	| 'refresh'
-	| 'showQuickReference';
+	| 'showQuickReference'
+	| 'toggleQuickLook';
 
 export type ShortcutKeys = {
 	ctrl?: boolean;

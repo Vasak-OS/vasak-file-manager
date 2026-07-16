@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, provide, ref } from 'vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
+import { useDragTabActivation, DRAG_TAB_ACTIVATION_KEY } from '@/composables/use-drag-tab-activation';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
@@ -24,6 +25,9 @@ const props = withDefaults(
 
 const workspacesStore = useWorkspacesStore();
 const shortcutsStore = useShortcutsStore();
+const { registerTab, unregisterTab } = useDragTabActivation();
+
+provide(DRAG_TAB_ACTIVATION_KEY, { registerTab, unregisterTab });
 
 const teleportDisabled = computed(() => !props.teleportTarget);
 const teleportTo = computed(() => props.teleportTarget || 'body');

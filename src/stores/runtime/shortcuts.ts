@@ -460,6 +460,20 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: true,
 	},
+	{
+		id: 'toggleQuickLook',
+		labelKey: 'shortcuts.toggleQuickLook',
+		defaultKeys: {
+			key: ' ',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+			dirItemIsSelected: true,
+		},
+		isReadOnly: false,
+	},
 ];
 
 export function formatShortcutKeys(keys: ShortcutKeys): string {

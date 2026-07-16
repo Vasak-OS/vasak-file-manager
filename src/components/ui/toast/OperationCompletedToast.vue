@@ -9,6 +9,7 @@ interface Props {
 	failedCount?: number;
 	skippedCount?: number;
 	isPartialFailure?: boolean;
+	isCancelled?: boolean;
 	onClick?: () => void;
 }
 
@@ -26,6 +27,9 @@ const operationLabel = computed(() => {
 });
 
 const title = computed(() => {
+	if (props.isCancelled) {
+		return `${operationLabel.value} cancelada`;
+	}
 	if (props.isPartialFailure) {
 		return `${operationLabel.value} completada parcialmente`;
 	}
@@ -33,6 +37,19 @@ const title = computed(() => {
 });
 
 const summary = computed(() => {
+	if (props.isCancelled) {
+		const parts: string[] = [];
+		if (props.successCount && props.successCount > 0) {
+			parts.push(`${props.successCount} procesados`);
+		}
+		if (props.skippedCount && props.skippedCount > 0) {
+			parts.push(`${props.skippedCount} pendientes`);
+		}
+		if (props.failedCount && props.failedCount > 0) {
+			parts.push(`${props.failedCount} fallidos`);
+		}
+		return parts.join(', ');
+	}
 	if (!props.isPartialFailure) return null;
 	const parts: string[] = [];
 	if (props.successCount && props.successCount > 0) {
@@ -60,9 +77,11 @@ function handleClick() {
   <div
     :class="[
       'flex items-start gap-3 w-full max-w-md p-4 rounded-corner border',
-      isPartialFailure
-        ? 'bg-ui-bg/80 border-status-warning/40'
-        : 'bg-ui-bg/80 border-ui-border',
+      isCancelled
+        ? 'bg-ui-bg/80 border-tx-muted/40'
+        : isPartialFailure
+          ? 'bg-ui-bg/80 border-status-warning/40'
+          : 'bg-ui-bg/80 border-ui-border',
       isClickable ? 'cursor-pointer hover:bg-ui-surface/60 transition-colors' : ''
     ]"
     :role="isClickable ? 'button' : undefined"
@@ -75,11 +94,20 @@ function handleClick() {
     <div
       :class="[
         'flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5',
-        isPartialFailure ? 'bg-status-warning/20' : 'bg-status-success/20'
+        isCancelled ? 'bg-tx-muted/20' : isPartialFailure ? 'bg-status-warning/20' : 'bg-status-success/20'
       ]"
     >
       <svg
-        v-if="!isPartialFailure"
+        v-if="isCancelled"
+        class="w-3 h-3 text-tx-muted"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+      <svg
+        v-else-if="!isPartialFailure"
         class="w-3 h-3 text-status-success"
         fill="none"
         stroke="currentColor"

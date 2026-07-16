@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, ref } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
+import { DRAG_TAB_ACTIVATION_KEY } from '@/composables/use-drag-tab-activation';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -38,6 +39,7 @@ const LONG_PRESS_MOVE_THRESHOLD = 10;
 const isDropdownOpen = ref(false);
 const isLongPressing = ref(false);
 const isPressing = ref(false);
+const tabElementRef = ref<HTMLElement | null>(null);
 const startPosition = ref({
 	x: 0,
 	y: 0,
@@ -158,6 +160,21 @@ async function closeOtherTabs() {
 async function closeAllTabs() {
 	await workspacesStore.closeAllTabGroups();
 }
+
+// Drag tab activation: register this tab element for hover detection
+const dragTabActivation = inject(DRAG_TAB_ACTIVATION_KEY, null);
+
+onMounted(() => {
+	if (dragTabActivation && tabElementRef.value && props.tabGroup?.length) {
+		dragTabActivation.registerTab(props.tabGroup, tabElementRef.value);
+	}
+});
+
+onUnmounted(() => {
+	if (dragTabActivation && props.tabGroup?.length) {
+		dragTabActivation.unregisterTab(props.tabGroup);
+	}
+});
 </script>
 
 <template>
@@ -166,7 +183,7 @@ async function closeAllTabs() {
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child :disabled="true">
-          <div v-if="props.tabGroup?.length" v-wave class="relative flex rounded-corner p-1 px-3 pr-3 items-center border border-ui-border"
+          <div v-if="props.tabGroup?.length" ref="tabElementRef" v-wave class="relative flex rounded-corner p-1 px-3 pr-3 items-center border border-ui-border"
             :class="[
               isPinned ? 'w-24 max-w-24' : 'w-34 max-w-34',
               { 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }

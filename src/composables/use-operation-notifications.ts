@@ -103,13 +103,38 @@ export function useOperationNotifications() {
 	}
 
 	/**
+	 * Show a cancellation notification with processed/pending counts.
+	 * Requirement 11.5: Report "X files processed, Y files pending (cancelled)"
+	 */
+	function showCancellationNotification(operation: FileOperation): void {
+		const error = operation.error;
+		toast.custom(markRaw(OperationCompletedToast), {
+			componentProps: {
+				operationType: operation.type,
+				destinationPath: operation.destinationPath,
+				successCount: error?.successfulFiles ?? 0,
+				failedCount: error?.failedFiles ?? 0,
+				skippedCount: error?.skippedFiles ?? 0,
+				isPartialFailure: true,
+				isCancelled: true,
+			},
+			duration: AUTO_DISMISS_DURATION,
+		});
+	}
+
+	/**
 	 * Handle an operation that just completed or failed.
 	 */
 	function handleOperationComplete(operation: FileOperation): void {
 		if (notifiedOperations.has(operation.id)) return;
 		notifiedOperations.add(operation.id);
 
-		if (operation.status === 'completed') {
+		if (operation.status === 'cancelled') {
+			// Cancelled batch — show processed/pending summary (Req 11.5)
+			if (operation.error) {
+				showCancellationNotification(operation);
+			}
+		} else if (operation.status === 'completed') {
 			// Check if it's a partial failure (has error with failed/skipped files)
 			if (
 				operation.error &&
@@ -133,7 +158,7 @@ export function useOperationNotifications() {
 		(operations) => {
 			for (const op of operations) {
 				if (
-					(op.status === 'completed' || op.status === 'failed') &&
+					(op.status === 'completed' || op.status === 'failed' || op.status === 'cancelled') &&
 					!notifiedOperations.has(op.id)
 				) {
 					handleOperationComplete(op);
