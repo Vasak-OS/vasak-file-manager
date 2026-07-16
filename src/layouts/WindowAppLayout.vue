@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import BookmarkPanel from '@/components/bookmark/BookmarkPanel.vue';
 import NavigatorBarComponent from '@/components/navigator/NavigatorBarComponent.vue';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
@@ -16,6 +17,7 @@ const globalSearchStore = useGlobalSearchStore();
 const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
 const isInfoPanelVisible = ref(true);
+const isBookmarkPanelVisible = ref(false);
 
 const isSplitView = computed(() => {
 	return (workspacesStore.currentTabGroup?.length ?? 0) > 1;
@@ -37,10 +39,24 @@ function handleCurrentDirEntryUpdate(entry: DirEntry | null) {
 function handleToggleInfoPanel() {
 	isInfoPanelVisible.value = !isInfoPanelVisible.value;
 }
+
+function handleToggleBookmarks() {
+	isBookmarkPanelVisible.value = !isBookmarkPanelVisible.value;
+}
+
+async function handleBookmarkNavigate(path: string) {
+	await workspacesStore.navigateCurrentTab(path);
+}
 </script>
 <template>
   <div class="h-screen w-screen bg-ui-bg/80 rounded-corner-window flex border border-ui-border overflow-hidden">
-    <SidebarComponent />
+    <SidebarComponent @toggle-bookmarks="handleToggleBookmarks" />
+    <div
+      v-if="isBookmarkPanelVisible"
+      class="w-56 h-full border-r border-ui-border bg-ui-bg/90 flex-shrink-0"
+    >
+      <BookmarkPanel @navigate="handleBookmarkNavigate" />
+    </div>
     <div class="flex-1 flex flex-col">
       <TopBarComponent>
         <TabBarComponent teleport-target="" />

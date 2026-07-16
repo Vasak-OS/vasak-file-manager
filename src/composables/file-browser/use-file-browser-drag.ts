@@ -2,6 +2,7 @@ import { startDrag as tauriStartDrag } from '@vasakgroup/plugin-drag-and-drop-wa
 import { resolveResource } from '@tauri-apps/api/path';
 import { computed, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
+import { useDragStateStore } from '@/stores/runtime/drag-state';
 import { entryPathSelector } from '@/utils/css-escape';
 import type { DirEntry } from '@/types/dir-entry';
 
@@ -44,6 +45,7 @@ export function useFileBrowserDrag(options: {
 	disableBackgroundDrop?: boolean;
 }) {
 	const dismissalLayerStore = useDismissalLayerStore();
+	const dragStateStore = useDragStateStore();
 	const paneId = nextPaneId++;
 	crossPaneRegistry.push({
 		id: paneId,
@@ -271,6 +273,9 @@ export function useFileBrowserDrag(options: {
 		cursorY.value = event.clientY;
 		operationType.value = event.shiftKey ? 'copy' : 'move';
 
+		// Update shared drag state cursor position
+		dragStateStore.updateCursor(event.clientX, event.clientY);
+
 		if (!isOutboundDragActive) {
 			const dragDist = getDragDistance(event.clientX, event.clientY);
 			const nearEdge = isCursorNearViewportEdge(event.clientX, event.clientY);
@@ -313,6 +318,10 @@ export function useFileBrowserDrag(options: {
 		cursorX.value = event.clientX;
 		cursorY.value = event.clientY;
 		operationType.value = event.shiftKey ? 'copy' : 'move';
+
+		// Publish to shared drag state for external targets (e.g. BookmarkPanel)
+		dragStateStore.startDrag(dragItems.value);
+		dragStateStore.updateCursor(event.clientX, event.clientY);
 
 		collectDropTargets();
 
@@ -367,6 +376,9 @@ export function useFileBrowserDrag(options: {
 		dropTargets = [];
 		currentTargetElement = null;
 		crossPaneDropTargetPaneId.value = null;
+
+		// Clear shared drag state
+		dragStateStore.endDrag();
 
 		if (dismissalLayerId) {
 			dismissalLayerStore.unregisterLayer(dismissalLayerId);

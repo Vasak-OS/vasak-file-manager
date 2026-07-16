@@ -118,7 +118,7 @@ function handleFilterInteractOutside(event: Event) {
 </script>
 
 <template>
-  <div class="@container flex h-12 items-center p-2 border-b border-ui-border gap-3">
+  <div class="@container flex h-12 items-center p-2 border-b border-ui-border gap-3" data-focus-zone="toolbar">
     <div class="hidden @[400px]:flex shrink-0 gap-1">
       <Tooltip>
         <TooltipTrigger as-child>

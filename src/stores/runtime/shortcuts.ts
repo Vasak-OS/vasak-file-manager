@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
 
 export type ShortcutConditions = {
@@ -16,6 +16,14 @@ export type ShortcutDefinition = {
 	conditions: ShortcutConditions;
 	isReadOnly: boolean;
 };
+
+export interface CustomShortcutConfig {
+	shortcutId: ShortcutId;
+	customKeys: ShortcutKeys;
+	modifiedAt: number;
+}
+
+const STORAGE_KEY = 'vasak-shortcuts-custom';
 
 const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 	{
@@ -315,6 +323,143 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
+	{
+		id: 'closeTab',
+		labelKey: 'shortcuts.closeCurrentTab',
+		defaultKeys: {
+			ctrl: true,
+			key: 'w',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'restoreClosedTab',
+		labelKey: 'shortcuts.restoreClosedTab',
+		defaultKeys: {
+			ctrl: true,
+			shift: true,
+			key: 't',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'navigateBackAlt',
+		labelKey: 'shortcuts.navigateBackAlt',
+		defaultKeys: {
+			alt: true,
+			key: 'ArrowLeft',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'extendSelectionUp',
+		labelKey: 'shortcuts.extendSelectionUp',
+		defaultKeys: {
+			shift: true,
+			key: 'ArrowUp',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'extendSelectionDown',
+		labelKey: 'shortcuts.extendSelectionDown',
+		defaultKeys: {
+			shift: true,
+			key: 'ArrowDown',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'toggleItemSelection',
+		labelKey: 'shortcuts.toggleItemSelection',
+		defaultKeys: {
+			ctrl: true,
+			key: ' ',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'focusNextZone',
+		labelKey: 'shortcuts.focusNextZone',
+		defaultKeys: {
+			key: 'Tab',
+		},
+		scope: 'global',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: true,
+	},
+	{
+		id: 'focusPreviousZone',
+		labelKey: 'shortcuts.focusPreviousZone',
+		defaultKeys: {
+			shift: true,
+			key: 'Tab',
+		},
+		scope: 'global',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: true,
+	},
+	{
+		id: 'refresh',
+		labelKey: 'shortcuts.refreshCurrentDirectory',
+		defaultKeys: {
+			key: 'F5',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'showQuickReference',
+		labelKey: 'shortcuts.showQuickReference',
+		defaultKeys: {
+			key: 'F1',
+		},
+		scope: 'global',
+		conditions: {
+			dialogIsOpened: false,
+		},
+		isReadOnly: true,
+	},
 ];
 
 export function formatShortcutKeys(keys: ShortcutKeys): string {
@@ -442,15 +587,68 @@ type HandlerRegistration = {
 	checkItemSelected?: () => boolean;
 };
 
+/** Normalize ShortcutKeys to a canonical string for comparison */
+function normalizeKeysToString(keys: ShortcutKeys): string {
+	const parts: string[] = [];
+	if (keys.ctrl) parts.push('ctrl');
+	if (keys.alt) parts.push('alt');
+	if (keys.meta) parts.push('meta');
+	if (keys.shift) parts.push('shift');
+	parts.push(keys.key.toLowerCase());
+	return parts.join('+');
+}
+
+function loadCustomShortcuts(): CustomShortcutConfig[] {
+	try {
+		const stored = localStorage.getItem(STORAGE_KEY);
+		if (stored) {
+			const parsed = JSON.parse(stored);
+			if (Array.isArray(parsed)) {
+				return parsed;
+			}
+		}
+	} catch (error) {
+		console.error('Failed to load custom shortcuts from storage:', error);
+	}
+	return [];
+}
+
+function persistCustomShortcuts(configs: CustomShortcutConfig[]): void {
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
+	} catch (error) {
+		console.error('Failed to persist custom shortcuts:', error);
+	}
+}
+
 export const useShortcutsStore = defineStore('shortcuts', () => {
 	const definitions = ref<ShortcutDefinition[]>(DEFAULT_SHORTCUTS);
+	const customConfigs = ref<CustomShortcutConfig[]>(loadCustomShortcuts());
 	const handlers = reactive(new Map<ShortcutId, HandlerRegistration>());
 	const isInitialized = ref(false);
 	const isListenerActive = ref(false);
+	const isQuickReferenceVisible = ref(false);
+	const isConfigPanelVisible = ref(false);
+
+	/** Shortcuts grouped by scope */
+	const shortcutsByScope = computed(() => {
+		const grouped: Record<string, ShortcutDefinition[]> = {
+			global: [],
+			navigator: [],
+			settings: [],
+		};
+		for (const def of definitions.value) {
+			grouped[def.scope].push(def);
+		}
+		return grouped;
+	});
 
 	function getShortcutKeys(shortcutId: ShortcutId): ShortcutKeys {
-		const definition = definitions.value.find((definitionItem) => definitionItem.id === shortcutId);
+		// Check custom config first
+		const custom = customConfigs.value.find((c) => c.shortcutId === shortcutId);
+		if (custom) return custom.customKeys;
 
+		const definition = definitions.value.find((definitionItem) => definitionItem.id === shortcutId);
 		return definition?.defaultKeys ?? { key: '' };
 	}
 
@@ -460,6 +658,112 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 
 	function getShortcutDefinition(shortcutId: ShortcutId): ShortcutDefinition | undefined {
 		return definitions.value.find((definitionItem) => definitionItem.id === shortcutId);
+	}
+
+	/** Check if a shortcut has been customized */
+	function isCustomized(shortcutId: ShortcutId): boolean {
+		return customConfigs.value.some((c) => c.shortcutId === shortcutId);
+	}
+
+	/**
+	 * Detect conflict: find an existing shortcut that uses the same key combination
+	 * within the same scope. Returns the conflicting definition or null.
+	 */
+	function findConflictInScope(
+		keys: ShortcutKeys,
+		scope: 'global' | 'navigator' | 'settings',
+		excludeShortcutId?: ShortcutId
+	): ShortcutDefinition | null {
+		const targetNormalized = normalizeKeysToString(keys);
+
+		for (const definition of definitions.value) {
+			if (definition.id === excludeShortcutId) continue;
+			if (definition.scope !== scope) continue;
+
+			const existingKeys = getShortcutKeys(definition.id);
+			const existingNormalized = normalizeKeysToString(existingKeys);
+
+			if (existingNormalized === targetNormalized) {
+				return definition;
+			}
+		}
+
+		return null;
+	}
+
+	/** Legacy findConflictingShortcut (checks all scopes) */
+	function findConflictingShortcut(
+		keys: ShortcutKeys,
+		excludeShortcutId?: ShortcutId
+	): ShortcutDefinition | null {
+		const keysLabel = formatShortcutKeys(keys);
+
+		for (const definition of definitions.value) {
+			if (definition.id === excludeShortcutId) continue;
+
+			const existingLabel = getShortcutLabel(definition.id);
+
+			if (existingLabel === keysLabel) {
+				return definition;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Assign a custom key combination to a shortcut.
+	 * Returns { success: true } or { success: false, conflict: ShortcutDefinition }.
+	 */
+	function assignCustomKeys(
+		shortcutId: ShortcutId,
+		keys: ShortcutKeys
+	): { success: true } | { success: false; conflict: ShortcutDefinition } {
+		const definition = getShortcutDefinition(shortcutId);
+		if (!definition || definition.isReadOnly) {
+			return { success: true }; // Read-only shortcuts can't be changed
+		}
+
+		// Check for conflict in the same scope
+		const conflict = findConflictInScope(keys, definition.scope, shortcutId);
+		if (conflict) {
+			return { success: false, conflict };
+		}
+
+		// Remove existing custom config for this shortcut
+		const existingIndex = customConfigs.value.findIndex((c) => c.shortcutId === shortcutId);
+		if (existingIndex >= 0) {
+			customConfigs.value.splice(existingIndex, 1);
+		}
+
+		// Check if this is the same as default — if so, don't add a custom entry
+		const defaultNormalized = normalizeKeysToString(definition.defaultKeys);
+		const newNormalized = normalizeKeysToString(keys);
+		if (defaultNormalized !== newNormalized) {
+			customConfigs.value.push({
+				shortcutId,
+				customKeys: keys,
+				modifiedAt: Date.now(),
+			});
+		}
+
+		persistCustomShortcuts(customConfigs.value);
+		return { success: true };
+	}
+
+	/** Reset a single shortcut to default */
+	function resetShortcut(shortcutId: ShortcutId): void {
+		const index = customConfigs.value.findIndex((c) => c.shortcutId === shortcutId);
+		if (index >= 0) {
+			customConfigs.value.splice(index, 1);
+			persistCustomShortcuts(customConfigs.value);
+		}
+	}
+
+	/** Restore all shortcuts to their default values */
+	function restoreAllDefaults(): void {
+		customConfigs.value = [];
+		persistCustomShortcuts(customConfigs.value);
 	}
 
 	function checkConditions(
@@ -530,25 +834,6 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 		return matchingShortcuts;
 	}
 
-	function findConflictingShortcut(
-		keys: ShortcutKeys,
-		excludeShortcutId?: ShortcutId
-	): ShortcutDefinition | null {
-		const keysLabel = formatShortcutKeys(keys);
-
-		for (const definition of definitions.value) {
-			if (definition.id === excludeShortcutId) continue;
-
-			const existingLabel = getShortcutLabel(definition.id);
-
-			if (existingLabel === keysLabel) {
-				return definition;
-			}
-		}
-
-		return null;
-	}
-
 	async function handleKeydown(event: KeyboardEvent): Promise<boolean> {
 		const matchingShortcutIds = findAllMatchingShortcuts(event);
 		if (matchingShortcutIds.length === 0) return false;
@@ -600,10 +885,37 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 		isListenerActive.value = false;
 	}
 
+	function toggleQuickReference(): void {
+		isQuickReferenceVisible.value = !isQuickReferenceVisible.value;
+	}
+
+	function toggleConfigPanel(): void {
+		isConfigPanelVisible.value = !isConfigPanelVisible.value;
+	}
+
+	/** Alias for assignCustomKeys — used by config panel */
+	function setCustomKeys(
+		shortcutId: ShortcutId,
+		keys: ShortcutKeys
+	): { success: true } | { success: false; conflict: ShortcutDefinition } {
+		return assignCustomKeys(shortcutId, keys);
+	}
+
+	/** Reset all shortcuts to their default values (alias for restoreAllDefaults) */
+	function resetAllToDefaults(): void {
+		restoreAllDefaults();
+	}
+
 	function init(): void {
 		if (isInitialized.value) return;
 		isInitialized.value = true;
 		startGlobalListener();
+
+		// Register F1 quick reference handler
+		registerHandler('showQuickReference', () => {
+			toggleQuickReference();
+			return undefined;
+		});
 	}
 
 	function cleanup(): void {
@@ -614,17 +926,30 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 
 	return {
 		definitions,
+		customConfigs,
 		isInitialized,
+		isQuickReferenceVisible,
+		isConfigPanelVisible,
+		shortcutsByScope,
 		getShortcutKeys,
 		getShortcutLabel,
 		getShortcutDefinition,
+		isCustomized,
+		findConflictInScope,
+		findConflictingShortcut,
+		assignCustomKeys,
+		setCustomKeys,
+		resetShortcut,
+		restoreAllDefaults,
+		resetAllToDefaults,
 		registerHandler,
 		unregisterHandler,
 		findMatchingShortcut,
-		findConflictingShortcut,
 		handleKeydown,
 		startGlobalListener,
 		stopGlobalListener,
+		toggleQuickReference,
+		toggleConfigPanel,
 		init,
 		cleanup,
 	};

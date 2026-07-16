@@ -57,7 +57,7 @@ const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 	{
 		action: 'toggle-favorite',
 		selectionTypes: ['single', 'multiple'],
-		entryTypes: ['file', 'directory'],
+		entryTypes: ['directory'],
 	},
 	{
 		action: 'edit-tags',

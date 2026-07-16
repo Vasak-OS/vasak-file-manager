@@ -15,6 +15,8 @@ import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import type { DirEntry } from '@/types/dir-entry';
 import type { DriveInfo } from '@/types/drive-info';
 
+const STALE_INDEX_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+
 type FileBrowserInstance = InstanceType<typeof FileBrowserComponent>;
 
 const emit = defineEmits<{
@@ -42,6 +44,8 @@ const chevronDownIcon = useReactiveIcon(() => getSymbolSource('arrow-down'));
 const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const loaderIcon = useReactiveIcon(() => getSymbolSource('content-loading-symbolic'));
 const slidersHorizontalIcon = useReactiveIcon(() => getSymbolSource('dialog-filters'));
+const refreshIcon = useReactiveIcon(() => getSymbolSource('view-refresh'));
+const warningIcon = useReactiveIcon(() => getSymbolSource('dialog-warning'));
 
 function openSearchSettings() {}
 
@@ -58,6 +62,36 @@ const showScanProgress = computed(
 		globalSearchStore.totalDrivesCount > 0
 );
 const isCommitting = computed(() => globalSearchStore.isCommitting);
+
+// Requirement 9.6: Stale index indicator (>30min or 0 elements)
+const isIndexStale = computed(() => {
+	if (!globalSearchStore.isIndexValid) return false;
+	if (globalSearchStore.isScanInProgress || globalSearchStore.isCommitting) return false;
+	if (globalSearchStore.indexedItemCount === 0) return true;
+	if (!globalSearchStore.lastScanTime) return true;
+	const timeSinceLastScan = Date.now() - globalSearchStore.lastScanTime;
+	return timeSinceLastScan > STALE_INDEX_THRESHOLD_MS;
+});
+
+// Requirement 9.7: No index state — index doesn't exist or is invalid
+const isIndexMissing = computed(() => {
+	if (globalSearchStore.isScanInProgress || globalSearchStore.isCommitting) return false;
+	return !globalSearchStore.isIndexValid && !hasIndexData.value;
+});
+
+// Requirement 9.7: Disable search input when index is missing
+const isSearchDisabled = computed(() => {
+	return isIndexMissing.value;
+});
+
+// Requirement 9.8: Empty state when search returns 0 results
+const showEmptyResults = computed(() => {
+	return (
+		globalSearchStore.query.trim().length > 0 &&
+		globalSearchStore.results.length === 0 &&
+		!globalSearchStore.isSearching
+	);
+});
 
 function formatRelativeTime(timestamp: number): string {
 	const now = Date.now();
@@ -152,7 +186,12 @@ function isDriveCollapsed(driveRoot: string): boolean {
 }
 
 function getEntryDescription(entry: DirEntry): string | undefined {
-	return entry.path;
+	const driveRoot = getDriveRoot(entry.path);
+	// Show path relative to the drive root
+	const relativePath = entry.path.startsWith(driveRoot)
+		? entry.path.slice(driveRoot.length).replace(/^\//, '')
+		: entry.path;
+	return relativePath || entry.path;
 }
 
 const searchFileBrowserRefs = ref<Map<string, FileBrowserInstance>>(new Map());
@@ -207,6 +246,14 @@ function handleSearchEntryOpen(entry: DirEntry) {
 	emit('openEntry', entry);
 }
 
+function handleStartScan() {
+	globalSearchStore.startScan();
+}
+
+function handleReindex() {
+	globalSearchStore.startScan();
+}
+
 function handleClose() {
 	emit('close');
 }
@@ -258,7 +305,7 @@ onMounted(async () => {
           :value="globalSearchStore.query"
           :placeholder="'globalSearch.globalSearch'"
           class="flex-1 pl-10 pr-10"
-          :disabled="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
+          :disabled="isSearchDisabled"
           @input="globalSearchStore.setQuery(String(($event.target as HTMLInputElement).value ?? ''))"
         />
         <button v-if="globalSearchStore.query" variant="ghost" size="icon" class="absolute right-1 h-8 w-8"
@@ -340,6 +387,24 @@ onMounted(async () => {
     </div>
 
     <div class="flex min-h-0 flex-1 flex-col px-2 pr-0">
+      <!-- Requirement 9.6: Stale index indicator -->
+      <div v-if="isIndexStale && !showScanProgress" class="mx-1 mb-2 flex items-center gap-2 rounded-sm border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+        <img :src="warningIcon" class="h-4 w-4 shrink-0 opacity-70" />
+        <div class="flex flex-1 flex-col gap-0.5">
+          <span class="text-[12px] text-yellow-700 dark:text-yellow-400">
+            {{ t('globalSearch.indexStale') }}
+          </span>
+          <span v-if="lastScanRelative" class="text-[11px] text-yellow-600/70 dark:text-yellow-500/70">
+            {{ lastScanRelative }}
+          </span>
+        </div>
+        <button class="flex items-center gap-1 rounded-sm bg-yellow-500/20 px-2 py-1 text-[11px] font-medium text-yellow-700 hover:bg-yellow-500/30 dark:text-yellow-400"
+          @click="handleReindex">
+          <img :src="refreshIcon" class="h-3.5 w-3.5" />
+          {{ t('globalSearch.reindex') }}
+        </button>
+      </div>
+
       <div v-if="showScanProgress" class="flex flex-col gap-2 bg-primary/5 px-4 py-3">
         <div class="flex flex-wrap items-center gap-2 text-[13px]">
           <span class="text-muted-foreground">
@@ -370,9 +435,16 @@ onMounted(async () => {
 
       <div class="flex-1 overflow-y-auto">
         <div class="flex min-h-full flex-col gap-0.5 pr-[var(--search-scroll-gutter)]">
-          <EmptyState v-if="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
-            :icon="searchIcon" :title="t('globalSearch.searchDataIncomplete')"
-            :description="t('globalSearch.noDrivesSelected')" :bordered="false" />
+          <!-- Requirement 9.7: No index state — disable search and offer scan -->
+          <EmptyState v-if="isIndexMissing"
+            :icon="warningIcon" :title="t('globalSearch.indexMissing')"
+            :description="t('globalSearch.indexMissingDescription')" :bordered="false">
+            <button class="mt-3 flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
+              @click="handleStartScan">
+              <img :src="refreshIcon" class="h-4 w-4 invert" />
+              {{ t('globalSearch.startIndexing') }}
+            </button>
+          </EmptyState>
 
           <div v-else-if="!globalSearchStore.query.trim()" class="flex flex-col items-center justify-center gap-3 px-6 py-16">
             <img :src="searchIcon" :size="48" class="text-muted-foreground/30" />
@@ -392,8 +464,10 @@ onMounted(async () => {
             </button>
           </div>
 
-          <EmptyState v-else-if="globalSearchStore.results.length === 0 && !globalSearchStore.isSearching"
-            :icon="searchIcon" :title="t('globalSearch.searchStats.nothingFound')" :bordered="false" />
+          <!-- Requirement 9.8: Empty state when no results -->
+          <EmptyState v-else-if="showEmptyResults"
+            :icon="searchIcon" :title="t('globalSearch.searchStats.nothingFound')"
+            :description="`&quot;${globalSearchStore.query}&quot; — ${t('globalSearch.noResultsDescription')}`" :bordered="false" />
 
           <template v-else-if="globalSearchStore.results.length > 0">
             <div v-for="group in groupedResults" :key="group.driveRoot">

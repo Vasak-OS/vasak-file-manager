@@ -30,6 +30,12 @@ globalSearch:
   resultLimit: Límite de Resultados
   results: Resultados
   searchDataIncomplete: Datos de búsqueda incompletos
+  indexStale: El índice está desactualizado (último escaneo hace más de 30 minutos)
+  indexMissing: Índice de búsqueda no disponible
+  indexMissingDescription: El índice de búsqueda no existe o no es válido. Inicie la indexación para habilitar la búsqueda.
+  startIndexing: Iniciar Indexación
+  reindex: Re-indexar
+  noResultsDescription: Intente con un término diferente o revise sus filtros
   searchStats:
     nothingFound: Sin resultados
   showDirectories: Mostrar Carpetas
@@ -235,6 +241,9 @@ notifications:
 tabs:
   newTab: Nueva Pestaña
   close: Cerrar
+  duplicate: Duplicar
+  pin: Fijar
+  unpin: Desfijar
   closeOtherTabs: Cerrar Otras Pestañas
   closeAllTabs: Cerrar Todas las Pestañas
 listLayout: Lista

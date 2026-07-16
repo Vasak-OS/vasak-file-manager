@@ -10,6 +10,7 @@ import {
 	useClipboardStore,
 } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
+import { useBookmarksStore } from '@/stores/storage/bookmarks';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
@@ -24,6 +25,7 @@ export function useFileBrowserSelection(
 ) {
 	const workspacesStore = useWorkspacesStore();
 	const userStatsStore = useUserStatsStore();
+	const bookmarksStore = useBookmarksStore();
 	const clipboardStore = useClipboardStore();
 	const dirSizesStore = useDirSizesStore();
 	const selectedEntries = ref<DirEntry[]>([]);
@@ -801,13 +803,13 @@ export function useFileBrowserSelection(
 	}
 
 	async function toggleFavorites(entries: DirEntry[]) {
-		const allAreFavorites = entries.every((entry) => userStatsStore.isFavorite(entry.path));
+		const allAreFavorites = entries.every((entry) => bookmarksStore.isFavorite(entry.path));
 
 		for (const entry of entries) {
 			if (allAreFavorites) {
-				await userStatsStore.removeFromFavorites(entry.path);
-			} else if (!userStatsStore.isFavorite(entry.path)) {
-				await userStatsStore.addToFavorites(entry.path);
+				bookmarksStore.removeFavorite(entry.path);
+			} else if (!bookmarksStore.isFavorite(entry.path)) {
+				bookmarksStore.addFavorite(entry.path);
 			}
 		}
 

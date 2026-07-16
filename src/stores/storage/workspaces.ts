@@ -19,6 +19,15 @@ import clone from '@/utils/clone';
 import { useDebounceFn } from '@/utils/debounce';
 import uniqueId from '@/utils/unique-id';
 
+export interface ClosedTabHistoryEntry {
+	path: string;
+	name: string;
+	closedAt: number;
+	wasPinned: boolean;
+}
+
+const CLOSED_TAB_HISTORY_MAX = 20;
+
 export const useWorkspacesStore = defineStore('workspaces', () => {
 	const userPathsStore = useUserPathsStore();
 	const navigatorStore = useNavigatorStore();
@@ -26,6 +35,10 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 	const workspacesStorage = ref<LazyStore | null>(null);
 	const isInitialized = ref(false);
 	const workspaces = ref<Workspace[]>(createDefaultWorkspaces());
+	const closedTabHistory = ref<ClosedTabHistoryEntry[]>([]);
+
+	/** Path to navigate the active tab to. Set by navigateCurrentTab, consumed by NavigatorBarComponent. */
+	const pendingNavigationPath = ref<string | null>(null);
 
 	const primaryWorkspace: ComputedRef<Workspace | null> = computed(
 		() => workspaces.value?.find((workspace) => workspace.isPrimary) || null
@@ -125,6 +138,22 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 	}
 
 	async function closeTabGroup(tabGroup: Tab[]) {
+		// Prevent closing pinned tabs
+		if (tabGroup[0]?.isPinned) {
+			return;
+		}
+
+		// Store in closed tab history before removing
+		const tabToClose = tabGroup[0];
+		if (tabToClose) {
+			addToClosedTabHistory({
+				path: tabToClose.path,
+				name: tabToClose.name,
+				closedAt: Date.now(),
+				wasPinned: tabToClose.isPinned === true,
+			});
+		}
+
 		if (tabGroupCount.value <= 1) {
 			await closeAllTabGroups();
 			return;
@@ -155,16 +184,35 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 			return;
 		}
 
-		const newTab = await createNewTab();
-		const newTabGroup = [newTab];
-		currentWorkspace.value.tabGroups = [newTabGroup];
-		currentWorkspace.value.currentTabGroupIndex = 0;
-		currentWorkspace.value.currentTabIndex = 0;
-		try {
-			await openTabGroup(newTabGroup);
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			console.error(`Failed to open new tab group: ${errorMessage}`);
+		// Keep pinned tabs
+		const pinnedTabGroups = currentWorkspace.value.tabGroups.filter(
+			(tg) => tg[0]?.isPinned
+		);
+
+		if (pinnedTabGroups.length > 0) {
+			const newTab = await createNewTab();
+			const newTabGroup = [newTab];
+			currentWorkspace.value.tabGroups = [...pinnedTabGroups, newTabGroup];
+			currentWorkspace.value.currentTabGroupIndex = pinnedTabGroups.length;
+			currentWorkspace.value.currentTabIndex = 0;
+			try {
+				await openTabGroup(newTabGroup);
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				console.error(`Failed to open new tab group: ${errorMessage}`);
+			}
+		} else {
+			const newTab = await createNewTab();
+			const newTabGroup = [newTab];
+			currentWorkspace.value.tabGroups = [newTabGroup];
+			currentWorkspace.value.currentTabGroupIndex = 0;
+			currentWorkspace.value.currentTabIndex = 0;
+			try {
+				await openTabGroup(newTabGroup);
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				console.error(`Failed to open new tab group: ${errorMessage}`);
+			}
 		}
 	}
 
@@ -179,15 +227,152 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 			return;
 		}
 
+		// Keep pinned tabs and the specified tab group
+		const pinnedTabGroups = currentWorkspace.value.tabGroups.filter(
+			(tg) => tg[0]?.isPinned && tg[0]?.id !== tabGroupToKeep[0]?.id
+		);
+
 		const tabGroupCopy = [...tabGroupToKeep];
-		currentWorkspace.value.tabGroups = [tabGroupCopy];
-		currentWorkspace.value.currentTabGroupIndex = 0;
+		currentWorkspace.value.tabGroups = [...pinnedTabGroups, tabGroupCopy];
+		const newIndex = currentWorkspace.value.tabGroups.findIndex(
+			(tg) => tg[0]?.id === tabGroupCopy[0]?.id
+		);
+		currentWorkspace.value.currentTabGroupIndex = newIndex !== -1 ? newIndex : 0;
 		currentWorkspace.value.currentTabIndex = 0;
 		try {
 			await openTabGroup(tabGroupCopy);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			console.error(`Failed to open kept tab group: ${errorMessage}`);
+		}
+	}
+
+	async function duplicateTabGroup(tabGroup: TabGroup) {
+		if (!currentWorkspace.value) {
+			return;
+		}
+
+		const sourceTab = tabGroup[0];
+		if (!sourceTab) return;
+
+		const newTab = await createNewTab(sourceTab.path);
+		newTab.type = sourceTab.type;
+		newTab.filterQuery = sourceTab.filterQuery;
+		newTab.dirEntries = [...sourceTab.dirEntries];
+
+		const newTabGroup: TabGroup = [newTab];
+
+		// Insert adjacent to the source tab group
+		const sourceIndex = getTabGroupIndex(currentWorkspace.value, tabGroup);
+		if (typeof sourceIndex === 'number' && sourceIndex !== -1) {
+			currentWorkspace.value.tabGroups.splice(sourceIndex + 1, 0, newTabGroup);
+		} else {
+			currentWorkspace.value.tabGroups.push(newTabGroup);
+		}
+
+		await openTabGroup(newTabGroup);
+	}
+
+	function pinTabGroup(tabGroup: TabGroup) {
+		if (!currentWorkspace.value) return;
+
+		const tab = tabGroup[0];
+		if (!tab || tab.isPinned) return;
+
+		tab.isPinned = true;
+		tab.pinnedAt = Date.now();
+
+		// Move to start (after other pinned tabs)
+		const tabGroupIndex = getTabGroupIndex(currentWorkspace.value, tabGroup);
+		if (typeof tabGroupIndex !== 'number' || tabGroupIndex === -1) return;
+
+		// Remove from current position
+		currentWorkspace.value.tabGroups.splice(tabGroupIndex, 1);
+
+		// Find insertion point (after last pinned tab)
+		const lastPinnedIndex = currentWorkspace.value.tabGroups.reduce(
+			(lastIdx, tg, idx) => (tg[0]?.isPinned ? idx : lastIdx),
+			-1
+		);
+
+		const insertIndex = lastPinnedIndex + 1;
+		currentWorkspace.value.tabGroups.splice(insertIndex, 0, tabGroup);
+
+		// Update currentTabGroupIndex to follow the current tab
+		const currentId = currentTabGroup.value?.[0]?.id;
+		if (currentId) {
+			const newCurrentIndex = currentWorkspace.value.tabGroups.findIndex(
+				(tg) => tg[0]?.id === currentId
+			);
+			if (newCurrentIndex !== -1) {
+				currentWorkspace.value.currentTabGroupIndex = newCurrentIndex;
+			}
+		}
+	}
+
+	function unpinTabGroup(tabGroup: TabGroup) {
+		if (!currentWorkspace.value) return;
+
+		const tab = tabGroup[0];
+		if (!tab?.isPinned) return;
+
+		tab.isPinned = false;
+		tab.pinnedAt = undefined;
+
+		// Move after last pinned tab (first non-pinned position)
+		const tabGroupIndex = getTabGroupIndex(currentWorkspace.value, tabGroup);
+		if (typeof tabGroupIndex !== 'number' || tabGroupIndex === -1) return;
+
+		// Remove from current position
+		currentWorkspace.value.tabGroups.splice(tabGroupIndex, 1);
+
+		// Find insertion point (after last pinned tab)
+		const lastPinnedIndex = currentWorkspace.value.tabGroups.reduce(
+			(lastIdx, tg, idx) => (tg[0]?.isPinned ? idx : lastIdx),
+			-1
+		);
+
+		const insertIndex = lastPinnedIndex + 1;
+		currentWorkspace.value.tabGroups.splice(insertIndex, 0, tabGroup);
+
+		// Update currentTabGroupIndex to follow the current tab
+		const currentId = currentTabGroup.value?.[0]?.id;
+		if (currentId) {
+			const newCurrentIndex = currentWorkspace.value.tabGroups.findIndex(
+				(tg) => tg[0]?.id === currentId
+			);
+			if (newCurrentIndex !== -1) {
+				currentWorkspace.value.currentTabGroupIndex = newCurrentIndex;
+			}
+		}
+	}
+
+	function isTabGroupPinned(tabGroup: TabGroup): boolean {
+		return tabGroup[0]?.isPinned === true;
+	}
+
+	function addToClosedTabHistory(entry: ClosedTabHistoryEntry) {
+		closedTabHistory.value.unshift(entry);
+		if (closedTabHistory.value.length > CLOSED_TAB_HISTORY_MAX) {
+			closedTabHistory.value = closedTabHistory.value.slice(0, CLOSED_TAB_HISTORY_MAX);
+		}
+	}
+
+	async function restoreLastClosedTab() {
+		if (closedTabHistory.value.length === 0) {
+			return;
+		}
+
+		const entry = closedTabHistory.value.shift()!;
+		const currentIndex = currentWorkspace.value?.currentTabGroupIndex ?? 0;
+
+		const newTab = await createNewTab(entry.path);
+		const newTabGroup: TabGroup = [newTab];
+
+		// Insert adjacent to the current tab (after it)
+		if (currentWorkspace.value) {
+			currentWorkspace.value.tabGroups.splice(currentIndex + 1, 0, newTabGroup);
+			await openTabGroup(newTabGroup);
 		}
 	}
 
@@ -243,6 +428,21 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 	async function openNewTabGroup(path?: string) {
 		const newTabGroup = await addNewTabGroup(path);
 		openTabGroup(newTabGroup);
+	}
+
+	/**
+	 * Navigate the current active tab to a new path without creating a new tab.
+	 * Sets a pending navigation path that the NavigatorBarComponent will pick up.
+	 */
+	async function navigateCurrentTab(path: string) {
+		const tab = currentTab.value;
+		if (!tab) {
+			// Fallback: open new tab if no active tab
+			await openNewTabGroup(path);
+			return;
+		}
+
+		pendingNavigationPath.value = path;
 	}
 
 	function setTabFilterQuery(tab: Tab, filterQuery: string) {
@@ -596,15 +796,23 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		tabs,
 		currentTabGroup,
 		currentTab,
+		closedTabHistory,
+		pendingNavigationPath,
 		init,
 		addNewTabGroup,
 		openNewTabGroup,
+		navigateCurrentTab,
 		preloadDefaultTab,
 		getDirEntry,
 		openTabGroup,
 		closeTabGroup,
 		closeAllTabGroups,
 		closeOtherTabGroups,
+		duplicateTabGroup,
+		pinTabGroup,
+		unpinTabGroup,
+		isTabGroupPinned,
+		restoreLastClosedTab,
 		setTabs,
 		toggleSplitView,
 		setTabFilterQuery,

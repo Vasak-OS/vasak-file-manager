@@ -15,22 +15,24 @@ import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Layout } from '@/types/navigator';
-import GlobalSearchView from '@/views/GlobalSearchView.vue';
+import GlobalSearchPanel from '@/components/search/GlobalSearchPanel.vue';
 
 type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
 	navigateToPath?: (path: string) => Promise<void>;
 	openFile?: (path: string) => Promise<void>;
 	startRename?: (entry: DirEntry) => void;
 	selectFirstEntry?: () => Promise<void>;
+	selectEntryByPath?: (path: string) => boolean;
 	navigateUp?: () => void;
 	navigateDown?: () => void;
 	navigateLeft?: () => void;
 	navigateRight?: () => void;
 	openSelected?: () => void;
 	navigateBack?: () => void;
+	refresh?: () => void;
 };
 
-type GlobalSearchViewInstance = InstanceType<typeof GlobalSearchView> & {
+type GlobalSearchPanelInstance = InstanceType<typeof GlobalSearchPanel> & {
 	getActiveFileBrowser?: () => FileBrowserInstance | undefined;
 	clearSelections?: () => void;
 };
@@ -50,7 +52,7 @@ const dirSizesStore = useDirSizesStore();
 const userLayoutStore = useUserLayoutStore();
 const paneRefsMap = ref<Map<string, FileBrowserInstance>>(new Map());
 const singlePaneRef = ref<FileBrowserInstance | null>(null);
-const globalSearchViewRef = ref<GlobalSearchViewInstance | null>(null);
+const globalSearchViewRef = ref<GlobalSearchPanelInstance | null>(null);
 const isSearchSelectionActive = ref(false);
 const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
@@ -225,17 +227,64 @@ function getPasteTargetPath(): string | undefined {
 	return workspacesStore.currentTabGroup?.[0]?.path;
 }
 
+/**
+ * Get the parent directory path of a given path.
+ * Used for Requirement 9.4: navigate to container directory when selecting a file result.
+ */
+function getParentPath(path: string): string | null {
+	const parts = path.split('/').filter(Boolean);
+	if (parts.length <= 1) return null;
+	parts.pop();
+	const parent = parts.join('/');
+	return parent.includes(':') ? `${parent}/` : `/${parent}`;
+}
+
 async function handleGlobalSearchOpenEntry(entry: DirEntry) {
-	const pane = getActivePaneRef();
+	// Requirement 9.4: Navigate using the main file browser pane (not the search pane)
+	const pane = getMainFileBrowserPane();
 	if (!pane) return;
 
 	if (entry.is_dir && pane.navigateToPath) {
+		// Requirement 9.4: directory result → navigate into directory
 		await pane.navigateToPath(entry.path);
-	} else if (entry.is_file && pane.openFile) {
-		await pane.openFile(entry.path);
+	} else if (entry.is_file && pane.navigateToPath) {
+		// Requirement 9.4: file result → navigate to parent directory and select the file
+		const parentPath = getParentPath(entry.path);
+		if (parentPath) {
+			await pane.navigateToPath(parentPath);
+			// Select/highlight the file in the parent directory after navigation completes
+			if (pane.selectEntryByPath) {
+				pane.selectEntryByPath(entry.path);
+			}
+		}
 	}
 
 	globalSearchStore.close();
+}
+
+/**
+ * Gets the main file browser pane (not the search pane).
+ * Used for navigation from search results (Requirement 9.4).
+ */
+function getMainFileBrowserPane(): FileBrowserInstance | undefined {
+	if (!isSplitView.value) {
+		const currentTabId = workspacesStore.currentTabGroup?.[0]?.id;
+		if (currentTabId && paneRefsMap.value.has(currentTabId)) {
+			return paneRefsMap.value.get(currentTabId);
+		}
+		return singlePaneRef.value || undefined;
+	}
+
+	if (activeTabId.value && paneRefsMap.value.has(activeTabId.value)) {
+		return paneRefsMap.value.get(activeTabId.value);
+	}
+
+	const firstCurrentTabId = workspacesStore.currentTabGroup?.[0]?.id;
+	if (firstCurrentTabId && paneRefsMap.value.has(firstCurrentTabId)) {
+		return paneRefsMap.value.get(firstCurrentTabId);
+	}
+
+	return undefined;
 }
 
 function handleFilterShortcut() {
@@ -361,6 +410,11 @@ function handleEscapeKey(): boolean {
 		return dismissalLayerStore.dismissTopLayer();
 	}
 
+	if (globalSearchStore.isOpen) {
+		globalSearchStore.close();
+		return true;
+	}
+
 	if (clipboardStore.hasItems) {
 		clipboardStore.clearClipboard();
 		return true;
@@ -389,6 +443,13 @@ async function openTerminalWithOptions(asAdmin: boolean) {
 
 async function handleOpenNewTabShortcut() {
 	await workspacesStore.openNewTabGroup(currentActivePath.value);
+}
+
+async function handleCloseTabShortcut() {
+	const currentTabGroup = workspacesStore.currentTabGroup;
+	if (currentTabGroup) {
+		await workspacesStore.closeTabGroup(currentTabGroup);
+	}
 }
 
 async function handleOpenTerminalShortcut() {
@@ -433,6 +494,7 @@ function callActivePaneMethod(
 		| 'navigateRight'
 		| 'openSelected'
 		| 'navigateBack'
+		| 'refresh'
 	>
 ): boolean {
 	if (dismissalLayerStore.hasLayers) return false;
@@ -452,6 +514,10 @@ function callActivePaneMethod(
 }
 
 function registerShortcutHandlers() {
+	shortcutsStore.registerHandler('toggleGlobalSearch', () => {
+		globalSearchStore.toggle();
+		return undefined;
+	});
 	shortcutsStore.registerHandler('toggleFilter', handleFilterShortcut);
 	shortcutsStore.registerHandler('copy', handleCopyShortcut);
 	shortcutsStore.registerHandler('cut', handleCutShortcut);
@@ -472,6 +538,11 @@ function registerShortcutHandlers() {
 	);
 	shortcutsStore.registerHandler('escape', handleEscapeKey);
 	shortcutsStore.registerHandler('openNewTab', handleOpenNewTabShortcut);
+	shortcutsStore.registerHandler('closeTab', handleCloseTabShortcut);
+	shortcutsStore.registerHandler('restoreClosedTab', () => {
+		workspacesStore.restoreLastClosedTab();
+		return true;
+	});
 	shortcutsStore.registerHandler('openTerminal', handleOpenTerminalShortcut);
 	shortcutsStore.registerHandler('openTerminalAdmin', handleOpenTerminalAdminShortcut);
 	shortcutsStore.registerHandler('navigateUp', () => callActivePaneMethod('navigateUp'));
@@ -482,6 +553,8 @@ function registerShortcutHandlers() {
 		checkItemSelected: hasSelectedItems,
 	});
 	shortcutsStore.registerHandler('navigateBack', () => callActivePaneMethod('navigateBack'));
+	shortcutsStore.registerHandler('navigateBackAlt', () => callActivePaneMethod('navigateBack'));
+	shortcutsStore.registerHandler('refresh', () => callActivePaneMethod('refresh'));
 	shortcutsStore.registerHandler('switchToLeftPane', () => switchToPane(0));
 	shortcutsStore.registerHandler('switchToRightPane', () => switchToPane(1));
 }
@@ -494,6 +567,20 @@ onMounted(() => {
 	dirSizesStore.recoverActiveCalculations();
 });
 
+// Watch for pending navigation requests from BookmarkPanel (Requirement 7.5)
+watch(
+	() => workspacesStore.pendingNavigationPath,
+	async (path) => {
+		if (!path) return;
+		workspacesStore.pendingNavigationPath = null;
+
+		const pane = getActivePaneRef();
+		if (pane?.navigateToPath) {
+			await pane.navigateToPath(path);
+		}
+	}
+);
+
 onUnmounted(() => {
 	smallScreenMediaQuery.removeEventListener('change', handleSmallScreenChange);
 });
@@ -504,7 +591,7 @@ onUnmounted(() => {
   <div class="h-[calc(100vh-54px)] w-full flex flex-col pr-1">
 		<div class="navigator-page__panes-wrapper">
 			<div class="navigator-page__panes-container">
-				<GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
+				<GlobalSearchPanel ref="globalSearchViewRef"
 					class="flex-1" @close="globalSearchStore.close()"
 					@open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
 				<ResizablePanelGroup direction="horizontal" class="navigator-page__panes">

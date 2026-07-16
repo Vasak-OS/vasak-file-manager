@@ -3,8 +3,12 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import OperationTracker from '@/components/operations/OperationTracker.vue';
+import ShortcutQuickReference from '@/components/shortcuts/ShortcutQuickReference.vue';
+import ShortcutsConfigDialog from '@/components/shortcuts/ShortcutsConfigDialog.vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
+import { useOperationNotifications } from '@/composables/use-operation-notifications';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
@@ -12,6 +16,9 @@ import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { disableWebViewFeatures } from '@/utils/web-view-features';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
+
+// Initialize operation completion notifications (Requirements 8.5, 8.6, 8.7, 8.8)
+useOperationNotifications();
 
 onErrorCaptured((err, instance, info) => {
 	// Handle nextSibling and emitsOptions errors gracefully
@@ -75,5 +82,8 @@ onUnmounted(() => {
 
 <template>
   <WindowAppLayout />
+  <OperationTracker />
+  <ShortcutQuickReference />
+  <ShortcutsConfigDialog />
   <ToastContainer />
 </template>

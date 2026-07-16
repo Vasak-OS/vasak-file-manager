@@ -76,6 +76,7 @@ defineExpose({
 	openFile: fb.openFile,
 	clearSelection: fb.clearSelection,
 	selectAll: fb.selectAll,
+	selectEntryByPath: fb.selectEntryByPath,
 	selectFirstEntry: fb.selectFirstEntry,
 	navigateUp: fb.navigateUp,
 	navigateDown: fb.navigateDown,
@@ -88,6 +89,7 @@ defineExpose({
 	pasteItems: fb.pasteItems,
 	deleteItems: fb.deleteItems,
 	startRename: fb.startRename,
+	refresh: fb.refresh,
 });
 </script>
 

@@ -6,6 +6,7 @@ import { SEARCH_CONSTANTS } from '@/constants/search';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 //import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
+import { createDebouncedFn } from '@/utils/event-throttle';
 import type { DirEntry } from '@/types/dir-entry';
 
 type GlobalSearchDriveScanError = {
@@ -53,7 +54,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const lastError = ref<string | null>(null);
 
 	const statusPollTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
-	const debounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const searchAbortController = ref<AbortController | null>(null);
 	const idleCheckIntervalId = ref<ReturnType<typeof setInterval> | null>(null);
 	const driveChangeDebounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -67,6 +67,17 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const scanProgress = computed(() => {
 		if (totalDrivesCount.value === 0) return 0;
 		return Math.round((scannedDrivesCount.value / totalDrivesCount.value) * 100);
+	});
+
+	const lastIndexedAt = computed(() => lastScanTime.value);
+
+	type IndexStatus = 'missing' | 'stale' | 'scanning' | 'ready';
+
+	const indexStatus = computed<IndexStatus>(() => {
+		if (isScanInProgress.value || isCommitting.value) return 'scanning';
+		if (!isIndexValid.value && indexedItemCount.value === 0) return 'missing';
+		if (getIsIndexStale()) return 'stale';
+		return 'ready';
 	});
 
 	const needsScan = computed(() => {
@@ -236,10 +247,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	}
 
 	function cancelPendingSearch() {
-		if (debounceTimerId.value) {
-			clearTimeout(debounceTimerId.value);
-			debounceTimerId.value = null;
-		}
+		debouncedSearch.cancel();
 
 		if (searchAbortController.value) {
 			searchAbortController.value.abort();
@@ -300,7 +308,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 				return;
 			}
 
-			const mergedResults = mergeAndDeduplicateResults(indexedResults, priorityResults);
+			const mergedResults = mergeAndDeduplicateResults(indexedResults, priorityResults)
+				.slice(0, SEARCH_CONSTANTS.MAX_RESULT_LIMIT);
 
 			results.value = mergedResults.map((item) => ({
 				name: item.name,
@@ -360,12 +369,13 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return merged;
 	}
 
+	const debouncedSearch = createDebouncedFn((searchQuery: string) => {
+		executeSearch(searchQuery);
+	}, DEBOUNCE_DELAY_MS);
+
 	function search() {
 		cancelPendingSearch();
-
-		debounceTimerId.value = setTimeout(() => {
-			executeSearch(query.value);
-		}, DEBOUNCE_DELAY_MS);
+		debouncedSearch.execute(query.value);
 	}
 
 	async function open() {
@@ -561,6 +571,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		isCommitting,
 		isParallelScan,
 		lastScanTime,
+		lastIndexedAt,
+		indexStatus,
 		indexedItemCount,
 		indexSizeBytes,
 		currentDriveRoot,

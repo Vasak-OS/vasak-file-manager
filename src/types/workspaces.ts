@@ -20,6 +20,8 @@ export type Tab = {
 	filterQuery: string;
 	dirEntries: DirEntry[];
 	selectedDirEntries: DirEntry[];
+	isPinned?: boolean;
+	pinnedAt?: number;
 };
 
 export type TabGroup = Tab[];

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onMounted } from 'vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
@@ -9,12 +9,18 @@ import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useDrives } from '@/composables/use-drives';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
+
+const emit = defineEmits<{
+	'toggle-bookmarks': [];
+}>();
 
 const { drives, refresh } = useDrives();
 const workspacesStore = useWorkspacesStore();
 const globalSearchStore = useGlobalSearchStore();
+const shortcutsStore = useShortcutsStore();
 const userPathsStore = useUserPathsStore();
 const { t } = useI18n();
 
@@ -24,9 +30,15 @@ const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
 const searchIcon = useReactiveIcon(() => getIconSource('system-search'));
 const homeIcon = useReactiveIcon(() => getIconSource('user-home'));
 const rootIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
+const bookmarkIcon = useReactiveIcon(() => getIconSource('user-bookmarks'));
+const keyboardIcon = useReactiveIcon(() => getSymbolSource('input-keyboard'));
 
 async function openDrive(path: string) {
 	await workspacesStore.openNewTabGroup(path);
+}
+
+function openShortcutsConfig() {
+	shortcutsStore.toggleConfigPanel();
 }
 
 onMounted(async () => {
@@ -44,7 +56,7 @@ onMounted(async () => {
     </div>
 
     <div>
-      <!--<Tooltip :delay-duration="0">
+      <Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
           <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="globalSearchStore.toggle()">
             <img :src="searchIcon" class="h-6 w-6" alt="Search" />
@@ -53,7 +65,7 @@ onMounted(async () => {
         <TooltipContent side="right" :side-offset="12">
           {{ t('search') }}
         </TooltipContent>
-      </Tooltip>-->
+      </Tooltip>
 
       <Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
@@ -63,6 +75,28 @@ onMounted(async () => {
         </TooltipTrigger>
         <TooltipContent side="right" :side-offset="12">
           {{ t('home') }}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip :delay-duration="0">
+        <TooltipTrigger as-child>
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="emit('toggle-bookmarks')">
+            <img :src="bookmarkIcon" class="h-6 w-6" alt="Bookmarks" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" :side-offset="12">
+          {{ t('bookmarks') }}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip :delay-duration="0">
+        <TooltipTrigger as-child>
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openShortcutsConfig">
+            <img :src="keyboardIcon" class="h-6 w-6" alt="Keyboard Shortcuts" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" :side-offset="12">
+          Keyboard Shortcuts
         </TooltipContent>
       </Tooltip>
 

@@ -57,6 +57,13 @@ function onScroll() {
 	handleScrollActivity();
 }
 
+function handleDoubleClickEmptyArea(event: MouseEvent) {
+	// Only trigger if the double-click was directly on the scroll container (empty area)
+	if (event.target === scrollContainerRef.value || event.target === (scrollContainerRef.value?.querySelector('.tab-bar__base'))) {
+		openNewTabGroup();
+	}
+}
+
 onBeforeUnmount(() => {
 	if (scrollDisableTimeoutId !== null) {
 		clearTimeout(scrollDisableTimeoutId);
@@ -66,8 +73,8 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport :to="teleportTo" :disabled="teleportDisabled">
-    <div class="flex max-w-[calc(100vw-288px)] h-full items-center gap-1 animate-sigma-ui-fade-in">
-      <div ref="scrollContainerRef" class="flex overflow-auto items-center" @wheel.prevent="handleWheel" @scroll="onScroll">
+    <div class="flex max-w-[calc(100vw-288px)] h-full items-center gap-1 animate-sigma-ui-fade-in" data-focus-zone="tab-bar">
+      <div ref="scrollContainerRef" class="flex overflow-auto items-center" @wheel.prevent="handleWheel" @scroll="onScroll" @dblclick="handleDoubleClickEmptyArea">
         <div class="tab-bar__base flex w-fit items-center justify-center h-fit">
           <TabDraggableComponent :items="workspacesStore.currentWorkspace?.tabGroups || []"
             :draggable-bg-color-var="'window-toolbar-color'" parent-selector=".tab-bar"

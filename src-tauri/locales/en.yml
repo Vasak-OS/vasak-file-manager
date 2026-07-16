@@ -30,6 +30,12 @@ globalSearch:
   resultLimit: Result Limit
   results: Results
   searchDataIncomplete: Search data incomplete
+  indexStale: Index is outdated (last scan over 30 minutes ago)
+  indexMissing: Search index not available
+  indexMissingDescription: The search index doesn't exist or is invalid. Start indexing to enable search.
+  startIndexing: Start Indexing
+  reindex: Re-index
+  noResultsDescription: Try a different search term or check your filters
   searchStats:
     nothingFound: Nothing found
   showDirectories: Show Directories
@@ -238,6 +244,9 @@ notifications:
 tabs:
   newTab: New Tab
   close: Close
+  duplicate: Duplicate
+  pin: Pin
+  unpin: Unpin
   closeOtherTabs: Close Other Tabs
   closeAllTabs: Close All Tabs
 listLayout: List

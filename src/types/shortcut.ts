@@ -11,6 +11,8 @@ export type ShortcutId =
 	| 'rename'
 	| 'escape'
 	| 'openNewTab'
+	| 'closeTab'
+	| 'restoreClosedTab'
 	| 'openTerminal'
 	| 'openTerminalAdmin'
 	| 'navigateUp'
@@ -19,8 +21,16 @@ export type ShortcutId =
 	| 'navigateRight'
 	| 'openSelected'
 	| 'navigateBack'
+	| 'navigateBackAlt'
 	| 'switchToLeftPane'
-	| 'switchToRightPane';
+	| 'switchToRightPane'
+	| 'extendSelectionUp'
+	| 'extendSelectionDown'
+	| 'toggleItemSelection'
+	| 'focusNextZone'
+	| 'focusPreviousZone'
+	| 'refresh'
+	| 'showQuickReference';
 
 export type ShortcutKeys = {
 	ctrl?: boolean;

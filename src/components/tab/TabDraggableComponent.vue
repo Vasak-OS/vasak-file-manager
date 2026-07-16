@@ -20,8 +20,22 @@ function getItemGhostParent() {
 	return document.querySelector(props.parentSelector);
 }
 
+function isPinnedItem(item: unknown): boolean {
+	if (Array.isArray(item) && item.length > 0) {
+		return item[0]?.isPinned === true;
+	}
+	return false;
+}
+
 function onDrop(dropResult: DropResult) {
-	emit('set', getUpdatedList(dropResult));
+	const updatedList = getUpdatedList(dropResult);
+
+	// Enforce pinned tabs constraint: pinned tabs stay at the start
+	const pinned = updatedList.filter((item) => isPinnedItem(item));
+	const unpinned = updatedList.filter((item) => !isPinnedItem(item));
+	const constrainedList = [...pinned, ...unpinned];
+
+	emit('set', constrainedList);
 }
 
 function getUpdatedList(dropResult: DropResult) {

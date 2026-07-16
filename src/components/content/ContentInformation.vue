@@ -34,7 +34,7 @@ const infoPanelEntry = computed(() => {
 </script>
 
 <template>
-	<div class="bg-ui-bg/80 rounded-corner h-[calc(100vh-52px)] w-68 overflow-hidden p-2 border border-ui-border">
+	<div class="bg-ui-bg/80 rounded-corner h-[calc(100vh-52px)] w-68 overflow-hidden p-2 border border-ui-border" data-focus-zone="info-panel" tabindex="0">
 		<ContentInformationPreviewComponent :selectedEntry="infoPanelEntry" />
 		<ContentInformationHeadComponent :selectedEntry="infoPanelEntry" />
 		<ContentInformationContentProperies :selectedEntry="infoPanelEntry" />

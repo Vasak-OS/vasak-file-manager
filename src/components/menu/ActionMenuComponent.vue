@@ -12,6 +12,7 @@ import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
+import { useBookmarksStore } from '@/stores/storage/bookmarks';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { ContextMenuAction } from '@/types/contextMenu';
 import type { DirEntry } from '@/types/dir-entry';
@@ -48,6 +49,7 @@ function handleCutClick() {
 
 const clipboardStore = useClipboardStore();
 const userStatsStore = useUserStatsStore();
+const bookmarksStore = useBookmarksStore();
 const shortcutsStore = useShortcutsStore();
 
 const pencilIcon = useReactiveIcon(() => getSymbolSource('edit-rename'));
@@ -64,7 +66,7 @@ const extractIcon = useReactiveIcon(() => getIconSource('application-x-archive')
 const { isActionVisible } = useContextMenuItems(toRef(props, 'selectedEntries'));
 
 const allSelectedAreFavorites = computed(() => {
-	return props.selectedEntries.every((entry) => userStatsStore.isFavorite(entry.path));
+	return props.selectedEntries.every((entry) => bookmarksStore.isFavorite(entry.path));
 });
 
 const availableTags = computed(() => userStatsStore.tags);

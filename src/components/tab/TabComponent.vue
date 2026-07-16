@@ -30,6 +30,7 @@ const { t } = useI18n();
 
 const workspacesStore = useWorkspacesStore();
 const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
+const pinIcon = useReactiveIcon(() => getSymbolSource('pin'));
 const showTabPreview = true;
 const LONG_PRESS_DELAY = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
@@ -84,6 +85,8 @@ function handlePointerDown(event: PointerEvent) {
 	startLongPressTimer();
 }
 
+const isPinned = computed(() => props.tabGroup?.[0]?.isPinned === true);
+
 const isActive = computed(() => {
 	const currentIndex = workspacesStore.currentWorkspace?.currentTabGroupIndex;
 	const tabGroupIndex = workspacesStore.currentWorkspace?.tabGroups.findIndex(
@@ -93,6 +96,7 @@ const isActive = computed(() => {
 });
 
 const showCloseButton = computed(() => {
+	if (isPinned.value) return false;
 	const tabGroups = workspacesStore.currentWorkspace?.tabGroups ?? [];
 	return tabGroups.length > 1;
 });
@@ -129,7 +133,21 @@ function handleContextMenu(event: MouseEvent) {
 function handleAuxClick(event: MouseEvent) {
 	if (event.button === 1) {
 		event.preventDefault();
-		emit('close-tab', props.tabGroup);
+		if (!isPinned.value) {
+			emit('close-tab', props.tabGroup);
+		}
+	}
+}
+
+async function duplicateTab() {
+	await workspacesStore.duplicateTabGroup(props.tabGroup);
+}
+
+function togglePin() {
+	if (isPinned.value) {
+		workspacesStore.unpinTabGroup(props.tabGroup);
+	} else {
+		workspacesStore.pinTabGroup(props.tabGroup);
 	}
 }
 
@@ -140,8 +158,6 @@ async function closeOtherTabs() {
 async function closeAllTabs() {
 	await workspacesStore.closeAllTabGroups();
 }
-
-
 </script>
 
 <template>
@@ -150,9 +166,16 @@ async function closeAllTabs() {
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
         <DropdownMenuTrigger as-child :disabled="true">
-          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-34 max-w-34 rounded-corner p-1 px-3 pr-3 items-center border border-ui-border" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }"
+          <div v-if="props.tabGroup?.length" v-wave class="relative flex rounded-corner p-1 px-3 pr-3 items-center border border-ui-border"
+            :class="[
+              isPinned ? 'w-24 max-w-24' : 'w-34 max-w-34',
+              { 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }
+            ]"
             @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
+
+            <img v-if="isPinned && pinIcon" :src="pinIcon" alt="Pinned" class="w-3 h-3 mr-1 flex-shrink-0 opacity-70" />
+
             <div class="w-full overflow-hidden">
               <span class="overflow-hidden text-ellipsis whitespace-nowrap" :title="tabName">
                 {{ tabName }}
@@ -167,12 +190,16 @@ async function closeAllTabs() {
         </DropdownMenuTrigger>
       </TooltipTrigger>
       <DropdownMenuContent align="start" class="max-w-60">
+        <DropdownMenuItem @select="duplicateTab">
+          {{ t('tabs.duplicate') }}
+        </DropdownMenuItem>
+        <DropdownMenuItem @select="togglePin">
+          {{ isPinned ? t('tabs.unpin') : t('tabs.pin') }}
+        </DropdownMenuItem>
         <DropdownMenuItem @select="closeOtherTabs">
-          <img :alt="t('tabs.closeOtherTabs')" :src="xIcon" class="mr-2 inline-block h-4 w-4" />
           {{ t('tabs.closeOtherTabs') }}
         </DropdownMenuItem>
         <DropdownMenuItem @select="closeAllTabs">
-          <img :alt="t('tabs.closeAllTabs')" :src="xIcon" class="mr-2 inline-block h-4 w-4" />
           {{ t('tabs.closeAllTabs') }}
         </DropdownMenuItem>
       </DropdownMenuContent>
