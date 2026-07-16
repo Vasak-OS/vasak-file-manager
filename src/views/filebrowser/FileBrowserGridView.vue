@@ -63,7 +63,7 @@ function getDirSizeDisplay(entry: DirEntry): string | null {
 
 	if (sizeInfo.status === 'Loading') {
 		if (sizeInfo.size > 0) {
-			const progressStr = formatBytes(sizeInfo.size);
+			const progressStr = `~${formatBytes(sizeInfo.size)}`;
 			return itemCountStr ? `${itemCountStr} · ${progressStr}` : progressStr;
 		}
 
@@ -73,6 +73,14 @@ function getDirSizeDisplay(entry: DirEntry): string | null {
 	if (sizeInfo.status === 'Complete') {
 		const sizeStr = formatBytes(sizeInfo.size);
 		return itemCountStr ? `${itemCountStr} · ${sizeStr}` : sizeStr;
+	}
+
+	if (sizeInfo.status === 'Timeout') {
+		return itemCountStr ? `${itemCountStr} · N/A` : 'N/A';
+	}
+
+	if (sizeInfo.status === 'Error') {
+		return itemCountStr ? `${itemCountStr} · Error` : 'Error';
 	}
 
 	return itemCountStr || '—';
@@ -87,6 +95,16 @@ function shouldShowSizeSkeleton(entry: DirEntry): boolean {
 function isDirLoadingWithProgress(entry: DirEntry): boolean {
 	const sizeInfo = dirSizesStore.getSize(entry.path);
 	return !!(sizeInfo && sizeInfo.status === 'Loading' && sizeInfo.size > 0);
+}
+
+function isDirTimeout(entry: DirEntry): boolean {
+	const sizeInfo = dirSizesStore.getSize(entry.path);
+	return !!(sizeInfo && sizeInfo.status === 'Timeout');
+}
+
+function isDirError(entry: DirEntry): boolean {
+	const sizeInfo = dirSizesStore.getSize(entry.path);
+	return !!(sizeInfo && sizeInfo.status === 'Error');
 }
 
 const groupedEntries = computed<GroupedEntries>(() => {
@@ -119,7 +137,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
 </script>
 
 <template>
-  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200 h-[calc(100vh-144px)]">
+  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200">
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-muted-foreground text-xs font-medium gap-2 uppercase">
         <img :src="folderIcon" class="w-4 h-4" />
@@ -130,7 +148,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
         <button v-for="entry in groupedEntries.dirs" :key="entry.path"
           class="relative flex overflow-hidden border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-18 !flex-row items-center py-2 px-3 gap-2.5"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
-          :data-selected="ctx.isEntrySelected(entry) || undefined"
+          :data-selected="ctx.selectedPathsSet.value.has(entry.path) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined" data-drop-target
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
@@ -149,7 +167,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
             <div class="flex items-center text-[11px] gap-1.5 text-muted-foreground opacity-100 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
               <img :src="loaderIcon" v-if="isDirLoadingWithProgress(entry)" :size="12"
                 class="shrink-0 animate-spin text-muted-foreground" />
-              <span class="inline-flex items-center">
+              <span class="inline-flex items-center" :class="{ 'text-muted-foreground/60': isDirTimeout(entry), 'text-destructive/80': isDirError(entry) }">
                 <template v-if="getDirSizeDisplay(entry)">{{ getDirSizeDisplay(entry) }}</template>
                 <template v-if="shouldShowSizeSkeleton(entry)">
                   <span v-if="entry.item_count !== null" class="after:content-['_\·_']" />
@@ -172,7 +190,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
         <button v-for="entry in groupedEntries.images" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
-          :data-selected="ctx.isEntrySelected(entry) || undefined"
+          :data-selected="ctx.selectedPathsSet.value.has(entry.path) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
@@ -207,7 +225,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{
             'opacity-50': entry.is_hidden,
-          }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
+          }" :data-entry-path="entry.path" :data-selected="ctx.selectedPathsSet.value.has(entry.path) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
@@ -249,7 +267,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
         <button v-for="entry in groupedEntries.others" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
-          :data-selected="ctx.isEntrySelected(entry) || undefined"
+          :data-selected="ctx.selectedPathsSet.value.has(entry.path) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
           :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"

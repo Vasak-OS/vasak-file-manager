@@ -17,6 +17,8 @@ export interface FileBrowserContext {
 	error: Ref<string | null>;
 
 	selectedEntries: Ref<DirEntry[]>;
+	/** Pre-computed Set of selected paths for O(1) lookup without triggering sibling re-renders */
+	selectedPathsSet: ComputedRef<Set<string>>;
 	isEntrySelected: (entry: DirEntry) => boolean;
 	contextMenu: Ref<ContextMenuState>;
 

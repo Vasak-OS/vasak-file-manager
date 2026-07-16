@@ -362,6 +362,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		closeFilter: dataSource.closeFilter,
 
 		selectedEntries: selection.selectedEntries,
+		selectedPathsSet: selection.selectedPathsSet,
 		contextMenu: selection.contextMenu,
 		renameState: selection.renameState,
 		isEntrySelected: selection.isEntrySelected,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
@@ -12,12 +12,12 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
+import { useVirtualScroller } from '@/composables/use-virtual-scroller';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
@@ -36,6 +36,7 @@ const arrowUpIcon = useReactiveIcon(() => getSymbolSource('arrow-up'));
 const arrowDownIcon = useReactiveIcon(() => getSymbolSource('arrow-down'));
 const infoIcon = useReactiveIcon(() => getSymbolSource('showinfo'));
 const columnsIcon = useReactiveIcon(() => getSymbolSource('view-file-columns'));
+const warningIcon = useReactiveIcon(() => getSymbolSource('dialog-warning'));
 
 const columnVisibility = ref({
 	items: true,
@@ -126,7 +127,117 @@ const sortedEntries = computed(() => {
 	return entries;
 });
 
+// --- Virtual Scroller Integration ---
 
+/** Maximum entries to virtualize (Requirement 1.8) */
+const MAX_ENTRIES = 100_000;
+
+/** Whether directory exceeds the 100k limit */
+const exceedsLimit = computed(() => sortedEntries.value.length > MAX_ENTRIES);
+
+/** Entries capped at MAX_ENTRIES for virtualization */
+const virtualizedEntries = computed(() => {
+	if (exceedsLimit.value) {
+		return sortedEntries.value.slice(0, MAX_ENTRIES);
+	}
+	return sortedEntries.value;
+});
+
+/** Item size based on layout */
+const itemSize = computed(() => {
+	if (props.layout === 'grid') {
+		// Grid row height: card height (120px for files, 72px for folders) + gap (12px)
+		// We use an average since grid has mixed heights. Use folder row height as base.
+		return 84; // 72px card + 12px gap
+	}
+	// List view: row height based on padding and content
+	return 41; // ~41px per row (padding-y * 2 + content)
+});
+
+/** Number of columns for grid layout */
+const gridColumns = ref(4);
+
+/** The scroll container ref */
+const scrollContainerRef = ref<HTMLElement | null>(null);
+
+/** Current layout as ref for reactivity */
+const currentLayout = computed<Layout>(() => props.layout ?? 'list');
+
+const totalItems = computed(() => virtualizedEntries.value.length);
+
+const {
+	visibleRange,
+	containerStyle,
+	offsetY,
+	scrollToIndex,
+	preserveScrollPosition,
+	restoreScrollPosition,
+} = useVirtualScroller({
+	totalItems,
+	itemSize,
+	containerRef: scrollContainerRef,
+	overscan: 5,
+	layout: currentLayout,
+	columns: gridColumns,
+});
+
+/** The visible entries slice */
+const visibleEntries = computed(() => {
+	const { start, end } = visibleRange.value;
+	return virtualizedEntries.value.slice(start, end);
+});
+
+// --- Grid columns calculation ---
+function updateGridColumns() {
+	const container = scrollContainerRef.value;
+	if (!container || currentLayout.value !== 'grid') return;
+	// Grid uses minmax(170px-180px, 1fr) — calculate approximate columns
+	const containerWidth = container.clientWidth - 16; // Account for padding
+	const minItemWidth = 180;
+	const gap = 12;
+	const cols = Math.max(1, Math.floor((containerWidth + gap) / (minItemWidth + gap)));
+	gridColumns.value = cols;
+}
+
+// Watch for container ref to calculate grid columns
+watch(scrollContainerRef, (el) => {
+	if (el) {
+		updateGridColumns();
+		const resizeObserver = new ResizeObserver(() => {
+			updateGridColumns();
+		});
+		resizeObserver.observe(el);
+	}
+});
+
+// --- Preserve scroll position on layout change ---
+watch(currentLayout, (_newLayout, oldLayout) => {
+	if (oldLayout && oldLayout !== _newLayout) {
+		const saved = preserveScrollPosition();
+		nextTick(() => {
+			updateGridColumns();
+			restoreScrollPosition(saved);
+		});
+	} else {
+		nextTick(() => updateGridColumns());
+	}
+});
+
+// --- Keyboard navigation scroll support ---
+/**
+ * Scrolls to ensure the given entry index is visible.
+ * Called by keyboard navigation to keep focused entry in viewport.
+ * Uses 'nearest' alignment to minimize unnecessary scrolling.
+ */
+function scrollToEntry(index: number) {
+	scrollToIndex(index, 'nearest');
+}
+
+// Expose scrollToEntry for keyboard navigation integration
+defineExpose({
+	scrollToEntry,
+	scrollToIndex,
+});
 </script>
 
 <template>
@@ -248,17 +359,38 @@ const sortedEntries = computed(() => {
       :description="t('fileBrowser.directoryIsEmptyDescription')" :bordered="false" />
 
     <template v-else>
-      <ScrollArea class="relative min-h-0 flex-1" @contextmenu.self.prevent>
+      <!-- Limit indicator for directories exceeding 100,000 entries (Requirement 1.8) -->
+      <div v-if="exceedsLimit" class="flex items-center gap-2 px-4 py-2 bg-warning/10 border-b border-warning/30 text-warning text-xs">
+        <img :src="warningIcon" alt="Warning" class="h-4 w-4 shrink-0" />
+        <span>
+          {{ t('fileBrowser.entryLimitWarning').replace('{0}', sortedEntries.length.toLocaleString()).replace('{1}', MAX_ENTRIES.toLocaleString()) }}
+        </span>
+      </div>
+
+      <!-- Virtual scroll container -->
+      <div
+        ref="scrollContainerRef"
+        class="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-ui-bg/80 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400"
+        @contextmenu.self.prevent
+      >
         <ContextMenu>
           <ContextMenuTrigger as-child>
-            <div :ref="ctx.setEntriesContainerRef" class="min-h-full" @contextmenu.self.prevent>
-              <FileBrowserGridView v-if="props.layout === 'grid'" :entries="sortedEntries" />
-              <FileBrowserListView v-else :entries="sortedEntries" />
+            <div
+              :ref="ctx.setEntriesContainerRef"
+              :style="containerStyle"
+              class="min-h-full"
+              @contextmenu.self.prevent
+            >
+              <!-- Offset wrapper to position visible items correctly -->
+              <div :style="{ transform: `translateY(${offsetY}px)` }">
+                <FileBrowserGridView v-if="props.layout === 'grid'" :entries="visibleEntries" />
+                <FileBrowserListView v-else :entries="visibleEntries" />
+              </div>
             </div>
           </ContextMenuTrigger>
           <ContextMenuComponent v-if="ctx.contextMenu.value.selectedEntries.length > 0" />
         </ContextMenu>
-      </ScrollArea>
+      </div>
     </template>
   </div>
 </template>

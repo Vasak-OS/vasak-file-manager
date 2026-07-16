@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, reactive } from 'vue';
 import { useStatusCenterStore } from '@/stores/runtime/status-center';
 
-export type SizeStatus = 'Complete' | 'Error' | 'Loading';
+export type SizeStatus = 'Complete' | 'Error' | 'Loading' | 'Timeout';
 
 export interface DirSizeInfo {
 	size: number;
@@ -11,6 +11,7 @@ export interface DirSizeInfo {
 	fileCount: number;
 	dirCount: number;
 	calculatedAt: number;
+	error?: string;
 }
 
 export interface DirSizeResult {
@@ -36,7 +37,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	function getSizeValue(path: string): number | null {
 		const info = getSize(path);
 
-		if (!info || info.status === 'Loading') {
+		if (!info || info.status === 'Loading' || info.status === 'Error' || info.status === 'Timeout') {
 			return null;
 		}
 
@@ -53,20 +54,37 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	}
 
 	function setSize(path: string, result: DirSizeResult) {
-		if (result.status !== 'Complete') {
-			pendingPaths.value.delete(path);
-			sizes.delete(path);
-			return;
-		}
-
-		sizes.set(path, {
-			size: result.size,
-			status: 'Complete',
-			fileCount: result.file_count,
-			dirCount: result.dir_count,
-			calculatedAt: Date.now(),
-		});
 		pendingPaths.value.delete(path);
+
+		if (result.status === 'Complete') {
+			sizes.set(path, {
+				size: result.size,
+				status: 'Complete',
+				fileCount: result.file_count,
+				dirCount: result.dir_count,
+				calculatedAt: Date.now(),
+			});
+		} else if (result.status === 'Timeout') {
+			sizes.set(path, {
+				size: result.size,
+				status: 'Timeout',
+				fileCount: result.file_count,
+				dirCount: result.dir_count,
+				calculatedAt: Date.now(),
+			});
+		} else if (result.status === 'Error') {
+			sizes.set(path, {
+				size: 0,
+				status: 'Error',
+				fileCount: 0,
+				dirCount: 0,
+				calculatedAt: Date.now(),
+				error: result.error ?? 'Unknown error',
+			});
+		} else {
+			// Partial, Cancelled, or unknown — remove from store
+			sizes.delete(path);
+		}
 	}
 
 	function setLoading(path: string) {

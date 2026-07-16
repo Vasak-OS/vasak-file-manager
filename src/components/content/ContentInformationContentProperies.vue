@@ -42,7 +42,7 @@ const showRecalculateButton = computed(() => {
 	const info = dirSizeInfo.value;
 	if (!info) return false;
 
-	return info.status === 'Complete';
+	return info.status === 'Complete' || info.status === 'Error' || info.status === 'Timeout';
 });
 
 const dirSizeDisplay = computed(() => {
@@ -51,6 +51,8 @@ const dirSizeDisplay = computed(() => {
 	if (info.status === 'Loading' && info.size > 0) return formatBytes(info.size);
 	if (info.status === 'Loading') return null;
 	if (info.status === 'Complete') return formatBytes(info.size);
+	if (info.status === 'Timeout') return 'N/A';
+	if (info.status === 'Error') return 'Error';
 	return null;
 });
 

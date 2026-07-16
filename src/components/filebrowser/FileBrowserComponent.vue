@@ -52,6 +52,7 @@ provideFileBrowserContext({
 	isDirectoryEmpty: fb.isDirectoryEmpty,
 	error: fb.error,
 	selectedEntries: fb.selectedEntries,
+	selectedPathsSet: fb.selectedPathsSet,
 	isEntrySelected: fb.isEntrySelected,
 	contextMenu: fb.contextMenu,
 	getVideoThumbnail: fb.getVideoThumbnail,

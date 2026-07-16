@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { markRaw, type Ref, ref } from 'vue';
+import { computed, markRaw, type Ref, ref } from 'vue';
 import CustomProgress from '@/components/ui/toast/CustomProgress.vue';
 import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
 import { toast } from '@/components/ui/toast/toaster';
@@ -28,6 +28,15 @@ export function useFileBrowserSelection(
 	const dirSizesStore = useDirSizesStore();
 	const selectedEntries = ref<DirEntry[]>([]);
 	const lastSelectedEntry = ref<DirEntry | null>(null);
+
+	/** Pre-computed Set of selected paths for O(1) lookup in templates (Requirement 5.1) */
+	const selectedPathsSet = computed<Set<string>>(() => {
+		const set = new Set<string>();
+		for (const entry of selectedEntries.value) {
+			set.add(entry.path);
+		}
+		return set;
+	});
 
 	const mouseDownState = ref({
 		item: null as DirEntry | null,
@@ -967,6 +976,7 @@ export function useFileBrowserSelection(
 
 	return {
 		selectedEntries,
+		selectedPathsSet,
 		lastSelectedEntry,
 		mouseDownState,
 		contextMenu,

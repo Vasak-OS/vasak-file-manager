@@ -14,6 +14,8 @@ export function useFileBrowserKeyboardNavigation(options: {
 	goBack: () => void;
 	openEntry: (entry: DirEntry) => void;
 	entriesContainerRef: Ref<HTMLElement | null>;
+	/** Optional callback to scroll to a specific entry index in the virtualized list */
+	scrollToEntryIndex?: (index: number) => void;
 }) {
 	function getAllEntryElements(): HTMLElement[] {
 		const container = options.entriesContainerRef.value;
@@ -40,7 +42,18 @@ export function useFileBrowserKeyboardNavigation(options: {
 		return options.entries.value.find((entry) => entry.path === path);
 	}
 
+	function findEntryIndex(path: string): number {
+		return options.entries.value.findIndex((entry) => entry.path === path);
+	}
+
 	async function selectAndFocusEntry(entry: DirEntry) {
+		const entryIndex = findEntryIndex(entry.path);
+
+		// If we have a scroll callback, use it to ensure the entry is in the visible range
+		if (options.scrollToEntryIndex && entryIndex >= 0) {
+			options.scrollToEntryIndex(entryIndex);
+		}
+
 		options.selectEntryByPath(entry.path);
 		await nextTick();
 
@@ -56,34 +69,28 @@ export function useFileBrowserKeyboardNavigation(options: {
 	}
 
 	function navigateFlat(direction: 'previous' | 'next') {
-		const allElements = getAllEntryElements();
+		const entries = options.entries.value;
 
-		if (allElements.length === 0) return;
+		if (entries.length === 0) return;
 
 		const lastSelected = getLastSelectedEntry();
 		let targetIndex: number;
 
 		if (!lastSelected) {
-			targetIndex = direction === 'next' ? 0 : allElements.length - 1;
+			targetIndex = direction === 'next' ? 0 : entries.length - 1;
 		} else {
-			const currentIndex = allElements.findIndex(
-				(element) => element.dataset.entryPath === lastSelected.path
-			);
+			const currentIndex = findEntryIndex(lastSelected.path);
 
 			if (currentIndex === -1) {
-				targetIndex = direction === 'next' ? 0 : allElements.length - 1;
+				targetIndex = direction === 'next' ? 0 : entries.length - 1;
 			} else {
 				targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
 			}
 		}
 
-		if (targetIndex < 0 || targetIndex >= allElements.length) return;
+		if (targetIndex < 0 || targetIndex >= entries.length) return;
 
-		const targetPath = allElements[targetIndex].dataset.entryPath;
-
-		if (!targetPath) return;
-
-		const targetEntry = findEntryByPath(targetPath);
+		const targetEntry = entries[targetIndex];
 
 		if (targetEntry) {
 			selectAndFocusEntry(targetEntry);
@@ -104,7 +111,11 @@ export function useFileBrowserKeyboardNavigation(options: {
 
 		const currentElement = getEntryElement(lastSelected.path);
 
-		if (!currentElement) return;
+		if (!currentElement) {
+			// Fallback: if element not rendered, navigate flat
+			navigateFlat(direction === 'down' ? 'next' : 'previous');
+			return;
+		}
 
 		const currentRect = currentElement.getBoundingClientRect();
 		const currentCenterX = currentRect.left + currentRect.width / 2;

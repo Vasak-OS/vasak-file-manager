@@ -61,10 +61,18 @@ function getSizeDisplay(entry: DirEntry): string | null {
 
 	if (sizeInfo.status === 'Loading') {
 		if (sizeInfo.size > 0) {
-			return formatBytes(sizeInfo.size);
+			return `~${formatBytes(sizeInfo.size)}`;
 		}
 
 		return null;
+	}
+
+	if (sizeInfo.status === 'Timeout') {
+		return null; // handled by template
+	}
+
+	if (sizeInfo.status === 'Error') {
+		return null; // handled by template
 	}
 
 	return formatBytes(sizeInfo.size);
@@ -84,6 +92,18 @@ function isDirLoadingWithProgress(entry: DirEntry): boolean {
 	return !!(sizeInfo && sizeInfo.status === 'Loading' && sizeInfo.size > 0);
 }
 
+function isDirTimeout(entry: DirEntry): boolean {
+	if (entry.is_file) return false;
+	const sizeInfo = dirSizesStore.getSize(entry.path);
+	return !!(sizeInfo && sizeInfo.status === 'Timeout');
+}
+
+function isDirError(entry: DirEntry): boolean {
+	if (entry.is_file) return false;
+	const sizeInfo = dirSizesStore.getSize(entry.path);
+	return !!(sizeInfo && sizeInfo.status === 'Error');
+}
+
 function handleEntryKeydown(event: KeyboardEvent): void {
 	if (event.code === 'Space') {
 		event.preventDefault();
@@ -94,11 +114,11 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
+  <div class="flex flex-col" style="padding-right: var(--file-browser-list-right-gutter);">
     <div :key="ctx.currentPath.value" class="flex flex-col">
       <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5" :class="{
         'opacity-50': entry.is_hidden,
-      }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
+      }" :data-entry-path="entry.path" :data-selected="ctx.selectedPathsSet.value.has(entry.path) || undefined"
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
         :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
         :data-drop-target="entry.is_dir || undefined" @mousedown="ctx.onEntryMouseDown(entry, $event)"
@@ -110,8 +130,8 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           <div class="absolute inset-0 pointer-events-none bg-foreground/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
         </div>
         <div class="relative z-10 flex overflow-hidden items-center pr-4 gap-2.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
-          <img v-if="ctx.isEntrySelected(entry)" :src="selectedIcon" alt="Selected" class="h-4 w-4" />
-          <EntryIconComponent :entry="entry" :size="18" class="h-4 w-4 shrink-0 text-muted-foreground" :class="{'text-primary': entry.is_dir}" />
+          <img :src="selectedIcon" alt="Selected" class="hidden h-4 w-4 group-data-[selected]:block" />
+          <EntryIconComponent :entry="entry" :size="18" class="h-4 w-4 shrink-0 text-muted-foreground group-data-[selected]:hidden" :class="{'text-primary': entry.is_dir}" />
           <div class="flex overflow-hidden min-w-0 flex-1 flex-col gap-0.5">
             <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
             <span v-if="ctx.entryDescription?.(entry)" class="overflow-hidden text-muted-foreground text-[11px] text-ellipsis whitespace-nowrap">{{
@@ -122,9 +142,17 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           {{ getItemsDisplay(entry) }}
         </span>
         <span v-if="showSizeColumn" class="relative z-10 flex items-center gap-1.5 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-muted-foreground text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
-          <img :src="loaderCircleIcon" alt="loading" v-if="isDirLoadingWithProgress(entry)" :size="12" class="shrink-0 animate-spin text-muted-foreground" />
-          <Skeleton v-if="getSizeDisplay(entry) === null" class="w-[50px] h-3" />
-          <template v-else>{{ getSizeDisplay(entry) }}</template>
+          <template v-if="isDirTimeout(entry)">
+            <span class="text-muted-foreground/60">N/A</span>
+          </template>
+          <template v-else-if="isDirError(entry)">
+            <span class="text-destructive/80">Error</span>
+          </template>
+          <template v-else>
+            <img :src="loaderCircleIcon" alt="loading" v-if="isDirLoadingWithProgress(entry)" :size="12" class="shrink-0 animate-spin text-muted-foreground" />
+            <Skeleton v-if="getSizeDisplay(entry) === null" class="w-[50px] h-3" />
+            <template v-else>{{ getSizeDisplay(entry) }}</template>
+          </template>
         </span>
         <span v-if="showModifiedColumn" class="relative z-10 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-muted-foreground text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-warning">
           {{ formatDate(entry.modified_time) }}

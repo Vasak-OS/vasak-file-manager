@@ -89,6 +89,7 @@ fileBrowser:
   videos: Videos
   video: Video
   otherFiles: Other Files
+  entryLimitWarning: "This directory contains {0} entries. Only the first {1} are displayed for performance."
   directoryIsEmpty: Directory is Empty
   directoryIsEmptyDescription: This directory contains no items
   removeFromSelection: Remove from Selection

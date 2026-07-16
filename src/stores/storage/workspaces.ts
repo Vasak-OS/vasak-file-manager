@@ -288,9 +288,24 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 	}
 
 	async function loadTabGroupDirEntries(tabGroup: TabGroup) {
+		const { useDirectoryCacheStore } = await import('@/stores/runtime/directory-cache');
+		const directoryCache = useDirectoryCacheStore();
+
 		await Promise.all(
 			tabGroup.map(async (tab: Tab) => {
 				if (tab.type === 'directory') {
+					// Requirement 5.2: If the tab already has dirEntries in memory
+					// or the directory is in cache, skip the backend call
+					if (tab.dirEntries && tab.dirEntries.length > 0) {
+						return;
+					}
+
+					const cached = directoryCache.get(tab.path);
+					if (cached) {
+						tab.dirEntries = cached.entries;
+						return;
+					}
+
 					const dirEntries = await getDirEntries({ path: tab.path });
 					tab.dirEntries = dirEntries;
 				}

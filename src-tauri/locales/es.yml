@@ -89,6 +89,7 @@ fileBrowser:
   videos: Vídeos
   video: Vídeo
   otherFiles: Otros Archivos
+  entryLimitWarning: "Este directorio contiene {0} entradas. Solo se muestran las primeras {1} por rendimiento."
   directoryIsEmpty: Carpeta Vacía
   directoryIsEmptyDescription: Esta carpeta no contiene elementos
   removeFromSelection: Quitar de la Selección
