@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { entryPathSelector } from '@/utils/css-escape';
+import { isRecursiveDrop } from '@/utils/drag-validation';
 import type { DragOperationType } from './use-file-browser-drag';
 
 interface DropTargetInfo {
@@ -221,6 +222,11 @@ export function useFileBrowserExternalDrop(options: {
 					const operation = externalDragOperationType.value;
 
 					resetState();
+
+					// Reject recursive drops (Requirement 13.6)
+					if (wasActive && paths.length > 0 && targetPath && isRecursiveDrop(paths, targetPath)) {
+						return;
+					}
 
 					if (wasActive && paths.length > 0 && targetPath) {
 						options.onDrop(paths, targetPath, operation);

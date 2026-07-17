@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import BatchConfirmDialog from '@/components/dialogs/BatchConfirmDialog.vue';
+import BatchConflictDialog from '@/components/dialogs/BatchConflictDialog.vue';
+import CompressDialogComponent from '@/components/dialogs/CompressDialogComponent.vue';
 import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponent.vue';
 import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.vue';
 import OpenWithDialogComponent from '@/components/dialogs/OpenWithDialogComponent.vue';
+import PasswordDialogComponent from '@/components/dialogs/PasswordDialogComponent.vue';
 import RenameDialogComponent from '@/components/dialogs/RenameDialogComponent.vue';
 import DragOverlayComponent from '@/components/drag/DragOverlayComponent.vue';
 import InboundDragOverlayComponent from '@/components/drag/InboundDragOverlayComponent.vue';
@@ -10,6 +14,7 @@ import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserCon
 import FileBrowserStatusBarComponent from '@/components/filebrowser/FileBrowserStatusBarComponent.vue';
 import FileBrowserToolbarComponent from '@/components/filebrowser/FileBrowserToolbarComponent.vue';
 import { useFileBrowser } from '@/composables/file-browser/use-file-browser';
+import { useBatchOperations } from '@/composables/use-batch-operations';
 import { provideFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import type { DirEntry } from '@/types/dir-entry';
 import { Layout } from '@/types/navigator';
@@ -44,6 +49,8 @@ const fb = useFileBrowser({
 	onOpenEntry: (entry) => emit('openEntry', entry),
 	componentRef: fileBrowserRef,
 });
+
+const batch = useBatchOperations();
 
 provideFileBrowserContext({
 	entries: fb.entries,
@@ -90,6 +97,10 @@ defineExpose({
 	deleteItems: fb.deleteItems,
 	startRename: fb.startRename,
 	refresh: fb.refresh,
+	executeBatch: batch.executeBatch,
+	cancelCurrentBatch: batch.cancelCurrentBatch,
+	batchProgress: batch.batchProgress,
+	isBatchInProgress: batch.isBatchInProgress,
 });
 </script>
 
@@ -138,5 +149,34 @@ defineExpose({
       :conflicts="fb.conflictDialogState.value.conflicts"
       :operation-type="fb.conflictDialogState.value.operationType || 'copy'" @resolve="fb.handleConflictResolution"
       @cancel="fb.handleConflictCancel" />
+
+    <PasswordDialogComponent v-model:open="fb.passwordDialogState.value.isOpen"
+      :archive-path="fb.passwordDialogState.value.archivePath"
+      @submit="fb.handlePasswordSubmit"
+      @cancel="fb.handlePasswordCancel" />
+
+    <BatchConfirmDialog
+      v-model:open="batch.showConfirmDialog.value"
+      :operation-type="batch.confirmDialogType.value"
+      :entries="batch.confirmDialogEntries.value"
+      :destination="batch.confirmDialogDestination.value"
+      @confirm="batch.handleConfirm"
+      @cancel="batch.handleConfirmCancel"
+    />
+
+    <BatchConflictDialog
+      v-model:open="batch.showConflictDialog.value"
+      :conflict="batch.currentConflict.value"
+      @resolve="batch.handleConflictResolution"
+      @cancel="batch.handleConflictCancel"
+    />
+
+    <CompressDialogComponent
+      v-model:open="fb.compressDialogState.value.isOpen"
+      :default-name="fb.compressDialogState.value.defaultName"
+      :entry-count="fb.compressDialogState.value.entries.length"
+      @confirm="fb.handleCompressConfirm"
+      @cancel="fb.closeCompressDialog"
+    />
   </div>
 </template>

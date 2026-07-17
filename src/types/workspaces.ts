@@ -15,13 +15,17 @@ export type Tab = {
 	id: string;
 	name: string;
 	path: string;
-	type: 'directory' | 'file' | 'search';
+	type: 'directory' | 'file' | 'search' | 'archive';
 	paneWidth: number;
 	filterQuery: string;
 	dirEntries: DirEntry[];
 	selectedDirEntries: DirEntry[];
 	isPinned?: boolean;
 	pinnedAt?: number;
+	/** When type is 'archive', the path to the archive file being browsed */
+	archivePath?: string;
+	/** When type is 'archive', the internal path within the archive */
+	archiveInternalPath?: string;
 };
 
 export type TabGroup = Tab[];

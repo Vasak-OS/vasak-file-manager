@@ -160,6 +160,45 @@ describe('Floating indicator content', () => {
 	});
 });
 
+describe('Outbound drag detection (30px edge margin)', () => {
+	it('should detect cursor near viewport edge with 30px margin', () => {
+		const margin = 30;
+		const windowWidth = 1920;
+		const windowHeight = 1080;
+
+		function isCursorNearViewportEdge(clientX: number, clientY: number): boolean {
+			return (
+				clientX <= margin ||
+				clientY <= margin ||
+				clientX >= windowWidth - margin ||
+				clientY >= windowHeight - margin
+			);
+		}
+
+		// Near left edge
+		expect(isCursorNearViewportEdge(30, 500)).toBe(true);
+		expect(isCursorNearViewportEdge(0, 500)).toBe(true);
+		expect(isCursorNearViewportEdge(15, 500)).toBe(true);
+
+		// Near top edge
+		expect(isCursorNearViewportEdge(500, 30)).toBe(true);
+		expect(isCursorNearViewportEdge(500, 0)).toBe(true);
+
+		// Near right edge
+		expect(isCursorNearViewportEdge(1890, 500)).toBe(true);
+		expect(isCursorNearViewportEdge(1920, 500)).toBe(true);
+
+		// Near bottom edge
+		expect(isCursorNearViewportEdge(500, 1050)).toBe(true);
+		expect(isCursorNearViewportEdge(500, 1080)).toBe(true);
+
+		// Not near any edge
+		expect(isCursorNearViewportEdge(500, 500)).toBe(false);
+		expect(isCursorNearViewportEdge(31, 31)).toBe(false);
+		expect(isCursorNearViewportEdge(1889, 1049)).toBe(false);
+	});
+});
+
 describe('Cross-panel drag detection', () => {
 	it('should detect when cursor is within a different pane rect', () => {
 		// Simulates the findCrossPanePath logic

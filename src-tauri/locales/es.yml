@@ -85,6 +85,8 @@ fileBrowser:
     pasteToPane1: Pegar en Panel 1
     pasteToPane2: Pegar en Panel 2
     extractHere: Extraer aquí
+    extractTo: Extraer en...
+    compress: Comprimir
   name: Nombre
   items: Elementos
   size: Tamaño

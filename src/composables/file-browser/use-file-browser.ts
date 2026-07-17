@@ -1,5 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
-import { computed, nextTick, ref, toRef } from 'vue';
+import { computed, markRaw, nextTick, ref, toRef } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { useFileBrowserActions } from '@/composables/file-browser/use-file-browser-actions';
 import { useFileBrowserDialogs } from '@/composables/file-browser/use-file-browser-dialogs';
 import { useFileBrowserDrag } from '@/composables/file-browser/use-file-browser-drag';
@@ -12,8 +13,12 @@ import { useFileBrowserLifecycle } from '@/composables/file-browser/use-file-bro
 import { useFileBrowserNavigation } from '@/composables/file-browser/use-file-browser-navigation';
 import { useFileBrowserSelection } from '@/composables/file-browser/use-file-browser-selection';
 import { useVideoThumbnails } from '@/composables/file-browser/use-video-thumbnails';
+import { isNavigableArchive, useArchiveNavigation } from '@/composables/file-browser/use-archive-navigation';
+import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
+import { toast } from '@/components/ui/toast/toaster';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { entryPathSelector } from '@/utils/css-escape';
+import { isRecursiveDrop } from '@/utils/drag-validation';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
@@ -189,6 +194,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 	const isExternalMode = !!options.externalEntries;
 	const quickViewStore = useQuickViewStore();
 	const clipboardStore = useClipboardStore();
+	const archiveNav = useArchiveNavigation();
 
 	const dataSource = isExternalMode
 		? setupExternalDataSource(options)
@@ -209,6 +215,9 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 
 			if (entry.is_dir) {
 				await dataSource.navigateToEntry(entry);
+			} else if (isNavigableArchive(entry)) {
+				// Navigate into the archive file as if it were a directory
+				await navigateIntoArchive(entry);
 			} else {
 				await dataSource.openFile(entry.path);
 			}
@@ -244,6 +253,12 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		entriesContainerRef,
 		disableBackgroundDrop: isExternalMode,
 		onDrop: async (items, destinationPath, operation) => {
+			// Safety: reject recursive drops (Requirement 13.6)
+			const sourcePaths = items.map((item) => item.path);
+			if (isRecursiveDrop(sourcePaths, destinationPath)) {
+				return;
+			}
+
 			clipboardStore.isToolbarSuppressed = true;
 
 			if (operation === 'copy') {
@@ -266,6 +281,11 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		entriesContainerRef,
 		disableBackgroundDrop: isExternalMode,
 		onDrop: (sourcePaths, targetPath, operation) => {
+			// Safety: reject recursive drops (Requirement 13.6)
+			if (isRecursiveDrop(sourcePaths, targetPath)) {
+				return;
+			}
+
 			selection.handleExternalDrop(sourcePaths, targetPath, operation);
 		},
 	});
@@ -276,6 +296,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		quickViewStore,
 		handleContextMenuAction: selection.handleContextMenuAction,
 		openOpenWithDialog: dialogs.openOpenWithDialog,
+		openCompressDialog,
 		handleEntryMouseDown: selection.handleEntryMouseDown,
 		handleEntryMouseUp: selection.handleEntryMouseUp,
 		handleDragMouseDown: drag.handleDragMouseDown,
@@ -291,6 +312,97 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		navigateBack: () => {},
 	};
 
+	// Compress dialog state
+	const compressDialogState = ref({
+		isOpen: false,
+		entries: [] as DirEntry[],
+		defaultName: '',
+	});
+
+	function openCompressDialog(entries: DirEntry[]) {
+		let defaultName: string;
+		if (entries.length === 1) {
+			// Use the first entry's name without extension
+			const name = entries[0].name;
+			const dotIdx = name.lastIndexOf('.');
+			defaultName = dotIdx > 0 ? name.slice(0, dotIdx) : name;
+		} else {
+			// Use parent directory name
+			const path = dataSource.currentPath.value;
+			const parts = path.split('/').filter(Boolean);
+			defaultName = parts[parts.length - 1] || 'archive';
+		}
+		compressDialogState.value = {
+			isOpen: true,
+			entries: [...entries],
+			defaultName,
+		};
+	}
+
+	function closeCompressDialog() {
+		compressDialogState.value.isOpen = false;
+	}
+
+	async function handleCompressConfirm(compressOptions: { name: string; format: string }) {
+		const paths = compressDialogState.value.entries.map((e) => e.path);
+		const outputDir = dataSource.currentPath.value;
+		const ext = compressOptions.format === 'tar.gz' ? 'tar.gz' : compressOptions.format;
+		const outputPath = `${outputDir}${compressOptions.name}.${ext}`;
+
+		closeCompressDialog();
+
+		try {
+			await invoke('compress_files', {
+				paths,
+				output: outputPath,
+				format: compressOptions.format,
+			});
+			toast.custom(markRaw(CustomSimple), {
+				componentProps: {
+					title: 'Archivos comprimidos exitosamente',
+					description: `${compressOptions.name}.${ext}`,
+				},
+			});
+		} catch (err: unknown) {
+			const errorMessage = err instanceof Error ? err.message : String(err);
+			toast.custom(markRaw(CustomSimple), {
+				componentProps: {
+					title: 'Error al comprimir archivos',
+					description: errorMessage,
+				},
+			});
+		}
+	}
+
+	/**
+	 * Navigate into an archive file, displaying its contents as if it were a directory.
+	 * Sets the tab type to 'archive' and loads the archive entries.
+	 */
+	async function navigateIntoArchive(entry: DirEntry) {
+		const entries = await archiveNav.openArchive(entry.path);
+		if (entries === null) {
+			// Show error toast for corrupted or unsupported archive
+			toast.custom(markRaw(CustomSimple), {
+				componentProps: {
+					title: 'No se puede leer el archivo comprimido',
+					description: archiveNav.archiveError.value || 'Formato no soportado o archivo corrupto',
+				},
+			});
+			return;
+		}
+
+		// Update the current tab to reflect archive browsing
+		const currentTab = options.tab();
+		if (currentTab) {
+			currentTab.type = 'archive';
+			currentTab.path = entry.path;
+			currentTab.name = entry.name;
+			currentTab.dirEntries = entries;
+			currentTab.archivePath = entry.path;
+			currentTab.archiveInternalPath = '';
+		}
+	}
+
 	const keyboardNav = !isExternalMode
 		? useFileBrowserKeyboardNavigation({
 				entries: dataSource.entries,
@@ -301,6 +413,8 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 				openEntry: async (entry) => {
 					if (entry.is_dir) {
 						await dataSource.navigateToEntry(entry);
+					} else if (isNavigableArchive(entry)) {
+						await navigateIntoArchive(entry);
 					} else {
 						await dataSource.openFile(entry.path);
 					}
@@ -380,6 +494,10 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		handleConflictResolution: selection.handleConflictResolution,
 		handleConflictCancel: selection.handleConflictCancel,
 
+		passwordDialogState: selection.passwordDialogState,
+		handlePasswordSubmit: selection.handlePasswordSubmit,
+		handlePasswordCancel: selection.handlePasswordCancel,
+
 		getVideoThumbnail: videoThumbnails.getVideoThumbnail,
 		entriesContainerRef,
 		setEntriesContainerRef,
@@ -401,6 +519,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		dragOperationType: drag.operationType,
 		dragCursorX: drag.cursorX,
 		dragCursorY: drag.cursorY,
+		isDropInvalid: drag.isDropInvalid,
 		isCrossPaneTarget: drag.isCrossPaneTarget,
 
 		isExternalDragActive: externalDrop.isExternalDragActive,
@@ -415,6 +534,11 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 
 		quickView: actions.quickView,
 		selectFirstEntry,
+
+		compressDialogState,
+		openCompressDialog,
+		closeCompressDialog,
+		handleCompressConfirm,
 
 		navigateUp: keyboardNav.navigateUp,
 		navigateDown: keyboardNav.navigateDown,

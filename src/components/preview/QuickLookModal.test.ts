@@ -25,6 +25,43 @@ const localStorageMock = (() => {
 
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 
+// Polyfill KeyboardEvent for non-jsdom environment
+if (typeof globalThis.KeyboardEvent === 'undefined') {
+	(globalThis as any).KeyboardEvent = class KeyboardEvent {
+		type: string;
+		key: string;
+		code: string;
+		ctrlKey: boolean;
+		altKey: boolean;
+		shiftKey: boolean;
+		metaKey: boolean;
+		bubbles: boolean;
+		cancelable: boolean;
+		defaultPrevented = false;
+		propagationStopped = false;
+
+		constructor(type: string, init: Record<string, any> = {}) {
+			this.type = type;
+			this.key = init.key ?? '';
+			this.code = init.code ?? '';
+			this.ctrlKey = init.ctrlKey ?? false;
+			this.altKey = init.altKey ?? false;
+			this.shiftKey = init.shiftKey ?? false;
+			this.metaKey = init.metaKey ?? false;
+			this.bubbles = init.bubbles ?? false;
+			this.cancelable = init.cancelable ?? true;
+		}
+
+		preventDefault() {
+			this.defaultPrevented = true;
+		}
+
+		stopPropagation() {
+			this.propagationStopped = true;
+		}
+	};
+}
+
 // Mock document for DOM-related checks
 Object.defineProperty(globalThis, 'document', {
 	value: {

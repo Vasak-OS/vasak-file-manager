@@ -60,7 +60,9 @@ export type ContextMenuAction =
 	| 'open-in-new-tab'
 	| 'toggle-favorite'
 	| 'edit-tags'
-	| 'extract-here';
+	| 'extract-here'
+	| 'extract-to'
+	| 'compress';
 
 export type SelectionType = 'single' | 'multiple';
 export type EntryType = 'file' | 'directory';

@@ -18,4 +18,6 @@ export type ContextMenuAction =
 	| 'open-in-new-tab'
 	| 'toggle-favorite'
 	| 'edit-tags'
-	| 'extract-here';
+	| 'extract-here'
+	| 'extract-to'
+	| 'compress';

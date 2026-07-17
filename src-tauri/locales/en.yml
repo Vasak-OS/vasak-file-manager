@@ -85,6 +85,8 @@ fileBrowser:
     pasteToPane1: Paste to Pane 1
     pasteToPane2: Paste to Pane 2
     extractHere: Extract Here
+    extractTo: Extract To...
+    compress: Compress
   name: Name
   items: Items
   size: Size

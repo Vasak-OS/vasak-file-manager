@@ -17,6 +17,7 @@ export function useFileBrowserActions(options: {
 	quickViewStore: QuickViewStore;
 	handleContextMenuAction: (action: ContextMenuAction) => void;
 	openOpenWithDialog: (entries: DirEntry[]) => void;
+	openCompressDialog: (entries: DirEntry[]) => void;
 	handleEntryMouseDown: (entry: DirEntry, event: MouseEvent) => void;
 	handleEntryMouseUp: (entry: DirEntry, event: MouseEvent) => void;
 	handleDragMouseDown?: (entry: DirEntry, event: MouseEvent) => void;
@@ -47,6 +48,16 @@ export function useFileBrowserActions(options: {
 
 			if (entries.length > 0 && entries[0].is_file) {
 				void quickView(entries[0]);
+			}
+
+			return;
+		}
+
+		if (action === 'compress') {
+			const entries = options.contextMenu.value.selectedEntries;
+
+			if (entries.length > 0) {
+				options.openCompressDialog(entries);
 			}
 
 			return;

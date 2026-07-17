@@ -4,6 +4,7 @@ import { computed, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useDragStateStore } from '@/stores/runtime/drag-state';
 import { entryPathSelector } from '@/utils/css-escape';
+import { isRecursiveDrop } from '@/utils/drag-validation';
 import type { DirEntry } from '@/types/dir-entry';
 
 export type DragOperationType = 'move' | 'copy';
@@ -72,6 +73,9 @@ export function useFileBrowserDrag(options: {
 	let cachedDragIconPath: string | null = null;
 	let dismissalLayerId: string | null = null;
 
+	/** Whether the current drop target is invalid (recursive drop) — Requirement 13.6 */
+	const isDropInvalid = ref(false);
+
 	const dragState = computed<DragState>(() => ({
 		isActive: isDragging.value,
 		items: dragItems.value,
@@ -133,10 +137,18 @@ export function useFileBrowserDrag(options: {
 			container.querySelectorAll('[data-drag-over]').forEach((element) => {
 				element.removeAttribute('data-drag-over');
 			});
+
+			container.querySelectorAll('[data-drop-invalid]').forEach((element) => {
+				element.removeAttribute('data-drop-invalid');
+			});
 		}
 
 		if (targetElement) {
-			targetElement.setAttribute('data-drag-over', '');
+			if (isDropInvalid.value) {
+				targetElement.setAttribute('data-drop-invalid', '');
+			} else {
+				targetElement.setAttribute('data-drag-over', '');
+			}
 		} else if (targetPath) {
 			for (const pane of crossPaneRegistry) {
 				const container = pane.entriesContainerRef.value;
@@ -147,7 +159,11 @@ export function useFileBrowserDrag(options: {
 				);
 
 				if (foundElement) {
-					foundElement.setAttribute('data-drag-over', '');
+					if (isDropInvalid.value) {
+						foundElement.setAttribute('data-drop-invalid', '');
+					} else {
+						foundElement.setAttribute('data-drag-over', '');
+					}
 					break;
 				}
 			}
@@ -301,6 +317,17 @@ export function useFileBrowserDrag(options: {
 			crossPaneDropTargetPaneId.value = crossPane.targetPaneId;
 		}
 
+		// Check for recursive drop (Requirement 13.6)
+		if (newTargetPath) {
+			const sourcePaths = dragItems.value.map((item) => item.path);
+			isDropInvalid.value = isRecursiveDrop(sourcePaths, newTargetPath);
+		} else {
+			isDropInvalid.value = false;
+		}
+
+		// Update cursor to reflect drop validity
+		document.body.style.cursor = isDropInvalid.value ? 'not-allowed' : 'grabbing';
+
 		if (dropTargetPath.value !== newTargetPath || currentTargetElement !== newTargetElement) {
 			dropTargetPath.value = newTargetPath;
 			currentTargetElement = newTargetElement;
@@ -354,8 +381,14 @@ export function useFileBrowserDrag(options: {
 		const targetPath = dropTargetPath.value;
 		const items = [...dragItems.value];
 		const operation = event.shiftKey ? 'copy' : operationType.value;
+		const dropInvalid = isDropInvalid.value;
 
 		cleanup();
+
+		// Reject recursive drops (Requirement 13.6)
+		if (dropInvalid) {
+			return;
+		}
 
 		if (wasDragging && targetPath && items.length > 0) {
 			options.onDrop(items, targetPath, operation);
@@ -373,6 +406,7 @@ export function useFileBrowserDrag(options: {
 		isDragging.value = false;
 		dragItems.value = [];
 		dropTargetPath.value = '';
+		isDropInvalid.value = false;
 		dropTargets = [];
 		currentTargetElement = null;
 		crossPaneDropTargetPaneId.value = null;
@@ -412,6 +446,7 @@ export function useFileBrowserDrag(options: {
 		cursorX,
 		cursorY,
 		dropTargetPath,
+		isDropInvalid,
 		dragState,
 		isCrossPaneTarget,
 		handleDragMouseDown,

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { ref, type Ref } from 'vue';
 import { useOperationsStore, type FileOperationType } from '@/stores/runtime/operations';
+import { useBatchOperationsStore } from '@/stores/runtime/batch-operations';
 import type { DirEntry } from '@/types/dir-entry';
 
 export type BatchOperationType = 'copy' | 'move' | 'delete' | 'compress' | 'changePermissions';
@@ -334,6 +335,7 @@ export function useBatchOperations() {
 	/**
 	 * Core batch execution logic with cancellation support and error isolation.
 	 * Tracks progress globally (X/Y files) and per file (Req 11.4).
+	 * Uses the batch-operations store for per-batch state tracking (Req 11.5, 11.6).
 	 */
 	async function runBatch(
 		type: BatchOperationType,
@@ -341,6 +343,7 @@ export function useBatchOperations() {
 		destination?: string,
 		processor?: FileProcessor,
 	): Promise<BatchOperationState> {
+		const batchStore = useBatchOperationsStore();
 		const batchId = generateBatchId();
 		const cancelFlag = ref(false);
 		cancellationFlags.set(batchId, cancelFlag);
@@ -355,10 +358,14 @@ export function useBatchOperations() {
 			destinationPath: destination,
 		});
 
+		// Register batch in the batch-operations store for per-batch state tracking
+		batchStore.registerBatch(batchId, entries.length, operationStoreId);
+
 		// Register cancellation callback so OperationTracker's cancel button
 		// triggers the batch's internal cancellation flag (Req 11.5 integration)
 		operationsStore.registerCancelCallback(operationStoreId, () => {
 			cancelFlag.value = true;
+			batchStore.cancelBatch(batchId);
 		});
 
 		// Initialize progress (Req 11.4)
@@ -427,9 +434,13 @@ export function useBatchOperations() {
 					state.results.skipped = pending;
 					state.results.failedPaths = failedPaths;
 
+					// Update batch store with skipped count
+					batchStore.recordSkipped(batchId, pending);
+
 					operationsStore.unregisterCancelCallback(operationStoreId);
 					operationsStore.completeOperation(operationStoreId, 'cancelled', {
-						message: `${successCount} of ${entries.length} files processed, ${pending} pending (cancelled)`,
+						message: batchStore.getCancellationReport(batchId) ??
+							`${successCount} of ${entries.length} files processed, ${pending} pending (cancelled)`,
 						failedFiles: failedCount,
 						successfulFiles: successCount,
 						skippedFiles: pending,
@@ -452,13 +463,16 @@ export function useBatchOperations() {
 				try {
 					await processFile(entry);
 					successCount++;
+					batchStore.recordSuccess(batchId);
 				} catch (error) {
-					// Log the error and continue (Req 11.6)
+					// Log the error and continue (Req 11.6 — error isolation)
+					const errorMessage = String(error);
 					failedPaths.push({
 						path: entry.path,
-						error: String(error),
+						error: errorMessage,
 					});
 					failedCount++;
+					batchStore.recordFailure(batchId, entry.path, errorMessage);
 					continue;
 				}
 

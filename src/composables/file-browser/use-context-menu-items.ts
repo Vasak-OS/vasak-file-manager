@@ -70,6 +70,17 @@ const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 		entryTypes: ['file'],
 		extensions: FILE_EXTENSIONS.ARCHIVE as unknown as string[],
 	},
+	{
+		action: 'extract-to',
+		selectionTypes: ['single'],
+		entryTypes: ['file'],
+		extensions: FILE_EXTENSIONS.ARCHIVE as unknown as string[],
+	},
+	{
+		action: 'compress',
+		selectionTypes: ['single', 'multiple'],
+		entryTypes: ['file', 'directory'],
+	},
 ];
 
 export function useContextMenuItems(selectedEntries: Ref<DirEntry[]>) {

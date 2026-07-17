@@ -267,6 +267,16 @@ function handleDeleteClick() {
     <img :src="extractIcon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.extractHere') }}</span>
   </component>
+  <component :is="menuItemComponent" v-if="isActionVisible('extract-to')"
+    @select="emitAction('extract-to')" @click="emitAction('extract-to')" class="flex items-center gap-2">
+    <img :src="extractIcon" class="h-4 w-4" />
+    <span>{{ t('fileBrowser.actions.extractTo') }}</span>
+  </component>
+  <component :is="menuItemComponent" v-if="isActionVisible('compress')"
+    @select="emitAction('compress')" @click="emitAction('compress')" class="flex items-center gap-2">
+    <img :src="extractIcon" class="h-4 w-4" />
+    <span>{{ t('fileBrowser.actions.compress') }}</span>
+  </component>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"
     @click="emitAction('toggle-favorite')" class="flex items-center gap-2">

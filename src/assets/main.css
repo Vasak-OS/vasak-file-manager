@@ -201,3 +201,21 @@ html:not([data-keyboard-focus]) :focus {
   outline: none;
 }
 
+
+/* Recursive drop rejection indicator (Requirement 13.6) */
+/* When a directory is being dragged onto itself or a subdirectory, show dashed border and not-allowed cursor */
+[data-drop-invalid] {
+  position: relative;
+  cursor: not-allowed !important;
+}
+
+[data-drop-invalid]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px dashed var(--use-status-error);
+  border-radius: var(--corner-radius);
+  background-color: color-mix(in srgb, var(--use-status-error) 8%, transparent);
+  pointer-events: none;
+  z-index: 10;
+}

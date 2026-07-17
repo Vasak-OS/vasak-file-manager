@@ -15,6 +15,7 @@ import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ContextMenuAction } from '@/types/file-browser';
+import { useExtraction } from '@/composables/file-browser/use-extraction';
 
 export function useFileBrowserSelection(
 	entriesRef: Ref<DirEntry[]>,
@@ -289,6 +290,12 @@ export function useFileBrowserSelection(
 		conflictDialogState.value.isOpen = false;
 	}
 
+	const extraction = useExtraction(
+		() => currentPathRef.value,
+		onRefresh,
+		showConflictDialog
+	);
+
 	async function pasteItems(destinationPath?: string): Promise<boolean> {
 		if (!clipboardStore.hasItems) {
 			return false;
@@ -422,6 +429,13 @@ export function useFileBrowserSelection(
 				errorMessage = 'fileBrowser.cannotMoveToSameDirectory';
 			} else if (errorMessage.includes('into itself')) {
 				errorMessage = 'fileBrowser.cannotPasteIntoItself';
+			} else if (
+				errorMessage.includes('Permission denied') ||
+				errorMessage.includes('permission') ||
+				errorMessage.includes('Operation not permitted')
+			) {
+				// Requirement 13.7: Error when dropping in directory without write permissions
+				errorMessage = 'fileBrowser.insufficientPermissions';
 			}
 
 			toastData.value.title = isCopy ? 'fileBrowser.copyFailed' : 'fileBrowser.moveFailed';
@@ -565,8 +579,19 @@ export function useFileBrowserSelection(
 
 				return true;
 			} else {
+				let errorMessage = result.error || '';
+
+				// Requirement 13.7: Error when dropping in directory without write permissions
+				if (
+					errorMessage.includes('Permission denied') ||
+					errorMessage.includes('permission') ||
+					errorMessage.includes('Operation not permitted')
+				) {
+					errorMessage = 'fileBrowser.insufficientPermissions';
+				}
+
 				toastData.value.title = isCopy ? 'fileBrowser.copyFailed' : 'fileBrowser.moveFailed';
-				toastData.value.description = result.error || '';
+				toastData.value.description = errorMessage;
 				toastData.value.actionText = 'close';
 				toastData.value.progress = 0;
 				toastData.value.itemCount = 0;
@@ -793,7 +818,13 @@ export function useFileBrowserSelection(
 				break;
 			case 'extract-here':
 				if (entries.length === 1) {
-					void extractArchive(entries[0], currentPathRef.value);
+					void extraction.extractHere(entries[0]);
+				}
+
+				break;
+			case 'extract-to':
+				if (entries.length === 1) {
+					void extraction.extractTo(entries[0]);
 				}
 
 				break;
@@ -823,28 +854,6 @@ export function useFileBrowserSelection(
 				description: '',
 			},
 		});
-	}
-
-	async function extractArchive(entry: DirEntry, destDir: string) {
-		try {
-			await invoke('extract_archive', {
-				archivePath: entry.path,
-				destDir,
-			});
-			toast.custom(markRaw(CustomSimple), {
-				componentProps: {
-					title: 'notifications.archiveExtracted',
-					description: '',
-				},
-			});
-		} catch (error) {
-			toast.custom(markRaw(CustomSimple), {
-				componentProps: {
-					title: 'notifications.archiveExtractFailed',
-					description: String(error),
-				},
-			});
-		}
 	}
 
 	function resetMouseState() {
@@ -1009,5 +1018,8 @@ export function useFileBrowserSelection(
 		conflictDialogState,
 		handleConflictResolution,
 		handleConflictCancel,
+		passwordDialogState: extraction.passwordDialogState,
+		handlePasswordSubmit: extraction.handlePasswordSubmit,
+		handlePasswordCancel: extraction.handlePasswordCancel,
 	};
 }

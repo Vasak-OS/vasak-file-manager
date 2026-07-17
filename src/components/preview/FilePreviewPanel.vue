@@ -51,6 +51,9 @@ const audioDuration = ref(0);
 // PDF state
 const pdfPreviewSrc = ref<string | null>(null);
 
+// Fallback metadata state
+const filePermissions = ref<string | null>(null);
+
 // --- Computed ---
 const previewType = computed<PreviewType>(() => {
   if (!props.entry || props.entry.is_dir) return 'unsupported';
@@ -198,6 +201,7 @@ watch(
     videoMetadata.value = null;
     audioMetadata.value = null;
     pdfPreviewSrc.value = null;
+    filePermissions.value = null;
     zoomLevel.value = 100;
     audioIsPlaying.value = false;
     audioProgress.value = 0;
@@ -217,6 +221,8 @@ watch(
         loadVideoMetadata();
       } else if (type === 'audio') {
         loadAudioMetadata();
+      } else if (type === 'unsupported') {
+        await loadFilePermissions(entry.path);
       }
     } catch (e) {
       errorMessage.value = String(e);
@@ -272,6 +278,15 @@ function handleVideoLoadedMetadata(event: Event) {
 function loadAudioMetadata() {
   // Audio metadata is loaded from the <audio> element events
   audioMetadata.value = null;
+}
+
+async function loadFilePermissions(path: string) {
+  try {
+    const perms = await invoke<string>('get_file_permissions', { path });
+    filePermissions.value = perms;
+  } catch {
+    filePermissions.value = null;
+  }
 }
 
 function handleAudioFullMetadata() {
@@ -375,15 +390,23 @@ function getVideoCodecFromExtension(ext: string): string {
         <span class="text-xs text-tx-muted font-mono">{{ language }}</span>
         <span class="text-xs text-tx-muted">{{ textLineCount }} lines</span>
       </div>
-      <div class="flex-1 overflow-auto p-3">
-        <pre
-          v-if="highlightedLines.length > 0"
-          class="m-0 w-full text-[11px] leading-relaxed whitespace-pre-wrap break-all font-mono"
-        ><code><template v-for="(line, lineIdx) in highlightedLines" :key="lineIdx"><template v-for="(token, tIdx) in line.tokens" :key="tIdx"><span :class="tokenClass(token.type)">{{ token.text }}</span></template>{{ lineIdx < highlightedLines.length - 1 ? '\n' : '' }}</template></code></pre>
-        <pre
-          v-else-if="textContent"
-          class="m-0 w-full text-[11px] leading-relaxed whitespace-pre-wrap break-all font-mono text-tx-main"
-        >{{ textContent }}</pre>
+      <div class="flex-1 overflow-auto">
+        <table v-if="highlightedLines.length > 0" class="w-full border-collapse font-mono text-[11px] leading-relaxed">
+          <tbody>
+            <tr v-for="(line, lineIdx) in highlightedLines" :key="lineIdx">
+              <td class="select-none text-right pr-3 pl-3 text-tx-muted/50 align-top w-[1%] whitespace-nowrap">{{ lineIdx + 1 }}</td>
+              <td class="pr-3 whitespace-pre-wrap break-all"><template v-for="(token, tIdx) in line.tokens" :key="tIdx"><span :class="tokenClass(token.type)">{{ token.text }}</span></template></td>
+            </tr>
+          </tbody>
+        </table>
+        <table v-else-if="textContent" class="w-full border-collapse font-mono text-[11px] leading-relaxed">
+          <tbody>
+            <tr v-for="(line, lineIdx) in textContent.split('\n')" :key="lineIdx">
+              <td class="select-none text-right pr-3 pl-3 text-tx-muted/50 align-top w-[1%] whitespace-nowrap">{{ lineIdx + 1 }}</td>
+              <td class="pr-3 whitespace-pre-wrap break-all text-tx-main">{{ line }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -508,6 +531,10 @@ function getVideoCodecFromExtension(ext: string): string {
         <div class="flex justify-between">
           <span class="text-tx-muted">Size</span>
           <span class="text-tx-main">{{ formattedSize }}</span>
+        </div>
+        <div v-if="filePermissions" class="flex justify-between">
+          <span class="text-tx-muted">Permissions</span>
+          <span class="text-tx-main font-mono">{{ filePermissions }}</span>
         </div>
         <div class="flex justify-between">
           <span class="text-tx-muted">Created</span>
