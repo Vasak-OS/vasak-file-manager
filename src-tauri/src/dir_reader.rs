@@ -860,8 +860,10 @@ fn mount_sshfs(params: &NetworkShareParams, mount_point: &str) -> Result<(), Str
         mount_point,
         "-p",
         &port.to_string(),
+        // accept-new: trust a host's key on first use, but reject it if a known
+        // host's key changes (the MITM case). Non-interactive-safe (no TTY).
         "-o",
-        "StrictHostKeyChecking=no",
+        "StrictHostKeyChecking=accept-new",
         "-o",
         "reconnect",
         "-o",
@@ -925,49 +927,84 @@ fn mount_nfs(params: &NetworkShareParams, mount_point: &str) -> Result<(), Strin
     }
 }
 
+/// Write SMB credentials to a private (0600) file for `mount.cifs` to read via
+/// its `credentials=` option, so the password never appears on the command line
+/// (`/proc/<pid>/cmdline` is world-readable). Created with O_EXCL to avoid
+/// symlink/pre-existing-file attacks; the caller deletes it after mounting.
+fn write_smb_credentials(username: &str, password: &str) -> Result<std::path::PathBuf, String> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    // Prefer the per-user runtime dir (0700); fall back to the temp dir.
+    let base = std::env::var("XDG_RUNTIME_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir());
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let path = base.join(format!("vasak-smb-{}-{}.cred", std::process::id(), nanos));
+
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&path)
+        .map_err(|e| format!("Failed to create credentials file: {}", e))?;
+    file.write_all(format!("username={}\npassword={}\n", username, password).as_bytes())
+        .map_err(|e| format!("Failed to write credentials file: {}", e))?;
+    Ok(path)
+}
+
 fn mount_smb(params: &NetworkShareParams, mount_point: &str) -> Result<(), String> {
     let source = format!("//{}/{}", params.host, params.remote_path);
 
+    // Prefer userspace gio mount (no root; integrates with the keyring).
+    let gio_uri = if let Some(ref username) = params.username {
+        format!("smb://{}@{}/{}", username, params.host, params.remote_path)
+    } else {
+        format!("smb://{}/{}", params.host, params.remote_path)
+    };
 
-        let gio_uri = if let Some(ref username) = params.username {
-            format!("smb://{}@{}/{}", username, params.host, params.remote_path)
-        } else {
-            format!("smb://{}/{}", params.host, params.remote_path)
-        };
-
-        if let Ok(output) = std::process::Command::new("gio")
-            .args(["mount", &gio_uri])
-            .output()
-        {
-            if output.status.success() {
-                return Ok(());
-            }
-        }
-
-        let mut mount_args = vec!["-t", "cifs", &source, mount_point];
-        let options = if let Some(ref username) = params.username {
-            if let Some(ref password) = params.password {
-                format!("username={},password={}", username, password)
-            } else {
-                format!("username={}", username)
-            }
-        } else {
-            "guest".to_string()
-        };
-        mount_args.extend(["-o", &options]);
-
-        let output = std::process::Command::new("mount")
-            .args(&mount_args)
-            .output()
-            .map_err(|run_error| format!("Failed to run mount: {}", run_error))?;
-
+    if let Ok(output) = std::process::Command::new("gio")
+        .args(["mount", &gio_uri])
+        .output()
+    {
         if output.status.success() {
-            Ok(())
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            Err(format!("SMB mount failed: {}", stderr.trim()))
+            return Ok(());
         }
-    
+    }
+
+    // Fallback: mount.cifs. Never put the password on the command line — write a
+    // 0600 credentials file that mount.cifs reads, then delete it.
+    let mut cred_file: Option<std::path::PathBuf> = None;
+    let options = match (&params.username, &params.password) {
+        (Some(username), Some(password)) => {
+            let path = write_smb_credentials(username, password)?;
+            let opt = format!("credentials={}", path.display());
+            cred_file = Some(path);
+            opt
+        }
+        (Some(username), None) => format!("username={}", username),
+        _ => "guest".to_string(),
+    };
+
+    let output = std::process::Command::new("mount")
+        .args(["-t", "cifs", &source, mount_point, "-o", &options])
+        .output();
+
+    // mount.cifs reads the file synchronously, so it is safe to remove now.
+    if let Some(path) = cred_file {
+        let _ = fs::remove_file(&path);
+    }
+
+    let output = output.map_err(|run_error| format!("Failed to run mount: {}", run_error))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        Err(format!("SMB mount failed: {}", stderr.trim()))
+    }
 }
 
 // ---------------------------------------------------------------------------
