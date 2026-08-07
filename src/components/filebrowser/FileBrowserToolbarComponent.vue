@@ -58,10 +58,9 @@ const arrowRightIcon = useReactiveIcon(() => getSymbolSource('arrow-right'));
 const arrowUpIcon = useReactiveIcon(() => getSymbolSource('arrow-up'));
 const homeIcon = useReactiveIcon(() => getSymbolSource('user-home'));
 const refreshIcon = useReactiveIcon(() => getSymbolSource('refreshstructure'));
-const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('view-more-symbolic'));
 
-function handleFilterAutoFocus(event: Event) {
-	event.preventDefault();
+function handleFilterAutoFocus(event?: Event) {
+	event?.preventDefault();
 	filterInputRef.value?.focus();
 }
 
@@ -95,7 +94,8 @@ function getFilterTriggerElement(): HTMLElement | null {
 	return (refValue as ComponentPublicInstance).$el as HTMLElement;
 }
 
-function handleFilterInteractOutside(event: Event) {
+function handleFilterInteractOutside(event?: Event) {
+	if (!event) return;
 	const customEvent = event as CustomEvent<{ originalEvent: PointerEvent | FocusEvent }>;
 	const target = customEvent.detail?.originalEvent?.target as Node | undefined;
 	const triggerEl = getFilterTriggerElement();

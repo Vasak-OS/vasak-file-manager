@@ -167,32 +167,6 @@ const properties = computed<PropertyItem[]>(() => {
 	return items;
 });
 
-const compactItems = computed<string[]>(() => {
-	if (!props.selectedEntry) return [];
-
-	const entry = props.selectedEntry;
-	const items: string[] = [];
-
-	items.push(entry.is_dir ? t('directory') : entry.ext ? `.${entry.ext}` : t('file'));
-
-	if (entry.is_file) {
-		items.push(formatBytes(entry.size));
-	} else if (entry.is_dir) {
-		if (dirSizeDisplay.value) {
-			items.push(dirSizeDisplay.value);
-		}
-
-		if (entry.item_count !== null) {
-			items.push(t('fileBrowser.itemCount').replace('{0}', String(entry.item_count)));
-		}
-	}
-
-	if (entry.modified_time) {
-		items.push(formatDate(entry.modified_time, false));
-	}
-
-	return items;
-});
 </script>
 
 <template>

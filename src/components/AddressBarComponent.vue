@@ -423,9 +423,9 @@ onUnmounted(() => {
       </PopoverTrigger>
       <PopoverContent class="min-w-[300px] p-0 border border-ui-border rounded-lg bg-ui-bg/80-3 shadow-[0_10px_40px_hsl(var(--foreground)/10%)] text-popover-foreground" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
         :align="'end'" :side-offset="4" @open-auto-focus.prevent
-        @escape-key-down="(event: KeyboardEvent) => { if (isPinned) event.preventDefault(); else isEditorOpen = false }"
-        @pointer-down-outside="(event: Event) => { if (isPinned) event.preventDefault() }"
-        @interact-outside="(event: Event) => { if (isPinned) event.preventDefault() }">
+        @escape-key-down="(event?: Event) => { if (isPinned) event?.preventDefault(); else isEditorOpen = false }"
+        @pointer-down-outside="(event?: Event) => { if (isPinned) event?.preventDefault() }"
+        @interact-outside="(event?: Event) => { if (isPinned) event?.preventDefault() }">
         <div class="flex items-center p-2 gap-1">
           <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="t('settings.addressBar.enterValidPath')"
             class="h-8 flex-1 mr-2 text-[13px] bg-transparent outline-none" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />

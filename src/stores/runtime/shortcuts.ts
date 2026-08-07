@@ -435,7 +435,7 @@ function isDialogOpened(): boolean {
 	return false;
 }
 
-type ShortcutHandler = () => undefined | boolean | Promise<undefined | boolean>;
+type ShortcutHandler = () => void | undefined | boolean | Promise<void | undefined | boolean>;
 
 type HandlerRegistration = {
 	handler: ShortcutHandler;

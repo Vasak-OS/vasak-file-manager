@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onUnmounted, ref, type WritableComputedRef, watch } from 'vue';
+import { computed, inject, onUnmounted, type WritableComputedRef, watch } from 'vue';
 
 interface Props {
 	class?: string;
@@ -11,7 +11,6 @@ const dialogOpen = inject<WritableComputedRef<boolean>>('dialogOpen');
 const setDialogOpen = inject<(value: boolean) => void>('setDialogOpen');
 const isOpen = computed(() => dialogOpen?.value ?? false);
 
-const contentRef = ref<HTMLDivElement | null>(null);
 
 function closeDialog() {
 	setDialogOpen?.(false);
@@ -52,7 +51,6 @@ onUnmounted(() => {
       >
         <div class="absolute inset-0 bg-black/40"></div>
         <div
-          ref="contentRef"
           :class="[props.class, 'relative z-10 w-full max-w-lg rounded-corner border border-ui-border bg-ui-bg/80 p-6 text-tx-main shadow-lg']"
           role="dialog"
           aria-modal="true"

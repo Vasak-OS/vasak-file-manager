@@ -19,6 +19,7 @@ const LOW_SPACE_THRESHOLD = 15;
 const networkIcon = useReactiveIcon(() => getIconSource('preferences-system-network-iscsi'));
 const usbIcon = useReactiveIcon(() => getIconSource('drive-removable-media-usb'));
 const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
+const ejectIcon = useReactiveIcon(() => getIconSource('media-eject'));
 
 const isLowSpace = computed(() => props.drive.percent_used >= 100 - LOW_SPACE_THRESHOLD);
 
@@ -73,8 +74,8 @@ async function navigateToDrive(drivePath: string) {
 	}
 }
 
-async function handleUnmount(clickEvent: MouseEvent) {
-	clickEvent.stopPropagation();
+async function handleUnmount(clickEvent?: Event) {
+	clickEvent?.stopPropagation();
 
 	try {
 		await invoke('unmount_drive', {
@@ -127,5 +128,17 @@ async function handleUnmount(clickEvent: MouseEvent) {
         </template>
       </div>
     </div>
+
+    <span
+      v-if="drive.is_mounted && drive.is_removable"
+      role="button"
+      tabindex="0"
+      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-corner hover:bg-ui-surface/80 focus-visible:outline-2 focus-visible:outline-ring"
+      :title="t('unmount')"
+      @click.stop.prevent="handleUnmount"
+      @keydown.enter.stop.prevent="handleUnmount"
+    >
+      <img :src="ejectIcon" class="h-4 w-4" alt="Eject" />
+    </span>
   </button>
 </template>

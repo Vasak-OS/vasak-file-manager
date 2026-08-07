@@ -32,7 +32,6 @@ const isLayoutPopoverOpen = ref(false);
 const currentLayout = computed(() => {
 	return userLayoutStore.layout;
 });
-const showHiddenFiles = ref(true);
 const layoutGridIcon = useReactiveIcon(() => getSymbolSource('view-grid'));
 const layoutListIcon = useReactiveIcon(() => getSymbolSource('view-list-text'));
 const splitViewIcon = useReactiveIcon(() => getSymbolSource('view-split-left-right'));

@@ -9,7 +9,6 @@ import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
-import { disableWebViewFeatures } from '@/utils/web-view-features';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
 

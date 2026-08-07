@@ -8,20 +8,17 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useDrives } from '@/composables/use-drives';
-import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 
 const { drives, refresh } = useDrives();
 const workspacesStore = useWorkspacesStore();
-const globalSearchStore = useGlobalSearchStore();
 const userPathsStore = useUserPathsStore();
 const { t } = useI18n();
 
 const folderIcon = useReactiveIcon(() => getIconSource('folder'));
 const usbIcon = useReactiveIcon(() => getIconSource('drive-removable-media-usb'));
 const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
-const searchIcon = useReactiveIcon(() => getIconSource('system-search'));
 const homeIcon = useReactiveIcon(() => getIconSource('user-home'));
 const rootIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
 
