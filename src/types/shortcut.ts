@@ -20,7 +20,8 @@ export type ShortcutId =
 	| 'openSelected'
 	| 'navigateBack'
 	| 'switchToLeftPane'
-	| 'switchToRightPane';
+	| 'switchToRightPane'
+	| 'undo';
 
 export type ShortcutKeys = {
 	ctrl?: boolean;

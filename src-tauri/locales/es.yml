@@ -79,6 +79,7 @@ fileBrowser:
     pasteToPane1: Pegar en Panel 1
     pasteToPane2: Pegar en Panel 2
     extractHere: Extraer aquí
+    compress: Comprimir...
   name: Nombre
   items: Elementos
   size: Tamaño
@@ -107,6 +108,7 @@ fileBrowser:
     note: El tamaño es la suma de todos los contenidos
 shortcuts:
   selectAllItemsInCurrentDirectory: Seleccionar Todo
+  undoLastOperation: Deshacer
   transferPreparedForCopying: Transferencia preparada para copiar
   transferPreparedToPane1: Transferencia preparada para panel 1
   transferPreparedToPane2: Transferencia preparada para panel 2
@@ -166,6 +168,11 @@ dialogs:
   newItemDialog:
     newDirectory: Nueva Carpeta
     newFile: Nuevo Archivo
+  compressDialog:
+    title: Crear archivo comprimido
+    format: Formato
+    compress: Comprimir
+    summary: "Comprimiendo {0} elemento(s) en {1}"
   newDirItemDialog:
     newDirectoryCreated: Carpeta creada
     newFileCreated: Archivo creado
@@ -231,6 +238,11 @@ notifications:
   quickViewFileIsNotSupported: Tipo de archivo no soportado en Vista Rápida
   archiveExtracted: Archivo extraído correctamente
   archiveExtractFailed: Error al extraer el archivo
+  archiveCreated: Archivo comprimido creado
+  archiveCreateFailed: Error al crear el archivo comprimido
+  undone: Operación deshecha
+  undoFailed: No se pudo deshacer la operación
+  nothingToUndo: Nada para deshacer
 tabs:
   newTab: Nueva Pestaña
   close: Cerrar

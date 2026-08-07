@@ -2,12 +2,14 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 
 use crate::polkit;
+use crate::undo;
+use crate::undo::now_secs;
 use crate::utils::normalize_path;
 
 // Cancellation tokens for in-flight file operations, keyed by an operation id
@@ -15,7 +17,7 @@ use crate::utils::normalize_path;
 static ACTIVE_OPERATIONS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-fn register_operation(id: &str) -> Arc<AtomicBool> {
+pub(crate) fn register_operation(id: &str) -> Arc<AtomicBool> {
     let token = Arc::new(AtomicBool::new(false));
     if let Ok(mut map) = ACTIVE_OPERATIONS.lock() {
         map.insert(id.to_string(), token.clone());
@@ -23,13 +25,13 @@ fn register_operation(id: &str) -> Arc<AtomicBool> {
     token
 }
 
-fn unregister_operation(id: &str) {
+pub(crate) fn unregister_operation(id: &str) {
     if let Ok(mut map) = ACTIVE_OPERATIONS.lock() {
         map.remove(id);
     }
 }
 
-fn is_cancelled(token: &Option<Arc<AtomicBool>>) -> bool {
+pub(crate) fn is_cancelled(token: &Option<Arc<AtomicBool>>) -> bool {
     token.as_ref().is_some_and(|t| t.load(Ordering::SeqCst))
 }
 
@@ -54,7 +56,7 @@ struct OperationProgress {
     current: String,
 }
 
-fn emit_progress(app: &AppHandle, id: &Option<String>, kind: &str, processed: usize, total: usize, current: &str) {
+pub(crate) fn emit_progress(app: &AppHandle, id: &Option<String>, kind: &str, processed: usize, total: usize, current: &str) {
     if let Some(id) = id {
         let _ = app.emit(
             "file-operation-progress",
@@ -281,12 +283,18 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
     let total = source_paths.len();
     let token = operation_id.as_ref().map(|id| register_operation(id));
 
+    // Undo bookkeeping: only paths we actually created are recorded, so undoing
+    // never deletes something that was already there (see `replaced_existing`).
+    let mut created: Vec<PathBuf> = Vec::new();
+    let mut partial_undo = false;
+
     for (index, source_path_str) in source_paths.iter().enumerate() {
         if is_cancelled(&token) {
             break;
         }
         emit_progress(&app, &operation_id, "copy", index, total, source_path_str);
 
+        let mut replaced_existing = false;
         let source = Path::new(source_path_str);
 
         if !source.exists() {
@@ -326,6 +334,7 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
                             last_error = Some(error);
                             continue;
                         }
+                        replaced_existing = true;
                         initial_dest
                     }
                     ConflictResolution::AutoRename => {
@@ -362,7 +371,17 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
         };
 
         match result {
-            Ok(()) => copied_count += 1,
+            Ok(()) => {
+                copied_count += 1;
+
+                if replaced_existing {
+                    // The original at this path is gone for good; deleting the
+                    // copy on undo would not bring it back, so leave it alone.
+                    partial_undo = true;
+                } else {
+                    created.push(dest_path);
+                }
+            }
             Err(error) => {
                 failed_count += 1;
                 last_error = Some(error);
@@ -374,6 +393,13 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
     if let Some(id) = &operation_id {
         unregister_operation(id);
     }
+
+    undo::push(
+        "copy",
+        created.len(),
+        partial_undo,
+        undo::UndoAction::RemoveCreated { paths: created },
+    );
 
     FileOperationResult {
         success: failed_count == 0,
@@ -419,12 +445,17 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
     let total = source_paths.len();
     let token = operation_id.as_ref().map(|id| register_operation(id));
 
+    // Undo bookkeeping: (destination, original) pairs to move back.
+    let mut moved_pairs: Vec<(PathBuf, PathBuf)> = Vec::new();
+    let mut partial_undo = false;
+
     for (index, source_path_str) in source_paths.iter().enumerate() {
         if is_cancelled(&token) {
             break;
         }
         emit_progress(&app, &operation_id, "move", index, total, source_path_str);
 
+        let mut replaced_existing = false;
         let source = Path::new(source_path_str);
 
         if !source.exists() {
@@ -466,6 +497,7 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
                         last_error = Some(error);
                         continue;
                     }
+                    replaced_existing = true;
                     dest_path
                 }
                 ConflictResolution::AutoRename => {
@@ -513,7 +545,17 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
         };
 
         match result {
-            Ok(()) => moved_count += 1,
+            Ok(()) => {
+                moved_count += 1;
+
+                if replaced_existing {
+                    // Moving back would leave nothing where the replaced file
+                    // was, and that file is unrecoverable — skip it.
+                    partial_undo = true;
+                } else {
+                    moved_pairs.push((final_dest_path, source.to_path_buf()));
+                }
+            }
             Err(error) => {
                 failed_count += 1;
                 last_error = Some(error);
@@ -525,6 +567,13 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
     if let Some(id) = &operation_id {
         unregister_operation(id);
     }
+
+    undo::push(
+        "move",
+        moved_pairs.len(),
+        partial_undo,
+        undo::UndoAction::MoveBack { pairs: moved_pairs },
+    );
 
     FileOperationResult {
         success: failed_count == 0,
@@ -574,24 +623,43 @@ pub fn rename_item(source_path: String, new_name: String) -> FileOperationResult
         };
     }
 
+    let record_undo = || {
+        undo::push(
+            "rename",
+            1,
+            false,
+            undo::UndoAction::MoveBack {
+                pairs: vec![(dest_path.clone(), source.to_path_buf())],
+            },
+        );
+    };
+
     match fs::rename(source, &dest_path) {
-        Ok(()) => FileOperationResult {
-            success: true,
-            error: None,
-            copied_count: Some(1),
-            failed_count: Some(0),
-            skipped_count: Some(0),
-        },
+        Ok(()) => {
+            record_undo();
+
+            FileOperationResult {
+                success: true,
+                error: None,
+                copied_count: Some(1),
+                failed_count: Some(0),
+                skipped_count: Some(0),
+            }
+        }
         Err(error) => {
             if polkit::is_permission_denied(&error.to_string()) {
                 match polkit::rename_with_pkexec(source, &dest_path) {
-                    Ok(()) => FileOperationResult {
-                        success: true,
-                        error: None,
-                        copied_count: Some(1),
-                        failed_count: Some(0),
-                        skipped_count: Some(0),
-                    },
+                    Ok(()) => {
+                        record_undo();
+
+                        FileOperationResult {
+                            success: true,
+                            error: None,
+                            copied_count: Some(1),
+                            failed_count: Some(0),
+                            skipped_count: Some(0),
+                        }
+                    }
                     Err(e) => FileOperationResult {
                         success: false,
                         error: Some(e),
@@ -622,6 +690,10 @@ pub fn delete_items(paths: Vec<String>, use_trash: bool, operation_id: Option<St
     let total = paths.len();
     let token = operation_id.as_ref().map(|id| register_operation(id));
 
+    // Only trashed items can be restored; a permanent delete is not undoable.
+    let mut trashed: Vec<PathBuf> = Vec::new();
+    let deleted_after = now_secs();
+
     for (index, path_str) in paths.iter().enumerate() {
         if is_cancelled(&token) {
             break;
@@ -636,8 +708,14 @@ pub fn delete_items(paths: Vec<String>, use_trash: bool, operation_id: Option<St
             continue;
         }
 
+        // Tracks whether the item really reached the trash. The elevated
+        // fallback below removes it outright, which is not restorable.
+        let mut reached_trash = false;
+
         let result = if use_trash {
-            trash::delete(path).map_err(|error| error.to_string()).or_else(|error| {
+            trash::delete(path).map_err(|error| error.to_string()).map(|()| {
+                reached_trash = true;
+            }).or_else(|error| {
                 if polkit::is_permission_denied(&error) {
                     polkit::remove_with_pkexec(path)
                 } else {
@@ -669,7 +747,13 @@ pub fn delete_items(paths: Vec<String>, use_trash: bool, operation_id: Option<St
         };
 
         match result {
-            Ok(()) => deleted_count += 1,
+            Ok(()) => {
+                deleted_count += 1;
+
+                if reached_trash {
+                    trashed.push(path.to_path_buf());
+                }
+            }
             Err(error) => {
                 failed_count += 1;
                 last_error = Some(error);
@@ -681,6 +765,16 @@ pub fn delete_items(paths: Vec<String>, use_trash: bool, operation_id: Option<St
     if let Some(id) = &operation_id {
         unregister_operation(id);
     }
+
+    undo::push(
+        "delete",
+        trashed.len(),
+        false,
+        undo::UndoAction::RestoreFromTrash {
+            paths: trashed,
+            deleted_after,
+        },
+    );
 
     FileOperationResult {
         success: failed_count == 0,
@@ -821,13 +915,24 @@ pub fn create_item(directory_path: String, name: String, is_directory: bool) -> 
     };
 
     match result {
-        Ok(()) => FileOperationResult {
-            success: true,
-            error: None,
-            copied_count: Some(1),
-            failed_count: Some(0),
-            skipped_count: Some(0),
-        },
+        Ok(()) => {
+            undo::push(
+                "create",
+                1,
+                false,
+                undo::UndoAction::RemoveCreated {
+                    paths: vec![dest_path],
+                },
+            );
+
+            FileOperationResult {
+                success: true,
+                error: None,
+                copied_count: Some(1),
+                failed_count: Some(0),
+                skipped_count: Some(0),
+            }
+        }
         Err(error) => FileOperationResult {
             success: false,
             error: Some(error),

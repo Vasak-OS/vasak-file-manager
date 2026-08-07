@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import CompressDialogComponent from '@/components/dialogs/CompressDialogComponent.vue';
 import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponent.vue';
 import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.vue';
 import OpenWithDialogComponent from '@/components/dialogs/OpenWithDialogComponent.vue';
@@ -87,6 +88,7 @@ defineExpose({
 	pasteItems: fb.pasteItems,
 	deleteItems: fb.deleteItems,
 	startRename: fb.startRename,
+	undoLastOperation: fb.undoLastOperation,
 });
 </script>
 
@@ -115,6 +117,11 @@ defineExpose({
 
     <OpenWithDialogComponent v-model:open="fb.openWithState.value.isOpen" :entries="fb.openWithState.value.entries"
       @close="fb.closeOpenWithDialog" />
+
+    <CompressDialogComponent v-model:open="fb.compressDialogState.value.isOpen"
+      :default-name="fb.compressDialogState.value.defaultName"
+      :item-count="fb.compressDialogState.value.entries.length"
+      @confirm="fb.handleCompressConfirm" @cancel="fb.handleCompressCancel" />
 
     <DragOverlayComponent :is-active="fb.isDragging.value" :item-count="fb.dragItems.value.length"
       :operation-type="fb.dragOperationType.value" :cursor-x="fb.dragCursorX.value" :cursor-y="fb.dragCursorY.value"

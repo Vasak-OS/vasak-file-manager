@@ -321,6 +321,14 @@ function handleSelectAllShortcut() {
 	}
 }
 
+async function handleUndoShortcut() {
+	const pane = getActivePaneRef();
+
+	if (pane) {
+		await pane.undoLastOperation();
+	}
+}
+
 async function handleDeleteShortcut() {
 	const pane = getActivePaneRef();
 	if (!pane) return;
@@ -457,6 +465,7 @@ function registerShortcutHandlers() {
 	shortcutsStore.registerHandler('cut', handleCutShortcut);
 	shortcutsStore.registerHandler('paste', handlePasteShortcut);
 	shortcutsStore.registerHandler('selectAll', handleSelectAllShortcut);
+	shortcutsStore.registerHandler('undo', handleUndoShortcut);
 	shortcutsStore.registerHandler('delete', handleDeleteShortcut);
 	shortcutsStore.registerHandler('deletePermanently', handleDeletePermanentlyShortcut);
 	shortcutsStore.registerHandler(

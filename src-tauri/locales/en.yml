@@ -79,6 +79,7 @@ fileBrowser:
     pasteToPane1: Paste to Pane 1
     pasteToPane2: Paste to Pane 2
     extractHere: Extract Here
+    compress: Compress...
   name: Name
   items: Items
   size: Size
@@ -107,6 +108,7 @@ fileBrowser:
     note: Size is the sum of all contents
 shortcuts:
   selectAllItemsInCurrentDirectory: Select All
+  undoLastOperation: Undo
   transferPreparedForCopying: Transfer prepared for copying
   transferPreparedToPane1: Transfer prepared for pane 1
   transferPreparedToPane2: Transfer prepared for pane 2
@@ -199,6 +201,11 @@ dialogs:
   newItemDialog:
     newDirectory: New Directory
     newFile: New File
+  compressDialog:
+    title: Create Archive
+    format: Format
+    compress: Compress
+    summary: "Compressing {0} item(s) into {1}"
   newDirItemDialog:
     newDirectoryCreated: Directory created
     newFileCreated: File created
@@ -234,6 +241,11 @@ notifications:
   quickViewFileIsNotSupported: File type not supported in Quick View
   archiveExtracted: Archive extracted successfully
   archiveExtractFailed: Failed to extract archive
+  archiveCreated: Archive created
+  archiveCreateFailed: Failed to create archive
+  undone: Operation undone
+  undoFailed: Could not undo the operation
+  nothingToUndo: Nothing to undo
 tabs:
   newTab: New Tab
   close: Close

@@ -115,6 +115,20 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		isReadOnly: false,
 	},
 	{
+		id: 'undo',
+		labelKey: 'shortcuts.undoLastOperation',
+		defaultKeys: {
+			ctrl: true,
+			key: 'z',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
 		id: 'delete',
 		labelKey: 'shortcuts.moveSelectedItemsToTrash',
 		defaultKeys: {

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref, reactive } from 'vue';
 
-export type OperationType = 'dir-size' | 'copy' | 'move' | 'delete';
+export type OperationType = 'dir-size' | 'copy' | 'move' | 'delete' | 'compress';
 export type OperationStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled' | 'error';
 
 export interface Operation {
@@ -55,6 +55,7 @@ export const useStatusCenterStore = defineStore('status-center', () => {
 			copy: 'Copy Operations',
 			move: 'Move Operations',
 			delete: 'Delete Operations',
+			compress: 'Compression',
 		};
 
 		return Array.from(groups.entries()).map(([type, ops]) => ({

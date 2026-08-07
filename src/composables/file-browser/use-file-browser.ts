@@ -378,6 +378,11 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		conflictDialogState: selection.conflictDialogState,
 		handleConflictResolution: selection.handleConflictResolution,
 		handleConflictCancel: selection.handleConflictCancel,
+		compressDialogState: selection.compressDialogState,
+		openCompressDialog: selection.openCompressDialog,
+		handleCompressConfirm: selection.handleCompressConfirm,
+		handleCompressCancel: selection.handleCompressCancel,
+		undoLastOperation: selection.undoLastOperation,
 
 		getVideoThumbnail: videoThumbnails.getVideoThumbnail,
 		entriesContainerRef,

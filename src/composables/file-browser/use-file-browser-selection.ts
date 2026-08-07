@@ -10,11 +10,30 @@ import {
 	useClipboardStore,
 } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
-import { runTrackedFileOperation } from '@/stores/runtime/file-operation-runner';
+import {
+	runTrackedCompress,
+	runTrackedFileOperation,
+} from '@/stores/runtime/file-operation-runner';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
-import type { ContextMenuAction } from '@/types/file-browser';
+import type { ArchiveFormat, ContextMenuAction } from '@/types/file-browser';
+
+interface UndoInfo {
+	id: string;
+	kind: string;
+	item_count: number;
+	partial: boolean;
+}
+
+interface UndoResult {
+	success: boolean;
+	error?: string | null;
+	kind?: string | null;
+	undone_count: number;
+	failed_count: number;
+	affected_paths: string[];
+}
 
 export function useFileBrowserSelection(
 	entriesRef: Ref<DirEntry[]>,
@@ -277,6 +296,117 @@ export function useFileBrowserSelection(
 		}
 
 		conflictDialogState.value.isOpen = false;
+	}
+
+	const compressDialogState = ref({
+		isOpen: false,
+		entries: [] as DirEntry[],
+		defaultName: '',
+	});
+
+	function basename(path: string): string {
+		return path.split('/').filter(Boolean).pop() ?? 'archive';
+	}
+
+	/** Name proposed in the dialog: the item itself, or the folder holding them. */
+	function suggestArchiveName(entries: DirEntry[]): string {
+		if (entries.length === 1) {
+			const entry = entries[0];
+
+			if (entry.is_dir || !entry.ext) {
+				return entry.name;
+			}
+
+			return entry.name.slice(0, -(entry.ext.length + 1)) || entry.name;
+		}
+
+		return basename(currentPathRef.value);
+	}
+
+	function openCompressDialog(entries: DirEntry[]) {
+		if (entries.length === 0) return;
+
+		compressDialogState.value = {
+			isOpen: true,
+			entries: [...entries],
+			defaultName: suggestArchiveName(entries),
+		};
+	}
+
+	function closeCompressDialog() {
+		compressDialogState.value.isOpen = false;
+		compressDialogState.value.entries = [];
+	}
+
+	async function handleCompressConfirm(name: string, format: ArchiveFormat) {
+		const entries = [...compressDialogState.value.entries];
+		closeCompressDialog();
+
+		if (entries.length === 0) return;
+
+		const result = await runTrackedCompress(
+			{
+				sourcePaths: entries.map((entry) => entry.path),
+				destinationDir: currentPathRef.value,
+				archiveName: name,
+				format,
+			},
+			{
+				type: 'compress',
+				label: `Compressing ${entries.length} item${entries.length === 1 ? '' : 's'}`,
+				path: currentPathRef.value,
+			}
+		);
+
+		if (result.cancelled) {
+			return;
+		}
+
+		if (result.success) {
+			dirSizesStore.invalidate([currentPathRef.value]);
+			onRefresh();
+		}
+
+		toast.custom(markRaw(CustomSimple), {
+			componentProps: {
+				title: result.success
+					? 'notifications.archiveCreated'
+					: 'notifications.archiveCreateFailed',
+				description: result.success ? '' : String(result.error ?? ''),
+			},
+		});
+	}
+
+	function handleCompressCancel() {
+		closeCompressDialog();
+	}
+
+	/** Reverses the most recent undoable operation performed in this session. */
+	async function undoLastOperation() {
+		const info = await invoke<UndoInfo | null>('get_undo_info');
+
+		if (!info) {
+			toast.custom(markRaw(CustomSimple), {
+				componentProps: { title: 'notifications.nothingToUndo', description: '' },
+			});
+			return;
+		}
+
+		const result = await invoke<UndoResult>('undo_last_operation');
+
+		if (result.affected_paths.length > 0) {
+			dirSizesStore.invalidate([currentPathRef.value, ...result.affected_paths]);
+		}
+
+		clearSelection();
+		onRefresh();
+
+		toast.custom(markRaw(CustomSimple), {
+			componentProps: {
+				title: result.success ? 'notifications.undone' : 'notifications.undoFailed',
+				description: result.success ? '' : String(result.error ?? ''),
+			},
+		});
 	}
 
 	async function pasteItems(destinationPath?: string): Promise<boolean> {
@@ -795,6 +925,12 @@ export function useFileBrowserSelection(
 				}
 
 				break;
+			case 'compress':
+				if (entries.length > 0) {
+					openCompressDialog(entries);
+				}
+
+				break;
 		}
 
 		closeContextMenu();
@@ -1011,5 +1147,10 @@ export function useFileBrowserSelection(
 		conflictDialogState,
 		handleConflictResolution,
 		handleConflictCancel,
+		compressDialogState,
+		openCompressDialog,
+		handleCompressConfirm,
+		handleCompressCancel,
+		undoLastOperation,
 	};
 }

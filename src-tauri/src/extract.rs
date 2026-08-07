@@ -175,11 +175,14 @@ pub fn extract_archive(archive_path: String, dest_dir: String) -> Result<String,
             }
         }
         "rar" => {
+            // unrar only treats the last argument as a target directory when it
+            // ends with a separator; without it the path is used as a prefix.
+            let dest_arg = format!("{}/", dest.to_string_lossy().trim_end_matches('/'));
             let output = Command::new("unrar")
                 .arg("x")
                 .arg("-y")
                 .arg(&archive_path)
-                .arg(dest.to_str().unwrap_or(""))
+                .arg(&dest_arg)
                 .output()
                 .map_err(|e| format!("Failed to run unrar: {}. Is unrar installed?", e))?;
             if !output.status.success() {

@@ -60,7 +60,10 @@ export type ContextMenuAction =
 	| 'open-in-new-tab'
 	| 'toggle-favorite'
 	| 'edit-tags'
-	| 'extract-here';
+	| 'extract-here'
+	| 'compress';
+
+export type ArchiveFormat = 'zip' | 'tar.gz' | 'tar.xz' | 'tar.bz2' | 'tar' | '7z';
 
 export type SelectionType = 'single' | 'multiple';
 export type EntryType = 'file' | 'directory';

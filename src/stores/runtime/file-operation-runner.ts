@@ -10,6 +10,13 @@ export interface FileOperationResult {
 	skipped_count?: number;
 }
 
+export interface CompressResult {
+	success: boolean;
+	error?: string;
+	archive_path?: string;
+	cancelled?: boolean;
+}
+
 interface FileOperationProgress {
 	operation_id: string;
 	kind: string;
@@ -18,20 +25,24 @@ interface FileOperationProgress {
 	current: string;
 }
 
-type TrackedCommand = 'copy_items' | 'move_items' | 'delete_items';
+interface OperationMeta {
+	type: OperationType;
+	label: string;
+	path: string;
+}
 
 /**
- * Invokes a copy/move/delete command while tracking it in the status center:
- * registers the operation, listens for `file-operation-progress` events emitted
- * by the backend, updates progress, and marks the final status. The generated
- * `operationId` is used both for progress correlation and for cancellation
- * (see {@link cancelFileOperation}).
+ * Runs a backend command while tracking it in the status center: registers the
+ * operation, follows `file-operation-progress` events, and settles the final
+ * status. The generated `operationId` doubles as the cancellation handle (see
+ * {@link cancelFileOperation}).
  */
-export async function runTrackedFileOperation(
-	command: TrackedCommand,
+async function track<T extends { success: boolean; error?: string }>(
+	command: string,
 	args: Record<string, unknown>,
-	meta: { type: OperationType; label: string; path: string }
-): Promise<FileOperationResult> {
+	meta: OperationMeta,
+	onFailure: (result: T) => string | undefined
+): Promise<T> {
 	const statusCenter = useStatusCenterStore();
 	const operationId = `${meta.type}-${crypto.randomUUID()}`;
 
@@ -55,27 +66,54 @@ export async function runTrackedFileOperation(
 	});
 
 	try {
-		const result = await invoke<FileOperationResult>(command, { ...args, operationId });
+		const result = await invoke<T>(command, { ...args, operationId });
 
 		const existing = statusCenter.operations.get(operationId);
 		if (existing?.status === 'cancelled') {
-			// User cancelled mid-flight; keep the cancelled status.
+			// The user cancelled mid-flight; keep that status.
 		} else if (result.success) {
 			statusCenter.completeOperation(operationId, 'completed');
 		} else {
-			statusCenter.completeOperation(operationId, 'error', result.error ?? undefined);
+			statusCenter.completeOperation(operationId, 'error', onFailure(result));
 		}
 
 		return result;
 	} catch (error) {
 		statusCenter.completeOperation(operationId, 'error', String(error));
-		return { success: false, error: String(error) };
+		throw error;
 	} finally {
 		unlisten();
 	}
 }
 
-/** Requests cancellation of an in-flight tracked file operation by its id. */
+type TrackedCommand = 'copy_items' | 'move_items' | 'delete_items';
+
+export async function runTrackedFileOperation(
+	command: TrackedCommand,
+	args: Record<string, unknown>,
+	meta: OperationMeta
+): Promise<FileOperationResult> {
+	try {
+		return await track<FileOperationResult>(command, args, meta, (result) => result.error);
+	} catch (error) {
+		return { success: false, error: String(error) };
+	}
+}
+
+export async function runTrackedCompress(
+	args: Record<string, unknown>,
+	meta: OperationMeta
+): Promise<CompressResult> {
+	try {
+		return await track<CompressResult>('compress_items', args, meta, (result) =>
+			result.cancelled ? undefined : result.error
+		);
+	} catch (error) {
+		return { success: false, error: String(error) };
+	}
+}
+
+/** Requests cancellation of an in-flight tracked operation by its id. */
 export async function cancelFileOperation(operationId: string): Promise<boolean> {
 	const statusCenter = useStatusCenterStore();
 	try {

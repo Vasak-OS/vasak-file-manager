@@ -2,6 +2,7 @@ mod dir_reader;
 mod dir_size;
 mod dir_watcher;
 
+mod compress;
 mod extract;
 mod file_operations;
 mod global_search;
@@ -10,6 +11,7 @@ mod polkit;
 mod read_file;
 mod system_icons;
 mod terminal;
+mod undo;
 pub mod utils;
 
 use gtk::prelude::*;
@@ -113,6 +115,10 @@ pub fn run() {
             dir_watcher::unwatch_directory,
             dir_watcher::get_watched_directories,
             extract::extract_archive,
+            compress::compress_items,
+            undo::undo_last_operation,
+            undo::get_undo_info,
+            undo::clear_undo_history,
             read_file::read_text_file,
             read_file::read_pdf_preview,
         ])
