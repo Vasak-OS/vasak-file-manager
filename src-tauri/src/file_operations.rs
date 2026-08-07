@@ -1,8 +1,73 @@
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Emitter};
+
 use crate::polkit;
 use crate::utils::normalize_path;
+
+// Cancellation tokens for in-flight file operations, keyed by an operation id
+// the frontend supplies (same idea as dir_size's ACTIVE_CALCULATIONS).
+static ACTIVE_OPERATIONS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+fn register_operation(id: &str) -> Arc<AtomicBool> {
+    let token = Arc::new(AtomicBool::new(false));
+    if let Ok(mut map) = ACTIVE_OPERATIONS.lock() {
+        map.insert(id.to_string(), token.clone());
+    }
+    token
+}
+
+fn unregister_operation(id: &str) {
+    if let Ok(mut map) = ACTIVE_OPERATIONS.lock() {
+        map.remove(id);
+    }
+}
+
+fn is_cancelled(token: &Option<Arc<AtomicBool>>) -> bool {
+    token.as_ref().is_some_and(|t| t.load(Ordering::SeqCst))
+}
+
+/// Request cancellation of an in-flight copy/move/delete by operation id.
+#[tauri::command]
+pub fn cancel_file_operation(operation_id: String) -> bool {
+    if let Ok(map) = ACTIVE_OPERATIONS.lock() {
+        if let Some(token) = map.get(&operation_id) {
+            token.store(true, Ordering::SeqCst);
+            return true;
+        }
+    }
+    false
+}
+
+#[derive(Serialize, Clone)]
+struct OperationProgress {
+    operation_id: String,
+    kind: String,
+    processed: usize,
+    total: usize,
+    current: String,
+}
+
+fn emit_progress(app: &AppHandle, id: &Option<String>, kind: &str, processed: usize, total: usize, current: &str) {
+    if let Some(id) = id {
+        let _ = app.emit(
+            "file-operation-progress",
+            OperationProgress {
+                operation_id: id.clone(),
+                kind: kind.to_string(),
+                processed,
+                total,
+                current: current.to_string(),
+            },
+        );
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileOperationResult {
@@ -42,7 +107,11 @@ impl ConflictResolution {
     }
 }
 
-fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<(), String> {
+fn copy_dir_recursive(
+    source: &Path,
+    destination: &Path,
+    cancel: Option<&Arc<AtomicBool>>,
+) -> Result<(), String> {
     if !destination.exists() {
         if let Err(error) = fs::create_dir_all(destination) {
             if polkit::is_permission_denied(&error.to_string()) {
@@ -54,13 +123,16 @@ fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<(), String> {
     }
 
     for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
+        if cancel.is_some_and(|t| t.load(Ordering::SeqCst)) {
+            return Err("Operation cancelled".to_string());
+        }
         let entry = entry.map_err(|error| error.to_string())?;
         let source_path = entry.path();
         let file_name = source_path.file_name().ok_or("Invalid file name")?;
         let dest_path = destination.join(file_name);
 
         if source_path.is_dir() {
-            copy_dir_recursive(&source_path, &dest_path)?;
+            copy_dir_recursive(&source_path, &dest_path, cancel)?;
         } else if let Err(error) = fs::copy(&source_path, &dest_path) {
             if polkit::is_permission_denied(&error.to_string()) {
                 polkit::copy_with_pkexec(&source_path, &dest_path)?;
@@ -175,7 +247,7 @@ fn remove_dir_or_file(path: &Path) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_resolution: Option<String>) -> FileOperationResult {
+pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_resolution: Option<String>, operation_id: Option<String>, app: AppHandle) -> FileOperationResult {
     let destination = Path::new(&destination_path);
     let resolution = conflict_resolution
         .map(|value| ConflictResolution::from_str(&value))
@@ -206,7 +278,15 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
     let mut skipped_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    for source_path_str in &source_paths {
+    let total = source_paths.len();
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+
+    for (index, source_path_str) in source_paths.iter().enumerate() {
+        if is_cancelled(&token) {
+            break;
+        }
+        emit_progress(&app, &operation_id, "copy", index, total, source_path_str);
+
         let source = Path::new(source_path_str);
 
         if !source.exists() {
@@ -258,7 +338,7 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
         };
 
         let result = if source.is_dir() {
-            match copy_dir_recursive(source, &dest_path) {
+            match copy_dir_recursive(source, &dest_path, token.as_ref()) {
                 Ok(()) => Ok(()),
                 Err(error) => {
                     if polkit::is_permission_denied(&error) {
@@ -290,6 +370,11 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
         }
     }
 
+    emit_progress(&app, &operation_id, "copy", total, total, "");
+    if let Some(id) = &operation_id {
+        unregister_operation(id);
+    }
+
     FileOperationResult {
         success: failed_count == 0,
         error: last_error,
@@ -300,7 +385,7 @@ pub fn copy_items(source_paths: Vec<String>, destination_path: String, conflict_
 }
 
 #[tauri::command]
-pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_resolution: Option<String>) -> FileOperationResult {
+pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_resolution: Option<String>, operation_id: Option<String>, app: AppHandle) -> FileOperationResult {
     let destination = Path::new(&destination_path);
     let resolution = conflict_resolution
         .map(|value| ConflictResolution::from_str(&value))
@@ -331,7 +416,15 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
     let mut skipped_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    for source_path_str in &source_paths {
+    let total = source_paths.len();
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+
+    for (index, source_path_str) in source_paths.iter().enumerate() {
+        if is_cancelled(&token) {
+            break;
+        }
+        emit_progress(&app, &operation_id, "move", index, total, source_path_str);
+
         let source = Path::new(source_path_str);
 
         if !source.exists() {
@@ -389,7 +482,7 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
                 let cross_device = error.raw_os_error() == Some(17) || error.raw_os_error() == Some(18);
                 if cross_device {
                     let copy_ok = if source.is_dir() {
-                        match copy_dir_recursive(source, &final_dest_path) {
+                        match copy_dir_recursive(source, &final_dest_path, token.as_ref()) {
                             Ok(()) => true,
                             Err(e) if polkit::is_permission_denied(&e) => {
                                 polkit::copy_with_pkexec(source, &final_dest_path).is_ok()
@@ -426,6 +519,11 @@ pub fn move_items(source_paths: Vec<String>, destination_path: String, conflict_
                 last_error = Some(error);
             }
         }
+    }
+
+    emit_progress(&app, &operation_id, "move", total, total, "");
+    if let Some(id) = &operation_id {
+        unregister_operation(id);
     }
 
     FileOperationResult {
@@ -516,12 +614,20 @@ pub fn rename_item(source_path: String, new_name: String) -> FileOperationResult
 }
 
 #[tauri::command]
-pub fn delete_items(paths: Vec<String>, use_trash: bool) -> FileOperationResult {
+pub fn delete_items(paths: Vec<String>, use_trash: bool, operation_id: Option<String>, app: AppHandle) -> FileOperationResult {
     let mut deleted_count: u32 = 0;
     let mut failed_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    for path_str in &paths {
+    let total = paths.len();
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+
+    for (index, path_str) in paths.iter().enumerate() {
+        if is_cancelled(&token) {
+            break;
+        }
+        emit_progress(&app, &operation_id, "delete", index, total, path_str);
+
         let path = Path::new(path_str);
 
         if !path.exists() {
@@ -569,6 +675,11 @@ pub fn delete_items(paths: Vec<String>, use_trash: bool) -> FileOperationResult 
                 last_error = Some(error);
             }
         }
+    }
+
+    emit_progress(&app, &operation_id, "delete", total, total, "");
+    if let Some(id) = &operation_id {
+        unregister_operation(id);
     }
 
     FileOperationResult {

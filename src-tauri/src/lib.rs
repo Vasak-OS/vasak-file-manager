@@ -93,6 +93,7 @@ pub fn run() {
             file_operations::move_items,
             file_operations::rename_item,
             file_operations::delete_items,
+            file_operations::cancel_file_operation,
             file_operations::create_item,
             global_search::global_search_init,
             global_search::global_search_get_status,

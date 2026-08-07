@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
+import { runTrackedFileOperation } from '@/stores/runtime/file-operation-runner';
 
 export type ClipboardOperationType = 'copy' | 'move' | '';
 export type ConflictResolution = 'replace' | 'skip' | 'auto-rename';
@@ -215,19 +216,35 @@ export const useClipboardStore = defineStore('clipboard', () => {
 
 		try {
 			if (clipboardType.value === 'copy') {
-				const result = await invoke<FileOperationResult>('copy_items', {
-					sourcePaths,
-					destinationPath,
-					conflictResolution: conflictResolution || null,
-				});
+				const result = await runTrackedFileOperation(
+					'copy_items',
+					{
+						sourcePaths,
+						destinationPath,
+						conflictResolution: conflictResolution || null,
+					},
+					{
+						type: 'copy',
+						label: `Copying ${sourcePaths.length} item${sourcePaths.length === 1 ? '' : 's'}`,
+						path: destinationPath,
+					}
+				);
 
 				return result;
 			} else if (clipboardType.value === 'move') {
-				const result = await invoke<FileOperationResult>('move_items', {
-					sourcePaths,
-					destinationPath,
-					conflictResolution: conflictResolution || null,
-				});
+				const result = await runTrackedFileOperation(
+					'move_items',
+					{
+						sourcePaths,
+						destinationPath,
+						conflictResolution: conflictResolution || null,
+					},
+					{
+						type: 'move',
+						label: `Moving ${sourcePaths.length} item${sourcePaths.length === 1 ? '' : 's'}`,
+						path: destinationPath,
+					}
+				);
 
 				if (result.success) {
 					clearClipboard();

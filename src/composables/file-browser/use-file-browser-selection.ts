@@ -10,6 +10,7 @@ import {
 	useClipboardStore,
 } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
+import { runTrackedFileOperation } from '@/stores/runtime/file-operation-runner';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
@@ -508,11 +509,19 @@ export function useFileBrowserSelection(
 
 		try {
 			const tauriCommand = isCopy ? 'copy_items' : 'move_items';
-			const result = await invoke<FileOperationResult>(tauriCommand, {
-				sourcePaths,
-				destinationPath: targetPath,
-				conflictResolution: conflictResolution || null,
-			});
+			const result = await runTrackedFileOperation(
+				tauriCommand,
+				{
+					sourcePaths,
+					destinationPath: targetPath,
+					conflictResolution: conflictResolution || null,
+				},
+				{
+					type: isCopy ? 'copy' : 'move',
+					label: `${isCopy ? 'Copying' : 'Moving'} ${sourcePaths.length} item${sourcePaths.length === 1 ? '' : 's'}`,
+					path: targetPath,
+				}
+			);
 
 			toastData.value.cleanup();
 			toastData.value.progress = 100;
@@ -907,10 +916,15 @@ export function useFileBrowserSelection(
 		const paths = entries.map((entry) => entry.path);
 
 		try {
-			const result = await invoke<FileOperationResult>('delete_items', {
-				paths,
-				useTrash,
-			});
+			const result = await runTrackedFileOperation(
+				'delete_items',
+				{ paths, useTrash },
+				{
+					type: 'delete',
+					label: `${useTrash ? 'Trashing' : 'Deleting'} ${paths.length} item${paths.length === 1 ? '' : 's'}`,
+					path: currentPathRef.value,
+				}
+			);
 
 			toastData.value.cleanup();
 			toastData.value.progress = 100;

@@ -45,15 +45,20 @@ pub async fn watch_directory(app: AppHandle, path: String) -> Result<(), String>
         return Err(format!("Path is not a directory: {}", path));
     }
 
+    let stop_signal = Arc::new(Mutex::new(false));
+    let stop_signal_clone = Arc::clone(&stop_signal);
+
+    // Reserve the slot atomically: hold the lock while checking AND inserting so
+    // two concurrent calls for the same path can't both spawn a watcher thread
+    // (the second insert used to orphan the first thread's stop signal).
     {
-        let watchers = ACTIVE_WATCHERS.lock().map_err(|err| err.to_string())?;
+        let mut watchers = ACTIVE_WATCHERS.lock().map_err(|err| err.to_string())?;
         if watchers.contains_key(&normalized_path) {
             return Ok(());
         }
+        watchers.insert(normalized_path.clone(), WatcherHandle { stop_signal });
     }
 
-    let stop_signal = Arc::new(Mutex::new(false));
-    let stop_signal_clone = Arc::clone(&stop_signal);
     let app_handle = app.clone();
     let path_for_thread = normalized_path.clone();
 
@@ -172,9 +177,6 @@ pub async fn watch_directory(app: AppHandle, path: String) -> Result<(), String>
             watchers.remove(&path_for_thread);
         }
     });
-
-    let mut watchers = ACTIVE_WATCHERS.lock().map_err(|err| err.to_string())?;
-    watchers.insert(normalized_path, WatcherHandle { stop_signal });
 
     Ok(())
 }
