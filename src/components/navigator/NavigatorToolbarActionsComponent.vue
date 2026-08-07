@@ -9,6 +9,7 @@ import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import StatusCenterButton from '@/components/statuscenter/StatusCenterButton.vue';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import type { Layout } from '@/types/navigator';
 
@@ -97,5 +98,6 @@ async function setLayout(layoutName: LayoutType) {
         </TooltipTrigger>
         <TooltipContent>{{ t('settings.infoPanel.title') }}</TooltipContent>
       </Tooltip>
+      <StatusCenterButton />
     </div>
 </template>
