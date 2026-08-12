@@ -15,8 +15,40 @@ mod undo;
 pub mod utils;
 
 use gtk::prelude::*;
+use std::path::PathBuf;
 use tauri::Manager;
 use webkit2gtk::{SettingsExt, WebViewExt};
+
+/// Where the translations are. The plugin only probes paths relative to the
+/// binary and to the working directory, and none of those exist for a binary in
+/// /usr/bin, so the installed location has to be named explicitly or the whole
+/// interface shows translation keys.
+fn locales_dir() -> Option<String> {
+    let candidates = [
+        PathBuf::from("locales"),
+        PathBuf::from("src-tauri/locales"),
+        PathBuf::from("/usr/share/vasak-file-manager/locales"),
+    ];
+
+    candidates
+        .into_iter()
+        .find(|path| path.is_dir())
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+/// Picks the startup language from the session locale, falling back to Spanish,
+/// which is what the UI shipped with before it was translatable.
+fn default_locale() -> String {
+    let raw = std::env::var("LC_ALL")
+        .or_else(|_| std::env::var("LC_MESSAGES"))
+        .or_else(|_| std::env::var("LANG"))
+        .unwrap_or_default();
+
+    match raw.split(['_', '.', '@']).next().unwrap_or("") {
+        "en" => "en".to_string(),
+        _ => "es".to_string(),
+    }
+}
 
 fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView> {
     for child in container.children() {
@@ -62,7 +94,10 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_config_manager::init())
         .plugin(tauri_plugin_vicons::init())
-        .plugin(tauri_plugin_i18n_vsk::init(None))
+        .plugin(tauri_plugin_i18n_vsk::init_with_path(
+            Some(default_locale()),
+            locales_dir(),
+        ))
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_denylist(&["quick-view"])
