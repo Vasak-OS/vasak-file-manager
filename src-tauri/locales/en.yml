@@ -129,6 +129,7 @@ shortcuts:
   renameSelectedItems: Rename selected items
   setSelectedItemsForCopying: Copy selected items
   setSelectedItemsForMoving: Cut selected items
+  showHideHiddenFiles: Show/Hide hidden files
   showHideGlobalSearch: Show/Hide global search
   switchToLeftPane: Switch to left pane
   switchToRightPane: Switch to right pane

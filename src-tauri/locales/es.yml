@@ -129,6 +129,7 @@ shortcuts:
   renameSelectedItems: Renombrar elementos seleccionados
   setSelectedItemsForCopying: Copiar elementos seleccionados
   setSelectedItemsForMoving: Cortar elementos seleccionados
+  showHideHiddenFiles: Mostrar/Ocultar archivos ocultos
   showHideGlobalSearch: Mostrar/Ocultar búsqueda global
   switchToLeftPane: Cambiar a panel izquierdo
   switchToRightPane: Cambiar a panel derecho

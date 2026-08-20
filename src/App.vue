@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
@@ -47,6 +48,16 @@ onMounted(async () => {
 		await userPathsStore.init();
 		await userLayoutStore.init();
 		await workspacesStore.init();
+
+		// Si nos abrieron con una ruta —«abrir carpeta contenedora» de una
+		// descarga, un directorio desde otra aplicación—, esa carpeta va en una
+		// pestaña nueva y al frente. Va después de restaurar el espacio de
+		// trabajo para no pisar las pestañas que ya tenías.
+		const requestedPath = await invoke<string | null>('startup_path');
+
+		if (requestedPath) {
+			await workspacesStore.openNewTabGroup(requestedPath);
+		}
 
 		const configStore = useConfigStore() as Store<
 			'config',

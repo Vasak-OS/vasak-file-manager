@@ -61,6 +61,8 @@ interface DataSource {
 	toggleFilter: () => void;
 	openFilter: () => void;
 	closeFilter: () => void;
+	showHiddenFiles: Ref<boolean>;
+	toggleHiddenFiles: () => void;
 }
 
 function setupNavigationDataSource(
@@ -81,7 +83,13 @@ function setupNavigationDataSource(
 		globalSearchStore,
 	});
 
+	// Los ocultos arrancan escondidos, que es lo que espera cualquiera que no
+	// los fue a buscar, y se muestran con Ctrl+H. Es por panel: en vista
+	// dividida tiene sentido mirar los de un lado sin llenar el otro.
 	const showHiddenFiles = ref(false);
+	const toggleHiddenFiles = () => {
+		showHiddenFiles.value = !showHiddenFiles.value;
+	};
 	const listSortColumn = ref(null);
 	const listSortDirection = ref<'asc' | 'desc'>('asc');
 	const applyListSort = computed(() => options.layout() === 'list');
@@ -128,6 +136,8 @@ function setupNavigationDataSource(
 		filterQuery: filter.filterQuery,
 		isFilterOpen: filter.isFilterOpen,
 		toggleFilter: filter.toggleFilter,
+		showHiddenFiles,
+		toggleHiddenFiles,
 		openFilter: filter.openFilter,
 		closeFilter: filter.closeFilter,
 	};
@@ -182,6 +192,10 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 		toggleFilter: () => {},
 		openFilter: () => {},
 		closeFilter: () => {},
+		// Los resultados de la búsqueda global vienen de otro lado y ya
+		// incluyen lo que corresponda: acá no hay directorio que filtrar.
+		showHiddenFiles: ref(true),
+		toggleHiddenFiles: () => {},
 	};
 }
 
@@ -358,6 +372,8 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		filterQuery: dataSource.filterQuery,
 		isFilterOpen: dataSource.isFilterOpen,
 		toggleFilter: dataSource.toggleFilter,
+		showHiddenFiles: dataSource.showHiddenFiles,
+		toggleHiddenFiles: dataSource.toggleHiddenFiles,
 		openFilter: dataSource.openFilter,
 		closeFilter: dataSource.closeFilter,
 
