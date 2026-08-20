@@ -238,6 +238,23 @@ async function handleGlobalSearchOpenEntry(entry: DirEntry) {
 	globalSearchStore.close();
 }
 
+function handleHiddenFilesShortcut() {
+	if (isSplitView.value) {
+		const tabGroup = workspacesStore.currentTabGroup;
+
+		if (tabGroup) {
+			for (const tab of tabGroup) {
+				paneRefsMap.value.get(tab.id)?.toggleHiddenFiles?.();
+			}
+
+			return;
+		}
+	}
+
+	const pane = getActivePaneRef() || singlePaneRef.value;
+	pane?.toggleHiddenFiles?.();
+}
+
 function handleFilterShortcut() {
 	if (!isSplitView.value) {
 		const pane = singlePaneRef.value || Array.from(paneRefsMap.value.values())[0];
@@ -460,6 +477,7 @@ function callActivePaneMethod(
 }
 
 function registerShortcutHandlers() {
+	shortcutsStore.registerHandler('toggleHiddenFiles', handleHiddenFilesShortcut);
 	shortcutsStore.registerHandler('toggleFilter', handleFilterShortcut);
 	shortcutsStore.registerHandler('copy', handleCopyShortcut);
 	shortcutsStore.registerHandler('cut', handleCutShortcut);

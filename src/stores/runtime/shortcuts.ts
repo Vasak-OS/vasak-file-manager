@@ -33,6 +33,20 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		isReadOnly: false,
 	},
 	{
+		id: 'toggleHiddenFiles',
+		labelKey: 'shortcuts.showHideHiddenFiles',
+		defaultKeys: {
+			ctrl: true,
+			key: 'h',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
 		id: 'toggleFilter',
 		labelKey: 'shortcuts.focusUnfocusFilterField',
 		defaultKeys: {

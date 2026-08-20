@@ -1,6 +1,7 @@
 export type ShortcutId =
 	| 'toggleGlobalSearch'
 	| 'toggleFilter'
+	| 'toggleHiddenFiles'
 	| 'toggleSettingsSearch'
 	| 'copy'
 	| 'cut'

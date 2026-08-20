@@ -70,6 +70,8 @@ defineExpose({
 	isFilterOpen: fb.isFilterOpen,
 	selectedEntries: fb.selectedEntries,
 	toggleFilter: fb.toggleFilter,
+	toggleHiddenFiles: fb.toggleHiddenFiles,
+	showHiddenFiles: fb.showHiddenFiles,
 	openFilter: fb.openFilter,
 	closeFilter: fb.closeFilter,
 	navigateToPath: fb.navigateToPath,

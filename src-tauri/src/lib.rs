@@ -1,3 +1,4 @@
+mod startup_path;
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;
@@ -110,6 +111,7 @@ pub fn run() {
         .plugin(tauri_plugin_drag_and_drop_wayland::init())
         .invoke_handler(tauri::generate_handler![
             dir_reader::read_dir,
+            startup_path::startup_path,
             dir_reader::get_system_drives,
             dir_reader::get_parent_dir,
             dir_reader::path_exists,
