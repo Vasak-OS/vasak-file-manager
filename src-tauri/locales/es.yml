@@ -146,6 +146,7 @@ openWith:
   loadingPrograms: Cargando programas...
   defaultApp: Aplicación Predeterminada
   suggestedApps: Aplicaciones Sugeridas
+  otherApps: Otras Aplicaciones
   noProgramsFound: No se encontraron programas
   failedToLoadPrograms: No se pudieron cargar los programas
   customCommandWithFlags: Abrir con comando personalizado

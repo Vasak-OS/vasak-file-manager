@@ -146,6 +146,7 @@ openWith:
   loadingPrograms: Loading programs...
   defaultApp: Default App
   suggestedApps: Suggested Apps
+  otherApps: Other Apps
   noProgramsFound: No programs found
   customCommandWithFlags: Open with custom command
   customCommands: Custom Commands

@@ -220,6 +220,10 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 
 		const porDefecto = resultado?.default_program ?? null;
 		const recomendados = resultado?.recommended_programs ?? [];
+		// El sistema también devuelve los que pueden abrir el archivo aunque no
+		// los recomiende. El menú los venía ignorando —también el de antes—, así
+		// que «abrir con» escondía programas que sí sirven y ya estaban pedidos.
+		const otros = resultado?.other_programs ?? [];
 
 		if (porDefecto) {
 			items.push({ type: 'label', label: t('openWith.defaultApp') });
@@ -244,7 +248,21 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 			}
 		}
 
-		if (!porDefecto && recomendados.length === 0) {
+		if (otros.length > 0) {
+			if (porDefecto || recomendados.length > 0) items.push({ type: 'separator' });
+
+			items.push({ type: 'label', label: t('openWith.otherApps') });
+
+			for (const programa of otros) {
+				items.push({
+					id: `open-with:${programa.path}`,
+					label: programa.name,
+					icon: programa.icon ?? 'text-x-generic',
+				});
+			}
+		}
+
+		if (!porDefecto && recomendados.length === 0 && otros.length === 0) {
 			items.push({ type: 'label', label: t('openWith.noProgramsFound') });
 		}
 
@@ -498,13 +516,17 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 		}
 
 		if (elegido.id.startsWith('terminal:')) {
+			// Se lee antes de esperar la ruta: si se leyera después, soltar Shift
+			// en ese intervalo cambiaría si la terminal abre como administrador,
+			// y viceversa.
+			const comoAdministrador = isShiftHeld.value;
 			const destino = await terminalTargetPath(entries);
 			if (!destino) return;
 
 			await terminalsStore.openTerminal(
 				destino,
 				elegido.id.slice('terminal:'.length),
-				isShiftHeld.value
+				comoAdministrador
 			);
 			return;
 		}

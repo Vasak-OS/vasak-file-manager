@@ -50,14 +50,32 @@ export const campoDeTexto = (elemento: EventTarget | null): CampoDeTexto | null 
  * que hay que avisar con un evento `input`: sin eso lo pegado se ve en pantalla
  * y se pierde al guardar.
  */
-export const insertar = (campo: CampoDeTexto, texto: string) => {
-	const desde = campo.selectionStart ?? campo.value.length;
-	const hasta = campo.selectionEnd ?? campo.value.length;
+/**
+ * Reemplaza un tramo del campo respetando a Vue.
+ *
+ * `setRangeText` cambia el valor sin que `v-model` se entere, así que hay que
+ * avisar con un evento `input`: sin eso lo escrito se ve en pantalla y se pierde
+ * al guardar.
+ *
+ * El tramo se puede pasar. Importa para cortar: entre que se abre el menú y se
+ * elige, el campo puede haber cambiado —lo cambia el programa, o el foco se fue
+ * y volvió—, y borrar «lo que esté seleccionado ahora» significaría borrar algo
+ * distinto de lo que se copió.
+ */
+export const insertar = (campo: CampoDeTexto, texto: string, tramo?: Tramo) => {
+	const desde = tramo?.desde ?? campo.selectionStart ?? campo.value.length;
+	const hasta = tramo?.hasta ?? campo.selectionEnd ?? campo.value.length;
 
 	campo.focus();
 	campo.setRangeText(texto, desde, hasta, 'end');
 	campo.dispatchEvent(new Event('input', { bubbles: true }));
 };
+
+/** Un tramo del campo, en posiciones de carácter. */
+export interface Tramo {
+	desde: number;
+	hasta: number;
+}
 
 /** Devuelve si el texto llegó de verdad al portapapeles. */
 export const copiar = async (portapapeles: Portapapeles, texto: string): Promise<boolean> => {
@@ -74,7 +92,9 @@ export const ejecutarAccion = async (
 	accion: AccionDeTexto,
 	campo: CampoDeTexto,
 	seleccion: string,
-	portapapeles: Portapapeles
+	portapapeles: Portapapeles,
+	/** Dónde estaba lo seleccionado cuando se abrió el menú. */
+	tramo?: Tramo
 ): Promise<void> => {
 	if (accion === 'copiar') {
 		await copiar(portapapeles, seleccion);
@@ -85,7 +105,7 @@ export const ejecutarAccion = async (
 		// Cortar es copiar y después borrar. Si la copia no llegó al portapapeles
 		// no hay «después»: borrar ahí sería perder el texto sin dejar copia en
 		// ningún lado. Se queda como estaba, que siempre se puede volver a probar.
-		if (await copiar(portapapeles, seleccion)) insertar(campo, '');
+		if (await copiar(portapapeles, seleccion)) insertar(campo, '', tramo);
 		return;
 	}
 

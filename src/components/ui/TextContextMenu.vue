@@ -48,7 +48,11 @@ const abrir = async (evento: MouseEvent) => {
 	// peor que ningún menú. El del motor ya está apagado en toda la ventana.
 	if (!campo) return;
 
-	const seleccion = campo.value.slice(campo.selectionStart ?? 0, campo.selectionEnd ?? 0);
+	// El tramo se guarda además del texto: al cortar hay que borrar exactamente
+	// esto y no lo que esté seleccionado cuando la persona elija, que puede haber
+	// cambiado mientras el menú estaba abierto.
+	const tramo = { desde: campo.selectionStart ?? 0, hasta: campo.selectionEnd ?? 0 };
+	const seleccion = campo.value.slice(tramo.desde, tramo.hasta);
 	const editable = !campo.readOnly && !campo.disabled;
 
 	// Una contraseña es la única cosa que no debería poder salir al portapapeles
@@ -95,7 +99,7 @@ const abrir = async (evento: MouseEvent) => {
 	const elegido = await show(opciones, evento);
 	if (!elegido || !esAccionDeTexto(elegido.id)) return;
 
-	await ejecutarAccion(elegido.id, campo, seleccion, portapapeles);
+	await ejecutarAccion(elegido.id, campo, seleccion, portapapeles, tramo);
 };
 
 onMounted(() => {

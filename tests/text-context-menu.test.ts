@@ -126,4 +126,20 @@ describe('esAccionDeTexto', () => {
 		expect(esAccionDeTexto('seleccionar-todo')).toBe(true);
 		expect(esAccionDeTexto('formatear-el-disco')).toBe(false);
 	});
+
+	test('cortar borra lo que se copió, aunque la selección haya cambiado', () => {
+		// Entre que se abre el menú y se elige, el campo puede cambiar solo. Sin
+		// guardar el tramo, cortar borraba «lo que esté seleccionado ahora».
+		const campo = campoFalso('hola mundo', 0, 4);
+		const tramo = { desde: 0, hasta: 4 };
+		const portapapeles = portapapelesFalso({});
+
+		// El programa mueve la selección mientras el menú está abierto.
+		campo.selectionStart = 5;
+		campo.selectionEnd = 10;
+
+		return ejecutarAccion('cortar', campo, 'hola', portapapeles, tramo).then(() => {
+			expect(campo.value).toBe(' mundo');
+		});
+	});
 });
