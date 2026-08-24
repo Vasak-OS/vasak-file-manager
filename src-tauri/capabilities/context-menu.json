@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "context-menu",
+  "description": "Lo justo para que la ventana del menú del clic derecho se dibuje con el tema del sistema. Va aparte porque Tauri le da a cada ventana de una capability todos sus permisos, y esta ventana la dibuja el plugin: no tiene por qué poder abrir rutas, tocar el almacenamiento ni robar atajos globales.",
+  "windows": [
+    "vsk_context_menu"
+  ],
+  "permissions": [
+    "vsk-contextual-menu:default",
+    "config-manager:default"
+  ]
+}

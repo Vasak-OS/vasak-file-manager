@@ -25,7 +25,7 @@ export interface FileBrowserContext {
 
 	onEntryMouseDown: (entry: DirEntry, event: MouseEvent) => void;
 	onEntryMouseUp: (entry: DirEntry, event: MouseEvent) => void;
-	handleEntryContextMenu: (entry: DirEntry) => void;
+	openEntryContextMenu: (entry: DirEntry, event: MouseEvent) => void;
 	onContextMenuAction: (action: ContextMenuAction) => void;
 	openOpenWithDialog: (entries: DirEntry[]) => void;
 	navigateToHome: () => void | Promise<void>;

@@ -3,6 +3,7 @@ mod dir_reader;
 mod dir_size;
 mod dir_watcher;
 
+mod clipboard;
 mod compress;
 mod extract;
 mod file_operations;
@@ -109,7 +110,10 @@ pub fn run() {
         .plugin(tauri_plugin_system_fonts::init())
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_drag_and_drop_wayland::init())
+        .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
+            clipboard::clipboard_read_text,
+            clipboard::clipboard_write_text,
             dir_reader::read_dir,
             startup_path::startup_path,
             dir_reader::get_system_drives,

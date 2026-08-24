@@ -27,7 +27,28 @@ export const useTerminalsStore = defineStore('terminals', () => {
 	const loadError = ref<string | null>(null);
 	const hasLoaded = ref(false);
 
+	/**
+	 * El pedido en curso, si hay uno.
+	 *
+	 * El menú del clic derecho pide las terminales al armarse, y al montar la
+	 * vista se piden también: dos pedidos en vuelo al mismo tiempo, y el que
+	 * conteste último manda. Si ese último es el que falló, borra el resultado
+	 * bueno del otro. Compartiendo el pedido, quien llegue segundo espera al
+	 * primero en vez de largar otro.
+	 */
+	let enCurso: Promise<void> | null = null;
+
 	async function init() {
+		if (enCurso) return enCurso;
+
+		enCurso = pedirTerminales().finally(() => {
+			enCurso = null;
+		});
+
+		return enCurso;
+	}
+
+	async function pedirTerminales() {
 		loadError.value = null;
 
 		try {

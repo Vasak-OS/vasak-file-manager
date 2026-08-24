@@ -80,6 +80,9 @@ fileBrowser:
     pasteToPane2: Paste to Pane 2
     extractHere: Extract Here
     compress: Compress...
+    deletePermanently: Delete from drive
+    tags: Tags
+    noTags: No tags
   name: Name
   items: Items
   size: Size
@@ -143,6 +146,7 @@ openWith:
   loadingPrograms: Loading programs...
   defaultApp: Default App
   suggestedApps: Suggested Apps
+  otherApps: Other Apps
   noProgramsFound: No programs found
   customCommandWithFlags: Open with custom command
   customCommands: Custom Commands
@@ -264,3 +268,8 @@ search: Search
 driveNotMounted: Drive not mounted
 freeOf: free of
 mounting: Mounting
+textMenu:
+  copy: Copy
+  cut: Cut
+  paste: Paste
+  selectAll: Select all

@@ -102,7 +102,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
         :data-clipboard-type="clipboardPathsMap.get(entry.path) || undefined"
         :data-drop-target="entry.is_dir || undefined" @mousedown="ctx.onEntryMouseDown(entry, $event)"
-        @mouseup="ctx.onEntryMouseUp(entry, $event)" @contextmenu.prevent="ctx.handleEntryContextMenu(entry)"
+        @mouseup="ctx.onEntryMouseUp(entry, $event)" @contextmenu="ctx.openEntryContextMenu(entry, $event)"
         @keydown="handleEntryKeydown"
         style="grid-template-columns: var(--file-browser-list-columns); padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);">
         <div class="absolute inset-0 z-0 pointer-events-none">

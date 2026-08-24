@@ -1,11 +1,22 @@
+import { attachConsole } from '@tauri-apps/plugin-log';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { setupContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import I18n from '@vasakgroup/tauri-plugin-i18n';
 import { createPinia } from 'pinia';
 import { createApp, type Directive } from 'vue';
-import { attachConsole } from '@tauri-apps/plugin-log';
 import App from '@/App.vue';
+import { disableWebViewFeatures } from '@/utils/web-view-features';
 import '@/assets/main.css';
 
 attachConsole();
+
+// El menú del clic derecho del escritorio, una sola vez para toda la
+// aplicación: le enseña a resolver los nombres de iconos del sistema y apaga el
+// menú que dibuja WebKit, que ofrece «Recargar» e «Inspeccionar elemento» sobre
+// una aplicación que no es una página web.
+setupContextMenu({ iconResolver: getIconSource });
+
+disableWebViewFeatures();
 
 const waveDirective: Directive<HTMLElement> = {
 	mounted(el) {

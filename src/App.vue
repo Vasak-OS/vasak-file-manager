@@ -4,6 +4,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import TextContextMenu from '@/components/ui/TextContextMenu.vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
@@ -23,12 +24,19 @@ onErrorCaptured((err, instance, info) => {
 		}
 	}
 	if (err instanceof DOMException || String(err).includes('InvalidCharacterError')) {
-		console.error('[InvalidCharacterError captured]', {
-			name: err.name,
-			message: err.message,
-			code: (err as any).code,
-			stack: err.stack?.split('\n').slice(0, 5).join('\n'),
-		}, 'info:', info, 'component:', (instance as any)?.type?.__name || (instance as any)?.type?.name);
+		console.error(
+			'[InvalidCharacterError captured]',
+			{
+				name: err.name,
+				message: err.message,
+				code: (err as any).code,
+				stack: err.stack?.split('\n').slice(0, 5).join('\n'),
+			},
+			'info:',
+			info,
+			'component:',
+			(instance as any)?.type?.__name || (instance as any)?.type?.name
+		);
 		return false;
 	}
 	return true;
@@ -86,4 +94,7 @@ onUnmounted(() => {
 <template>
   <WindowAppLayout />
   <ToastContainer />
+  <!-- Una sola vez: escucha en el documento, así los diálogos que aparecen y
+       desaparecen no tienen que acordarse de nada. -->
+  <TextContextMenu />
 </template>

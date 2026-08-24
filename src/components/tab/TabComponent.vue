@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { useContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
-import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
-import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
-import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
-import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { Tab } from '@/types/workspaces';
 import { useEventListener } from '@/utils/event-listener';
@@ -29,12 +26,13 @@ const emit = defineEmits<Emits>();
 const { t } = useI18n();
 
 const workspacesStore = useWorkspacesStore();
+const { show: showTabMenu } = useContextMenu();
 const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const showTabPreview = true;
 const LONG_PRESS_DELAY = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 
-const isDropdownOpen = ref(false);
+const isMenuOpen = ref(false);
 const isLongPressing = ref(false);
 const isPressing = ref(false);
 const startPosition = ref({
@@ -45,7 +43,7 @@ const startPosition = ref({
 const { start: startLongPressTimer, stop: stopLongPressTimer } = useTimeoutFn(
 	() => {
 		isLongPressing.value = true;
-		isDropdownOpen.value = true;
+		abrirMenuDePestana(startPosition.value);
 	},
 	LONG_PRESS_DELAY,
 	{ immediate: false }
@@ -121,9 +119,43 @@ function tabOnClick(tabGroup: Tab[]) {
 	workspacesStore.openTabGroup(tabGroup);
 }
 
+/**
+ * El menú de la pestaña, el mismo que dibuja el resto del escritorio.
+ *
+ * Lo abren dos gestos: el clic derecho y el toque sostenido, que en una pantalla
+ * táctil es lo mismo. Por eso recibe un punto y no un evento.
+ */
+async function openTabMenu(punto: { x: number; y: number }) {
+	isMenuOpen.value = true;
+
+	// La bandera sólo existe para callar la vista previa mientras el menú tapa la
+	// pestaña. Si abrirlo falla, sin el `finally` se quedaría prendida para
+	// siempre y esa pestaña nunca volvería a mostrar su vista previa.
+	try {
+		const elegido = await showTabMenu(
+			[
+				{ id: 'cerrar-otras', label: t('tabs.closeOtherTabs'), icon: 'gtk-close' },
+				{ id: 'cerrar-todas', label: t('tabs.closeAllTabs'), icon: 'gtk-close' },
+			],
+			punto
+		);
+
+		if (elegido?.id === 'cerrar-otras') await closeOtherTabs();
+		if (elegido?.id === 'cerrar-todas') await closeAllTabs();
+	} finally {
+		isMenuOpen.value = false;
+	}
+}
+
+/** Abrir el menú no puede tumbar nada: lo peor que pasa es que no aparezca. */
+function abrirMenuDePestana(punto: { x: number; y: number }) {
+	openTabMenu(punto).catch((error) => {
+		console.warn('No se pudo abrir el menú de la pestaña:', error);
+	});
+}
+
 function handleContextMenu(event: MouseEvent) {
-	event.preventDefault();
-	isDropdownOpen.value = true;
+	abrirMenuDePestana({ x: event.clientX, y: event.clientY });
 }
 
 function handleAuxClick(event: MouseEvent) {
@@ -140,16 +172,12 @@ async function closeOtherTabs() {
 async function closeAllTabs() {
 	await workspacesStore.closeAllTabGroups();
 }
-
-
 </script>
 
 <template>
-  <DropdownMenu v-model:open="isDropdownOpen">
-    <Tooltip :disabled="!(props.previewEnabled && showTabPreview) || isDropdownOpen"
+    <Tooltip :disabled="!(props.previewEnabled && showTabPreview) || isMenuOpen"
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger as-child>
-        <DropdownMenuTrigger as-child :disabled="true">
           <div v-if="props.tabGroup?.length" v-wave class="relative flex w-34 max-w-34 rounded-corner p-1 px-3 pr-3 items-center border border-ui-border" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }"
             @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
@@ -164,18 +192,7 @@ async function closeAllTabs() {
               <img :src="xIcon" :alt="t('tabs.close')" class="h-6 w-6" />
             </button>
           </div>
-        </DropdownMenuTrigger>
       </TooltipTrigger>
-      <DropdownMenuContent align="start" class="max-w-60">
-        <DropdownMenuItem @select="closeOtherTabs">
-          <img :alt="t('tabs.closeOtherTabs')" :src="xIcon" class="mr-2 inline-block h-4 w-4" />
-          {{ t('tabs.closeOtherTabs') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem @select="closeAllTabs">
-          <img :alt="t('tabs.closeAllTabs')" :src="xIcon" class="mr-2 inline-block h-4 w-4" />
-          {{ t('tabs.closeAllTabs') }}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
       <TooltipContent side="bottom" class="min-w-50 max-w-100 bg-ui-bg/80 rounded-corner p-2">
         <span>
           <div v-for="(tab, index) in props.tabGroup" :key="index">
@@ -189,5 +206,4 @@ async function closeAllTabs() {
         </span>
       </TooltipContent>
     </Tooltip>
-  </DropdownMenu>
 </template>
