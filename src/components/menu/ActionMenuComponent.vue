@@ -2,14 +2,12 @@
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
-import OpenWithSubmenu from '@/components/menu/OpenWithSubMenuComponent.vue';
-import TerminalSubmenu from '@/components/menu/TerminalSubMenuComponent.vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
@@ -20,22 +18,16 @@ const props = defineProps<{
 	selectedEntries: DirEntry[];
 	menuItemComponent: object;
 	menuSeparatorComponent: object;
-	isContextMenu?: boolean;
 }>();
 
 const emit = defineEmits<{
 	action: [action: ContextMenuAction];
-	openCustomDialog: [];
 }>();
 
 const { t } = useI18n();
 
 function emitAction(action: ContextMenuAction) {
 	emit('action', action);
-}
-
-function handleOpenCustomDialog() {
-	emit('openCustomDialog');
 }
 
 function handleCopyClick() {
@@ -155,7 +147,6 @@ function handleKeyUp(event: KeyboardEvent) {
 onMounted(async () => {
 	window.addEventListener('keydown', handleKeyDown);
 	window.addEventListener('keyup', handleKeyUp);
-
 });
 
 onUnmounted(() => {
@@ -241,13 +232,10 @@ function handleDeleteClick() {
     </Tooltip>
   </div>
   <component :is="menuSeparatorComponent" />
-  <OpenWithSubmenu v-if="isActionVisible('open-with') && isContextMenu" :selected-entries="selectedEntries"
-    @open-custom-dialog="handleOpenCustomDialog" />
-  <component :is="menuItemComponent" v-if="isActionVisible('open-with') && !isContextMenu"
+  <component :is="menuItemComponent" v-if="isActionVisible('open-with')"
     @select="emitAction('open-with')" @click="emitAction('open-with')">
     <span>{{ t('fileBrowser.actions.openWith') }}</span>
   </component>
-  <TerminalSubmenu v-if="isContextMenu" :selected-entries="selectedEntries" :is-shift-held="isShiftHeld" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-in-new-tab')"
     class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('open-in-new-tab')"
     @click="emitAction('open-in-new-tab')">

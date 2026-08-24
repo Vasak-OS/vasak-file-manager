@@ -2,12 +2,8 @@
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
-import ContextMenuComponent from '@/components/menu/ContextMenuComponent.vue';
-import ContextMenu from '@/components/ui/contextmenu/ContextMenu.vue';
-import ContextMenuTrigger from '@/components/ui/contextmenu/ContextMenuTrigger.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
@@ -18,6 +14,7 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
@@ -125,8 +122,6 @@ const sortedEntries = computed(() => {
 
 	return entries;
 });
-
-
 </script>
 
 <template>
@@ -248,16 +243,11 @@ const sortedEntries = computed(() => {
       :description="t('fileBrowser.directoryIsEmptyDescription')" :bordered="false" />
 
     <template v-else>
-      <ScrollArea class="relative min-h-0 flex-1" @contextmenu.self.prevent>
-        <ContextMenu>
-          <ContextMenuTrigger as-child>
-            <div :ref="ctx.setEntriesContainerRef" class="min-h-full" @contextmenu.self.prevent>
-              <FileBrowserGridView v-if="props.layout === 'grid'" :entries="sortedEntries" />
-              <FileBrowserListView v-else :entries="sortedEntries" />
-            </div>
-          </ContextMenuTrigger>
-          <ContextMenuComponent v-if="ctx.contextMenu.value.selectedEntries.length > 0" />
-        </ContextMenu>
+      <ScrollArea class="relative min-h-0 flex-1">
+        <div :ref="ctx.setEntriesContainerRef" class="min-h-full">
+          <FileBrowserGridView v-if="props.layout === 'grid'" :entries="sortedEntries" />
+          <FileBrowserListView v-else :entries="sortedEntries" />
+        </div>
       </ScrollArea>
     </template>
   </div>

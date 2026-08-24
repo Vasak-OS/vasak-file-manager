@@ -10,6 +10,7 @@ import InboundDragOverlayComponent from '@/components/drag/InboundDragOverlayCom
 import FileBrowserContentComponent from '@/components/filebrowser/FileBrowserContentComponent.vue';
 import FileBrowserStatusBarComponent from '@/components/filebrowser/FileBrowserStatusBarComponent.vue';
 import FileBrowserToolbarComponent from '@/components/filebrowser/FileBrowserToolbarComponent.vue';
+import { useEntryContextMenu } from '@/composables/file-browser/use-entry-context-menu';
 import { useFileBrowser } from '@/composables/file-browser/use-file-browser';
 import { provideFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import type { DirEntry } from '@/types/dir-entry';
@@ -46,6 +47,15 @@ const fb = useFileBrowser({
 	componentRef: fileBrowserRef,
 });
 
+// El menú del clic derecho sobre los archivos: lo dibuja el menú del
+// escritorio, acá sólo se describe qué ofrece el gestor.
+const entryContextMenu = useEntryContextMenu({
+	contextMenu: fb.contextMenu,
+	handleEntryContextMenu: fb.handleEntryContextMenu,
+	onAction: fb.onContextMenuAction,
+	openOpenWithDialog: fb.openOpenWithDialog,
+});
+
 provideFileBrowserContext({
 	entries: fb.entries,
 	currentPath: fb.currentPath,
@@ -59,7 +69,7 @@ provideFileBrowserContext({
 	setEntriesContainerRef: fb.setEntriesContainerRef,
 	onEntryMouseDown: fb.onEntryMouseDown,
 	onEntryMouseUp: fb.onEntryMouseUp,
-	handleEntryContextMenu: fb.handleEntryContextMenu,
+	openEntryContextMenu: entryContextMenu.openEntryContextMenu,
 	onContextMenuAction: fb.onContextMenuAction,
 	openOpenWithDialog: fb.openOpenWithDialog,
 	navigateToHome: fb.navigateToHome,

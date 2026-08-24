@@ -3,7 +3,8 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": [
-    "main"
+    "main",
+    "vsk_context_menu"
   ],
   "permissions": [
     "core:default",
@@ -27,6 +28,7 @@
     "window-state:default",
     "vicons:default",
     "config-manager:default",
+    "vsk-contextual-menu:default",
     "store:default",
     {
       "identifier": "opener:allow-open-path",

@@ -80,6 +80,9 @@ fileBrowser:
     pasteToPane2: Pegar en Panel 2
     extractHere: Extraer aquí
     compress: Comprimir...
+    deletePermanently: Eliminar del disco
+    tags: Etiquetas
+    noTags: Sin etiquetas
   name: Nombre
   items: Elementos
   size: Tamaño
@@ -144,6 +147,7 @@ openWith:
   defaultApp: Aplicación Predeterminada
   suggestedApps: Aplicaciones Sugeridas
   noProgramsFound: No se encontraron programas
+  failedToLoadPrograms: No se pudieron cargar los programas
   customCommandWithFlags: Abrir con comando personalizado
   customCommands: Comandos Personalizados
   addCustomCommand: Agregar Comando Personalizado
@@ -261,3 +265,8 @@ search: Buscar
 driveNotMounted: Unidad no montada
 freeOf: libres de
 mounting: Montando
+textMenu:
+  copy: Copiar
+  cut: Cortar
+  paste: Pegar
+  selectAll: Seleccionar todo

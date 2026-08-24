@@ -80,6 +80,9 @@ fileBrowser:
     pasteToPane2: Paste to Pane 2
     extractHere: Extract Here
     compress: Compress...
+    deletePermanently: Delete from drive
+    tags: Tags
+    noTags: No tags
   name: Name
   items: Items
   size: Size
@@ -264,3 +267,8 @@ search: Search
 driveNotMounted: Drive not mounted
 freeOf: free of
 mounting: Mounting
+textMenu:
+  copy: Copy
+  cut: Cut
+  paste: Paste
+  selectAll: Select all
