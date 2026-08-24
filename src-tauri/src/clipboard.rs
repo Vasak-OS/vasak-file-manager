@@ -28,13 +28,16 @@ where
     receptor.recv().map_err(|error| error.to_string())
 }
 
+/// Lo que haya de texto en el portapapeles, o nada.
+///
+/// «Nada» y «la cadena vacía» no son lo mismo acá: si esto devolviera una cadena
+/// vacía cuando el portapapeles está vacío —o tiene una imagen—, pegar
+/// reemplazaría lo que estuviera seleccionado por nada, es decir que lo borraría.
+/// Quien pega con el portapapeles vacío no espera perder lo que tenía marcado.
 #[tauri::command]
-pub async fn clipboard_read_text(app: AppHandle) -> Result<String, String> {
+pub async fn clipboard_read_text(app: AppHandle) -> Result<Option<String>, String> {
     con_portapapeles(&app, |portapapeles| {
-        portapapeles
-            .wait_for_text()
-            .map(|texto| texto.to_string())
-            .unwrap_or_default()
+        portapapeles.wait_for_text().map(|texto| texto.to_string())
     })
 }
 

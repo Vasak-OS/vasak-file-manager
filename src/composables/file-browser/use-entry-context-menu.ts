@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { dirname } from '@tauri-apps/api/path';
 import type { MenuEntry } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
@@ -125,16 +126,26 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 		return Array.from(primera).filter((tagId) => porEntrada.every((tags) => tags.has(tagId)));
 	});
 
-	/** La carpeta donde abrir la terminal: la seleccionada, o la que contiene al archivo. */
-	const terminalTargetPath = computed(() => {
-		const primera = selectedEntries.value[0];
+	/**
+	 * La carpeta donde abrir la terminal: la seleccionada, o la que contiene al
+	 * archivo.
+	 *
+	 * El padre lo resuelve `dirname`, el mismo que usa la barra de direcciones.
+	 * Contando separadores a mano la raíz salía mal —para `/archivo` devolvía
+	 * `/archivo`—, y la terminal se abría en un archivo en vez de en `/`.
+	 */
+	async function terminalTargetPath(entries: DirEntry[]): Promise<string | null> {
+		const primera = entries[0];
 		if (!primera) return null;
 		if (primera.is_dir) return primera.path;
 
-		const separador = Math.max(primera.path.lastIndexOf('/'), primera.path.lastIndexOf('\\'));
-
-		return separador > 0 ? primera.path.substring(0, separador) : primera.path;
-	});
+		try {
+			return await dirname(primera.path);
+		} catch (error) {
+			console.warn('No se pudo resolver la carpeta que contiene al archivo:', error);
+			return null;
+		}
+	}
 
 	/** Los separadores sólo valen entre dos renglones: sueltos son una raya sola. */
 	function tidySeparators(items: MenuEntry[]): MenuEntry[] {
@@ -487,10 +498,11 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 		}
 
 		if (elegido.id.startsWith('terminal:')) {
-			if (!terminalTargetPath.value) return;
+			const destino = await terminalTargetPath(entries);
+			if (!destino) return;
 
 			await terminalsStore.openTerminal(
-				terminalTargetPath.value,
+				destino,
 				elegido.id.slice('terminal:'.length),
 				isShiftHeld.value
 			);

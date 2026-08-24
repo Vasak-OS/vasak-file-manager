@@ -4,6 +4,12 @@ import type { MenuEntry } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onBeforeUnmount, onMounted } from 'vue';
+import {
+	campoDeTexto,
+	ejecutarAccion,
+	esAccionDeTexto,
+	type Portapapeles,
+} from '@/components/ui/text-context-menu';
 
 /**
  * El menú del clic derecho sobre los campos de texto.
@@ -19,22 +25,6 @@ import { onBeforeUnmount, onMounted } from 'vue';
 const { t } = useI18n();
 const { show } = useContextMenu();
 
-/** Los deslizadores, las casillas y los interruptores también son `input`, y no
- * tienen texto que copiar. */
-const TIPOS_CON_TEXTO = ['text', 'search', 'url', 'email', 'tel', 'number', 'password'];
-
-const campoDeTexto = (
-	elemento: EventTarget | null
-): HTMLInputElement | HTMLTextAreaElement | null => {
-	if (elemento instanceof HTMLTextAreaElement) return elemento;
-
-	if (elemento instanceof HTMLInputElement && TIPOS_CON_TEXTO.includes(elemento.type)) {
-		return elemento;
-	}
-
-	return null;
-};
-
 /**
  * El portapapeles pasa por Rust, no por el navegador.
  *
@@ -44,28 +34,11 @@ const campoDeTexto = (
  * distintos —uno de ellos sin `store()`, que es lo que hace que lo copiado
  * sobreviva al cierre de la ventana—, copiar también va por ahí.
  */
-const copiar = async (texto: string) => {
-	try {
+const portapapeles: Portapapeles = {
+	leer: () => invoke<string | null>('clipboard_read_text'),
+	escribir: async (texto: string) => {
 		await invoke('clipboard_write_text', { text: texto });
-	} catch (error) {
-		console.warn('No se pudo copiar al portapapeles:', error);
-	}
-};
-
-/**
- * Reemplaza la selección del campo respetando a Vue.
- *
- * `setRangeText` cambia el valor del elemento sin que `v-model` se entere, así
- * que hay que avisar con un evento `input`: sin eso lo pegado se ve en pantalla
- * y se pierde al guardar.
- */
-const insertar = (campo: HTMLInputElement | HTMLTextAreaElement, texto: string) => {
-	const desde = campo.selectionStart ?? campo.value.length;
-	const hasta = campo.selectionEnd ?? campo.value.length;
-
-	campo.focus();
-	campo.setRangeText(texto, desde, hasta, 'end');
-	campo.dispatchEvent(new Event('input', { bubbles: true }));
+	},
 };
 
 const abrir = async (evento: MouseEvent) => {
@@ -120,28 +93,9 @@ const abrir = async (evento: MouseEvent) => {
 	});
 
 	const elegido = await show(opciones, evento);
+	if (!elegido || !esAccionDeTexto(elegido.id)) return;
 
-	if (elegido?.id === 'copiar') {
-		await copiar(seleccion);
-	}
-
-	if (elegido?.id === 'cortar') {
-		await copiar(seleccion);
-		insertar(campo, '');
-	}
-
-	if (elegido?.id === 'pegar') {
-		try {
-			insertar(campo, await invoke<string>('clipboard_read_text'));
-		} catch (error) {
-			console.warn('No se pudo leer el portapapeles:', error);
-		}
-	}
-
-	if (elegido?.id === 'seleccionar-todo') {
-		campo.focus();
-		campo.select();
-	}
+	await ejecutarAccion(elegido.id, campo, seleccion, portapapeles);
 };
 
 onMounted(() => {

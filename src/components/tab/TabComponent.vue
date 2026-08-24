@@ -43,7 +43,7 @@ const startPosition = ref({
 const { start: startLongPressTimer, stop: stopLongPressTimer } = useTimeoutFn(
 	() => {
 		isLongPressing.value = true;
-		void openTabMenu(startPosition.value);
+		abrirMenuDePestana(startPosition.value);
 	},
 	LONG_PRESS_DELAY,
 	{ immediate: false }
@@ -128,22 +128,34 @@ function tabOnClick(tabGroup: Tab[]) {
 async function openTabMenu(punto: { x: number; y: number }) {
 	isMenuOpen.value = true;
 
-	const elegido = await showTabMenu(
-		[
-			{ id: 'cerrar-otras', label: t('tabs.closeOtherTabs'), icon: 'gtk-close' },
-			{ id: 'cerrar-todas', label: t('tabs.closeAllTabs'), icon: 'gtk-close' },
-		],
-		punto
-	);
+	// La bandera sólo existe para callar la vista previa mientras el menú tapa la
+	// pestaña. Si abrirlo falla, sin el `finally` se quedaría prendida para
+	// siempre y esa pestaña nunca volvería a mostrar su vista previa.
+	try {
+		const elegido = await showTabMenu(
+			[
+				{ id: 'cerrar-otras', label: t('tabs.closeOtherTabs'), icon: 'gtk-close' },
+				{ id: 'cerrar-todas', label: t('tabs.closeAllTabs'), icon: 'gtk-close' },
+			],
+			punto
+		);
 
-	isMenuOpen.value = false;
+		if (elegido?.id === 'cerrar-otras') await closeOtherTabs();
+		if (elegido?.id === 'cerrar-todas') await closeAllTabs();
+	} finally {
+		isMenuOpen.value = false;
+	}
+}
 
-	if (elegido?.id === 'cerrar-otras') await closeOtherTabs();
-	if (elegido?.id === 'cerrar-todas') await closeAllTabs();
+/** Abrir el menú no puede tumbar nada: lo peor que pasa es que no aparezca. */
+function abrirMenuDePestana(punto: { x: number; y: number }) {
+	openTabMenu(punto).catch((error) => {
+		console.warn('No se pudo abrir el menú de la pestaña:', error);
+	});
 }
 
 function handleContextMenu(event: MouseEvent) {
-	void openTabMenu({ x: event.clientX, y: event.clientY });
+	abrirMenuDePestana({ x: event.clientX, y: event.clientY });
 }
 
 function handleAuxClick(event: MouseEvent) {
