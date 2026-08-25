@@ -52,7 +52,15 @@ fn con_plazo(mut orden: Command) -> Result<std::process::Output, String> {
             Ok(None) => {
                 if desde.elapsed() > PLAZO {
                     let _ = hijo.kill();
-                    let _ = hijo.wait();
+                    // Sin `wait()` acá. En Linux `kill()` manda SIGKILL, pero un
+                    // proceso en E/S no interrumpible no muere hasta que el
+                    // kernel termine la operación, y `wait()` bloquearía más allá
+                    // del plazo: la promesa del frontend nunca se resolvería,
+                    // que es justo lo que este plazo viene a evitar. Se lo
+                    // recoge en otro hilo para no dejar un zombi.
+                    std::thread::spawn(move || {
+                        let _ = hijo.wait();
+                    });
                     return Err("tardó demasiado y se canceló".to_string());
                 }
                 thread::sleep(Duration::from_millis(50));
@@ -136,7 +144,16 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
     // mostraría una imagen rota para siempre, porque la clave sólo cambia si
     // cambia el tamaño o la fecha del video. `rename` en el mismo directorio es
     // atómico.
-    let parcial = destino.with_extension(format!("parcial-{}.jpg", std::process::id()));
+    // Un contador propio y no el PID: `std::process::id()` es el mismo para
+    // todas las generaciones de este proceso, así que dos miniaturas del mismo
+    // video en paralelo escribían el mismo temporal — y `rename` sólo es atómico
+    // si cada escritor tiene el suyo.
+    static NONCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let parcial = destino.with_extension(format!(
+        "parcial-{}-{nonce}.jpg",
+        std::process::id()
+    ));
 
     let mut orden = Command::new("ffmpeg");
     orden
