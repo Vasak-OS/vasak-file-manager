@@ -11,14 +11,21 @@ mod global_search;
 mod open_with;
 mod polkit;
 mod read_file;
+mod mount_watcher;
 mod system_icons;
+mod video_thumbnail;
 mod terminal;
 mod undo;
 pub mod utils;
 
+// Sólo lo necesita el descubrimiento del webview, que es de debug.
+#[cfg(debug_assertions)]
 use gtk::prelude::*;
 use std::path::PathBuf;
 use tauri::Manager;
+// Sólo se usan para abrir las herramientas de desarrollo, que no existen en
+// un build de release.
+#[cfg(debug_assertions)]
 use webkit2gtk::{SettingsExt, WebViewExt};
 
 /// Where the translations are. The plugin only probes paths relative to the
@@ -52,6 +59,7 @@ fn default_locale() -> String {
     }
 }
 
+#[cfg(debug_assertions)]
 fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView> {
     for child in container.children() {
         if child.type_().name() == "WebKitWebView" {
@@ -67,10 +75,14 @@ fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            // El kernel avisa cuando cambia la tabla de montajes, así que el
+            // frontend no tiene que preguntar por las unidades cada cinco
+            // segundos. Ver `mount_watcher`.
+            mount_watcher::start(app.handle().clone());
+
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(debug_assertions)]
                 if let Ok(gtk_window) = window.gtk_window() {
@@ -112,6 +124,7 @@ pub fn run() {
         .plugin(tauri_plugin_drag_and_drop_wayland::init())
         .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
+            video_thumbnail,
             clipboard::clipboard_read_text,
             clipboard::clipboard_write_text,
             dir_reader::read_dir,
@@ -165,4 +178,23 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Ruta de la miniatura de un video, generándola con ffmpeg si hace falta.
+///
+/// Devuelve una ruta y no la imagen: la vista la carga con el protocolo de
+/// archivos, así que los bytes no cruzan el IPC. Antes cada miniatura viajaba
+/// como data URL en base64 —un tercio más de bytes— y se volvía a generar en
+/// cada visita a la carpeta, decodificando el video a resolución completa
+/// dentro del proceso de la interfaz.
+#[tauri::command]
+async fn video_thumbnail(path: String) -> Result<String, String> {
+    // En un hilo aparte: ffmpeg tarda cientos de milisegundos y el hilo de los
+    // comandos atiende a toda la ventana.
+    tauri::async_runtime::spawn_blocking(move || {
+        video_thumbnail::miniatura(std::path::Path::new(&path))
+            .map(|ruta| ruta.to_string_lossy().to_string())
+    })
+    .await
+    .map_err(|error| format!("La generación de la miniatura se interrumpió: {error}"))?
 }

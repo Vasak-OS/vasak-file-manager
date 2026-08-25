@@ -5812,6 +5812,7 @@ dependencies = [
  "file_icon_provider",
  "gtk",
  "image",
+ "libc",
  "log",
  "lru 0.16.4",
  "notify",

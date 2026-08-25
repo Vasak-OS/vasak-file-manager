@@ -785,10 +785,8 @@ pub async fn global_search_start_scan(
                         .collect();
 
                     for handle in results {
-                        if let Ok(result) = handle.join() {
-                            if let Err(error) = result {
-                                errors.push(error);
-                            }
+                        if let Ok(Err(error)) = handle.join() {
+                            errors.push(error);
                         }
                     }
                 });
@@ -1127,7 +1125,7 @@ pub async fn global_search_query(
         let drive_root = get_drive_root(&entry.path);
         drive_groups
             .entry(drive_root)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(entry);
     }
 

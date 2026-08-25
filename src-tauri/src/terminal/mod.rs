@@ -101,7 +101,9 @@ fn get_available_terminals_linux() -> GetAvailableTerminalsResult {
         }
     }
 
-    terminals.sort_by(|left, right| right.is_default.cmp(&left.is_default));
+    // La predeterminada primero: `Reverse` en vez de dar vuelta los operandos,
+    // que es la forma en que se cuela un orden invertido sin querer.
+    terminals.sort_by_key(|terminal| std::cmp::Reverse(terminal.is_default));
 
     GetAvailableTerminalsResult {
         success: true,
