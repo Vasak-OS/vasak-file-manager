@@ -10,6 +10,7 @@ const isLoading = ref(false);
 const error = ref<string | null>(null);
 
 let pollIntervalId: ReturnType<typeof setInterval> | null = null;
+let onVisibilityChange: (() => void) | null = null;
 let activeSubscribers = 0;
 let previousDriveCount = 0;
 let isInitialFetch = true;
@@ -54,7 +55,7 @@ async function initialFetch() {
 }
 
 function startPolling() {
-	if (pollIntervalId !== null) {
+	if (pollIntervalId !== null || document.hidden) {
 		return;
 	}
 
@@ -65,6 +66,44 @@ function stopPolling() {
 	if (pollIntervalId !== null) {
 		clearInterval(pollIntervalId);
 		pollIntervalId = null;
+	}
+}
+
+/**
+ * Deja de preguntar por las unidades cuando la ventana no está a la vista.
+ *
+ * Eran 12 consultas por minuto, para siempre, cada una recorriendo la tabla de
+ * montajes del sistema — y la mayor parte del tiempo nadie las mira, porque la
+ * ventana está minimizada o en otro escritorio.
+ *
+ * Lo correcto de verdad sería no preguntar nunca y escuchar: udisks2 emite
+ * señales de D-Bus al aparecer un dispositivo, y `/proc/self/mountinfo` avisa
+ * con `POLLPRI` al cambiar la tabla de montajes. Se dejó para cuando se pueda
+ * probar con un dispositivo real: un vigilante que no dispare deja las unidades
+ * sin refrescar nunca, y eso es peor que sondear.
+ */
+function watchVisibility() {
+	if (onVisibilityChange) {
+		return;
+	}
+
+	onVisibilityChange = () => {
+		if (document.hidden) {
+			stopPolling();
+			return;
+		}
+		// Al volver se consulta ya: pudieron enchufar algo mientras no mirábamos.
+		void fetchDrives();
+		startPolling();
+	};
+
+	document.addEventListener('visibilitychange', onVisibilityChange);
+}
+
+function unwatchVisibility() {
+	if (onVisibilityChange) {
+		document.removeEventListener('visibilitychange', onVisibilityChange);
+		onVisibilityChange = null;
 	}
 }
 
@@ -93,6 +132,7 @@ export function useDrives() {
 
 		if (activeSubscribers === 1) {
 			initialFetch();
+			watchVisibility();
 			startPolling();
 		}
 	});
@@ -102,6 +142,7 @@ export function useDrives() {
 
 		if (activeSubscribers === 0) {
 			stopPolling();
+			unwatchVisibility();
 		}
 	});
 
