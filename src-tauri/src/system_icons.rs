@@ -9,11 +9,19 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-static ICON_DATA_URL_CACHE: Lazy<Mutex<LruCache<String, String>>> = Lazy::new(|| {
-    Mutex::new(LruCache::new(
-        NonZeroUsize::new(512).unwrap_or_else(|| NonZeroUsize::new(512).unwrap()),
-    ))
-});
+/// Cuántos iconos se recuerdan como data URL.
+///
+/// Se resuelve en tiempo de compilación: el `unwrap_or_else` que había caía a la
+/// **misma** expresión que acababa de fallar, así que no era un respaldo de
+/// nada. Con un `const` el cero es un error de compilación y no un panic al
+/// primer icono.
+const CACHE_ICONOS: NonZeroUsize = match NonZeroUsize::new(512) {
+    Some(valor) => valor,
+    None => panic!("el tamaño de la caché de iconos no puede ser cero"),
+};
+
+static ICON_DATA_URL_CACHE: Lazy<Mutex<LruCache<String, String>>> =
+    Lazy::new(|| Mutex::new(LruCache::new(CACHE_ICONOS)));
 
 fn normalize_path_for_os(path: &str) -> PathBuf {
         PathBuf::from(path)

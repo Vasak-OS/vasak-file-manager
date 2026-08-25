@@ -11,7 +11,14 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 use crate::utils::normalize_path;
 
-const CACHE_SIZE: usize = 2000;
+/// Cuántos tamaños de carpeta se recuerdan.
+///
+/// `NonZeroUsize` y no `usize`: con el `unwrap()` que había, poner esto en cero
+/// paniqueaba al primer uso de la caché en lugar de fallar al compilar.
+const CACHE_SIZE: NonZeroUsize = match NonZeroUsize::new(2000) {
+    Some(valor) => valor,
+    None => panic!("el tamaño de la caché de tamaños no puede ser cero"),
+};
 const CACHE_TTL_SECONDS: u64 = 300;
 const DEFAULT_TIMEOUT_MS: u64 = 500;
 
@@ -45,7 +52,7 @@ struct CacheEntry {
 }
 
 static SIZE_CACHE: Lazy<Mutex<LruCache<String, CacheEntry>>> = Lazy::new(|| {
-    Mutex::new(LruCache::new(NonZeroUsize::new(CACHE_SIZE).unwrap()))
+    Mutex::new(LruCache::new(CACHE_SIZE))
 });
 
 // Map of path -> cancellation token for active calculations

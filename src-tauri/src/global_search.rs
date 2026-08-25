@@ -1017,17 +1017,25 @@ pub async fn global_search_query(
         let mut state = GLOBAL_SEARCH_STATE
             .write()
             .map_err(|error| error.to_string())?;
-        if state.index.is_none() || state.reader.is_none() || state.fields.is_none() {
-            let (index, reader, fields) = open_or_create_index(&index_path)?;
-            state.index = Some(index);
-            state.reader = Some(reader);
-            state.fields = Some(fields);
+        // Se toman los valores en la misma expresión que los pone, en lugar de
+        // volver a desenvolverlos después.
+        //
+        // Los tres `unwrap` que había eran correctos sólo porque el `if` de
+        // arriba garantizaba que estuvieran: cualquier cambio en esa condición
+        // los convertía en un panic. Así el compilador lo garantiza.
+        match (&state.index, &state.reader, &state.fields) {
+            (Some(index), Some(reader), Some(fields)) => {
+                (index.clone(), reader.clone(), *fields)
+            }
+            _ => {
+                let (index, reader, fields) = open_or_create_index(&index_path)?;
+                let listo = (index.clone(), reader.clone(), fields);
+                state.index = Some(index);
+                state.reader = Some(reader);
+                state.fields = Some(fields);
+                listo
+            }
         }
-        (
-            state.index.as_ref().unwrap().clone(),
-            state.reader.as_ref().unwrap().clone(),
-            *state.fields.as_ref().unwrap(),
-        )
     };
 
     let searcher = reader.searcher();
