@@ -13,6 +13,8 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
+use std::time::{Duration, Instant};
 
 /// Lado máximo de la miniatura.
 ///
@@ -20,10 +22,56 @@ use std::process::Command;
 /// tiempo de escalado para píxeles que nadie ve.
 const LADO: u32 = 320;
 
+/// Plazo para ffmpeg y ffprobe.
+///
+/// `Command::output()` espera a que el hijo termine, sin límite: un montaje de
+/// red colgado o un archivo patológico se queda con un hilo del pool para
+/// siempre, y la promesa del frontend nunca se resuelve. Con seis así, la cola
+/// de miniaturas no arranca ninguna más.
+const PLAZO: Duration = Duration::from_secs(20);
+
+/// Corre un comando con plazo, matándolo si se pasa.
+fn con_plazo(mut orden: Command) -> Result<std::process::Output, String> {
+    let mut hijo = orden
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|error| {
+            if error.kind() == std::io::ErrorKind::NotFound {
+                "ffmpeg no está instalado: no se pueden generar miniaturas de video".to_string()
+            } else {
+                format!("No se pudo ejecutar: {error}")
+            }
+        })?;
+
+    let desde = Instant::now();
+    loop {
+        match hijo.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) => {
+                if desde.elapsed() > PLAZO {
+                    let _ = hijo.kill();
+                    let _ = hijo.wait();
+                    return Err("tardó demasiado y se canceló".to_string());
+                }
+                thread::sleep(Duration::from_millis(50));
+            }
+            Err(error) => return Err(format!("no se pudo esperar al proceso: {error}")),
+        }
+    }
+
+    hijo.wait_with_output()
+        .map_err(|error| format!("no se pudo leer la salida: {error}"))
+}
+
 /// Dónde se buscan y guardan.
 ///
-/// Sigue el sitio de la especificación de miniaturas de freedesktop, así que si
-/// otra aplicación ya generó la de un archivo, se reutiliza.
+/// Caché **propia**, no la de freedesktop. Esa especificación usa
+/// `thumbnails/normal|large/<md5 del URI>.png`, y acá se guarda
+/// `thumbnails/vasak-video/<fnv1a>.jpg`: ninguna otra aplicación lo lee ni lo
+/// escribe. Vive bajo `thumbnails/` para que las herramientas que limpian
+/// cachés la encuentren, y no para compartirla.
 fn directorio_cache() -> Option<PathBuf> {
     let base = std::env::var_os("XDG_CACHE_HOME")
         .map(PathBuf::from)
@@ -80,7 +128,18 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
     // video en lugar del principio, porque muchos empiezan en negro.
     let posicion = duracion(video).map(|d| d * 0.1).unwrap_or(1.0).max(0.0);
 
-    let salida = Command::new("ffmpeg")
+    // Se escribe a un temporal y se renombra al final.
+    //
+    // ffmpeg escribiendo directo al destino deja un JPEG a medias si el proceso
+    // muere o si dos generaciones del mismo video corren a la vez, y la
+    // comprobación de más arriba lo devolvería como caché válida: la vista
+    // mostraría una imagen rota para siempre, porque la clave sólo cambia si
+    // cambia el tamaño o la fecha del video. `rename` en el mismo directorio es
+    // atómico.
+    let parcial = destino.with_extension(format!("parcial-{}.jpg", std::process::id()));
+
+    let mut orden = Command::new("ffmpeg");
+    orden
         .args(["-v", "error", "-nostdin"])
         .args(["-ss", &format!("{posicion:.3}")])
         .arg("-i")
@@ -93,20 +152,18 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
             &format!("scale='min({LADO},iw)':-2:force_original_aspect_ratio=decrease"),
         ])
         .args(["-q:v", "4", "-y"])
-        .arg(&destino)
-        .output()
-        .map_err(|error| {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                "ffmpeg no está instalado: no se pueden generar miniaturas de video".to_string()
-            } else {
-                format!("No se pudo ejecutar ffmpeg: {error}")
-            }
-        })?;
+        .arg(&parcial);
 
-    if !salida.status.success() || !destino.is_file() {
+    let salida = con_plazo(orden).inspect_err(|_| {
+        // El temporal se limpia igual: si quedara, el próximo intento lo
+        // encontraría a medio escribir.
+        let _ = std::fs::remove_file(&parcial);
+    })?;
+
+    if !salida.status.success() || !parcial.is_file() {
         // Un video roto o un formato que ffmpeg no abre no es un error de la
         // aplicación: la vista se queda con el icono genérico.
-        let _ = std::fs::remove_file(&destino);
+        let _ = std::fs::remove_file(&parcial);
         let detalle = String::from_utf8_lossy(&salida.stderr).trim().to_string();
         return Err(if detalle.is_empty() {
             "ffmpeg no pudo extraer un cuadro".to_string()
@@ -114,6 +171,11 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
             detalle
         });
     }
+
+    std::fs::rename(&parcial, &destino).map_err(|error| {
+        let _ = std::fs::remove_file(&parcial);
+        format!("no se pudo guardar la miniatura: {error}")
+    })?;
 
     Ok(destino)
 }
@@ -124,12 +186,12 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
 /// fallar. Una miniatura del principio es peor que una del 10 %, pero es una
 /// miniatura.
 fn duracion(video: &Path) -> Option<f64> {
-    let salida = Command::new("ffprobe")
+    let mut orden = Command::new("ffprobe");
+    orden
         .args(["-v", "error", "-show_entries", "format=duration"])
         .args(["-of", "default=noprint_wrappers=1:nokey=1"])
-        .arg(video)
-        .output()
-        .ok()?;
+        .arg(video);
+    let salida = con_plazo(orden).ok()?;
 
     String::from_utf8_lossy(&salida.stdout).trim().parse().ok()
 }

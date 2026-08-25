@@ -25,6 +25,7 @@ const error = ref<string | null>(null);
 let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let onVisibilityChange: (() => void) | null = null;
 let unlistenMounts: UnlistenFn | null = null;
+let listenPromise: Promise<UnlistenFn> | null = null;
 let activeSubscribers = 0;
 let previousDriveCount = 0;
 let isInitialFetch = true;
@@ -90,11 +91,9 @@ function stopPolling() {
  * montajes del sistema — y la mayor parte del tiempo nadie las mira, porque la
  * ventana está minimizada o en otro escritorio.
  *
- * Lo correcto de verdad sería no preguntar nunca y escuchar: udisks2 emite
- * señales de D-Bus al aparecer un dispositivo, y `/proc/self/mountinfo` avisa
- * con `POLLPRI` al cambiar la tabla de montajes. Se dejó para cuando se pueda
- * probar con un dispositivo real: un vigilante que no dispare deja las unidades
- * sin refrescar nunca, y eso es peor que sondear.
+ * Esto es el respaldo, no el mecanismo: lo que mantiene la lista al día es el
+ * aviso del backend, que escucha `POLLPRI` sobre `/proc/self/mountinfo`. Ver
+ * `MOUNTS_CHANGED_EVENT` más abajo.
  */
 function watchVisibility() {
 	if (onVisibilityChange) {
@@ -150,9 +149,16 @@ export function useDrives() {
 			// se enchufa algo, y no cuesta nada mientras no pasa nada. Se escucha
 			// aunque la ventana esté tapada, porque enfocar la ventana al
 			// aparecer una unidad es justamente lo que se quiere en ese caso.
-			void listen(MOUNTS_CHANGED_EVENT, () => {
+			// Se guarda la promesa, no sólo el resultado.
+			//
+			// `listen` es asíncrono: si el último suscriptor se desmonta antes de
+			// que resuelva, `onUnmounted` no encontraba nada que cancelar y el
+			// oyente quedaba registrado para toda la vida del proceso. Al volver
+			// a montar se registraba otro, y cada aviso disparaba dos consultas.
+			listenPromise = listen(MOUNTS_CHANGED_EVENT, () => {
 				void fetchDrives();
-			}).then((unlisten) => {
+			});
+			void listenPromise.then((unlisten) => {
 				unlistenMounts = unlisten;
 			});
 			watchVisibility();
@@ -166,8 +172,18 @@ export function useDrives() {
 		if (activeSubscribers === 0) {
 			stopPolling();
 			unwatchVisibility();
-			unlistenMounts?.();
-			unlistenMounts = null;
+			// Si `listen` todavía no resolvió, se cancela cuando resuelva.
+			const pendiente = listenPromise;
+			listenPromise = null;
+			if (unlistenMounts) {
+				unlistenMounts();
+				unlistenMounts = null;
+			} else if (pendiente) {
+				void pendiente.then((unlisten) => {
+					unlisten();
+					unlistenMounts = null;
+				});
+			}
 		}
 	});
 

@@ -58,7 +58,9 @@ fn observar(app: &AppHandle) -> Result<(), String> {
     loop {
         let mut fds = [libc::pollfd {
             fd: archivo.as_raw_fd(),
-            events: libc::POLLPRI | libc::POLLERR,
+            // Sólo POLLPRI: POLLERR y POLLNVAL son de salida, pedirlos en
+            // `events` no hace nada.
+            events: libc::POLLPRI,
             revents: 0,
         }];
 
@@ -80,7 +82,16 @@ fn observar(app: &AppHandle) -> Result<(), String> {
             return Err(format!("poll falló: {error}"));
         }
 
-        let por_aviso = listos > 0;
+        // Un descriptor inválido no se arregla reintentando: seguir daría un
+        // bucle cerrado sobre un `poll` que vuelve al instante.
+        if fds[0].revents & libc::POLLNVAL != 0 {
+            return Err("el descriptor de mountinfo quedó inválido".to_string());
+        }
+
+        // Linux reporta los cambios de mountinfo como `POLLERR | POLLPRI`, así
+        // que lo que decide es la presencia de POLLPRI y no que revents sea
+        // exactamente eso.
+        let por_aviso = listos > 0 && fds[0].revents & libc::POLLPRI != 0;
         if por_aviso {
             // Consumir el archivo, o el próximo `poll()` vuelve enseguida y esto
             // se convierte en un bucle cerrado. Verificado: en reposo el proceso
@@ -98,8 +109,15 @@ fn observar(app: &AppHandle) -> Result<(), String> {
         // periódico ya viene espaciado por definición.
         if por_aviso {
             if let Some(anterior) = ultimo_aviso {
-                if anterior.elapsed() < AGRUPAR {
-                    thread::sleep(AGRUPAR - anterior.elapsed());
+                // Un solo `elapsed()`. Leerlo dos veces —una para comparar y
+                // otra para restar— deja que el segundo valor cruce `AGRUPAR`
+                // entre medio, y `Duration - Duration` paniquea con «overflow
+                // when subtracting durations». La ventana es chica, pero un
+                // panic acá mata el hilo en silencio y deja de avisar de todos
+                // los montajes hasta reiniciar.
+                let transcurrido = anterior.elapsed();
+                if let Some(falta) = AGRUPAR.checked_sub(transcurrido) {
+                    thread::sleep(falta);
                 }
             }
         }

@@ -43,7 +43,11 @@ export function useVideoThumbnails() {
 		try {
 			const ruta = await invoke<string>('video_thumbnail', { path: videoPath });
 			const url = convertFileSrc(ruta);
-			videoThumbnails.value = { ...videoThumbnails.value, [videoPath]: url };
+			// Asignar la clave, no copiar el registro. `videoThumbnails` es un
+			// `ref` reactivo profundo, así que la asignación ya notifica; el
+			// spread copiaba todo el objeto por cada miniatura terminada, o sea
+			// O(n²) de asignaciones en una carpeta con muchos videos.
+			videoThumbnails.value[videoPath] = url;
 			return url;
 		} catch (error) {
 			// Un formato que ffmpeg no abre no es un error de la aplicación: la
