@@ -11,6 +11,7 @@ mod global_search;
 mod open_with;
 mod polkit;
 mod read_file;
+mod mount_watcher;
 mod system_icons;
 mod video_thumbnail;
 mod terminal;
@@ -77,6 +78,11 @@ fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            // El kernel avisa cuando cambia la tabla de montajes, así que el
+            // frontend no tiene que preguntar por las unidades cada cinco
+            // segundos. Ver `mount_watcher`.
+            mount_watcher::start(app.handle().clone());
+
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(debug_assertions)]
                 if let Ok(gtk_window) = window.gtk_window() {

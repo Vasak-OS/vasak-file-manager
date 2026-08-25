@@ -1,9 +1,22 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { onMounted, onUnmounted, ref } from 'vue';
 import type { DriveInfo } from '@/types/drive-info';
 
-const DRIVE_POLL_INTERVAL_MS = 5000;
+/**
+ * Cada cuánto se pregunta igual, como respaldo.
+ *
+ * El backend avisa cuando cambia la tabla de montajes —el kernel lo notifica
+ * con `POLLPRI` sobre `/proc/self/mountinfo`, verificado montando y desmontando
+ * un tmpfs— así que esto ya no es la vía principal. Queda espaciado y sólo
+ * mientras la ventana esté a la vista: es la red por si el aviso no llega en
+ * algún entorno raro, no el mecanismo.
+ */
+const DRIVE_POLL_INTERVAL_MS = 60_000;
+
+/** Lo que el backend emite al cambiar la tabla de montajes. */
+const MOUNTS_CHANGED_EVENT = 'drives://changed';
 
 const drives = ref<DriveInfo[]>([]);
 const isLoading = ref(false);
@@ -11,6 +24,7 @@ const error = ref<string | null>(null);
 
 let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let onVisibilityChange: (() => void) | null = null;
+let unlistenMounts: UnlistenFn | null = null;
 let activeSubscribers = 0;
 let previousDriveCount = 0;
 let isInitialFetch = true;
@@ -132,6 +146,15 @@ export function useDrives() {
 
 		if (activeSubscribers === 1) {
 			initialFetch();
+			// Esto es lo que de verdad mantiene la lista al día: llega en cuanto
+			// se enchufa algo, y no cuesta nada mientras no pasa nada. Se escucha
+			// aunque la ventana esté tapada, porque enfocar la ventana al
+			// aparecer una unidad es justamente lo que se quiere en ese caso.
+			void listen(MOUNTS_CHANGED_EVENT, () => {
+				void fetchDrives();
+			}).then((unlisten) => {
+				unlistenMounts = unlisten;
+			});
 			watchVisibility();
 			startPolling();
 		}
@@ -143,6 +166,8 @@ export function useDrives() {
 		if (activeSubscribers === 0) {
 			stopPolling();
 			unwatchVisibility();
+			unlistenMounts?.();
+			unlistenMounts = null;
 		}
 	});
 
