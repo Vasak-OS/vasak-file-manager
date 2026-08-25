@@ -9,10 +9,10 @@ pub fn canonicalize_path(path: &Path) -> String {
     match path.canonicalize() {
         Ok(canonical) => {
             let path_str = canonical.to_string_lossy().to_string();
-            if path_str.starts_with(r"\\?\") {
-                path_str[4..].to_string()
-            } else {
-                path_str
+            // El prefijo UNC de Windows (`\\?\`) no se muestra a nadie.
+            match path_str.strip_prefix(r"\\?\") {
+                Some(sin_prefijo) => sin_prefijo.to_string(),
+                None => path_str,
             }
         }
         Err(_) => path.to_string_lossy().to_string(),

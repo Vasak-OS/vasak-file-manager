@@ -226,16 +226,14 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
     let mut dir_count = 0;
     let mut file_count = 0;
 
-    for entry_result in read_result {
-        if let Ok(entry) = entry_result {
-            if let Some(dir_entry) = read_entry(&entry.path()) {
-                if dir_entry.is_dir {
-                    dir_count += 1;
-                } else if dir_entry.is_file {
-                    file_count += 1;
-                }
-                entries.push(dir_entry);
+    for entry in read_result.flatten() {
+        if let Some(dir_entry) = read_entry(&entry.path()) {
+            if dir_entry.is_dir {
+                dir_count += 1;
+            } else if dir_entry.is_file {
+                file_count += 1;
             }
+            entries.push(dir_entry);
         }
     }
 
@@ -624,7 +622,7 @@ fn get_partition_fs_type(device_name: &str) -> Option<String> {
 
 #[tauri::command]
 pub fn get_mountable_devices() -> Result<Vec<MountableDevice>, String> {
-  return Ok(linux_get_mountable_devices());
+  Ok(linux_get_mountable_devices())
 }
 
 fn linux_get_mountable_devices() -> Vec<MountableDevice> {
@@ -774,7 +772,7 @@ pub fn mount_drive(device_path: String) -> Result<String, String> {
 #[tauri::command]
 pub fn unmount_drive(device_path: String, mount_point: String) -> Result<(), String> {
 
-        return linux_unmount(&device_path, &mount_point);
+        linux_unmount(&device_path, &mount_point)
 
 }
 
@@ -1016,7 +1014,7 @@ pub fn get_parent_dir(path: String) -> Option<String> {
     Path::new(&path)
         .parent()
         .and_then(|parent| parent.to_str())
-        .map(|path_str| normalize_path(path_str))
+        .map(normalize_path)
 }
 
 #[tauri::command]

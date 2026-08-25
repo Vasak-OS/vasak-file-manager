@@ -23,7 +23,7 @@ fn run_with_pkexec(args: &[&str]) -> Result<(), String> {
         if exit_code == 127 {
             Err("Authentication cancelled or polkit denied.".into())
         } else {
-            Err(format!("{}", stderr.trim()))
+            Err(stderr.trim().to_string())
         }
     }
 }
