@@ -7,6 +7,7 @@ import { createApp, type Directive } from 'vue';
 import App from '@/App.vue';
 import { disableWebViewFeatures } from '@/utils/web-view-features';
 import '@/assets/main.css';
+import { captureFailures } from '@vasakgroup/plugin-vsk-journal';
 
 /**
  * Los valores que la especificación de CSP informa en lugar de una URL.
@@ -123,6 +124,12 @@ const waveDirective: Directive<HTMLElement> = {
 };
 
 const i18n = I18n.getInstance();
+// Lo que rompe la interfaz va al diario del sistema, con el nombre de esta
+// aplicación. Antes no iba a ninguna parte: un error de JavaScript deja la
+// pantalla a medias y la consola del WebView no la ve nadie en una máquina
+// instalada.
+captureFailures();
+
 const app = createApp(App);
 const pinia = createPinia();
 

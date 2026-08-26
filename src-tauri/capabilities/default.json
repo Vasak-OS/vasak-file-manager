@@ -28,6 +28,7 @@
     "vicons:default",
     "config-manager:default",
     "vsk-contextual-menu:default",
+    "vsk-journal:default",
     "store:default",
     {
       "identifier": "opener:allow-open-path",
