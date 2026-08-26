@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { markRaw, type Ref, ref } from 'vue';
 import CustomProgress from '@/components/ui/toast/CustomProgress.vue';
 import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
@@ -16,6 +17,7 @@ import {
 } from '@/stores/runtime/file-operation-runner';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ArchiveFormat, ContextMenuAction } from '@/types/file-browser';
 
@@ -42,6 +44,7 @@ export function useFileBrowserSelection(
 	onOpen: (entry: DirEntry) => void,
 	onRefresh: () => void
 ) {
+	const { t } = useI18n();
 	const workspacesStore = useWorkspacesStore();
 	const userStatsStore = useUserStatsStore();
 	const clipboardStore = useClipboardStore();
@@ -648,7 +651,15 @@ export function useFileBrowserSelection(
 				},
 				{
 					type: isCopy ? 'copy' : 'move',
-					label: `${isCopy ? 'Copying' : 'Moving'} ${sourcePaths.length} item${sourcePaths.length === 1 ? '' : 's'}`,
+					label: interpolar(
+						t(
+							claveSegunCantidad(
+								isCopy ? 'operations.copying' : 'operations.moving',
+								sourcePaths.length
+							)
+						),
+						sourcePaths.length
+					),
 					path: targetPath,
 				}
 			);
@@ -1057,7 +1068,15 @@ export function useFileBrowserSelection(
 				{ paths, useTrash },
 				{
 					type: 'delete',
-					label: `${useTrash ? 'Trashing' : 'Deleting'} ${paths.length} item${paths.length === 1 ? '' : 's'}`,
+					label: interpolar(
+						t(
+							claveSegunCantidad(
+								useTrash ? 'operations.trashing' : 'operations.deleting',
+								paths.length
+							)
+						),
+						paths.length
+					),
 					path: currentPathRef.value,
 				}
 			);

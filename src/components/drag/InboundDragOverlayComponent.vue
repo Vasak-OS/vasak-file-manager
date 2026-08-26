@@ -37,7 +37,7 @@ const operationIcon = computed(() =>
       <div class="inbound-drag-overlay__card">
         <div class="inbound-drag-overlay__content">
           <span class="inbound-drag-overlay__description">{{ description }}</span>
-          <img :src="operationIcon" alt="Drop operation" class="inbound-drag-overlay__icon" />
+          <img :src="operationIcon" :alt="t('drag.dropping')" class="inbound-drag-overlay__icon" />
         </div>
         <div class="inbound-drag-overlay__hint">
           {{ t('drag.holdShiftToChangeMode') }}

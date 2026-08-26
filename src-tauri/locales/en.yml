@@ -221,6 +221,8 @@ create: Create
 drag:
   holdShiftToChangeMode: Hold Shift to change drag mode
   holdCtrlForCurrentDirDrop: Hold Ctrl to drop in current directory
+  dragging: Dragging
+  dropping: Dropping
 conflictDialog:
   title: File Conflict
   skip: Skip
@@ -273,3 +275,46 @@ textMenu:
   cut: Cut
   paste: Paste
   selectAll: Select all
+statusCenter:
+  title: Background tasks
+  clearFinished: Clear finished
+  working: Working…
+  pending: Pending
+  completed: Done
+  cancelled: Cancelled
+  failed: Failed
+tags:
+  title: Tags
+  newTag: New tag
+window:
+  minimize: Minimize
+  maximize: Maximize
+toolbar:
+  infoPanel: Info panel
+  newTab: New tab
+drive:
+  eject: Eject
+progress:
+  completed: Completed
+operations:
+  copyingOne: Copying {0} item
+  copyingOther: Copying {0} items
+  movingOne: Moving {0} item
+  movingOther: Moving {0} items
+  trashingOne: Moving {0} item to trash
+  trashingOther: Moving {0} items to trash
+  deletingOne: Deleting {0} item
+  deletingOther: Deleting {0} items
+  calculatingSize: Calculating folder size
+errors:
+  tabMissing: The tab does not exist
+keys:
+  esc: Esc
+  tab: Tab
+  shiftTab: Shift+Tab
+  enter: Enter
+  ctrlP: Ctrl+P
+operationLabels:
+  copying: Copying
+  moving: Moving
+  deleting: Deleting

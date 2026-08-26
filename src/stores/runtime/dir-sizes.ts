@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { defineStore } from 'pinia';
 import { computed, reactive, ref } from 'vue';
 import { debeSondear, progresoAplicable, puedeConsultar } from '@/stores/runtime/dir-size-tracking';
@@ -24,6 +25,7 @@ export interface DirSizeResult {
 }
 
 export const useDirSizesStore = defineStore('dir-sizes', () => {
+	const { t } = useI18n();
 	const sizes = reactive(new Map<string, DirSizeInfo>());
 	const pendingPaths = ref<Set<string>>(new Set());
 	/**
@@ -210,7 +212,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 			id: operationId,
 			type: 'dir-size',
 			status: 'in-progress',
-			label: 'Calculating directory size',
+			label: t('operations.calculatingSize'),
 			path,
 		});
 

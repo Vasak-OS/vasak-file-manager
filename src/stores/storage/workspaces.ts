@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { basename } from '@tauri-apps/api/path';
 import { LazyStore } from '@tauri-apps/plugin-store';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { defineStore } from 'pinia';
 import type { ComputedRef } from 'vue';
 import { computed, ref, watch } from 'vue';
@@ -20,6 +21,7 @@ import { replacePathPrefix } from '@/utils/path';
 import uniqueId from '@/utils/unique-id';
 
 export const useWorkspacesStore = defineStore('workspaces', () => {
+	const { t } = useI18n();
 	const userPathsStore = useUserPathsStore();
 	const navigatorStore = useNavigatorStore();
 
@@ -307,7 +309,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 				tabGroupIndex === -1 ||
 				!checkTabGroupExists(tabGroup)
 			) {
-				throw Error("Tab doesn't exist");
+				throw Error(t('errors.tabMissing'));
 			}
 
 			setCurrentTabGroupIndex(tabGroupIndex);

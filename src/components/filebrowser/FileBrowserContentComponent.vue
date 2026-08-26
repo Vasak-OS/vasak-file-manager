@@ -132,18 +132,18 @@ const sortedEntries = computed(() => {
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
-          <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'name' && listSortDirection === 'asc'" 
+          <img :src="arrowUpIcon" alt="" v-if="listSortColumn === 'name' && listSortDirection === 'asc'" 
             class="h-4 w-4" />
-          <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" 
+          <img :src="arrowDownIcon" alt="" v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" 
             class="h-4 w-4" />
         </button>
         <button v-if="showItemsColumn" type="button"
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
           @click="handleColumnHeaderClick('items')">
           {{ t('fileBrowser.items') }}
-          <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'items' && listSortDirection === 'asc'" 
+          <img :src="arrowUpIcon" alt="" v-if="listSortColumn === 'items' && listSortDirection === 'asc'" 
             class="h-4 w-4" />
-          <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'"
+          <img :src="arrowDownIcon" alt="" v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'"
             class="h-4 w-4" />
         </button>
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
@@ -152,10 +152,10 @@ const sortedEntries = computed(() => {
               class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
-              <img :src="infoIcon" alt="Info" />
-              <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
+              <img :src="infoIcon" alt="" />
+              <img :src="arrowUpIcon" alt="" v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
                 class="h-4 w-4" />
-              <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'" :size="12"
+              <img :src="arrowDownIcon" alt="" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'" :size="12"
                 class="h-4 w-4" />
             </button>
           </TooltipTrigger>
@@ -192,9 +192,9 @@ const sortedEntries = computed(() => {
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-foreground outline-none"
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
-          <img :src="arrowUpIcon" alt="Arrow up" v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" 
+          <img :src="arrowUpIcon" alt="" v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" 
             class="h-4 w-4" />
-          <img :src="arrowDownIcon" alt="Arrow down" v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'"
+          <img :src="arrowDownIcon" alt="" v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'"
             class="h-4 w-4" />
         </button>
       </div>

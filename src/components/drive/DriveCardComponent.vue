@@ -136,7 +136,7 @@ async function handleUnmount(clickEvent?: Event) {
       @click.stop.prevent="handleUnmount"
       @keydown.enter.stop.prevent="handleUnmount"
     >
-      <img :src="ejectIcon" class="h-4 w-4" alt="Eject" />
+      <img :src="ejectIcon" class="h-4 w-4" :alt="t('drive.eject')" />
     </span>
   </button>
 </template>

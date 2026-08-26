@@ -1,5 +1,8 @@
 <script lang="ts" setup>
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
+
+const { t } = useI18n();
 
 interface ToastData {
 	id: string | number;
@@ -25,11 +28,11 @@ const isComplete = computed(() => displayProgress.value >= 100);
 const operationLabel = computed(() => {
 	switch (props.data.operationType) {
 		case 'copy':
-			return 'Copiando';
+			return t('operationLabels.copying');
 		case 'move':
-			return 'Moviendo';
+			return t('operationLabels.moving');
 		case 'delete':
-			return 'Eliminando';
+			return t('operationLabels.deleting');
 		default:
 			return '';
 	}
@@ -71,7 +74,7 @@ const progressColor = computed(() => {
 
     <!-- Complete State -->
     <div v-if="isComplete" class="flex items-center justify-between pt-2 border-t border-ui-border">
-      <span class="text-xs text-status-success">✓ Completado</span>
+      <span class="text-xs text-status-success">✓ {{ t('progress.completed') }}</span>
       <button @click="onAction" class="px-2 py-1 text-xs font-medium text-tx-muted hover:text-tx-main transition-colors">
         {{ data.actionText }}
       </button>

@@ -372,11 +372,11 @@ onUnmounted(() => {
         </TooltipTrigger>
         <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[200px] [&_[role=menuitem]]:max-w-none [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex [&_[role=menuitem]]:gap-2">
           <DropdownMenuItem @select="copyPathToClipboard">
-            <img :src="copyIcon" alt="copy" class="h-4 w-4 inline-block mr-2" />
+            <img :src="copyIcon" alt="" class="h-4 w-4 inline-block mr-2" />
             <span>{{ t('settings.addressBar.copyPathToClipboard') }}</span>
           </DropdownMenuItem>
           <DropdownMenuItem @select="openCopiedPath">
-            <img :src="clipboardPasteIcon" alt="paste" class="h-4 w-4 inline-block mr-2" />
+            <img :src="clipboardPasteIcon" alt="" class="h-4 w-4 inline-block mr-2" />
             <span>{{ t('settings.addressBar.openCopiedPath') }}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -403,7 +403,7 @@ onUnmounted(() => {
                 <DropdownMenuTrigger as-child>
                   <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-muted-foreground/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop="openSeparatorMenu(index)">
-                    <img :src="chevronRightIcon" alt="Chevron Right" class="h-4 w-4 transition-transform duration-100 ease-in-out" :size="12"
+                    <img :src="chevronRightIcon" alt="" class="h-4 w-4 transition-transform duration-100 ease-in-out" :size="12"
                       :class="{ 'rotate-90': openSeparatorIndex === index }" />
                   </button>
                 </DropdownMenuTrigger>
@@ -453,7 +453,7 @@ onUnmounted(() => {
             </TooltipTrigger>
             <TooltipContent>
               {{ t('settings.addressBar.closeEditor') }}
-              <kbd class="shortcut">Esc</kbd>
+              <kbd class="shortcut">{{ t('keys.esc') }}</kbd>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -474,11 +474,11 @@ onUnmounted(() => {
         <div class="px-2.5 py-1.5 border-t border-ui-border text-muted-foreground text-[10px]">
           <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">↑↓</span>
           /
-          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">Tab</span>
+          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">{{ t('keys.tab') }}</span>
           /
-          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">Shift+Tab</span>
+          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">{{ t('keys.shiftTab') }}</span>
           {{ t('settings.addressBar.toAutocomplete') }};
-          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">Enter</span>
+          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">{{ t('keys.enter') }}</span>
           {{ t('settings.addressBar.toOpenThePath') }}
         </div>
       </PopoverContent>
@@ -492,7 +492,7 @@ onUnmounted(() => {
       </TooltipTrigger>
       <TooltipContent>
         {{ t('settings.addressBar.editAddress') }}
-        <kbd class="shortcut">Ctrl+P</kbd>
+        <kbd class="shortcut">{{ t('keys.ctrlP') }}</kbd>
       </TooltipContent>
     </Tooltip>
   </div>
