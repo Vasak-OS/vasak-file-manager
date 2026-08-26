@@ -8,7 +8,7 @@ import { useUserPathsStore } from '@/stores/storage/user-paths';
 //import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
-import { debeSeguirSondeando, intervaloDeSondeo } from './global-search-polling';
+import { debeRetomarSondeo, debeSeguirSondeando, intervaloDeSondeo } from './global-search-polling';
 import {
 	debeReindexar,
 	type EstadoDeInactividadDelSistema,
@@ -207,9 +207,15 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	 *
 	 * Sin esto, un panel abierto en una ventana que se tapa deja de sondear y no
 	 * vuelve a empezar: se quedaría mostrando el estado de cuando se ocultó.
+	 *
+	 * Se registra al abrir el panel y se saca al cerrarlo, que es el ciclo de
+	 * vida del que depende. Antes vivía dentro de `startIdleDetection`, colgado
+	 * de la detección de inactividad: dos cosas que no tienen nada que ver, y
+	 * como a `startIdleDetection` sólo la llama `initOnLaunch` —que hoy no llama
+	 * nadie—, el escucha no llegaba a registrarse nunca.
 	 */
 	function alCambiarVisibilidad() {
-		if (!estaOculto() && isOpen.value) {
+		if (debeRetomarSondeo(estaOculto(), isOpen.value)) {
 			startStatusPolling();
 		}
 	}
@@ -416,12 +422,16 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 	async function open() {
 		isOpen.value = true;
+		// Registrar dos veces el mismo manejador no agrega un segundo escucha,
+		// así que abrir el panel estando abierto no duplica nada.
+		document.addEventListener('visibilitychange', alCambiarVisibilidad);
 		await refreshStatus();
 		startStatusPolling();
 	}
 
 	function close() {
 		isOpen.value = false;
+		document.removeEventListener('visibilitychange', alCambiarVisibilidad);
 		cancelPendingSearch();
 
 		const isActive = isScanInProgress.value || isCommitting.value;
@@ -542,8 +552,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	async function startIdleDetection() {
 		if (dejarDeEscucharInactividad.value !== null) return;
 
-		document.addEventListener('visibilitychange', alCambiarVisibilidad);
-
 		dejarDeEscucharInactividad.value = await listen<EstadoDeInactividadDelSistema>(
 			EVENTO_INACTIVIDAD,
 			(evento) => aplicarEstadoDeInactividad(evento.payload)
@@ -569,8 +577,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		}
 
 		senalDeInactividad.value = 'desconocida';
-
-		document.removeEventListener('visibilitychange', alCambiarVisibilidad);
 	}
 
 	async function handleDriveListChange() {

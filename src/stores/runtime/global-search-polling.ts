@@ -36,6 +36,19 @@ export function debeSeguirSondeando(
 }
 
 /**
+ * Si al volver la ventana hay que retomar el sondeo.
+ *
+ * Parece lo mismo que `debeSeguirSondeando` y no lo es: acá no entra el escaneo
+ * en curso, porque con un escaneo en curso el sondeo nunca se detuvo. Lo único
+ * que se recupera es el caso que sí se apaga solo —panel abierto, ventana
+ * tapada—, que sin esto se quedaría mostrando para siempre el estado del
+ * instante en que la ventana se ocultó.
+ */
+export function debeRetomarSondeo(oculto: boolean, panelAbierto: boolean): boolean {
+	return !oculto && panelAbierto;
+}
+
+/**
  * Cuánto esperar hasta la próxima pregunta.
  *
  * Tres décimas mientras el escaneo avanza —el progreso tiene que verse moverse—

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+	debeRetomarSondeo,
 	debeSeguirSondeando,
 	intervaloDeSondeo,
 	SONDEO_ACTIVO_MS,
@@ -26,6 +27,37 @@ describe('debeSeguirSondeando', () => {
 	test('con el panel abierto se pregunta, salvo que la ventana esté tapada', () => {
 		expect(debeSeguirSondeando(false, true, false)).toBe(true);
 		expect(debeSeguirSondeando(false, true, true)).toBe(false);
+	});
+});
+
+describe('debeRetomarSondeo', () => {
+	test('al volver la ventana con el panel abierto se retoma', () => {
+		expect(debeRetomarSondeo(false, true)).toBe(true);
+	});
+
+	test('con el panel cerrado no hay nada que retomar', () => {
+		expect(debeRetomarSondeo(false, false)).toBe(false);
+	});
+
+	test('con la ventana todavía tapada tampoco', () => {
+		expect(debeRetomarSondeo(true, true)).toBe(false);
+		expect(debeRetomarSondeo(true, false)).toBe(false);
+	});
+
+	test('sin escaneo en curso, retomar es exactamente seguir sondeando', () => {
+		// Que es lo que tiene que ser: retomar recupera el único caso que se
+		// apaga solo. El escaneo en curso queda afuera porque con un escaneo en
+		// curso el sondeo nunca se detuvo, y la inactividad de la sesión queda
+		// afuera del todo: el escucha que dispara esto vive en el ciclo de vida
+		// del panel, no en el de la detección de inactividad —que es donde
+		// estaba colgado, y por eso no llegaba a registrarse nunca—.
+		for (const oculto of [true, false]) {
+			for (const panelAbierto of [true, false]) {
+				expect(debeRetomarSondeo(oculto, panelAbierto)).toBe(
+					debeSeguirSondeando(false, panelAbierto, oculto)
+				);
+			}
+		}
 	});
 });
 
