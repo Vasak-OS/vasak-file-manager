@@ -463,9 +463,8 @@ function isDialogOpened(): boolean {
 	return false;
 }
 
-// `void` dentro de una unión no dice «no devuelve nada», dice «cualquier cosa que
-// se ignora», y con `undefined` al lado es además redundante.
-type ShortcutHandler = () => undefined | boolean | Promise<undefined | boolean>;
+// biome-ignore lint/suspicious/noConfusingVoidType: acá `void` es lo correcto y no un descuido. Los atajos se registran con funciones que no devuelven nada —`() => void`— y `void` es el único tipo al que esas encajan: con `undefined` en su lugar, trece registros dejan de compilar. La regla apunta a `void` usado como «cualquier valor que se ignora», que no es este caso.
+type ShortcutHandler = () => void | boolean | Promise<void | boolean>;
 
 type HandlerRegistration = {
 	handler: ShortcutHandler;
