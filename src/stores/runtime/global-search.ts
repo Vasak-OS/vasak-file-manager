@@ -10,6 +10,7 @@ import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
 import { debeRetomarSondeo, debeSeguirSondeando, intervaloDeSondeo } from './global-search-polling';
 import {
+	debeEscanearAlArrancar,
 	debeReindexar,
 	type EstadoDeInactividadDelSistema,
 	leerSenal,
@@ -162,11 +163,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			await startIdleDetection();
 
-			//const settings = userSettingsStore.userSettings.globalSearch;
-			const shouldRescanOnLaunch =
-				needsScan.value || /*settings.autoReindexWhenIdle &&*/ getIsIndexStale();
-
-			if (shouldRescanOnLaunch) {
+			// Sin índice se escanea ya; vencido, espera a que la sesión esté
+			// inactiva. Ver `debeEscanearAlArrancar`.
+			if (debeEscanearAlArrancar(needsScan.value)) {
 				await startScan();
 			}
 		} catch (error) {

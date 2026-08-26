@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	type CondicionesDeReindexado,
+	debeEscanearAlArrancar,
 	debeReindexar,
 	type EstadoDeInactividadDelSistema,
 	leerSenal,
@@ -103,5 +104,35 @@ describe('RED_DE_SEGURIDAD_MS', () => {
 		// inactiva, donde nadie está esperando el resultado. Si fuera más
 		// seguido que el propio umbral, sería un sondeo disfrazado.
 		expect(RED_DE_SEGURIDAD_MS).toBeGreaterThan(60_000);
+	});
+});
+
+describe('debeEscanearAlArrancar', () => {
+	test('sin índice se escanea en cuanto abre', () => {
+		// Sin índice la búsqueda global no devuelve nada: recorrer el disco es lo
+		// único que la vuelve útil, y vale la molestia.
+		expect(debeEscanearAlArrancar(true)).toBe(true);
+	});
+
+	test('con índice no se escanea al abrir, aunque esté vencido', () => {
+		// Antes acá entraba `getIsIndexStale()`, y eso largaba un recorrido del
+		// sistema de archivos entero justo cuando alguien abría el gestor para
+		// usarlo — para llegar a un índice que ya funcionaba. El vencimiento lo
+		// resuelve `debeReindexar` cuando el compositor avisa que no hay nadie.
+		expect(debeEscanearAlArrancar(false)).toBe(false);
+	});
+
+	test('el vencimiento y el arranque son decisiones separadas', () => {
+		// Con índice presente pero vencido: al arrancar no, en reposo sí. Que las
+		// dos digan lo mismo sería haber vuelto al comportamiento anterior.
+		expect(debeEscanearAlArrancar(false)).toBe(false);
+		expect(
+			debeReindexar({
+				senal: 'inactiva',
+				escaneoEnCurso: false,
+				inicializado: true,
+				indiceVencido: true,
+			})
+		).toBe(true);
 	});
 });

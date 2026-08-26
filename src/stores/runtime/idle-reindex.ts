@@ -80,3 +80,21 @@ export function debeReindexar(condiciones: CondicionesDeReindexado): boolean {
 	if (!condiciones.indiceVencido) return false;
 	return condiciones.senal === 'inactiva';
 }
+
+/**
+ * Si corresponde escanear en cuanto la aplicación abre, sin esperar a nada.
+ *
+ * Una sola condición: que no haya índice. Sin índice la búsqueda global no
+ * devuelve nada, así que recorrer el disco es lo único que la vuelve útil y vale
+ * la molestia.
+ *
+ * Un índice **vencido** es otra cosa y no entra acá, aunque antes sí entraba.
+ * Abrir el gestor de archivos es justamente el momento en que alguien lo está
+ * usando: largar ahí un recorrido del sistema de archivos entero hace que la
+ * aplicación se arrastre exactamente cuando se la necesita, y para llegar a un
+ * índice que ya funcionaba. Eso ahora lo decide `debeReindexar` cuando el
+ * compositor avisa que no hay nadie.
+ */
+export function debeEscanearAlArrancar(sinIndice: boolean): boolean {
+	return sinIndice;
+}

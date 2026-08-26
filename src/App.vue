@@ -7,6 +7,7 @@ import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import TextContextMenu from '@/components/ui/TextContextMenu.vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
+import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
@@ -79,6 +80,19 @@ onMounted(async () => {
 		});
 		//disableWebViewFeatures();
 		shortcutsStore.init();
+
+		// La búsqueda global se inicializa acá y no en su propia vista: es lo que
+		// engancha la señal de inactividad del compositor, y esa señal es la que
+		// decide cuándo reindexar. Colgada de abrir el panel, quien no lo abría
+		// nunca no reindexaba nunca —hasta ahora nadie llamaba a `initOnLaunch`,
+		// así que no reindexaba nadie—.
+		//
+		// Sin `await` y con su propio catch: si el índice no se puede inicializar,
+		// el gestor de archivos tiene que abrir igual. Lo demás de este bloque ya
+		// terminó, así que no hay nada que se quede esperando.
+		void useGlobalSearchStore()
+			.initOnLaunch()
+			.catch((error) => console.error('No se pudo inicializar la búsqueda global', error));
 	} catch (error: any) {
 		console.error('Error al cargar configuración en App.vue', error);
 	}
