@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { computed, nextTick, ref, watch } from 'vue';
 import ActionMenuComponent from '@/components/menu/ActionMenuComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
@@ -13,6 +12,7 @@ import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { ContextMenuAction } from '@/types/contextMenu';
 import type { DirContents, DirEntry } from '@/types/dir-entry';

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
 
 export type ShortcutConditions = {
@@ -463,7 +463,8 @@ function isDialogOpened(): boolean {
 	return false;
 }
 
-type ShortcutHandler = () => void | undefined | boolean | Promise<void | undefined | boolean>;
+// biome-ignore lint/suspicious/noConfusingVoidType: acá `void` es lo correcto y no un descuido. Los atajos se registran con funciones que no devuelven nada —`() => void`— y `void` es el único tipo al que esas encajan: con `undefined` en su lugar, trece registros dejan de compilar. La regla apunta a `void` usado como «cualquier valor que se ignora», que no es este caso.
+type ShortcutHandler = () => void | boolean | Promise<void | boolean>;
 
 type HandlerRegistration = {
 	handler: ShortcutHandler;

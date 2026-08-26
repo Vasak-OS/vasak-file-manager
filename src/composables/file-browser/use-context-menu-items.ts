@@ -1,4 +1,5 @@
 import { computed, type Ref } from 'vue';
+import { FILE_EXTENSIONS } from '@/constants/file-extensions';
 import type { DirEntry } from '@/types/dir-entry';
 import type {
 	ContextMenuAction,
@@ -6,7 +7,6 @@ import type {
 	EntryType,
 	SelectionType,
 } from '@/types/file-browser';
-import { FILE_EXTENSIONS } from '@/constants/file-extensions';
 
 const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 	{

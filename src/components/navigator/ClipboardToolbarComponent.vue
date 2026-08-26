@@ -2,7 +2,6 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -14,6 +13,7 @@ import ScrollArea from '@/components/ui/ScrollArea.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import type { DirEntry } from '@/types/dir-entry';
@@ -129,8 +129,6 @@ function openCollapsedPopover() {
 		}, 200);
 	});
 }
-
-
 </script>
 
 <template>

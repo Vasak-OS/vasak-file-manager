@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { useStatusCenterStore, type OperationType } from '@/stores/runtime/status-center';
+import { type OperationType, useStatusCenterStore } from '@/stores/runtime/status-center';
 
 export interface FileOperationResult {
 	success: boolean;

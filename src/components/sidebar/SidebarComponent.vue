@@ -2,12 +2,12 @@
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onMounted } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useDrives } from '@/composables/use-drives';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 

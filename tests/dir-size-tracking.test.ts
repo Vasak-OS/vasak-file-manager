@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	debeSondear,
+	type ProgresoDeCalculo,
 	progresoAplicable,
 	puedeConsultar,
-	type ProgresoDeCalculo,
 } from '../src/stores/runtime/dir-size-tracking';
 
 function calculo(path: string, size: number): ProgresoDeCalculo {
@@ -65,9 +65,7 @@ describe('a qué aplicar el progreso', () => {
 	test('se conservan los conteos, no sólo el tamaño', () => {
 		// La vista muestra archivos y carpetas además del tamaño; perderlos
 		// dejaba los contadores en cero mientras el tamaño subía.
-		const activos: ProgresoDeCalculo[] = [
-			{ path: '/a', size: 500, file_count: 12, dir_count: 3 },
-		];
+		const activos: ProgresoDeCalculo[] = [{ path: '/a', size: 500, file_count: 12, dir_count: 3 }];
 		const [salida] = progresoAplicable(activos, new Set(['/a']));
 
 		expect(salida.file_count).toBe(12);

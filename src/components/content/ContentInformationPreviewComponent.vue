@@ -2,20 +2,20 @@
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, ref, watch } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirEntry } from '@/types/dir-entry';
 import {
-  isImageFile as checkIsImage,
-  isVideoFile as checkIsVideo,
-  isAudioFile as checkIsAudio,
-  isPdfFile as checkIsPdf,
-  isTextFile as checkIsText,
+	isAudioFile as checkIsAudio,
+	isImageFile as checkIsImage,
+	isPdfFile as checkIsPdf,
+	isTextFile as checkIsText,
+	isVideoFile as checkIsVideo,
 } from '@/utils/files';
 
 const props = defineProps<{
-  selectedEntry: DirEntry | null;
-  isCurrentDir?: boolean;
+	selectedEntry: DirEntry | null;
+	isCurrentDir?: boolean;
 }>();
 
 const fileIcon = useReactiveIcon(() => getIconSource('folder'));
@@ -27,68 +27,71 @@ const isPdfLoading = ref(false);
 const pdfError = ref<string | null>(null);
 
 const isImageFile = computed(() => {
-  if (!props.selectedEntry) return false;
-  return checkIsImage(props.selectedEntry);
+	if (!props.selectedEntry) return false;
+	return checkIsImage(props.selectedEntry);
 });
 
 const isVideoFile = computed(() => {
-  if (!props.selectedEntry) return false;
-  return checkIsVideo(props.selectedEntry);
+	if (!props.selectedEntry) return false;
+	return checkIsVideo(props.selectedEntry);
 });
 
 const isAudioFile = computed(() => {
-  if (!props.selectedEntry) return false;
-  return checkIsAudio(props.selectedEntry);
+	if (!props.selectedEntry) return false;
+	return checkIsAudio(props.selectedEntry);
 });
 
 const isPdfFile = computed(() => {
-  if (!props.selectedEntry) return false;
-  return checkIsPdf(props.selectedEntry);
+	if (!props.selectedEntry) return false;
+	return checkIsPdf(props.selectedEntry);
 });
 
 const isTextFile = computed(() => {
-  if (!props.selectedEntry) return false;
-  return checkIsText(props.selectedEntry);
+	if (!props.selectedEntry) return false;
+	return checkIsText(props.selectedEntry);
 });
 
 const mediaSrc = computed(() => {
-  if (!props.selectedEntry?.path) return '';
-  return convertFileSrc(props.selectedEntry.path);
+	if (!props.selectedEntry?.path) return '';
+	return convertFileSrc(props.selectedEntry.path);
 });
 
-watch(() => props.selectedEntry, async (entry) => {
-  textContent.value = null;
-  textError.value = null;
-  pdfPreviewSrc.value = null;
-  pdfError.value = null;
+watch(
+	() => props.selectedEntry,
+	async (entry) => {
+		textContent.value = null;
+		textError.value = null;
+		pdfPreviewSrc.value = null;
+		pdfError.value = null;
 
-  if (!entry) return;
+		if (!entry) return;
 
-  if (checkIsText(entry)) {
-    isTextLoading.value = true;
-    try {
-      textContent.value = await invoke<string>('read_text_file', { path: entry.path });
-    } catch (e) {
-      textError.value = String(e);
-      textContent.value = null;
-    } finally {
-      isTextLoading.value = false;
-    }
-  }
+		if (checkIsText(entry)) {
+			isTextLoading.value = true;
+			try {
+				textContent.value = await invoke<string>('read_text_file', { path: entry.path });
+			} catch (e) {
+				textError.value = String(e);
+				textContent.value = null;
+			} finally {
+				isTextLoading.value = false;
+			}
+		}
 
-  if (checkIsPdf(entry)) {
-    isPdfLoading.value = true;
-    try {
-      const b64 = await invoke<string>('read_pdf_preview', { path: entry.path });
-      pdfPreviewSrc.value = `data:image/png;base64,${b64}`;
-    } catch (e) {
-      pdfError.value = String(e);
-      pdfPreviewSrc.value = null;
-    } finally {
-      isPdfLoading.value = false;
-    }
-  }
-});
+		if (checkIsPdf(entry)) {
+			isPdfLoading.value = true;
+			try {
+				const b64 = await invoke<string>('read_pdf_preview', { path: entry.path });
+				pdfPreviewSrc.value = `data:image/png;base64,${b64}`;
+			} catch (e) {
+				pdfError.value = String(e);
+				pdfPreviewSrc.value = null;
+			} finally {
+				isPdfLoading.value = false;
+			}
+		}
+	}
+);
 </script>
 
 <template>

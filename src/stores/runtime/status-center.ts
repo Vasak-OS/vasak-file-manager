@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
 export type OperationType = 'dir-size' | 'copy' | 'move' | 'delete' | 'compress';
 export type OperationStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled' | 'error';

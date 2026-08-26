@@ -2,7 +2,6 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import NumberField from '@/components/ui/number-field/NumberField.vue';
@@ -11,6 +10,7 @@ import NumberFieldDecrement from '@/components/ui/number-field/NumberFieldDecrem
 import NumberFieldIncrement from '@/components/ui/number-field/NumberFieldIncrement.vue';
 import NumberFieldInput from '@/components/ui/number-field/NumberFieldInput.vue';
 import { getDriveByPath } from '@/composables/use-drives';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import type { DirEntry } from '@/types/dir-entry';
 import type { DriveInfo } from '@/types/drive-info';

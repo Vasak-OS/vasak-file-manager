@@ -2,7 +2,6 @@
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import Dialog from '@/components/ui/dialog/Dialog.vue';
 import DialogContent from '@/components/ui/dialog/DialogContent.vue';
 import DialogDescription from '@/components/ui/dialog/DialogDescription.vue';
@@ -10,6 +9,7 @@ import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { ConflictItem, ConflictResolution } from '@/stores/runtime/clipboard';
 import toReadableBytes from '@/utils/byte-parser';
 
@@ -76,8 +76,6 @@ function handleOpenChange(open: boolean) {
 		handleCancel();
 	}
 }
-
-
 </script>
 
 <template>

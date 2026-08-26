@@ -14,9 +14,9 @@ import {
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Tab, TabGroup, Workspace } from '@/types/workspaces';
-import { replacePathPrefix } from '@/utils/path';
 import clone from '@/utils/clone';
 import { useDebounceFn } from '@/utils/debounce';
+import { replacePathPrefix } from '@/utils/path';
 import uniqueId from '@/utils/unique-id';
 
 export const useWorkspacesStore = defineStore('workspaces', () => {

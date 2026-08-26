@@ -2,8 +2,8 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, watch } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
@@ -166,7 +166,6 @@ const properties = computed<PropertyItem[]>(() => {
 
 	return items;
 });
-
 </script>
 
 <template>

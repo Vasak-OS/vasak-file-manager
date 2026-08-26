@@ -3,7 +3,6 @@ import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { ComponentPublicInstance } from 'vue';
 import { ref } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
@@ -15,6 +14,7 @@ import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 
 const props = defineProps<{
@@ -113,8 +113,6 @@ function handleFilterInteractOutside(event?: Event) {
 		event.preventDefault();
 	}
 }
-
-
 </script>
 
 <template>

@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { DirEntry } from '@/types/dir-entry';
 import { runTrackedFileOperation } from '@/stores/runtime/file-operation-runner';
+import type { DirEntry } from '@/types/dir-entry';
 
 export type ClipboardOperationType = 'copy' | 'move' | '';
 export type ConflictResolution = 'replace' | 'skip' | 'auto-rename';

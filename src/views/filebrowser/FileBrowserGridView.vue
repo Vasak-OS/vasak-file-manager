@@ -3,10 +3,10 @@ import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
@@ -114,8 +114,6 @@ const groupedEntries = computed<GroupedEntries>(() => {
 		others,
 	};
 });
-
-
 </script>
 
 <template>

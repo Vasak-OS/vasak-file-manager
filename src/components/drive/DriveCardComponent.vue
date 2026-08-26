@@ -86,8 +86,6 @@ async function handleUnmount(clickEvent?: Event) {
 		console.error('Failed to unmount drive:', unmountError);
 	}
 }
-
-
 </script>
 
 <template>

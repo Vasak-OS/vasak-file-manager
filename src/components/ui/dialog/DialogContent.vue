@@ -11,7 +11,6 @@ const dialogOpen = inject<WritableComputedRef<boolean>>('dialogOpen');
 const setDialogOpen = inject<(value: boolean) => void>('setDialogOpen');
 const isOpen = computed(() => dialogOpen?.value ?? false);
 
-
 function closeDialog() {
 	setDialogOpen?.(false);
 }
