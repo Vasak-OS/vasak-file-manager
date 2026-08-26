@@ -7,6 +7,7 @@ import { useUserPathsStore } from '@/stores/storage/user-paths';
 //import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
+import { debeSeguirSondeando, intervaloDeSondeo } from './global-search-polling';
 
 type GlobalSearchDriveScanError = {
 	drive_root: string;
@@ -28,8 +29,6 @@ type GlobalSearchStatus = {
 };
 
 const DEBOUNCE_DELAY_MS = 200;
-const POLL_INTERVAL_ACTIVE_MS = 300;
-const POLL_INTERVAL_IDLE_MS = 5000;
 const IDLE_THRESHOLD_MS = 60 * 1000;
 const IDLE_CHECK_INTERVAL_MS = 10 * 1000;
 
@@ -161,11 +160,37 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 		if (statusPollTimerId.value !== null) {
 			clearTimeout(statusPollTimerId.value);
+			statusPollTimerId.value = null;
 		}
 
 		const isActive = isScanInProgress.value || isCommitting.value;
-		const interval = isActive ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
-		statusPollTimerId.value = setTimeout(() => pollStatus(), interval);
+
+		// Se reagenda sólo si queda algo que mirar. Antes se reagendaba siempre,
+		// y como el único que lo detenía era cerrar el panel, el caso normal
+		// —escaneo automático al abrir la aplicación, panel nunca abierto— dejaba
+		// un IPC cada cinco segundos hasta que se cerrara el gestor.
+		if (!debeSeguirSondeando(isActive, isOpen.value, estaOculto())) {
+			return;
+		}
+
+		statusPollTimerId.value = setTimeout(() => pollStatus(), intervaloDeSondeo(isActive));
+	}
+
+	/** Si la ventana no está a la vista de nadie. */
+	function estaOculto(): boolean {
+		return typeof document !== 'undefined' && document.hidden;
+	}
+
+	/**
+	 * Retoma el sondeo al volver la ventana, si hay a quién informarle.
+	 *
+	 * Sin esto, un panel abierto en una ventana que se tapa deja de sondear y no
+	 * vuelve a empezar: se quedaría mostrando el estado de cuando se ocultó.
+	 */
+	function alCambiarVisibilidad() {
+		if (!estaOculto() && isOpen.value) {
+			startStatusPolling();
+		}
 	}
 
 	function startStatusPolling() {
@@ -462,6 +487,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			window.addEventListener(event, recordActivity, { passive: true });
 		});
 
+		document.addEventListener('visibilitychange', alCambiarVisibilidad);
+
 		idleCheckIntervalId.value = setInterval(checkIdleReindex, IDLE_CHECK_INTERVAL_MS);
 	}
 
@@ -470,6 +497,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			clearInterval(idleCheckIntervalId.value);
 			idleCheckIntervalId.value = null;
 		}
+
+		document.removeEventListener('visibilitychange', alCambiarVisibilidad);
 
 		const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
 		activityEvents.forEach((event) => {
