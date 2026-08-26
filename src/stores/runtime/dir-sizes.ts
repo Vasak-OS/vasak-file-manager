@@ -1,6 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
 import { computed, ref, reactive } from 'vue';
+import {
+	debeSondear,
+	progresoAplicable,
+	puedeConsultar,
+} from '@/stores/runtime/dir-size-tracking';
 import { useStatusCenterStore } from '@/stores/runtime/status-center';
 
 export type SizeStatus = 'Complete' | 'Error' | 'Loading';
@@ -25,7 +30,26 @@ export interface DirSizeResult {
 export const useDirSizesStore = defineStore('dir-sizes', () => {
 	const sizes = reactive(new Map<string, DirSizeInfo>());
 	const pendingPaths = ref<Set<string>>(new Set());
-	const progressIntervals = reactive(new Map<string, ReturnType<typeof setInterval>>());
+	/**
+	 * Las rutas cuyo cálculo se está siguiendo.
+	 *
+	 * Antes había un `setInterval` **por ruta**, cada uno con su ida y vuelta
+	 * por el IPC cada dos segundos: abrir una carpeta con veinte subcarpetas
+	 * armaba veinte temporizadores y diez consultas por segundo. Ahora es un
+	 * solo temporizador que pide todas juntas con `get_active_calculations`, que
+	 * el backend ya exponía y sólo se usaba al recargar.
+	 */
+	const siguiendo = reactive(new Set<string>());
+	let temporizador: ReturnType<typeof setInterval> | null = null;
+	/**
+	 * Si hay una consulta de progreso en vuelo.
+	 *
+	 * `setInterval` no espera a que termine la anterior, y el cambio de
+	 * visibilidad puede lanzar otra encima. Si `get_active_calculations` tarda
+	 * más de dos segundos, una respuesta vieja llega después de una nueva y pisa
+	 * tamaños y conteos más recientes.
+	 */
+	let consultando = false;
 
 	const pendingCount = computed(() => pendingPaths.value.size);
 
@@ -85,35 +109,64 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 		}
 	}
 
+	/** Una sola vuelta: trae el progreso de todos los cálculos en curso. */
+	async function traerProgreso() {
+		if (!puedeConsultar(siguiendo, document.hidden, consultando)) {
+			return;
+		}
+		consultando = true;
+		try {
+			const activos = await invoke<DirSizeResult[]>('get_active_calculations');
+			for (const calculo of progresoAplicable(activos, siguiendo)) {
+				sizes.set(calculo.path, {
+					size: calculo.size,
+					status: 'Loading',
+					fileCount: calculo.file_count,
+					dirCount: calculo.dir_count,
+					calculatedAt: Date.now(),
+				});
+			}
+		} catch {
+			// Un progreso perdido no cambia el resultado: el cálculo sigue en el
+			// backend y su valor final llega por `requestSize`.
+		} finally {
+			consultando = false;
+		}
+	}
+
+	/** Arranca o detiene el temporizador según lo que haya que seguir. */
+	function acomodarTemporizador() {
+		const hace_falta = debeSondear(siguiendo, document.hidden);
+		if (hace_falta && temporizador === null) {
+			temporizador = setInterval(() => {
+				void traerProgreso();
+			}, 2000);
+		} else if (!hace_falta && temporizador !== null) {
+			clearInterval(temporizador);
+			temporizador = null;
+		}
+	}
+
+	// Al tapar la ventana se detiene, y al volver se retoma con una vuelta
+	// inmediata: lo que se muestre quedó viejo mientras no se veía.
+	if (typeof document !== 'undefined') {
+		document.addEventListener('visibilitychange', () => {
+			// Sólo se consulta si de verdad hay algo que seguir: al volver la
+			// ventana sin cálculos en curso, esto era una ida y vuelta por el IPC
+			// cuya respuesta se descartaba.
+			void traerProgreso();
+			acomodarTemporizador();
+		});
+	}
+
 	function startProgressPolling(path: string) {
-		stopProgressPolling(path);
-
-		const interval = setInterval(async () => {
-			try {
-				const progress = await invoke<DirSizeResult | null>('get_dir_size_progress', { path });
-
-				if (progress && progress.size > 0) {
-					sizes.set(path, {
-						size: progress.size,
-						status: 'Loading',
-						fileCount: progress.file_count,
-						dirCount: progress.dir_count,
-						calculatedAt: Date.now(),
-					});
-				}
-			} catch {}
-		}, 2000);
-
-		progressIntervals.set(path, interval);
+		siguiendo.add(path);
+		acomodarTemporizador();
 	}
 
 	function stopProgressPolling(path: string) {
-		const interval = progressIntervals.get(path);
-
-		if (interval) {
-			clearInterval(interval);
-			progressIntervals.delete(path);
-		}
+		siguiendo.delete(path);
+		acomodarTemporizador();
 	}
 
 	async function requestSize(path: string, forceRecalculate = false): Promise<DirSizeInfo | null> {
