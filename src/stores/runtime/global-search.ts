@@ -216,6 +216,17 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	function alCambiarVisibilidad() {
 		if (debeRetomarSondeo(estaOculto(), isOpen.value)) {
 			startStatusPolling();
+			return;
+		}
+
+		// Y al ocultarse, cortar el temporizador que ya está agendado. Sin esto la
+		// pausa no era inmediata: quedaba una consulta pendiente que igual salía
+		// —con su IPC— antes de que la guarda de `pollStatus` dejara de
+		// reagendar. Con un escaneo en curso no se corta nada, porque ahí el
+		// sondeo tiene que seguir aunque nadie mire.
+		const activo = isScanInProgress.value || isCommitting.value;
+		if (!debeSeguirSondeando(activo, isOpen.value, estaOculto())) {
+			stopStatusPolling();
 		}
 	}
 

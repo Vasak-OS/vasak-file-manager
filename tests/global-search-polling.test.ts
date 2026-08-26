@@ -73,3 +73,19 @@ describe('intervaloDeSondeo', () => {
 		expect(SONDEO_ACTIVO_MS).toBeLessThan(SONDEO_EN_REPOSO_MS / 10);
 	});
 });
+
+describe('la pausa al ocultarse es inmediata', () => {
+	test('el mismo predicado gobierna cortar y retomar', () => {
+		// Al ocultarse sin escaneo en curso hay que cortar el temporizador ya
+		// agendado, no sólo dejar de reagendar: quedaba una consulta pendiente
+		// que igual salía, con su IPC, después de que la ventana se tapó.
+		expect(debeSeguirSondeando(false, true, true)).toBe(false);
+		expect(debeRetomarSondeo(true, true)).toBe(false);
+	});
+
+	test('con un escaneo en curso ocultarse no corta nada', () => {
+		// Cortar acá dejaría el escaneo sin nadie mirando si terminó, y el estado
+		// congelado en «escaneando» hasta que alguien abriera el panel.
+		expect(debeSeguirSondeando(true, false, true)).toBe(true);
+	});
+});
