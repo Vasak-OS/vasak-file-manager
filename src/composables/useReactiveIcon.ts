@@ -6,36 +6,36 @@ let subscribers = 0;
 const version = ref(0);
 
 export function useReactiveIcon(fetcher: () => Promise<string>) {
-  const source = ref('');
+	const source = ref('');
 
-  watch(
-    version,
-    async () => {
-      try {
-        source.value = await fetcher();
-      } catch {
-        source.value = '';
-      }
-    },
-    { immediate: true }
-  );
+	watch(
+		version,
+		async () => {
+			try {
+				source.value = await fetcher();
+			} catch {
+				source.value = '';
+			}
+		},
+		{ immediate: true }
+	);
 
-  onMounted(async () => {
-    subscribers++;
-    if (subscribers === 1) {
-      unlisten = await listen('vicons:theme-changed', () => {
-        version.value++;
-      });
-    }
-  });
+	onMounted(async () => {
+		subscribers++;
+		if (subscribers === 1) {
+			unlisten = await listen('vicons:theme-changed', () => {
+				version.value++;
+			});
+		}
+	});
 
-  onUnmounted(() => {
-    subscribers--;
-    if (subscribers <= 0 && unlisten) {
-      unlisten();
-      unlisten = null;
-    }
-  });
+	onUnmounted(() => {
+		subscribers--;
+		if (subscribers <= 0 && unlisten) {
+			unlisten();
+			unlisten = null;
+		}
+	});
 
-  return source;
+	return source;
 }

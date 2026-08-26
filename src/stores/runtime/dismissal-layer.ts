@@ -17,9 +17,7 @@ export const useDismissalLayerStore = defineStore('dismissalLayer', () => {
 	const hasLayers = computed(() => layers.size > 0);
 
 	const sortedLayers = computed(() => {
-		return Array.from(layers.values()).sort(
-			(layerA, layerB) => layerB.priority - layerA.priority
-		);
+		return Array.from(layers.values()).sort((layerA, layerB) => layerB.priority - layerA.priority);
 	});
 
 	function generateId(): string {

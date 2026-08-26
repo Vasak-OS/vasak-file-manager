@@ -1,9 +1,9 @@
-import { startDrag as tauriStartDrag } from '@vasakgroup/plugin-drag-and-drop-wayland';
 import { resolveResource } from '@tauri-apps/api/path';
+import { startDrag as tauriStartDrag } from '@vasakgroup/plugin-drag-and-drop-wayland';
 import { computed, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
-import { entryPathSelector } from '@/utils/css-escape';
 import type { DirEntry } from '@/types/dir-entry';
+import { entryPathSelector } from '@/utils/css-escape';
 
 export type DragOperationType = 'move' | 'copy';
 
@@ -225,11 +225,7 @@ export function useFileBrowserDrag(options: {
 		cleanup();
 
 		try {
-			await tauriStartDrag(
-				filePaths,
-				iconPath,
-				{ mode: dragMode },
-			);
+			await tauriStartDrag(filePaths, iconPath, { mode: dragMode });
 		} catch (error) {
 			console.error('Outbound drag failed:', error);
 		}

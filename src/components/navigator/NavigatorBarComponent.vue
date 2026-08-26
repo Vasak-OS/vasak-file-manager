@@ -429,7 +429,7 @@ function switchToPane(paneIndex: number): boolean {
 
 	const tabGroup = workspacesStore.currentTabGroup;
 
-	if (!tabGroup || !tabGroup[paneIndex]) return false;
+	if (!tabGroup?.[paneIndex]) return false;
 
 	const targetTab = tabGroup[paneIndex];
 	activeTabId.value = targetTab.id;

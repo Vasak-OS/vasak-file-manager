@@ -8,4 +8,3 @@ export function formatBytes(bytes: number, decimals?: number): string {
 
 export default formatBytes;
 export { formatBytes as toReadableBytes };
-

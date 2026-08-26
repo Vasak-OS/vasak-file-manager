@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirEntry } from '@/types/dir-entry';
 import { getFileIcon } from '@/utils/images';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 
 const props = defineProps<{
 	entry: DirEntry;

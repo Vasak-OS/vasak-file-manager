@@ -6,8 +6,8 @@ import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import { cancelFileOperation } from '@/stores/runtime/file-operation-runner';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
+import { cancelFileOperation } from '@/stores/runtime/file-operation-runner';
 import { type Operation, useStatusCenterStore } from '@/stores/runtime/status-center';
 
 const statusCenter = useStatusCenterStore();

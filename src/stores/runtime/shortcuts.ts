@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
 
 export type ShortcutConditions = {
@@ -463,7 +463,9 @@ function isDialogOpened(): boolean {
 	return false;
 }
 
-type ShortcutHandler = () => void | undefined | boolean | Promise<void | undefined | boolean>;
+// `void` dentro de una unión no dice «no devuelve nada», dice «cualquier cosa que
+// se ignora», y con `undefined` al lado es además redundante.
+type ShortcutHandler = () => undefined | boolean | Promise<undefined | boolean>;
 
 type HandlerRegistration = {
 	handler: ShortcutHandler;

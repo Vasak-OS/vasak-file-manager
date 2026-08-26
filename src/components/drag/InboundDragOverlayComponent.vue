@@ -2,8 +2,8 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 
 const props = defineProps<{
 	isActive: boolean;
@@ -28,8 +28,6 @@ const description = computed(() => {
 const operationIcon = computed(() =>
 	props.operationType === 'copy' ? CopyIcon.value : FolderInputIcon.value
 );
-
-
 </script>
 
 <template>

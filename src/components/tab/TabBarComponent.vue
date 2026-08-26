@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { TabGroup, Tab as TabType } from '@/types/workspaces';

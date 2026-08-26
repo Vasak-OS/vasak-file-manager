@@ -2,9 +2,9 @@
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { DirEntry } from '@/types/dir-entry';
 
 const props = defineProps<{
@@ -42,8 +42,6 @@ const description = computed(() => {
 
 	return `drag.moveItems ${props.itemCount}`;
 });
-
-
 </script>
 
 <template>

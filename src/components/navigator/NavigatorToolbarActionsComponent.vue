@@ -2,14 +2,14 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
+import StatusCenterButton from '@/components/statuscenter/StatusCenterButton.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import StatusCenterButton from '@/components/statuscenter/StatusCenterButton.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import type { Layout } from '@/types/navigator';
 
@@ -42,8 +42,6 @@ async function setLayout(layoutName: LayoutType) {
 	await userLayoutStore.setLayout(layoutName);
 	isLayoutPopoverOpen.value = false;
 }
-
-
 </script>
 
 <template>

@@ -1,11 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
-import { computed, ref, reactive } from 'vue';
-import {
-	debeSondear,
-	progresoAplicable,
-	puedeConsultar,
-} from '@/stores/runtime/dir-size-tracking';
+import { computed, reactive, ref } from 'vue';
+import { debeSondear, progresoAplicable, puedeConsultar } from '@/stores/runtime/dir-size-tracking';
 import { useStatusCenterStore } from '@/stores/runtime/status-center';
 
 export type SizeStatus = 'Complete' | 'Error' | 'Loading';

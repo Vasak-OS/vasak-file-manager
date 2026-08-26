@@ -2,10 +2,10 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { storeToRefs } from 'pinia';
 import { computed, type Ref, ref } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
@@ -89,8 +89,6 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 		event.preventDefault();
 	}
 }
-
-
 </script>
 
 <template>

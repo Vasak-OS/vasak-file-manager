@@ -4,7 +4,6 @@ import { dirname } from '@tauri-apps/api/path';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
 import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
@@ -18,6 +17,7 @@ import { toast } from '@/components/ui/toast/toaster';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirContents } from '@/types/dir-entry';
 
 const props = defineProps<{
