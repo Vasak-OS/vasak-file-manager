@@ -50,12 +50,12 @@ const description = computed(() => {
       <div v-if="props.isActive" class="px-4 py-2 whitespace-nowrap fixed z-50 border border-ui-border bg-ui-bg/80 flex flex-col rounded-corner gap-1" :style="overlayStyle">
         <div class="flex items-center gap-2 text-primary font-medium">
           <span>{{ description }}</span>
-          <img :src="operationIcon" alt="Drag operation" class="h-4 w-4" />
+          <img :src="operationIcon" :alt="t('drag.dragging')" class="h-4 w-4" />
         </div>
         <div class="font-[11px] text-tx-muted">
           {{ t('drag.holdShiftToChangeMode') }}
           <EntryIconComponent v-for="item in props.dragItems" :entry="item" :size="24" class="h-8 w-8 fixed z-50" :style="overlayIconStyle" />
-          <img :src="operationIcon" alt="Drag operation" class="h-8 w-8 fixed z-50" :style="overlayIconStyle" />
+          <img :src="operationIcon" :alt="t('drag.dragging')" class="h-8 w-8 fixed z-50" :style="overlayIconStyle" />
         </div>
       </div>
     </Transition>

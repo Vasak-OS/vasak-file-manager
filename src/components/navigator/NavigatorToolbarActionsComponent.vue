@@ -51,8 +51,8 @@ async function setLayout(layoutName: LayoutType) {
           <Tooltip>
             <TooltipTrigger as-child>
               <button class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border">
-                <img :src="layoutGridIcon" alt="Show Grid" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
-                <img :src="layoutListIcon" alt="Show List" v-else height="24" width="24" class="fill-primary" />
+                <img :src="layoutGridIcon" :alt="t('gridLayout')" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
+                <img :src="layoutListIcon" :alt="t('listLayout')" v-else height="24" width="24" class="fill-primary" />
               </button>
             </TooltipTrigger>
             <TooltipContent>{{ t('settings.navigator.navigatorViewLayout') }}</TooltipContent>
@@ -61,12 +61,12 @@ async function setLayout(layoutName: LayoutType) {
         <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
           <button class="flex items-center gap-2 px-2 w-full py-1 rounded-corner hover:bg-primary"
             :class="{ 'bg-secondary hover:bg-primary': currentLayout === 'list' }" @click="setLayout('list')">
-            <img :src="layoutListIcon" alt="Show List" height="24" width="24" class="fill-primary" />
+            <img :src="layoutListIcon" :alt="t('listLayout')" height="24" width="24" class="fill-primary" />
             <span>{{ t('listLayout') }}</span>
           </button>
           <button class="flex items-center gap-2 px-2 py-1 rounded-corner hover:bg-primary"
             :class="{ 'bg-secondary hover:bg-primary': currentLayout === 'grid' }" @click="setLayout('grid')">
-            <img :src="layoutGridIcon" alt="Show Grid" height="24" width="24" class="fill-primary" />
+            <img :src="layoutGridIcon" :alt="t('gridLayout')" height="24" width="24" class="fill-primary" />
             <span>{{ t('gridLayout') }}</span>
           </button>
         </PopoverContent>
@@ -79,7 +79,7 @@ async function setLayout(layoutName: LayoutType) {
             :disabled="props.isGlobalSearchOpen"
             @click="emit('toggle-split-view')"
           >
-            <img :src="splitViewIcon" alt="Toggle Split View" height="24" width="24" class="fill-primary" />
+            <img :src="splitViewIcon" :alt="t('splitView')" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('splitView') }}</TooltipContent>
@@ -91,7 +91,7 @@ async function setLayout(layoutName: LayoutType) {
             :class="{ 'bg-primary hover:bg-secondary': props.showInfoPanel }"
             @click="emit('toggle-info-panel')"
           >
-            <img :src="infoPanelIcon" alt="Toggle Info Panel" height="24" width="24" class="fill-primary" />
+            <img :src="infoPanelIcon" :alt="t('toolbar.infoPanel')" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('settings.infoPanel.title') }}</TooltipContent>

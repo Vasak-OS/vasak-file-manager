@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+
+const { t } = useI18n();
 
 interface TagItem {
 	id: string;
@@ -93,7 +96,7 @@ onUnmounted(() => {
 <template>
 	<div ref="containerRef" class="relative" :class="{ 'w-full': fullWidth }">
 		<button type="button" :class="triggerClass" @click="toggleOpen">
-			<span>Tags</span>
+			<span>{{ t('tags.title') }}</span>
 			<div class="flex items-center gap-1">
 				<span
 					v-for="tag in visibleBadges"
@@ -146,7 +149,7 @@ onUnmounted(() => {
 				<input
 					v-model="newTagName"
 					type="text"
-					placeholder="New tag"
+					:placeholder="t('tags.newTag')"
 					class="w-full rounded-md border border-ui-border px-2 py-1 text-xs focus:border-ui-secondary focus:outline-none"
 					@keydown.enter.prevent="handleCreateTag"
 				/>

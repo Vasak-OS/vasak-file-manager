@@ -36,7 +36,7 @@ onMounted(async () => {
     
     <div class="flex flex-col gap-1 items-center mt-2">
       <div class="mb-2 p-1">
-        <img :src="folderIcon" class="h-6 w-6 inline-block" alt="Logo">
+        <img :src="folderIcon" class="h-6 w-6 inline-block" alt="">
       </div>
     </div>
 
@@ -44,7 +44,7 @@ onMounted(async () => {
       <!--<Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
           <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="globalSearchStore.toggle()">
-            <img :src="searchIcon" class="h-6 w-6" alt="Search" />
+            <img :src="searchIcon" class="h-6 w-6" :alt="t('search')" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="right" :side-offset="12">
@@ -55,7 +55,7 @@ onMounted(async () => {
       <Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
           <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive(userPathsStore.userPaths.homeDir)">
-            <img :src="homeIcon" class="h-6 w-6" alt="Home" />
+            <img :src="homeIcon" class="h-6 w-6" :alt="t('home')" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="right" :side-offset="12">
@@ -66,7 +66,7 @@ onMounted(async () => {
       <Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
           <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive('/')">
-            <img :src="rootIcon" class="h-6 w-6" alt="Root" />
+            <img :src="rootIcon" class="h-6 w-6" :alt="t('root')" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="right" :side-offset="12">

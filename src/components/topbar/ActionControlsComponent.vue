@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
+
+const { t } = useI18n();
 
 const appWindow = getCurrentWindow();
 const closeIcon = useReactiveIcon(() => getSymbolSource('window-close'));
@@ -11,13 +14,13 @@ const maximizeIcon = useReactiveIcon(() => getSymbolSource('window-maximize'));
 <template>
   <div class="flex gap-1" data-tauri-drag-region>
     <span class="p-1 bg-ui-bg/80 rounded-corner hover:bg-status-success border border-ui-border" @click="appWindow.minimize()">
-      <img :src="minimizeIcon" class="h-6 w-6 inline-block" alt="Minimize">
+      <img :src="minimizeIcon" class="h-6 w-6 inline-block" :alt="t('window.minimize')">
     </span>
     <span class="p-1 bg-ui-bg/80 rounded-corner hover:bg-status-warning border border-ui-border" @click="appWindow.toggleMaximize()">
-      <img :src="maximizeIcon" class="h-6 w-6 inline-block" alt="Maximize">
+      <img :src="maximizeIcon" class="h-6 w-6 inline-block" :alt="t('window.maximize')">
     </span>
     <span class="p-1 bg-ui-bg/80 rounded-corner hover:bg-status-error border border-ui-border" @click="appWindow.close()">
-      <img :src="closeIcon" class="h-6 w-6 inline-block" alt="Close">
+      <img :src="closeIcon" class="h-6 w-6 inline-block" :alt="t('close')">
     </span>
   </div>
 </template>

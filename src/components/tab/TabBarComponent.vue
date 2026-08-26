@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
@@ -10,6 +11,8 @@ import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { TabGroup, Tab as TabType } from '@/types/workspaces';
+
+const { t } = useI18n();
 
 const props = withDefaults(
 	defineProps<{
@@ -83,7 +86,7 @@ onBeforeUnmount(() => {
       <Tooltip>
         <TooltipTrigger as-child>
           <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" variant="ghost" size="xs" @click="openNewTabGroup()">
-            <img v-if="plusIcon" :src="plusIcon" alt="Add Tab" class="w-3.5 h-3.5" />
+            <img v-if="plusIcon" :src="plusIcon" :alt="t('toolbar.newTab')" class="w-3.5 h-3.5" />
           </button>
         </TooltipTrigger>
         <TooltipContent>

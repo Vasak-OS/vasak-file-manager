@@ -37,6 +37,9 @@ globalSearch:
   showSearchSettings: Mostrar Configuración de Búsqueda
   typoTolerance: Tolerancia a Errores
 fileBrowser:
+  sortAscending: Orden ascendente
+  sortDescending: Orden descendente
+  selected: Seleccionado
   fileCount: "{0} archivos"
   directoryCount: "{0} carpetas"
   itemCount: "{0} elementos"
@@ -143,6 +146,8 @@ moreOptions:
   loading: Cargando...
   noOptionsAvailable: No hay opciones disponibles
 openWith:
+  selectProgram: Elegir programa
+  failedToOpenFile: No se pudo abrir el archivo
   loadingPrograms: Cargando programas...
   defaultApp: Aplicación Predeterminada
   suggestedApps: Aplicaciones Sugeridas
@@ -219,6 +224,8 @@ relativeTime:
 drag:
   holdShiftToChangeMode: Mantén presionado Shift para cambiar el modo de arrastre
   holdCtrlForCurrentDirDrop: Mantén presionado Ctrl para soltar en el directorio actual
+  dragging: Arrastrando
+  dropping: Soltando
 conflictDialog:
   title: Conflicto de Archivo
   skip: Omitir
@@ -271,3 +278,48 @@ textMenu:
   cut: Cortar
   paste: Pegar
   selectAll: Seleccionar todo
+statusCenter:
+  empty: Sin tareas en segundo plano
+  title: Tareas en segundo plano
+  clearFinished: Limpiar terminadas
+  working: Trabajando…
+  pending: En espera
+  completed: Listo
+  cancelled: Cancelada
+  failed: Falló
+tags:
+  title: Etiquetas
+  newTag: Nueva etiqueta
+window:
+  minimize: Minimizar
+  maximize: Maximizar
+toolbar:
+  infoPanel: Panel de información
+  newTab: Pestaña nueva
+drive:
+  eject: Expulsar
+progress:
+  completed: Completado
+operations:
+  copyingOne: Copiando {0} elemento
+  copyingOther: Copiando {0} elementos
+  movingOne: Moviendo {0} elemento
+  movingOther: Moviendo {0} elementos
+  trashingOne: Enviando {0} elemento a la papelera
+  trashingOther: Enviando {0} elementos a la papelera
+  deletingOne: Eliminando {0} elemento
+  deletingOther: Eliminando {0} elementos
+  calculatingSize: Calculando el tamaño de la carpeta
+errors:
+  couldNotOpenTab: "No se pudo abrir la pestaña: {0}"
+  tabMissing: La pestaña no existe
+keys:
+  esc: Esc
+  tab: Tab
+  shiftTab: Mayús+Tab
+  enter: Intro
+  ctrlP: Ctrl+P
+operationLabels:
+  copying: Copiando
+  moving: Moviendo
+  deleting: Eliminando

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { basename } from '@tauri-apps/api/path';
 import { LazyStore } from '@tauri-apps/plugin-store';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { defineStore } from 'pinia';
 import type { ComputedRef } from 'vue';
 import { computed, ref, watch } from 'vue';
@@ -12,6 +13,7 @@ import {
 	WORKSPACES_SCHEMA_VERSION_KEY,
 } from '@/stores/scheme/workspaces';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
+import { interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Tab, TabGroup, Workspace } from '@/types/workspaces';
 import clone from '@/utils/clone';
@@ -20,6 +22,7 @@ import { replacePathPrefix } from '@/utils/path';
 import uniqueId from '@/utils/unique-id';
 
 export const useWorkspacesStore = defineStore('workspaces', () => {
+	const { t } = useI18n();
 	const userPathsStore = useUserPathsStore();
 	const navigatorStore = useNavigatorStore();
 
@@ -307,15 +310,18 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 				tabGroupIndex === -1 ||
 				!checkTabGroupExists(tabGroup)
 			) {
-				throw Error("Tab doesn't exist");
+				throw Error(t('errors.tabMissing'));
 			}
 
 			setCurrentTabGroupIndex(tabGroupIndex);
 			await loadTabGroupDirEntries(tabGroup);
 			updateInfoPanel(tabGroup);
 		} catch (error) {
+			// El envoltorio también va traducido: envolver un mensaje traducido en
+			// un texto en inglés deja la mitad de la frase sin traducir, que es peor
+			// que no traducir nada.
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw Error(`Could not open tab: ${errorMessage}`);
+			throw Error(interpolar(t('errors.couldNotOpenTab'), errorMessage));
 		}
 	}
 
