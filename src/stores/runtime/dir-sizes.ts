@@ -4,6 +4,7 @@ import { computed, ref, reactive } from 'vue';
 import {
 	debeSondear,
 	progresoAplicable,
+	puedeConsultar,
 } from '@/stores/runtime/dir-size-tracking';
 import { useStatusCenterStore } from '@/stores/runtime/status-center';
 
@@ -40,6 +41,15 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	 */
 	const siguiendo = reactive(new Set<string>());
 	let temporizador: ReturnType<typeof setInterval> | null = null;
+	/**
+	 * Si hay una consulta de progreso en vuelo.
+	 *
+	 * `setInterval` no espera a que termine la anterior, y el cambio de
+	 * visibilidad puede lanzar otra encima. Si `get_active_calculations` tarda
+	 * más de dos segundos, una respuesta vieja llega después de una nueva y pisa
+	 * tamaños y conteos más recientes.
+	 */
+	let consultando = false;
 
 	const pendingCount = computed(() => pendingPaths.value.size);
 
@@ -101,6 +111,10 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 
 	/** Una sola vuelta: trae el progreso de todos los cálculos en curso. */
 	async function traerProgreso() {
+		if (!puedeConsultar(siguiendo, document.hidden, consultando)) {
+			return;
+		}
+		consultando = true;
 		try {
 			const activos = await invoke<DirSizeResult[]>('get_active_calculations');
 			for (const calculo of progresoAplicable(activos, siguiendo)) {
@@ -115,6 +129,8 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 		} catch {
 			// Un progreso perdido no cambia el resultado: el cálculo sigue en el
 			// backend y su valor final llega por `requestSize`.
+		} finally {
+			consultando = false;
 		}
 	}
 
@@ -135,9 +151,10 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 	// inmediata: lo que se muestre quedó viejo mientras no se veía.
 	if (typeof document !== 'undefined') {
 		document.addEventListener('visibilitychange', () => {
-			if (!document.hidden) {
-				void traerProgreso();
-			}
+			// Sólo se consulta si de verdad hay algo que seguir: al volver la
+			// ventana sin cálculos en curso, esto era una ida y vuelta por el IPC
+			// cuya respuesta se descartaba.
+			void traerProgreso();
 			acomodarTemporizador();
 		});
 	}

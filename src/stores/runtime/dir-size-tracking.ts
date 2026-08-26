@@ -40,3 +40,23 @@ export function progresoAplicable(
 ): ProgresoDeCalculo[] {
 	return activos.filter((calculo) => siguiendo.has(calculo.path) && calculo.size > 0);
 }
+
+/**
+ * Si corresponde lanzar una consulta de progreso.
+ *
+ * Tres condiciones, y las tres se rompieron por separado:
+ *
+ *  - **Nada que seguir**: al volver la ventana sin cálculos en curso, la
+ *    consulta iba y su respuesta se descartaba.
+ *  - **Ventana tapada**: nadie mira los tamaños que se actualizan.
+ *  - **Ya hay una en vuelo**: `setInterval` no espera a la anterior, así que si
+ *    el backend tarda más que el intervalo, una respuesta vieja llega después de
+ *    una nueva y pisa tamaños más recientes.
+ */
+export function puedeConsultar(
+	siguiendo: ReadonlySet<string>,
+	oculto: boolean,
+	enVuelo: boolean
+): boolean {
+	return debeSondear(siguiendo, oculto) && !enVuelo;
+}

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
 	debeSondear,
 	progresoAplicable,
+	puedeConsultar,
 	type ProgresoDeCalculo,
 } from '../src/stores/runtime/dir-size-tracking';
 
@@ -71,5 +72,30 @@ describe('a qué aplicar el progreso', () => {
 
 		expect(salida.file_count).toBe(12);
 		expect(salida.dir_count).toBe(3);
+	});
+});
+
+describe('cuándo lanzar la consulta', () => {
+	const una = new Set(['/a']);
+
+	test('con algo que seguir, visible y nada en vuelo, sí', () => {
+		expect(puedeConsultar(una, false, false)).toBe(true);
+	});
+
+	test('no se consulta si ya hay una en vuelo', () => {
+		// Éste es el que dejaba que una respuesta vieja pisara una nueva: el
+		// intervalo no espera a la anterior, así que con el backend lento se
+		// superponían.
+		expect(puedeConsultar(una, false, true)).toBe(false);
+	});
+
+	test('no se consulta sin rutas seguidas', () => {
+		// Al volver la ventana sin cálculos en curso, la consulta iba y su
+		// respuesta se descartaba: una ida y vuelta por el IPC para nada.
+		expect(puedeConsultar(new Set(), false, false)).toBe(false);
+	});
+
+	test('no se consulta con la ventana tapada', () => {
+		expect(puedeConsultar(una, true, false)).toBe(false);
 	});
 });
