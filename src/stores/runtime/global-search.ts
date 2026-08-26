@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { sharedDrives } from '@/composables/use-drives';
@@ -8,6 +9,13 @@ import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
 import { debeSeguirSondeando, intervaloDeSondeo } from './global-search-polling';
+import {
+	debeReindexar,
+	type EstadoDeInactividadDelSistema,
+	leerSenal,
+	RED_DE_SEGURIDAD_MS,
+	type SenalDeInactividad,
+} from './idle-reindex';
 
 type GlobalSearchDriveScanError = {
 	drive_root: string;
@@ -29,8 +37,14 @@ type GlobalSearchStatus = {
 };
 
 const DEBOUNCE_DELAY_MS = 200;
-const IDLE_THRESHOLD_MS = 60 * 1000;
-const IDLE_CHECK_INTERVAL_MS = 10 * 1000;
+
+/**
+ * Donde el backend avisa que la sesión quedó sin nadie, o que volvió a haberlo.
+ *
+ * El umbral —cuánto silencio hace falta— lo aplica el compositor y viaja en el
+ * propio estado, así que no se repite acá. Ver `idle_monitor` en el backend.
+ */
+const EVENTO_INACTIVIDAD = 'idle://changed';
 
 export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const isOpen = ref(false);
@@ -54,9 +68,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const statusPollTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const debounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const searchAbortController = ref<AbortController | null>(null);
-	const idleCheckIntervalId = ref<ReturnType<typeof setInterval> | null>(null);
+	const redDeSeguridadId = ref<ReturnType<typeof setInterval> | null>(null);
 	const driveChangeDebounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
-	const lastActivityTime = ref<number>(Date.now());
+	const senalDeInactividad = ref<SenalDeInactividad>('desconocida');
+	const dejarDeEscucharInactividad = ref<UnlistenFn | null>(null);
 	const lastKnownDriveCount = ref<number>(0);
 
 	//const userSettingsStore = useUserSettingsStore();
@@ -87,8 +102,14 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return timeSinceLastScan > staleThresholdMs;
 	}
 
+	/**
+	 * Si la sesión está inactiva según el sistema.
+	 *
+	 * «Según el sistema» es lo que cambió: antes se miraba la actividad sobre
+	 * esta ventana, que con la ventana tapada no existe.
+	 */
 	function getIsUserIdle() {
-		return Date.now() - lastActivityTime.value > IDLE_THRESHOLD_MS;
+		return senalDeInactividad.value === 'inactiva';
 	}
 
 	async function getDriveRoots(): Promise<string[]> {
@@ -139,7 +160,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			lastKnownDriveCount.value = sharedDrives.value.length;
 
-			startIdleDetection();
+			await startIdleDetection();
 
 			//const settings = userSettingsStore.userSettings.globalSearch;
 			const shouldRescanOnLaunch =
@@ -151,7 +172,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		} catch (error) {
 			lastError.value = String(error);
 			isInitialized.value = true;
-			startIdleDetection();
+			await startIdleDetection();
 		}
 	}
 
@@ -428,18 +449,18 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		results.value = [];
 	}
 
-	function recordActivity() {
-		lastActivityTime.value = Date.now();
-	}
-
 	function checkIdleReindex() {
 		//const settings = userSettingsStore.userSettings.globalSearch;
 
 		// if (!settings.autoReindexWhenIdle) return;
-		if (isScanInProgress.value) return;
-		if (!isInitialized.value) return;
-		if (!getIsIndexStale()) return;
-		if (!getIsUserIdle()) return;
+		const corresponde = debeReindexar({
+			senal: senalDeInactividad.value,
+			escaneoEnCurso: isScanInProgress.value,
+			inicializado: isInitialized.value,
+			indiceVencido: getIsIndexStale(),
+		});
+
+		if (!corresponde) return;
 
 		startScan();
 	}
@@ -479,31 +500,77 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return Array.from(paths);
 	}
 
-	function startIdleDetection() {
-		if (idleCheckIntervalId.value !== null) return;
+	/**
+	 * Aplica lo que informó el sistema.
+	 *
+	 * Al pasar a inactiva se revisa en el acto —ese es el momento exacto en que
+	 * se abrió la ventana de oportunidad— y se deja la red de seguridad
+	 * corriendo. Al salir de inactiva se apaga: un temporizador despertando para
+	 * siempre mientras alguien usa la máquina es lo contrario de lo que se
+	 * busca.
+	 */
+	function aplicarEstadoDeInactividad(estado: EstadoDeInactividadDelSistema | null) {
+		senalDeInactividad.value = leerSenal(estado);
 
-		const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
-		activityEvents.forEach((event) => {
-			window.addEventListener(event, recordActivity, { passive: true });
-		});
+		if (senalDeInactividad.value === 'inactiva') {
+			iniciarRedDeSeguridad();
+			checkIdleReindex();
+			return;
+		}
+
+		detenerRedDeSeguridad();
+	}
+
+	function iniciarRedDeSeguridad() {
+		if (redDeSeguridadId.value !== null) return;
+		redDeSeguridadId.value = setInterval(checkIdleReindex, RED_DE_SEGURIDAD_MS);
+	}
+
+	function detenerRedDeSeguridad() {
+		if (redDeSeguridadId.value === null) return;
+		clearInterval(redDeSeguridadId.value);
+		redDeSeguridadId.value = null;
+	}
+
+	/**
+	 * Se pone a escuchar al sistema en vez de a la propia ventana.
+	 *
+	 * El backend avisa las transiciones, pero cuando esto arranca la sesión ya
+	 * puede llevar un rato inactiva —o el aviso de que hay señal ya puede haber
+	 * pasado—, así que además se pregunta una vez el estado actual.
+	 */
+	async function startIdleDetection() {
+		if (dejarDeEscucharInactividad.value !== null) return;
 
 		document.addEventListener('visibilitychange', alCambiarVisibilidad);
 
-		idleCheckIntervalId.value = setInterval(checkIdleReindex, IDLE_CHECK_INTERVAL_MS);
+		dejarDeEscucharInactividad.value = await listen<EstadoDeInactividadDelSistema>(
+			EVENTO_INACTIVIDAD,
+			(evento) => aplicarEstadoDeInactividad(evento.payload)
+		);
+
+		try {
+			aplicarEstadoDeInactividad(await invoke<EstadoDeInactividadDelSistema>('system_idle_state'));
+		} catch (error) {
+			// Sin backend que conteste no hay señal, y sin señal no se reindexa
+			// solo. Se anota el error pero no se cae nada: la búsqueda sigue
+			// funcionando, y el escaneo manual también.
+			lastError.value = String(error);
+			aplicarEstadoDeInactividad(null);
+		}
 	}
 
 	function stopIdleDetection() {
-		if (idleCheckIntervalId.value !== null) {
-			clearInterval(idleCheckIntervalId.value);
-			idleCheckIntervalId.value = null;
+		detenerRedDeSeguridad();
+
+		if (dejarDeEscucharInactividad.value !== null) {
+			dejarDeEscucharInactividad.value();
+			dejarDeEscucharInactividad.value = null;
 		}
 
-		document.removeEventListener('visibilitychange', alCambiarVisibilidad);
+		senalDeInactividad.value = 'desconocida';
 
-		const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
-		activityEvents.forEach((event) => {
-			window.removeEventListener(event, recordActivity);
-		});
+		document.removeEventListener('visibilitychange', alCambiarVisibilidad);
 	}
 
 	async function handleDriveListChange() {
@@ -602,6 +669,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		getIsIndexStale,
 		isInitialized,
 		lastError,
+		senalDeInactividad,
 		getIsUserIdle,
 		open,
 		close,

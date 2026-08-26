@@ -8,6 +8,7 @@ mod compress;
 mod extract;
 mod file_operations;
 mod global_search;
+mod idle_monitor;
 mod open_with;
 mod polkit;
 mod read_file;
@@ -82,6 +83,11 @@ pub fn run() {
             // frontend no tiene que preguntar por las unidades cada cinco
             // segundos. Ver `mount_watcher`.
             mount_watcher::start(app.handle().clone());
+
+            // Y el compositor avisa cuando la sesión queda sin nadie, que es lo
+            // único que autoriza a reindexar el disco entero. Desde adentro de
+            // la ventana eso no se puede saber. Ver `idle_monitor`.
+            idle_monitor::start(app.handle().clone());
 
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(debug_assertions)]
@@ -158,6 +164,7 @@ pub fn run() {
             global_search::global_search_index_paths,
             global_search::global_search_query,
             global_search::global_search_query_paths,
+            idle_monitor::system_idle_state,
             open_with::get_associated_programs,
             open_with::open_with_program,
             open_with::open_with_default,

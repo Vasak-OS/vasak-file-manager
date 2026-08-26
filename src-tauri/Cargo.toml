@@ -53,6 +53,10 @@ notify = "8"
 # cambia la tabla de montajes, y así no hay que sondear las unidades.
 libc = "0.2"
 tauri-plugin-window-state = "2"
+# `ext-idle-notify-v1`: la inactividad de la sesión la sabe el compositor, no la
+# ventana. Ver `idle_monitor`.
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 tauri-plugin-drag-and-drop-wayland = "2"
 tauri-plugin-vsk-contextual-menu = "2"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
