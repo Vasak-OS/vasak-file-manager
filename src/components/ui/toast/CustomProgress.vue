@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 
 const { t } = useI18n();
 
@@ -25,17 +26,24 @@ const props = defineProps<Props>();
 const displayProgress = computed(() => Math.round(props.data.progress));
 const isComplete = computed(() => displayProgress.value >= 100);
 
+/**
+ * La etiqueta completa, con la cantidad adentro.
+ *
+ * Antes eran tres pedazos pegados: el verbo traducido, el número, y el sustantivo
+ * **en duro en español**. En inglés salía «Copying 2 archivos». Ahora la frase
+ * entera vive en el catálogo, con sus dos formas para uno y para varios.
+ */
 const operationLabel = computed(() => {
-	switch (props.data.operationType) {
-		case 'copy':
-			return t('operationLabels.copying');
-		case 'move':
-			return t('operationLabels.moving');
-		case 'delete':
-			return t('operationLabels.deleting');
-		default:
-			return '';
-	}
+	const base =
+		props.data.operationType === 'copy'
+			? 'operations.copying'
+			: props.data.operationType === 'move'
+				? 'operations.moving'
+				: props.data.operationType === 'delete'
+					? 'operations.deleting'
+					: '';
+	if (!base) return '';
+	return interpolar(t(claveSegunCantidad(base, props.data.itemCount)), props.data.itemCount);
 });
 
 const progressColor = computed(() => {
@@ -61,7 +69,7 @@ const progressColor = computed(() => {
     <!-- Progress Bar -->
     <div class="flex flex-col gap-2">
       <div class="flex items-center justify-between text-xs text-tx-muted">
-        <span>{{ operationLabel }} {{ data.itemCount }} {{ data.itemCount === 1 ? 'archivo' : 'archivos' }}</span>
+        <span>{{ operationLabel }}</span>
         <span class="font-medium">{{ displayProgress }}%</span>
       </div>
       <div class="w-full h-2 bg-ui-surface rounded-full overflow-hidden">

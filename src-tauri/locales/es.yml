@@ -37,6 +37,9 @@ globalSearch:
   showSearchSettings: Mostrar Configuración de Búsqueda
   typoTolerance: Tolerancia a Errores
 fileBrowser:
+  sortAscending: Orden ascendente
+  sortDescending: Orden descendente
+  selected: Seleccionado
   fileCount: "{0} archivos"
   directoryCount: "{0} carpetas"
   itemCount: "{0} elementos"
@@ -276,6 +279,7 @@ textMenu:
   paste: Pegar
   selectAll: Seleccionar todo
 statusCenter:
+  empty: Sin tareas en segundo plano
   title: Tareas en segundo plano
   clearFinished: Limpiar terminadas
   working: Trabajando…
@@ -307,6 +311,7 @@ operations:
   deletingOther: Eliminando {0} elementos
   calculatingSize: Calculando el tamaño de la carpeta
 errors:
+  couldNotOpenTab: "No se pudo abrir la pestaña: {0}"
   tabMissing: La pestaña no existe
 keys:
   esc: Esc

@@ -41,3 +41,17 @@ describe('claveSegunCantidad', () => {
 		expect(claveSegunCantidad('operations.copying', 0)).toBe('operations.copyingOther');
 	});
 });
+
+describe('interpolar: una sola pasada', () => {
+	test('un valor que contiene otro marcador no se vuelve a reemplazar', () => {
+		// El bug: reemplazando marcador por marcador, el `{1}` que trae el primer
+		// valor lo pisaba la pasada siguiente. En un gestor de archivos el valor es
+		// un nombre que eligió la persona, así que puede contener cualquier cosa.
+		expect(interpolar('Archivo: {0}', '{1}', 'x')).toBe('Archivo: {1}');
+		expect(interpolar('{0} y {1}', '{1}', 'segundo')).toBe('{1} y segundo');
+	});
+
+	test('los marcadores fuera de orden se resuelven igual', () => {
+		expect(interpolar('{1} antes de {0}', 'segundo', 'primero')).toBe('primero antes de segundo');
+	});
+});

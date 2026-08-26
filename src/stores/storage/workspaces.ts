@@ -13,6 +13,7 @@ import {
 	WORKSPACES_SCHEMA_VERSION_KEY,
 } from '@/stores/scheme/workspaces';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
+import { interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Tab, TabGroup, Workspace } from '@/types/workspaces';
 import clone from '@/utils/clone';
@@ -316,8 +317,11 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 			await loadTabGroupDirEntries(tabGroup);
 			updateInfoPanel(tabGroup);
 		} catch (error) {
+			// El envoltorio también va traducido: envolver un mensaje traducido en
+			// un texto en inglés deja la mitad de la frase sin traducir, que es peor
+			// que no traducir nada.
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw Error(`Could not open tab: ${errorMessage}`);
+			throw Error(interpolar(t('errors.couldNotOpenTab'), errorMessage));
 		}
 	}
 

@@ -37,6 +37,9 @@ globalSearch:
   showSearchSettings: Show Search Settings
   typoTolerance: Typo Tolerance
 fileBrowser:
+  sortAscending: Sorted ascending
+  sortDescending: Sorted descending
+  selected: Selected
   fileCount: "{0} files"
   directoryCount: "{0} folders"
   itemCount: "{0} items"
@@ -276,6 +279,7 @@ textMenu:
   paste: Paste
   selectAll: Select all
 statusCenter:
+  empty: No background tasks
   title: Background tasks
   clearFinished: Clear finished
   working: Working…
@@ -307,6 +311,7 @@ operations:
   deletingOther: Deleting {0} items
   calculatingSize: Calculating folder size
 errors:
+  couldNotOpenTab: "Could not open the tab: {0}"
   tabMissing: The tab does not exist
 keys:
   esc: Esc

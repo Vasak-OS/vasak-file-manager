@@ -93,7 +93,7 @@ async function cancel(op: Operation) {
       </div>
 
       <div v-if="!hasOperations" class="px-1 py-4 text-center text-[12px] text-tx-muted">
-        No background tasks
+        {{ t('statusCenter.empty') }}
       </div>
 
       <div v-for="group in groups" :key="group.type" class="mb-2 last:mb-0">

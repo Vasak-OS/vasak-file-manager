@@ -17,10 +17,22 @@
  * `replaceAll`, y este repo compila más abajo—.
  */
 export function interpolar(plantilla: string, ...valores: unknown[]): string {
-	return valores.reduce<string>(
-		(texto, valor, indice) => texto.split(`{${indice}}`).join(String(valor)),
-		plantilla
-	);
+	// Una sola pasada, y con función de reemplazo.
+	//
+	// Reemplazar marcador por marcador tenía un agujero: si un valor contiene el
+	// texto de otro marcador, la pasada siguiente lo reemplazaba. Con un nombre de
+	// archivo llamado «{1}», `interpolar('Archivo: {0}', '{1}', 'x')` devolvía
+	// «Archivo: x». En un gestor de archivos el valor es justamente algo que la
+	// persona eligió, así que no es un caso hipotético.
+	//
+	// La función de reemplazo además no interpreta `$&`, `$$`, `` $` `` ni `$'`,
+	// que es lo que hace `replace` con una cadena: «Rock $& Roll.mp3» salía como
+	// «Rock {0} Roll.mp3».
+	return plantilla.replace(/\{(\d+)\}/g, (completo, indice: string) => {
+		const valor = valores[Number(indice)];
+		// Un marcador sin valor se deja como está, en lugar de decir «undefined».
+		return valor === undefined ? completo : String(valor);
+	});
 }
 
 /**

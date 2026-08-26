@@ -359,7 +359,7 @@ export const useDirSizesStore = defineStore('dir-sizes', () => {
 					id: operationId,
 					type: 'dir-size',
 					status: 'in-progress',
-					label: 'Calculating directory size',
+					label: t('operations.calculatingSize'),
 					path: calc.path,
 				});
 
