@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { sharedDrives } from '@/composables/use-drives';
@@ -7,6 +8,15 @@ import { useUserPathsStore } from '@/stores/storage/user-paths';
 //import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
+import { debeRetomarSondeo, debeSeguirSondeando, intervaloDeSondeo } from './global-search-polling';
+import {
+	debeEscanearAlArrancar,
+	debeReindexar,
+	type EstadoDeInactividadDelSistema,
+	leerSenal,
+	RED_DE_SEGURIDAD_MS,
+	type SenalDeInactividad,
+} from './idle-reindex';
 
 type GlobalSearchDriveScanError = {
 	drive_root: string;
@@ -28,10 +38,14 @@ type GlobalSearchStatus = {
 };
 
 const DEBOUNCE_DELAY_MS = 200;
-const POLL_INTERVAL_ACTIVE_MS = 300;
-const POLL_INTERVAL_IDLE_MS = 5000;
-const IDLE_THRESHOLD_MS = 60 * 1000;
-const IDLE_CHECK_INTERVAL_MS = 10 * 1000;
+
+/**
+ * Donde el backend avisa que la sesión quedó sin nadie, o que volvió a haberlo.
+ *
+ * El umbral —cuánto silencio hace falta— lo aplica el compositor y viaja en el
+ * propio estado, así que no se repite acá. Ver `idle_monitor` en el backend.
+ */
+const EVENTO_INACTIVIDAD = 'idle://changed';
 
 export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const isOpen = ref(false);
@@ -55,9 +69,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const statusPollTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const debounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const searchAbortController = ref<AbortController | null>(null);
-	const idleCheckIntervalId = ref<ReturnType<typeof setInterval> | null>(null);
+	const redDeSeguridadId = ref<ReturnType<typeof setInterval> | null>(null);
 	const driveChangeDebounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
-	const lastActivityTime = ref<number>(Date.now());
+	const senalDeInactividad = ref<SenalDeInactividad>('desconocida');
+	const dejarDeEscucharInactividad = ref<UnlistenFn | null>(null);
 	const lastKnownDriveCount = ref<number>(0);
 
 	//const userSettingsStore = useUserSettingsStore();
@@ -88,8 +103,14 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return timeSinceLastScan > staleThresholdMs;
 	}
 
+	/**
+	 * Si la sesión está inactiva según el sistema.
+	 *
+	 * «Según el sistema» es lo que cambió: antes se miraba la actividad sobre
+	 * esta ventana, que con la ventana tapada no existe.
+	 */
 	function getIsUserIdle() {
-		return Date.now() - lastActivityTime.value > IDLE_THRESHOLD_MS;
+		return senalDeInactividad.value === 'inactiva';
 	}
 
 	async function getDriveRoots(): Promise<string[]> {
@@ -140,19 +161,17 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			lastKnownDriveCount.value = sharedDrives.value.length;
 
-			startIdleDetection();
+			await startIdleDetection();
 
-			//const settings = userSettingsStore.userSettings.globalSearch;
-			const shouldRescanOnLaunch =
-				needsScan.value || /*settings.autoReindexWhenIdle &&*/ getIsIndexStale();
-
-			if (shouldRescanOnLaunch) {
+			// Sin índice se escanea ya; vencido, espera a que la sesión esté
+			// inactiva. Ver `debeEscanearAlArrancar`.
+			if (debeEscanearAlArrancar(needsScan.value)) {
 				await startScan();
 			}
 		} catch (error) {
 			lastError.value = String(error);
 			isInitialized.value = true;
-			startIdleDetection();
+			await startIdleDetection();
 		}
 	}
 
@@ -161,11 +180,54 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 		if (statusPollTimerId.value !== null) {
 			clearTimeout(statusPollTimerId.value);
+			statusPollTimerId.value = null;
 		}
 
 		const isActive = isScanInProgress.value || isCommitting.value;
-		const interval = isActive ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
-		statusPollTimerId.value = setTimeout(() => pollStatus(), interval);
+
+		// Se reagenda sólo si queda algo que mirar. Antes se reagendaba siempre,
+		// y como el único que lo detenía era cerrar el panel, el caso normal
+		// —escaneo automático al abrir la aplicación, panel nunca abierto— dejaba
+		// un IPC cada cinco segundos hasta que se cerrara el gestor.
+		if (!debeSeguirSondeando(isActive, isOpen.value, estaOculto())) {
+			return;
+		}
+
+		statusPollTimerId.value = setTimeout(() => pollStatus(), intervaloDeSondeo(isActive));
+	}
+
+	/** Si la ventana no está a la vista de nadie. */
+	function estaOculto(): boolean {
+		return typeof document !== 'undefined' && document.hidden;
+	}
+
+	/**
+	 * Retoma el sondeo al volver la ventana, si hay a quién informarle.
+	 *
+	 * Sin esto, un panel abierto en una ventana que se tapa deja de sondear y no
+	 * vuelve a empezar: se quedaría mostrando el estado de cuando se ocultó.
+	 *
+	 * Se registra al abrir el panel y se saca al cerrarlo, que es el ciclo de
+	 * vida del que depende. Antes vivía dentro de `startIdleDetection`, colgado
+	 * de la detección de inactividad: dos cosas que no tienen nada que ver, y
+	 * como a `startIdleDetection` sólo la llama `initOnLaunch` —que hoy no llama
+	 * nadie—, el escucha no llegaba a registrarse nunca.
+	 */
+	function alCambiarVisibilidad() {
+		if (debeRetomarSondeo(estaOculto(), isOpen.value)) {
+			startStatusPolling();
+			return;
+		}
+
+		// Y al ocultarse, cortar el temporizador que ya está agendado. Sin esto la
+		// pausa no era inmediata: quedaba una consulta pendiente que igual salía
+		// —con su IPC— antes de que la guarda de `pollStatus` dejara de
+		// reagendar. Con un escaneo en curso no se corta nada, porque ahí el
+		// sondeo tiene que seguir aunque nadie mire.
+		const activo = isScanInProgress.value || isCommitting.value;
+		if (!debeSeguirSondeando(activo, isOpen.value, estaOculto())) {
+			stopStatusPolling();
+		}
 	}
 
 	function startStatusPolling() {
@@ -370,12 +432,16 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 	async function open() {
 		isOpen.value = true;
+		// Registrar dos veces el mismo manejador no agrega un segundo escucha,
+		// así que abrir el panel estando abierto no duplica nada.
+		document.addEventListener('visibilitychange', alCambiarVisibilidad);
 		await refreshStatus();
 		startStatusPolling();
 	}
 
 	function close() {
 		isOpen.value = false;
+		document.removeEventListener('visibilitychange', alCambiarVisibilidad);
 		cancelPendingSearch();
 
 		const isActive = isScanInProgress.value || isCommitting.value;
@@ -403,18 +469,18 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		results.value = [];
 	}
 
-	function recordActivity() {
-		lastActivityTime.value = Date.now();
-	}
-
 	function checkIdleReindex() {
 		//const settings = userSettingsStore.userSettings.globalSearch;
 
 		// if (!settings.autoReindexWhenIdle) return;
-		if (isScanInProgress.value) return;
-		if (!isInitialized.value) return;
-		if (!getIsIndexStale()) return;
-		if (!getIsUserIdle()) return;
+		const corresponde = debeReindexar({
+			senal: senalDeInactividad.value,
+			escaneoEnCurso: isScanInProgress.value,
+			inicializado: isInitialized.value,
+			indiceVencido: getIsIndexStale(),
+		});
+
+		if (!corresponde) return;
 
 		startScan();
 	}
@@ -454,27 +520,73 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return Array.from(paths);
 	}
 
-	function startIdleDetection() {
-		if (idleCheckIntervalId.value !== null) return;
+	/**
+	 * Aplica lo que informó el sistema.
+	 *
+	 * Al pasar a inactiva se revisa en el acto —ese es el momento exacto en que
+	 * se abrió la ventana de oportunidad— y se deja la red de seguridad
+	 * corriendo. Al salir de inactiva se apaga: un temporizador despertando para
+	 * siempre mientras alguien usa la máquina es lo contrario de lo que se
+	 * busca.
+	 */
+	function aplicarEstadoDeInactividad(estado: EstadoDeInactividadDelSistema | null) {
+		senalDeInactividad.value = leerSenal(estado);
 
-		const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
-		activityEvents.forEach((event) => {
-			window.addEventListener(event, recordActivity, { passive: true });
-		});
+		if (senalDeInactividad.value === 'inactiva') {
+			iniciarRedDeSeguridad();
+			checkIdleReindex();
+			return;
+		}
 
-		idleCheckIntervalId.value = setInterval(checkIdleReindex, IDLE_CHECK_INTERVAL_MS);
+		detenerRedDeSeguridad();
+	}
+
+	function iniciarRedDeSeguridad() {
+		if (redDeSeguridadId.value !== null) return;
+		redDeSeguridadId.value = setInterval(checkIdleReindex, RED_DE_SEGURIDAD_MS);
+	}
+
+	function detenerRedDeSeguridad() {
+		if (redDeSeguridadId.value === null) return;
+		clearInterval(redDeSeguridadId.value);
+		redDeSeguridadId.value = null;
+	}
+
+	/**
+	 * Se pone a escuchar al sistema en vez de a la propia ventana.
+	 *
+	 * El backend avisa las transiciones, pero cuando esto arranca la sesión ya
+	 * puede llevar un rato inactiva —o el aviso de que hay señal ya puede haber
+	 * pasado—, así que además se pregunta una vez el estado actual.
+	 */
+	async function startIdleDetection() {
+		if (dejarDeEscucharInactividad.value !== null) return;
+
+		dejarDeEscucharInactividad.value = await listen<EstadoDeInactividadDelSistema>(
+			EVENTO_INACTIVIDAD,
+			(evento) => aplicarEstadoDeInactividad(evento.payload)
+		);
+
+		try {
+			aplicarEstadoDeInactividad(await invoke<EstadoDeInactividadDelSistema>('system_idle_state'));
+		} catch (error) {
+			// Sin backend que conteste no hay señal, y sin señal no se reindexa
+			// solo. Se anota el error pero no se cae nada: la búsqueda sigue
+			// funcionando, y el escaneo manual también.
+			lastError.value = String(error);
+			aplicarEstadoDeInactividad(null);
+		}
 	}
 
 	function stopIdleDetection() {
-		if (idleCheckIntervalId.value !== null) {
-			clearInterval(idleCheckIntervalId.value);
-			idleCheckIntervalId.value = null;
+		detenerRedDeSeguridad();
+
+		if (dejarDeEscucharInactividad.value !== null) {
+			dejarDeEscucharInactividad.value();
+			dejarDeEscucharInactividad.value = null;
 		}
 
-		const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
-		activityEvents.forEach((event) => {
-			window.removeEventListener(event, recordActivity);
-		});
+		senalDeInactividad.value = 'desconocida';
 	}
 
 	async function handleDriveListChange() {
@@ -573,6 +685,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		getIsIndexStale,
 		isInitialized,
 		lastError,
+		senalDeInactividad,
 		getIsUserIdle,
 		open,
 		close,
