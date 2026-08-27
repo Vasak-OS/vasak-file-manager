@@ -1007,7 +1007,18 @@ export function useFileBrowserSelection(
 		onSelect(selectedEntries.value);
 	}
 
-	async function deleteItems(entries: DirEntry[], useTrash: boolean = true): Promise<boolean> {
+	/**
+	 * @param allowElevation Si la papelera falla por permisos, se pide
+	 *   autenticación y se borra definitivo. Se pasa `false` cuando el borrado no
+	 *   lo pidió la persona explícitamente —un arrastre a otra aplicación que
+	 *   negoció mover—, porque ahí un borrado no recuperable sería perder un
+	 *   archivo por una decisión del programa de destino.
+	 */
+	async function deleteItems(
+		entries: DirEntry[],
+		useTrash: boolean = true,
+		allowElevation: boolean = true
+	): Promise<boolean> {
 		if (entries.length === 0) {
 			return false;
 		}
@@ -1065,7 +1076,7 @@ export function useFileBrowserSelection(
 		try {
 			const result = await runTrackedFileOperation(
 				'delete_items',
-				{ paths, useTrash },
+				{ paths, useTrash, allowElevation },
 				{
 					type: 'delete',
 					label: interpolar(
