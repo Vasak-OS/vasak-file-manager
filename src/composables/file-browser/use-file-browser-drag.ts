@@ -152,9 +152,14 @@ export function useFileBrowserDrag(options: {
 		}
 	}
 
+	/** El icono que acompaña al puntero mientras se arrastra afuera.
+	 *
+	 *  Pedía `icons/32x32.png`, un archivo que no está en el repositorio y que
+	 *  tampoco estaba declarado como recurso del paquete: `resolveResource`
+	 *  devolvía una ruta que no existe, así que el arrastre nunca tuvo icono. */
 	async function getDragIconPath(): Promise<string> {
 		if (!cachedDragIconPath) {
-			cachedDragIconPath = await resolveResource('icons/32x32.png');
+			cachedDragIconPath = await resolveResource('icons/icon.png');
 		}
 
 		return cachedDragIconPath;
