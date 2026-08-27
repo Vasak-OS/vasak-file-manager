@@ -1113,6 +1113,20 @@ export function useFileBrowserSelection(
 					toast.dismiss(toastData.value.id);
 				}, 2500);
 			} else {
+				// `delete_items` puede haber movido algunos a la papelera y fallar en
+				// otro: devuelve `success: false` igual. Sin refrescar, los que sí se
+				// borraron siguen a la vista y seleccionados hasta la próxima
+				// actualización, y en un arrastre de varios archivos eso es exactamente
+				// lo que pasa.
+				//
+				// Se refresca en lugar de avisarle a los stores qué se borró: en un
+				// fallo parcial no sabemos **cuáles** de `paths` se fueron, y decirles
+				// que se borraron todos sería mentirles. Volver a leer el directorio
+				// muestra la verdad.
+				dirSizesStore.invalidate([currentPathRef.value, ...paths]);
+				clearSelection();
+				onRefresh();
+
 				toastData.value.title = useTrash
 					? 'notifications.errorTrashItems'
 					: 'notifications.errorDeleteItems';
