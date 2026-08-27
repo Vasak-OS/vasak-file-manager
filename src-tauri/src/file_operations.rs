@@ -681,8 +681,24 @@ pub fn rename_item(source_path: String, new_name: String) -> FileOperationResult
     }
 }
 
+/// Borra o manda a la papelera.
+///
+/// `allow_elevation` por omisión es `true`, que es el comportamiento de siempre:
+/// si la papelera falla por permisos, se pide autenticación y se borra definitivo.
+/// Se pasa `false` cuando el borrado **no lo pidió la persona explícitamente** —el
+/// caso concreto es un arrastre a otra aplicación que negoció mover—, porque ahí un
+/// borrado no recuperable sería perder un archivo por una decisión que tomó el
+/// programa de destino y no quien arrastró. Sin elevación, si no entra en la
+/// papelera el original se queda donde está y se informa el fallo.
 #[tauri::command]
-pub fn delete_items(paths: Vec<String>, use_trash: bool, operation_id: Option<String>, app: AppHandle) -> FileOperationResult {
+pub fn delete_items(
+    paths: Vec<String>,
+    use_trash: bool,
+    operation_id: Option<String>,
+    allow_elevation: Option<bool>,
+    app: AppHandle,
+) -> FileOperationResult {
+    let allow_elevation = allow_elevation.unwrap_or(true);
     let mut deleted_count: u32 = 0;
     let mut failed_count: u32 = 0;
     let mut last_error: Option<String> = None;
@@ -716,7 +732,7 @@ pub fn delete_items(paths: Vec<String>, use_trash: bool, operation_id: Option<St
             trash::delete(path).map_err(|error| error.to_string()).map(|()| {
                 reached_trash = true;
             }).or_else(|error| {
-                if polkit::is_permission_denied(&error) {
+                if allow_elevation && polkit::is_permission_denied(&error) {
                     polkit::remove_with_pkexec(path)
                 } else {
                     Err(error)

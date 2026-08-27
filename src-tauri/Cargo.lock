@@ -4915,9 +4915,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-drag-and-drop-wayland"
-version = "2.0.1"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a475b5766a1d706b3c63759d527ff7b23246b6cc7fbf322de0b440d629f3e8e"
+checksum = "5010ba5931cfe1c6fdc13611e12c4f5cf5fc7b658861fb67a9fe45b2f5b0cd04"
 dependencies = [
  "base64 0.22.1",
  "gdk-pixbuf",

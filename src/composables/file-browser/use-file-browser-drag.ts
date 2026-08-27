@@ -41,6 +41,17 @@ export function useFileBrowserDrag(options: {
 	replaceSelection: (entry: DirEntry) => void;
 	entriesContainerRef: Ref<Element | null>;
 	onDrop: (items: DirEntry[], destinationPath: string, operation: DragOperationType) => void;
+	/**
+	 * Qué hacer cuando la aplicación de destino se quedó con los archivos y pidió
+	 * que el origen los saque de acá.
+	 *
+	 * Se llama **sólo** con `sourceShouldDelete`, que es la señal que GTK emite
+	 * cuando la entrega salió bien y corresponde borrar. No con `action: 'move'`:
+	 * un destino puede elegir mover y después no pedir el borrado —porque falló al
+	 * guardar, o porque cambió de idea— y borrar por haber visto «move» sería
+	 * perder un archivo que nadie copió a ninguna parte.
+	 */
+	onExternalMove?: (items: DirEntry[]) => void;
 	disableBackgroundDrop?: boolean;
 }) {
 	const dismissalLayerStore = useDismissalLayerStore();
@@ -223,14 +234,24 @@ export function useFileBrowserDrag(options: {
 		if (isOutboundDragActive || dragItems.value.length === 0) return;
 
 		isOutboundDragActive = true;
-		const filePaths = dragItems.value.map((item) => item.path);
+		// Se guardan **antes** de limpiar: `cleanup()` vacía `dragItems`, y sin la
+		// copia no queda qué mover si el destino pide el borrado.
+		const items = [...dragItems.value];
+		const filePaths = items.map((item) => item.path);
 		const dragMode = operationType.value;
 		const iconPath = await getDragIconPath();
 
 		cleanup();
 
 		try {
-			await tauriStartDrag(filePaths, iconPath, { mode: dragMode });
+			await tauriStartDrag(filePaths, iconPath, { mode: dragMode }, (payload) => {
+				// Quien decide la acción de un arrastre externo es la aplicación de
+				// destino, no la tecla que se tuvo apretada acá. Así que el resultado
+				// se informa **después**, en lugar de prometerlo antes.
+				if (payload.result === 'Dropped' && payload.sourceShouldDelete) {
+					options.onExternalMove?.(items);
+				}
+			});
 		} catch (error) {
 			console.error('Outbound drag failed:', error);
 		}

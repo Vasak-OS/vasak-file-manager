@@ -272,6 +272,17 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 				clipboardStore.clearClipboard();
 			}
 		},
+		// A la papelera y no borrado definitivo: la acción la eligió la aplicación
+		// de destino, no quien arrastró, así que tiene que poder volverse atrás con
+		// deshacer. Recuperable es mejor que preguntar: no cuesta ningún clic en el
+		// caso normal y protege igual el caso equivocado.
+		onExternalMove: (items) => {
+			// A la papelera, y **sin elevar**: la acción la eligió la aplicación de
+			// destino, no quien arrastró. Si no entra en la papelera, el original se
+			// queda donde está — pedir la contraseña para borrar definitivo algo que
+			// nadie pidió borrar sería lo peor de los dos mundos.
+			void selection.deleteItems(items, true, false);
+		},
 	});
 
 	const externalDrop = useFileBrowserExternalDrop({
