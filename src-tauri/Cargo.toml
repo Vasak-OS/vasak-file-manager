@@ -60,6 +60,7 @@ wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 tauri-plugin-drag-and-drop-wayland = "2"
 tauri-plugin-vsk-contextual-menu = "2"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+tauri-plugin-vsk-journal = "2"
 
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.
