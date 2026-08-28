@@ -247,12 +247,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col border border-dashed border-border [--results-header-height:36px] [--search-scroll-gutter:18px]">
+  <div class="flex h-full flex-col border border-dashed border-ui-border [--results-header-height:36px] [--search-scroll-gutter:18px]">
     <div class="flex items-center gap-3 p-2 pb-0">
       <div class="relative flex flex-1 items-center">
-        <img :src="searchIcon" v-if="!globalSearchStore.isSearching" class="h-4 w-4 pointer-events-none absolute left-3 text-muted-foreground" />
+        <img :src="searchIcon" v-if="!globalSearchStore.isSearching" class="h-4 w-4 pointer-events-none absolute left-3 text-tx-muted" />
         <img :src="loaderIcon" v-else 
-          class="pointer-events-none absolute left-3 text-muted-foreground animate-spin h-4 w-4" />
+          class="pointer-events-none absolute left-3 text-tx-muted animate-spin h-4 w-4" />
         <input
           ref="inputRef"
           :value="globalSearchStore.query"
@@ -267,7 +267,7 @@ onMounted(async () => {
         </button>
       </div>
       <div class="flex items-center gap-1">
-        <button variant="ghost" size="icon" class="text-muted-foreground data-[active]:bg-primary/10 data-[active]:text-primary"
+        <button variant="ghost" size="icon" class="text-tx-muted data-[active]:bg-primary/10 data-[active]:text-primary"
           :data-active="showOptions || undefined" @click="toggleOptions">
           <img :src="slidersHorizontalIcon" class="h-4 w-4" />
         </button>
@@ -277,9 +277,9 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="showOptions" class="mx-1 mb-4 flex gap-6 rounded-sm border-b border-border bg-muted/30 px-4 py-3">
+    <div v-if="showOptions" class="mx-1 mb-4 flex gap-6 rounded-corner-sm border-b border-ui-border bg-ui-surface/30 px-4 py-3">
       <div class="flex flex-col gap-2">
-        <span class="text-[11px] font-medium uppercase text-muted-foreground">{{ t('globalSearch.results') }}</span>
+        <span class="text-[11px] font-medium uppercase text-tx-muted">{{ t('globalSearch.results') }}</span>
         <div class="flex items-center gap-2">
           <input
             id="include-files"
@@ -303,7 +303,7 @@ onMounted(async () => {
       </div>
 
       <div class="flex flex-col gap-2">
-        <span class="text-[11px] font-medium uppercase text-muted-foreground">{{ t('globalSearch.options') }}</span>
+        <span class="text-[11px] font-medium uppercase text-tx-muted">{{ t('globalSearch.options') }}</span>
         <div class="flex items-center gap-2">
           <input
             id="exact-match"
@@ -327,7 +327,7 @@ onMounted(async () => {
       </div>
 
       <div class="flex flex-col gap-2">
-        <span class="text-[11px] font-medium uppercase text-muted-foreground">{{ t('globalSearch.resultLimit') }}</span>
+        <span class="text-[11px] font-medium uppercase text-tx-muted">{{ t('globalSearch.resultLimit') }}</span>
         <NumberField :model-value="resultLimit" class="w-[120px]" :min="10" :max="500"
           :step="10">
           <NumberFieldContent>
@@ -342,15 +342,15 @@ onMounted(async () => {
     <div class="flex min-h-0 flex-1 flex-col px-2 pr-0">
       <div v-if="showScanProgress" class="flex flex-col gap-2 bg-primary/5 px-4 py-3">
         <div class="flex flex-wrap items-center gap-2 text-[13px]">
-          <span class="text-muted-foreground">
+          <span class="text-tx-muted">
             {{ isCommitting ? 'globalSearch.indexStatus.committing' : (globalSearchStore.isParallelScan ?
               'globalSearch.scanningInParallel' : 'globalSearch.driveScanInProgress') }}
           </span>
           <span v-if="globalSearchStore.currentDriveRoot && !isCommitting && !globalSearchStore.isParallelScan"
-            class="rounded-sm bg-primary/15 px-2 py-0.5 font-mono text-xs font-medium text-primary">
+            class="rounded-corner-sm bg-primary/15 px-2 py-0.5 font-mono text-xs font-medium text-primary">
             {{ globalSearchStore.currentDriveRoot }}
           </span>
-          <span v-if="!isCommitting" class="ml-auto text-xs text-muted-foreground">
+          <span v-if="!isCommitting" class="ml-auto text-xs text-tx-muted">
             {{ globalSearchStore.scannedDrivesCount }} / {{ globalSearchStore.totalDrivesCount }}
           </span>
         </div>
@@ -358,13 +358,13 @@ onMounted(async () => {
           <div class="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
             :style="{ width: isCommitting ? '100%' : `${globalSearchStore.scanProgress}%` }" />
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-tx-muted">
           {{ `globalSearch.indexedItems, ${globalSearchStore.indexedItemCount.toLocaleString()}` }}
         </div>
       </div>
 
       <div v-if="globalSearchStore.results.length > 0"
-        class="h-[var(--results-header-height)] bg-transparent px-0.5 text-xs font-medium leading-[var(--results-header-height)] text-muted-foreground">
+        class="h-[var(--results-header-height)] bg-transparent px-0.5 text-xs font-medium leading-[var(--results-header-height)] text-tx-muted">
         {{ `globalSearch.searchStats.foundOnDrives, ${totalResultsCount}, ${groupedResults.length}` }}
       </div>
 
@@ -375,11 +375,11 @@ onMounted(async () => {
             :description="t('globalSearch.noDrivesSelected')" :bordered="false" />
 
           <div v-else-if="!globalSearchStore.query.trim()" class="flex flex-col items-center justify-center gap-3 px-6 py-16">
-            <img :src="searchIcon" :size="48" class="text-muted-foreground/30" />
-            <span class="text-base font-medium text-foreground">
+            <img :src="searchIcon" :size="48" class="text-tx-muted/30" />
+            <span class="text-base font-medium text-tx-main">
               {{ t('globalSearch.globalSearch') }}
             </span>
-            <span class="text-[13px] text-muted-foreground">
+            <span class="text-[13px] text-tx-muted">
               {{ `globalSearch.searchStats.searched', ${ globalSearchStore.indexedItemCount.toLocaleString() }` }}
               ({{ `globalSearch.searchStats.searchingLevelsDeep, ${ scanDepth }` }}<template
                 v-if="lastScanRelative">, {{ `globalSearch.searchStats.indexed, ${
@@ -398,16 +398,16 @@ onMounted(async () => {
           <template v-else-if="globalSearchStore.results.length > 0">
             <div v-for="group in groupedResults" :key="group.driveRoot">
               <button
-                class="sticky top-0 z-5 flex w-full items-center gap-2.5 rounded-sm bg-background-2 px-4 py-3 text-left text-[13px] font-medium text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2"
+                class="sticky top-0 z-5 flex w-full items-center gap-2.5 rounded-corner-sm bg-background-2 px-4 py-3 text-left text-[13px] font-medium text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2"
                 @click="toggleDriveCollapse(group.driveRoot)">
                 <div class="h-4 w-4 shrink-0 rounded-full bg-primary/40" />
                 <span class="flex-1 font-mono">
                   {{ group.driveInfo?.name || group.driveRoot }}
                 </span>
-                <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-tx-muted">
                   {{ `item, ${group.entries.length}` }}
                 </span>
-                <img :src="chevronDownIcon" class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out"
+                <img :src="chevronDownIcon" class="h-4 w-4 shrink-0 text-tx-muted transition-transform duration-150 ease-out"
                   :class="{ '-rotate-90': isDriveCollapsed(group.driveRoot) }" />
               </button>
 

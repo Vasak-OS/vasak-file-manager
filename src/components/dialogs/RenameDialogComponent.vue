@@ -131,13 +131,13 @@ function handleKeydown(event: KeyboardEvent) {
 
       <div class="flex w-full min-w-0 flex-col gap-4">
         <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="rename-input" class="text-foreground text-sm font-medium">
+          <label for="rename-input" class="text-tx-main text-sm font-medium">
             {{ t('dialogs.renameDirItemDialog.newName') }}
           </label>
           <div class="flex w-full min-w-0 items-center gap-2">
             <input id="rename-input" ref="inputRef" v-model="newName" type="text"
               class="w-full min-w-0 max-w-full box-border"
-              :class="{ '!border-destructive': newName && !isValid }" @keydown="handleKeydown" />
+              :class="{ '!border-status-error': newName && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || !hasChanges || isSubmitting" @click="handleSubmit">
               {{ t('save') }}
             </button>

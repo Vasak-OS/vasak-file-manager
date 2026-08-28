@@ -401,7 +401,7 @@ onUnmounted(() => {
                 @update:open="(open: boolean) => handleSeparatorOpenChange(index, open)"
               >
                 <DropdownMenuTrigger as-child>
-                  <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-muted-foreground/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
+                  <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-tx-muted/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop="openSeparatorMenu(index)">
                     <img :src="chevronRightIcon" alt="" class="h-4 w-4 transition-transform duration-100 ease-in-out" :size="12"
                       :class="{ 'rotate-90': openSeparatorIndex === index }" />
@@ -421,7 +421,7 @@ onUnmounted(() => {
           </div>
         </div>
       </PopoverTrigger>
-      <PopoverContent class="min-w-[300px] p-0 border border-ui-border rounded-lg bg-ui-bg/80-3 shadow-[0_10px_40px_hsl(var(--foreground)/10%)] text-popover-foreground" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
+      <PopoverContent class="min-w-[300px] p-0 border border-ui-border rounded-corner bg-ui-bg/80-3 shadow-[0_10px_40px_hsl(var(--foreground)/10%)] text-tx-main" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
         :align="'end'" :side-offset="4" @open-auto-focus.prevent
         @escape-key-down="(event?: Event) => { if (isPinned) event?.preventDefault(); else isEditorOpen = false }"
         @pointer-down-outside="(event?: Event) => { if (isPinned) event?.preventDefault() }"
@@ -431,7 +431,7 @@ onUnmounted(() => {
             class="h-8 flex-1 mr-2 text-[13px] bg-transparent outline-none" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
           <Tooltip>
             <TooltipTrigger as-child>
-              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-sm"
+              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm"
                 :class="{ 'bg-primary/15 text-primary stroke-primary': isPinned }" @click="isPinned = !isPinned">
                 <img :src="pinIcon" :size="14" class="h-4 w-4" />
               </button>
@@ -446,7 +446,7 @@ onUnmounted(() => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger as-child>
-              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-sm text-foreground/70 hover:text-foreground"
+              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm text-tx-main/70 hover:text-tx-main"
                 @click="isEditorOpen = false">
                 <img :src="xIcon" class="h-4 w-4" />
               </button>
@@ -467,18 +467,18 @@ onUnmounted(() => {
           </button>
         </ScrollArea>
 
-        <div v-else class="p-3 border-t border-ui-border text-muted-foreground text-xs text-center">
+        <div v-else class="p-3 border-t border-ui-border text-tx-muted text-xs text-center">
           {{ t('settings.addressBar.noMatchingDirectories') }}
         </div>
 
-        <div class="px-2.5 py-1.5 border-t border-ui-border text-muted-foreground text-[10px]">
-          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">↑↓</span>
+        <div class="px-2.5 py-1.5 border-t border-ui-border text-tx-muted text-[10px]">
+          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">↑↓</span>
           /
-          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">{{ t('keys.tab') }}</span>
+          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">{{ t('keys.tab') }}</span>
           /
-          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">{{ t('keys.shiftTab') }}</span>
+          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">{{ t('keys.shiftTab') }}</span>
           {{ t('settings.addressBar.toAutocomplete') }};
-          <span class="px-1.5 py-0.5 rounded-sm bg-muted text-[10px]">{{ t('keys.enter') }}</span>
+          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">{{ t('keys.enter') }}</span>
           {{ t('settings.addressBar.toOpenThePath') }}
         </div>
       </PopoverContent>

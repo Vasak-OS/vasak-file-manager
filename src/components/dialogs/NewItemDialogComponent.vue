@@ -94,13 +94,13 @@ function handleKeydown(event: KeyboardEvent) {
 
       <div class="flex w-full min-w-0 flex-col gap-4">
         <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="new-item-input" class="text-foreground text-sm font-medium">
+          <label for="new-item-input" class="text-tx-main text-sm font-medium">
             {{ t('name') }}
           </label>
           <div class="flex w-full min-w-0 items-center gap-2">
             <input id="new-item-input" ref="inputRef" v-model="name" type="text"
               class="w-full min-w-0 max-w-full box-border"
-              :class="{ '!border-destructive': name && !isValid }" @keydown="handleKeydown" />
+              :class="{ '!border-status-error': name && !isValid }" @keydown="handleKeydown" />
             <button type="button" :disabled="!isValid || isSubmitting" @click="handleSubmit">
               {{ t('create') }}
             </button>

@@ -16,15 +16,15 @@ withDefaults(defineProps<Props>(), {
 		:class="[
 			'flex flex-col items-center justify-center px-6 py-8 gap-3 text-center',
 			{
-				'border border-dashed border-ui-border rounded-sm': bordered,
+				'border border-dashed border-ui-border rounded-corner-sm': bordered,
 			},
 		]"
 	>
 		<img v-if="icon" :src="icon" class="w-12 h-12 mb-2 shrink-0 opacity-30" />
-		<h3 v-if="title" class="m-0 text-foreground text-base font-medium">
+		<h3 v-if="title" class="m-0 text-tx-main text-base font-medium">
 			{{ title }}
 		</h3>
-		<p v-if="description" class="m-0 text-muted-foreground text-[13px] leading-relaxed">
+		<p v-if="description" class="m-0 text-tx-muted text-[13px] leading-relaxed">
 			{{ description }}
 		</p>
 		<slot />
