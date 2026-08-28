@@ -109,16 +109,16 @@ async function cancel(op: Operation) {
               :class="{
                 'bg-primary animate-pulse': op.status === 'in-progress',
                 'bg-tx-muted': op.status === 'pending',
-                'bg-emerald-500': op.status === 'completed',
+                'bg-status-success': op.status === 'completed',
                 'bg-amber-500': op.status === 'cancelled',
-                'bg-destructive': op.status === 'error',
+                'bg-status-error': op.status === 'error',
               }"
             ></span>
             <span class="flex-1 min-w-0 truncate text-[12px] text-tx-main" :title="op.label">{{ op.label }}</span>
             <span class="shrink-0 text-[11px] tabular-nums text-tx-muted">{{ statusLabel(op) }}</span>
             <button
               v-if="isActive(op)"
-              class="shrink-0 h-5 w-5 flex items-center justify-center rounded-corner hover:bg-destructive/20 text-tx-muted hover:text-destructive"
+              class="shrink-0 h-5 w-5 flex items-center justify-center rounded-corner hover:bg-status-error/20 text-tx-muted hover:text-status-error"
               :title="t('cancel')"
               @click="cancel(op)"
             >
@@ -129,7 +129,7 @@ async function cancel(op: Operation) {
           </div>
           <div
             v-if="op.status === 'in-progress' && op.progress != null"
-            class="h-1 w-full overflow-hidden rounded-full bg-muted/40"
+            class="h-1 w-full overflow-hidden rounded-full bg-ui-surface/40"
           >
             <div class="h-full rounded-full bg-primary transition-all" :style="{ width: `${op.progress}%` }"></div>
           </div>

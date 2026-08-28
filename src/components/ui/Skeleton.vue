@@ -1,5 +1,5 @@
 <template>
-  <div class="animate-pulse rounded-md bg-[hsl(var(--muted))]">
+  <div class="animate-pulse rounded-corner bg-[hsl(var(--muted))]">
     <slot />
   </div>
 </template>

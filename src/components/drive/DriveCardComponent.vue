@@ -89,7 +89,7 @@ async function handleUnmount(clickEvent?: Event) {
 </script>
 
 <template>
-  <button type="button" class="relative grid overflow-hidden w-full h-full items-center gap-0 pr-2 cursor-pointer [grid-template-columns:56px_1fr_auto] text-left hover:bg-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 transition-all" :class="{
+  <button type="button" class="relative grid overflow-hidden w-full h-full items-center gap-0 pr-2 cursor-pointer [grid-template-columns:56px_1fr_auto] text-left hover:bg-primary focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 transition-all" :class="{
     'opacity-60 hover:opacity-100': !drive.is_mounted,
   }" @click="handleClick">
     <div class="relative flex w-14 h-14 flex-col shrink-0 items-center justify-center gap-0.5">
@@ -105,19 +105,19 @@ async function handleUnmount(clickEvent?: Event) {
       </div>
 
 			<div class="flex items-center gap-2">
-				<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
+				<div class="h-1.5 w-full overflow-hidden rounded-full bg-ui-surface/40">
 					<div
 						class="h-full rounded-full transition-all"
-						:class="isLowSpace ? 'bg-destructive' : 'bg-primary'"
+						:class="isLowSpace ? 'bg-status-error' : 'bg-primary'"
 						:style="{ width: `${Math.min(100, Math.max(0, drive.percent_used))}%` }"
 					/>
 				</div>
-				<span class="text-[11px] font-medium tabular-nums" :class="isLowSpace ? 'text-destructive' : 'text-tx-muted'">
+				<span class="text-[11px] font-medium tabular-nums" :class="isLowSpace ? 'text-status-error' : 'text-tx-muted'">
 					{{ drive.percent_used }}%
 				</span>
 			</div>
 
-      <div class="text-muted-foreground text-xs">
+      <div class="text-tx-muted text-xs">
         <template v-if="isMounting">
           {{ t('mounting') }}...
         </template>
@@ -131,7 +131,7 @@ async function handleUnmount(clickEvent?: Event) {
       v-if="drive.is_mounted && drive.is_removable"
       role="button"
       tabindex="0"
-      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-corner hover:bg-ui-surface/80 focus-visible:outline-2 focus-visible:outline-ring"
+      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-corner hover:bg-ui-surface/80 focus-visible:outline-2 focus-visible:outline-primary"
       :title="t('unmount')"
       @click.stop.prevent="handleUnmount"
       @keydown.enter.stop.prevent="handleUnmount"

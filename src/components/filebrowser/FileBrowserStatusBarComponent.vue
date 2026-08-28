@@ -174,16 +174,16 @@ function openCollapsedPopover() {
 </script>
 
 <template>
-  <div class="@container flex h-8 shrink-0 items-center justify-between px-2 py-1 rounded-[var(--radius-sm)] border-t border-ui-border bg-ui-bg/80-2 text-muted-foreground text-xs gap-2">
+  <div class="@container flex h-8 shrink-0 items-center justify-between px-2 py-1 rounded-[var(--radius-sm)] border-t border-ui-border bg-ui-bg/80-2 text-tx-muted text-xs gap-2">
     <template v-if="hasSelection">
       <span class="flex shrink-0 flex-wrap items-center gap-1">
         {{ t('fileBrowser.selectedItems').replace('{0}', String(selectedCount)) }}
         <template v-if="selectionSizeDisplay">
-          <span class="text-muted-foreground/50">·</span>
+          <span class="text-tx-muted/50">·</span>
           <span class="font-medium">
             <template v-if="selectionSizeDisplay.sizeStr">
               {{ selectionSizeDisplay.sizeStr }}
-              <span v-if="selectionSizeDisplay.countStr" class="text-muted-foreground font-normal">({{
+              <span v-if="selectionSizeDisplay.countStr" class="text-tx-muted font-normal">({{
                 selectionSizeDisplay.countStr }})</span>
             </template>
             <template v-else>
@@ -196,19 +196,19 @@ function openCollapsedPopover() {
         <PopoverAnchor as-child>
           <div class="flex shrink-0 items-center gap-1">
             <div class="hidden @[400px]:flex items-center gap-1">
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none" :title="t('showItems')"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none" :title="t('showItems')"
                 @click="showItemsPopoverOpen = true">
                 <img :src="eyeIcon" class="w-3.5 h-3.5" />
                 <span class="hidden @[600px]:inline">{{ t('showItems') }}</span>
               </button>
 
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none"
                 :title="t('fileBrowser.selectAll')" @click="emit('selectAll')">
                 <img :src="checkCheckIcon" class="w-3.5 h-3.5" />
                 <span class="hidden @[600px]:inline">{{ t('fileBrowser.selectAll') }}</span>
               </button>
 
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none"
                 :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
                 <img :src="xIcon" class="w-3.5 h-3.5" />
                 <span class="hidden @[600px]:inline">{{ t('fileBrowser.deselectAll') }}</span>
@@ -216,7 +216,7 @@ function openCollapsedPopover() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none" :title="t('menu')">
+                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none" :title="t('menu')">
                     <img :src="menuIcon" class="w-3.5 h-3.5" />
                     <span class="hidden @[600px]:inline">{{ t('menu') }}</span>
                   </button>
@@ -232,7 +232,7 @@ function openCollapsedPopover() {
             <div class="flex @[400px]:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-muted/50 outline-none" :title="t('actions')">
+                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none" :title="t('actions')">
                     <img :src="ellipsisVerticalIcon" class="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
@@ -262,9 +262,9 @@ function openCollapsedPopover() {
           <div class="flex flex-col gap-2">
             <div class="px-2 pt-2">
               <input v-model="itemsFilterQuery" type="text" :placeholder="t('filter.filter')"
-                class="w-full flex h-8 w-full rounded-md border border-input bg-ui-bg/80 px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
+                class="w-full flex h-8 w-full rounded-corner border border-ui-border bg-ui-bg/80 px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-tx-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50" />
             </div>
-            <div v-if="showItemsHeader" class="px-3 py-1 text-muted-foreground text-[11px]">
+            <div v-if="showItemsHeader" class="px-3 py-1 text-tx-muted text-[11px]">
               {{ showItemsHeader }}
             </div>
             <ScrollArea class="h-[200px] [&_.sigma-ui-scroll-area-scrollbar]:-right-1.5">
@@ -272,14 +272,14 @@ function openCollapsedPopover() {
                 <div v-for="entry in displayedEntries" :key="entry.path" class="flex items-stretch rounded gap-2 hover:bg-secondary group/item">
                   <div class="flex overflow-hidden min-w-0 flex-1 flex-col justify-center py-1.5 pl-2 gap-0.5">
                     <span class="overflow-hidden text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
-                    <span class="overflow-hidden text-muted-foreground text-[11px] text-ellipsis whitespace-nowrap">{{ entry.path }}</span>
+                    <span class="overflow-hidden text-tx-muted text-[11px] text-ellipsis whitespace-nowrap">{{ entry.path }}</span>
                   </div>
-                  <button type="button" class="shrink-0 self-stretch w-9 flex items-center justify-center rounded-r hover:bg-destructive hover:text-destructive-foreground outline-none transition-colors"
+                  <button type="button" class="shrink-0 self-stretch w-9 flex items-center justify-center rounded-r hover:bg-status-error hover:text-destructive-foreground outline-none transition-colors"
                     :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)">
                     <img :src="xIcon" class="w-4 h-4" />
                   </button>
                 </div>
-                <div v-if="displayedEntries.length === 0" class="p-4 text-muted-foreground text-xs text-center">
+                <div v-if="displayedEntries.length === 0" class="p-4 text-tx-muted text-xs text-center">
                   {{ t('fileBrowser.noMatchingItems') }}
                 </div>
               </div>

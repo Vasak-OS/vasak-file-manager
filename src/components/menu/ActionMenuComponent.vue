@@ -163,7 +163,7 @@ function handleDeleteClick() {
   <div class="flex justify-center gap-1">
     <Tooltip :delay-duration="300" v-if="isActionVisible('rename')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
           <img :src="pencilIcon" />
         </button>
       </TooltipTrigger>
@@ -174,7 +174,7 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('copy')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
           <img :src="copyIcon" />
         </button>
       </TooltipTrigger>
@@ -187,7 +187,7 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('cut')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
           <img :src="cutIcon" />
         </button>
       </TooltipTrigger>
@@ -200,7 +200,7 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="canPasteToSelectedDirectory">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
           <img :src="clipboardPasteIcon" />
         </button>
       </TooltipTrigger>
@@ -213,7 +213,7 @@ function handleDeleteClick() {
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('delete')">
       <TooltipTrigger as-child>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-muted/60 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 hover:text-status-error disabled:cursor-not-allowed disabled:opacity-60"
           @click="handleDeleteClick">
           <img :src="shredderIcon" v-if="isShiftHeld" />
           <img :src="trash2Icon" v-else />

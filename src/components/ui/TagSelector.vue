@@ -150,12 +150,12 @@ onUnmounted(() => {
 					v-model="newTagName"
 					type="text"
 					:placeholder="t('tags.newTag')"
-					class="w-full rounded-md border border-ui-border px-2 py-1 text-xs focus:border-ui-secondary focus:outline-none"
+					class="w-full rounded-corner border border-ui-border px-2 py-1 text-xs focus:border-ui-secondary focus:outline-none"
 					@keydown.enter.prevent="handleCreateTag"
 				/>
 				<button
 					type="button"
-					class="rounded-md border border-ui-border px-2 py-1 text-xs text-tx-primary hover:bg-primary"
+					class="rounded-corner border border-ui-border px-2 py-1 text-xs text-tx-primary hover:bg-primary"
 					@click="handleCreateTag"
 				>
 					Add

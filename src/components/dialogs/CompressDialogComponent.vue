@@ -97,16 +97,16 @@ function handleKeydown(event: KeyboardEvent) {
 
       <div class="flex w-full min-w-0 flex-col gap-4">
         <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="compress-name-input" class="text-foreground text-sm font-medium">
+          <label for="compress-name-input" class="text-tx-main text-sm font-medium">
             {{ t('name') }}
           </label>
           <input id="compress-name-input" ref="inputRef" v-model="name" type="text"
             class="w-full min-w-0 max-w-full box-border"
-            :class="{ '!border-destructive': name && !isValid }" @keydown="handleKeydown" />
+            :class="{ '!border-status-error': name && !isValid }" @keydown="handleKeydown" />
         </div>
 
         <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="compress-format-select" class="text-foreground text-sm font-medium">
+          <label for="compress-format-select" class="text-tx-main text-sm font-medium">
             {{ t('dialogs.compressDialog.format') }}
           </label>
           <select id="compress-format-select" v-model="format"

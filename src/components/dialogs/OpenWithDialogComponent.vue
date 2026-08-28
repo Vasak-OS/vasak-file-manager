@@ -269,13 +269,13 @@ const canSaveCommand = computed(() => {
       </DialogHeader>
 
       <div class="flex w-full min-w-0 flex-col gap-4">
-        <div v-if="loadError" class="p-3 rounded-md bg-destructive/10 text-destructive text-[13px]">
+        <div v-if="loadError" class="p-3 rounded-corner bg-status-error/10 text-status-error text-[13px]">
           {{ loadError }}
         </div>
 
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
-            <span class="text-muted-foreground text-xs font-medium tracking-wide uppercase">{{ t('openWith.customCommands') }}</span>
+            <span class="text-tx-muted text-xs font-medium tracking-wide uppercase">{{ t('openWith.customCommands') }}</span>
             <button type="button" @click="startAddingCommand">
               <img :src="plusIcon" class="w-4 h-4" />
               {{ t('openWith.addCustomCommand') }}
@@ -283,14 +283,14 @@ const canSaveCommand = computed(() => {
           </div>
 
           <ScrollArea v-if="customCommands.length > 0" class="max-h-[200px]">
-            <div v-for="command in customCommands" :key="command.id" class="group flex items-center justify-between px-3 py-2 rounded-md bg-transparent cursor-pointer gap-2 transition-colors duration-150 hover:bg-muted/50"
+            <div v-for="command in customCommands" :key="command.id" class="group flex items-center justify-between px-3 py-2 rounded-corner bg-transparent cursor-pointer gap-2 transition-colors duration-150 hover:bg-ui-surface/50"
               :class="{ '!bg-primary/15 hover:!bg-primary/20': selectedCommandId === command.id }"
               @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
               <div class="flex overflow-hidden flex-1 items-center gap-2.5">
-                <img :src="fileIcon" class="w-4 h-4 shrink-0 text-muted-foreground" />
+                <img :src="fileIcon" class="w-4 h-4 shrink-0 text-tx-muted" />
                 <div class="flex overflow-hidden flex-col gap-0.5">
-                  <span class="text-foreground text-sm font-medium">{{ command.name }}</span>
-                  <span class="overflow-hidden text-muted-foreground text-xs text-ellipsis whitespace-nowrap">{{ command.programPath }}</span>
+                  <span class="text-tx-main text-sm font-medium">{{ command.name }}</span>
+                  <span class="overflow-hidden text-tx-muted text-xs text-ellipsis whitespace-nowrap">{{ command.programPath }}</span>
                 </div>
               </div>
               <div class="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
@@ -312,7 +312,7 @@ const canSaveCommand = computed(() => {
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger as-child>
-                    <button type="button" class="hover:text-destructive"
+                    <button type="button" class="hover:text-status-error"
                       @click.stop="deleteCommand(command.id)">
                       <img :src="trash2Icon" class="w-3.5 h-3.5" />
                     </button>
@@ -323,25 +323,25 @@ const canSaveCommand = computed(() => {
             </div>
           </ScrollArea>
 
-          <div v-else-if="!isAddingCommand" class="p-6 border border-dashed border-ui-border rounded-md text-muted-foreground text-[13px] text-center">
+          <div v-else-if="!isAddingCommand" class="p-6 border border-dashed border-ui-border rounded-corner text-tx-muted text-[13px] text-center">
             {{ t('openWith.noCustomCommands') }}
           </div>
         </div>
 
-        <div v-if="isAddingCommand || editingCommandId" class="flex flex-col p-4 border border-ui-border rounded-md bg-muted/30 gap-3">
+        <div v-if="isAddingCommand || editingCommandId" class="flex flex-col p-4 border border-ui-border rounded-corner bg-ui-surface/30 gap-3">
           <div class="mb-1">
-            <span class="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <span class="text-tx-muted text-xs font-medium tracking-wide uppercase">
               {{ t(editingCommandId ? 'openWith.editCustomCommand' : 'openWith.addCustomCommand') }}
             </span>
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-foreground text-[13px] font-medium">{{ t('openWith.commandName') }}</label>
+            <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.commandName') }}</label>
             <input v-model="newCommandName" type="text" :placeholder="t('openWith.commandNamePlaceholder')" />
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-foreground text-[13px] font-medium">{{ t('openWith.programPath') }}</label>
+            <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.programPath') }}</label>
             <div class="flex gap-2">
               <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
                 class="flex-1" />
@@ -353,10 +353,10 @@ const canSaveCommand = computed(() => {
 
           <div class="flex flex-col gap-1.5">
             <div class="flex items-center gap-1.5">
-              <label class="text-foreground text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
+              <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <img :src="infoIcon" class="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  <img :src="infoIcon" class="w-3.5 h-3.5 text-tx-muted cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{{ t('openWith.argumentsHint') }}</p>

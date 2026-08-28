@@ -46,11 +46,18 @@ const operationLabel = computed(() => {
 	return interpolar(t(claveSegunCantidad(base, props.data.itemCount)), props.data.itemCount);
 });
 
-const progressColor = computed(() => {
-	if (displayProgress.value < 50) return 'bg-blue-500';
-	if (displayProgress.value < 80) return 'bg-cyan-500';
-	return 'bg-green-500';
-});
+/**
+ * El color de la barra según el **estado**, no según el porcentaje.
+ *
+ * Antes cambiaba de azul a cian a verde a medida que avanzaba, así que una
+ * operación al 85 % se veía del verde de «listo» sin haber terminado, y el mismo
+ * verde significaba dos cosas distintas en la misma ventana —acá «va avanzando» y
+ * en el centro de estado «terminó»—. El color codifica estado, no progreso: para
+ * eso está el largo de la barra.
+ */
+const progressColor = computed(() =>
+	displayProgress.value >= 100 ? 'bg-status-success' : 'bg-primary'
+);
 </script>
 
 <template>

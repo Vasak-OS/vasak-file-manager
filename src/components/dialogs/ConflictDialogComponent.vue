@@ -83,22 +83,22 @@ function handleOpenChange(open: boolean) {
     <DialogContent class="w-[520px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
-          <img :src="AlertTriangleIcon" class="w-5 h-5 shrink-0 text-warning" />
+          <img :src="AlertTriangleIcon" class="w-5 h-5 shrink-0 text-status-warning" />
           {{ t('conflictDialog.title') }}
         </DialogTitle>
-        <DialogDescription class="text-muted-foreground text-sm leading-normal">
+        <DialogDescription class="text-tx-muted text-sm leading-normal">
           {{ `conflictDialog.description ${conflictCount}` }}
         </DialogDescription>
       </DialogHeader>
 
       <ScrollArea class="max-h-[220px]">
         <div class="flex flex-col py-1 gap-0.5">
-          <div v-for="conflict in visibleConflicts" :key="conflict.source_path" class="flex items-center px-3 py-2 rounded-md bg-muted/40 gap-2.5">
-            <img :src="conflict.source_is_dir ? FolderIcon : FileIcon" class="w-4 h-4 shrink-0 text-muted-foreground" />
+          <div v-for="conflict in visibleConflicts" :key="conflict.source_path" class="flex items-center px-3 py-2 rounded-corner bg-ui-surface/40 gap-2.5">
+            <img :src="conflict.source_is_dir ? FolderIcon : FileIcon" class="w-4 h-4 shrink-0 text-tx-muted" />
             <div class="flex min-w-0 flex-col gap-0.5">
-              <span class="overflow-hidden text-foreground text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ conflict.source_name }}</span>
+              <span class="overflow-hidden text-tx-main text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ conflict.source_name }}</span>
               <span v-if="conflict.source_size !== null || conflict.destination_size !== null"
-                class="text-muted-foreground text-xs">
+                class="text-tx-muted text-xs">
                 <template v-if="conflict.source_size !== null">
                   {{ `conflictDialog.sourceSize ${formatSize(conflict.source_size)}` }}
                 </template>
@@ -109,12 +109,12 @@ function handleOpenChange(open: boolean) {
                   {{ `conflictDialog.destinationSize ${formatSize(conflict.destination_size)}` }}
                 </template>
               </span>
-              <span v-else-if="conflict.source_is_dir" class="text-muted-foreground text-xs">
+              <span v-else-if="conflict.source_is_dir" class="text-tx-muted text-xs">
                 'directory'
               </span>
             </div>
           </div>
-          <div v-if="remainingCount > 0" class="px-3 py-1.5 text-muted-foreground text-[13px] italic">
+          <div v-if="remainingCount > 0" class="px-3 py-1.5 text-tx-muted text-[13px] italic">
             {{ `conflictDialog.andMore ${remainingCount}` }}
           </div>
         </div>
