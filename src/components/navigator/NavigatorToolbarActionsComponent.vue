@@ -77,8 +77,7 @@ async function setLayout(layoutName: LayoutType) {
             class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary hover:bg-secondary': props.isSplitView }"
             :disabled="props.isGlobalSearchOpen"
-            @click="emit('toggle-split-view')"
-          >
+            @click="emit('toggle-split-view')" :aria-label="t('splitView')">
             <img :src="splitViewIcon" :alt="t('splitView')" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>
@@ -89,8 +88,7 @@ async function setLayout(layoutName: LayoutType) {
           <button
             class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary hover:bg-secondary': props.showInfoPanel }"
-            @click="emit('toggle-info-panel')"
-          >
+            @click="emit('toggle-info-panel')" :aria-label="t('toolbar.infoPanel')">
             <img :src="infoPanelIcon" :alt="t('toolbar.infoPanel')" height="24" width="24" class="fill-primary" />
           </button>
         </TooltipTrigger>

@@ -43,7 +43,7 @@ onMounted(async () => {
     <div>
       <!--<Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
-          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="globalSearchStore.toggle()">
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="globalSearchStore.toggle()" :aria-label="t('search')">
             <img :src="searchIcon" class="h-6 w-6" :alt="t('search')" />
           </button>
         </TooltipTrigger>
@@ -54,7 +54,7 @@ onMounted(async () => {
 
       <Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
-          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive(userPathsStore.userPaths.homeDir)">
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive(userPathsStore.userPaths.homeDir)" :aria-label="t('home')">
             <img :src="homeIcon" class="h-6 w-6" :alt="t('home')" />
           </button>
         </TooltipTrigger>
@@ -65,7 +65,7 @@ onMounted(async () => {
 
       <Tooltip :delay-duration="0">
         <TooltipTrigger as-child>
-          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive('/')">
+          <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive('/')" :aria-label="t('root')">
             <img :src="rootIcon" class="h-6 w-6" :alt="t('root')" />
           </button>
         </TooltipTrigger>

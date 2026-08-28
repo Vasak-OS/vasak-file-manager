@@ -365,7 +365,7 @@ onUnmounted(() => {
       <Tooltip>
         <TooltipTrigger as-child>
           <DropdownMenuTrigger as-child :disabled="true">
-            <button type="button" class="shrink-0 h-7 w-7 p-1" @click.stop="isActionsMenuOpen = true">
+            <button type="button" class="shrink-0 h-7 w-7 p-1" @click.stop="isActionsMenuOpen = true" :aria-label="t('settings.addressBar.addressBarActions')">
               <img :src="ellipsisVerticalIcon" :alt="t('settings.addressBar.addressBarActions')" />
             </button>
           </DropdownMenuTrigger>
@@ -402,7 +402,7 @@ onUnmounted(() => {
               >
                 <DropdownMenuTrigger as-child>
                   <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-tx-muted/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
-                    @click.stop="openSeparatorMenu(index)">
+                    @click.stop="openSeparatorMenu(index)" :aria-label="t('settings.addressBar.showSiblingDirectories')">
                     <img :src="chevronRightIcon" alt="" class="h-4 w-4 transition-transform duration-100 ease-in-out" :size="12"
                       :class="{ 'rotate-90': openSeparatorIndex === index }" />
                   </button>
@@ -428,7 +428,7 @@ onUnmounted(() => {
         @interact-outside="(event?: Event) => { if (isPinned) event?.preventDefault() }">
         <div class="flex items-center p-2 gap-1">
           <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="t('settings.addressBar.enterValidPath')"
-            class="h-8 flex-1 mr-2 text-[13px] bg-transparent outline-none" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
+            class="h-8 flex-1 mr-2 text-[13px] bg-transparent" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
           <Tooltip>
             <TooltipTrigger as-child>
               <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm"
@@ -486,7 +486,7 @@ onUnmounted(() => {
 
     <Tooltip>
       <TooltipTrigger as-child>
-        <button type="button" class="shrink-0 h-7 w-7 p-1" @click="openEditor">
+        <button type="button" class="shrink-0 h-7 w-7 p-1" @click="openEditor" :aria-label="t('settings.addressBar.editAddress')">
           <img :src="textCursorIcon" :alt="t('settings.addressBar.editAddress')" />
         </button>
       </TooltipTrigger>

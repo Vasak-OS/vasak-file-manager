@@ -129,7 +129,7 @@ const sortedEntries = computed(() => {
     <div v-if="props.layout === 'list'" class="relative pr-[var(--file-browser-list-right-gutter)] border-b border-ui-border">
       <div class="grid py-[var(--file-browser-list-header-padding-y)] px-[var(--file-browser-list-header-padding-x)] bg-ui-bg/80-3 text-tx-muted text-xs font-medium [grid-template-columns:var(--file-browser-list-columns)] uppercase">
         <button type="button"
-          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main outline-none"
+          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
           <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'name' && listSortDirection === 'asc'" 
@@ -138,7 +138,7 @@ const sortedEntries = computed(() => {
             class="h-4 w-4" />
         </button>
         <button v-if="showItemsColumn" type="button"
-          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main outline-none"
+          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('items')">
           {{ t('fileBrowser.items') }}
           <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'items' && listSortDirection === 'asc'" 
@@ -149,7 +149,7 @@ const sortedEntries = computed(() => {
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
           <TooltipTrigger as-child>
             <button type="button"
-              class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main outline-none"
+              class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
               <img :src="infoIcon" alt="" />
@@ -189,7 +189,7 @@ const sortedEntries = computed(() => {
           </TooltipContent>
         </Tooltip>
         <button v-if="columnVisibility.modified" type="button"
-          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main outline-none"
+          class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
           <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" 
@@ -202,7 +202,7 @@ const sortedEntries = computed(() => {
         <Tooltip>
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
-              <button type="button" class="absolute top-1/2 right-0 w-7 h-7 text-tx-muted -translate-y-1/2 outline-none">
+              <button type="button" class="absolute top-1/2 right-0 w-7 h-7 text-tx-muted -translate-y-1/2">
                 <img :src="columnsIcon" :alt="t('fileBrowser.columns')" class="h-4 w-4" />
               </button>
             </PopoverTrigger>

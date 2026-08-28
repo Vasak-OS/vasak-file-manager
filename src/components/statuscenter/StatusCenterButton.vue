@@ -120,8 +120,7 @@ async function cancel(op: Operation) {
               v-if="isActive(op)"
               class="shrink-0 h-5 w-5 flex items-center justify-center rounded-corner hover:bg-status-error/20 text-tx-muted hover:text-status-error"
               :title="t('cancel')"
-              @click="cancel(op)"
-            >
+              @click="cancel(op)" :aria-label="t('cancel')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                 <path d="M6 6l12 12M18 6L6 18" />
               </svg>

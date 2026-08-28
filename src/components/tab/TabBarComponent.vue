@@ -85,7 +85,7 @@ onBeforeUnmount(() => {
 
       <Tooltip>
         <TooltipTrigger as-child>
-          <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" variant="ghost" size="xs" @click="openNewTabGroup()">
+          <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" variant="ghost" size="xs" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
             <img v-if="plusIcon" :src="plusIcon" :alt="t('toolbar.newTab')" class="w-3.5 h-3.5" />
           </button>
         </TooltipTrigger>
