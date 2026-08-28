@@ -121,7 +121,7 @@ function handleFilterInteractOutside(event?: Event) {
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoBack"
-            @click="emit('goBack')">
+            @click="emit('goBack')" :aria-label="t('fileBrowser.goBack')">
             <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
@@ -130,7 +130,7 @@ function handleFilterInteractOutside(event?: Event) {
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoForward"
-            @click="emit('goForward')">
+            @click="emit('goForward')" :aria-label="t('fileBrowser.goForward')">
             <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
@@ -139,7 +139,7 @@ function handleFilterInteractOutside(event?: Event) {
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoUp"
-            @click="emit('goUp')">
+            @click="emit('goUp')" :aria-label="t('fileBrowser.goUp')">
             <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
@@ -147,7 +147,7 @@ function handleFilterInteractOutside(event?: Event) {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
-          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" @click="emit('goHome')">
+          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" @click="emit('goHome')" :aria-label="t('fileBrowser.goHome')">
             <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="w-[18px] h-[18px]" />
           </button>
         </TooltipTrigger>
@@ -156,7 +156,7 @@ function handleFilterInteractOutside(event?: Event) {
       <Tooltip>
         <TooltipTrigger as-child>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" :disabled="isLoading"
-            @click="emit('refresh')">
+            @click="emit('refresh')" :aria-label="t('fileBrowser.refresh')">
             <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="w-[18px] h-[18px]" :class="{ 'animate-spin': isLoading }" />
           </button>
         </TooltipTrigger>
@@ -172,7 +172,7 @@ function handleFilterInteractOutside(event?: Event) {
           <DropdownMenuTrigger as-child>
             <TooltipTrigger as-child>
               <button type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
-                @click="handleCreateMenuButtonClick">
+                @click="handleCreateMenuButtonClick" :aria-label="t('fileBrowser.createNew')">
                 <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="h-6 w-6" />
               </button>
             </TooltipTrigger>
@@ -211,7 +211,7 @@ function handleFilterInteractOutside(event?: Event) {
               <input ref="filterInputRef" type="text" :value="filterQuery" :placeholder="t('fileBrowser.searchThisDirectory')"
                 class="h-8 w-full pr-8 rounded-corner" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
               <button v-if="filterQuery" type="button" class="absolute right-1 flex h-7 w-7 items-center justify-center"
-                @click="clearFilter">
+                @click="clearFilter" :aria-label="t('fileBrowser.clearFilter')">
                 <img :src="xIcon" :alt="t('fileBrowser.clearFilter')" class="w-[18px] h-[18px]" />
               </button>
             </div>

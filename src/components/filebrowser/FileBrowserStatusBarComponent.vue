@@ -196,19 +196,19 @@ function openCollapsedPopover() {
         <PopoverAnchor as-child>
           <div class="flex shrink-0 items-center gap-1">
             <div class="hidden @[400px]:flex items-center gap-1">
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none" :title="t('showItems')"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('showItems')"
                 @click="showItemsPopoverOpen = true">
                 <img :src="eyeIcon" class="w-3.5 h-3.5" />
                 <span class="hidden @[600px]:inline">{{ t('showItems') }}</span>
               </button>
 
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50"
                 :title="t('fileBrowser.selectAll')" @click="emit('selectAll')">
                 <img :src="checkCheckIcon" class="w-3.5 h-3.5" />
                 <span class="hidden @[600px]:inline">{{ t('fileBrowser.selectAll') }}</span>
               </button>
 
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none"
+              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50"
                 :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
                 <img :src="xIcon" class="w-3.5 h-3.5" />
                 <span class="hidden @[600px]:inline">{{ t('fileBrowser.deselectAll') }}</span>
@@ -216,7 +216,7 @@ function openCollapsedPopover() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none" :title="t('menu')">
+                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('menu')">
                     <img :src="menuIcon" class="w-3.5 h-3.5" />
                     <span class="hidden @[600px]:inline">{{ t('menu') }}</span>
                   </button>
@@ -232,7 +232,7 @@ function openCollapsedPopover() {
             <div class="flex @[400px]:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50 outline-none" :title="t('actions')">
+                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('actions')" :aria-label="t('actions')">
                     <img :src="ellipsisVerticalIcon" class="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
@@ -274,8 +274,8 @@ function openCollapsedPopover() {
                     <span class="overflow-hidden text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
                     <span class="overflow-hidden text-tx-muted text-[11px] text-ellipsis whitespace-nowrap">{{ entry.path }}</span>
                   </div>
-                  <button type="button" class="shrink-0 self-stretch w-9 flex items-center justify-center rounded-r hover:bg-status-error hover:text-destructive-foreground outline-none transition-colors"
-                    :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)">
+                  <button type="button" class="shrink-0 self-stretch w-9 flex items-center justify-center rounded-r hover:bg-status-error hover:text-destructive-foreground transition-colors"
+                    :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)" :aria-label="t('fileBrowser.removeFromSelection')">
                     <img :src="xIcon" class="w-4 h-4" />
                   </button>
                 </div>

@@ -345,7 +345,7 @@ const canSaveCommand = computed(() => {
             <div class="flex gap-2">
               <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
                 class="flex-1" />
-              <button type="button" :title="t('browse')" @click="handleSelectProgram">
+              <button type="button" :title="t('browse')" @click="handleSelectProgram" :aria-label="t('browse')">
                 <img :src="folderOpenIcon" class="w-4 h-4" />
               </button>
             </div>

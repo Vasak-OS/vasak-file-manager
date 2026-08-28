@@ -196,7 +196,7 @@ const properties = computed<PropertyItem[]>(() => {
                 calculatedAgo) }}</span>
             </div>
             <button v-if="showRecalculateButton" size="xs" variant="ghost"
-              class="info-panel-properties__recalculate-btn" :title="t('recalculate')" @click="handleGetSize">
+              class="info-panel-properties__recalculate-btn" :title="t('recalculate')" @click="handleGetSize" :aria-label="t('recalculate')">
               <img :src="refreshCwIcon" class="h-3 w-3" />
             </button>
           </template>

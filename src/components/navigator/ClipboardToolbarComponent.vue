@@ -220,7 +220,7 @@ function openCollapsedPopover() {
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--collapsed">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.actions')">
+                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.actions')" :aria-label="t('fileBrowser.actions')">
                     <img :src="ellipsisVerticalIcon" class="h-4 w-4 inline-block" />
                   </button>
                 </DropdownMenuTrigger>
@@ -270,7 +270,7 @@ function openCollapsedPopover() {
                     <span class="clipboard-toolbar__item-path">{{ entry.path }}</span>
                   </div>
                   <button variant="ghost" size="icon" class="clipboard-toolbar__item-remove"
-                    :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)">
+                    :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)" :aria-label="t('fileBrowser.removeFromClipboard')">
                     <img :src="xIcon" :alt="t('fileBrowser.removeFromClipboard')" class="h-4 w-4" />
                   </button>
                 </div>
