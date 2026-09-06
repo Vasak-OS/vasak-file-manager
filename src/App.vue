@@ -2,7 +2,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
-import type { Store } from 'pinia';
 import { onErrorCaptured, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import TextContextMenu from '@/components/ui/TextContextMenu.vue';
 import ToastContainer from '@/components/ui/toast/ToastContainer.vue';
@@ -68,10 +67,7 @@ onMounted(async () => {
 			await workspacesStore.openNewTabGroup(requestedPath);
 		}
 
-		const configStore = useConfigStore() as Store<
-			'config',
-			{ config: any; loadConfig: () => Promise<void> }
-		>;
+		const configStore = useConfigStore();
 		await configStore.loadConfig();
 		unListenConfig.value = await listen('config-changed', async () => {
 			document.startViewTransition(() => {
