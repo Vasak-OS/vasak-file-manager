@@ -6,7 +6,7 @@ import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
-import { useCloudDrives } from '@/composables/use-cloud-drives';
+import { type CloudDrive, useCloudDrives } from '@/composables/use-cloud-drives';
 import { useDrives } from '@/composables/use-drives';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
@@ -15,6 +15,7 @@ import { useWorkspacesStore } from '@/stores/storage/workspaces';
 const { drives, refresh } = useDrives();
 const {
 	drives: cloudDrives,
+	error: cloudError,
 	montando,
 	refresh: refreshCloud,
 	mount: mountCloud,
@@ -41,8 +42,21 @@ async function openDrive(path: string) {
  * sobre rutas — leer, previsualizar, buscar, arrastrar—. Con el montaje, lo que
  * se abre es una ruta de verdad y el resto del programa funciona sin enterarse.
  */
-async function openCloudDrive(id: string) {
-	const ruta = await mountCloud(id);
+/** El nombre que oye un lector de pantalla, y lo que dice el tooltip. */
+function etiquetaDe(nube: CloudDrive): string {
+	return nube.necesita_reconectarse
+		? t('cloudNeedsReconnect').replace('{0}', nube.nombre)
+		: nube.nombre;
+}
+
+async function openCloudDrive(nube: CloudDrive) {
+	// Una cuenta que hay que reconectar no se monta, pero el botón sigue
+	// alcanzable: apretarlo dice qué falta en vez de no hacer nada.
+	if (nube.necesita_reconectarse) {
+		cloudError.value = etiquetaDe(nube);
+		return;
+	}
+	const ruta = await mountCloud(nube.id);
 	if (ruta) await openDrive(ruta);
 }
 
@@ -97,18 +111,43 @@ onMounted(async () => {
     </div>
 
     <div>
+      <!-- Si un montaje falló hay que decirlo. Antes el error se guardaba y no
+           se mostraba: apretar el disco no hacía nada y no había forma de saber
+           por qué. La barra es angosta, así que el detalle va en el tooltip. -->
+      <Tooltip v-if="cloudError" :delay-duration="0">
+        <TooltipTrigger as-child>
+          <div
+            tabindex="0"
+            role="status"
+            class="p-1 rounded-corner bg-status-error/20 flex items-center justify-center"
+            :aria-label="cloudError"
+          >
+            <span class="text-status-error text-xs leading-none" aria-hidden="true">!</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right">{{ cloudError }}</TooltipContent>
+      </Tooltip>
+
       <!-- Los discos en la nube de las cuentas conectadas. Sólo `drive`: el
            correo es de la aplicación de correo y el calendario de la suya. -->
       <Tooltip v-for="nube in cloudDrives" :key="nube.id" :delay-duration="0">
         <TooltipTrigger as-child>
+          <!-- El botón no se deshabilita cuando hay que reconectar la cuenta:
+               un botón deshabilitado no recibe foco, y entonces quien usa
+               teclado o lector de pantalla no puede llegar nunca a la
+               instrucción de qué hacer. Queda alcanzable y al apretarlo dice el
+               motivo. -->
           <button
             class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary disabled:opacity-50"
             size="icon"
-            :disabled="montando === nube.id || nube.necesita_reconectarse"
-            @click="openCloudDrive(nube.id)"
+            :disabled="montando === nube.id"
+            :aria-label="etiquetaDe(nube)"
+            @click="openCloudDrive(nube)"
           >
             <img
               :src="cloudIcon"
+              alt=""
+              aria-hidden="true"
               class="nav-sidebar-drive-icon h-6 w-6"
               :class="nube.necesita_reconectarse && 'grayscale'"
             />
@@ -117,11 +156,7 @@ onMounted(async () => {
         <TooltipContent side="right">
           <!-- El motivo, no un botón apagado sin explicación: la persona tiene
                que saber que le falta reconectarla desde Configuración. -->
-          {{
-            nube.necesita_reconectarse
-              ? t('cloudNeedsReconnect').replace('{0}', nube.nombre)
-              : nube.nombre
-          }}
+          {{ etiquetaDe(nube) }}
         </TooltipContent>
       </Tooltip>
 

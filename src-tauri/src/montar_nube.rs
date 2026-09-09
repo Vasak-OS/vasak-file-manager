@@ -69,17 +69,26 @@ pub async fn montar_disco_en_la_nube(
         })
 }
 
-/// La ruta local de una dirección de gvfs, si está montada.
+/// La ruta local de una dirección de gvfs, si está montada **y sirve**.
 ///
-/// `g_file_get_path` sobre un URI de gvfs devuelve la ruta que expone
-/// `gvfsd-fuse`, y `None` si no hay montaje. Calcular esa ruta a mano —el
-/// nombre que arma gvfs con el host y el prefijo— sería atarse a un detalle
-/// interno que puede cambiar entre versiones.
+/// `g_file_get_path` sobre un URI de gvfs devuelve la ruta que anotó el montaje,
+/// y `None` si no hay ninguno. Calcularla a mano —el nombre que arma gvfs con el
+/// host y el prefijo— sería atarse a un detalle interno que puede cambiar entre
+/// versiones.
+///
+/// Pero lo que devuelve es lo **anotado**, no lo que hay: no comprueba que
+/// `gvfsd-fuse` esté sirviendo esa ruta ahora. Un montaje que quedó de una
+/// sesión anterior, o de antes de que fuse se cayera, da una ruta que existe en
+/// los metadatos y no en el disco — y el gestor abriría una pestaña vacía sin
+/// decir por qué. Así que se comprueba antes de darla por buena.
 async fn ruta_de(app: &tauri::AppHandle, uri: &str) -> Result<Option<String>, String> {
     let uri = uri.to_string();
     en_el_hilo_principal(app, move |terminado| {
         let archivo = gio::File::for_uri(&uri);
-        let ruta = archivo.path().map(|p| p.to_string_lossy().into_owned());
+        let ruta = archivo
+            .path()
+            .filter(|ruta| ruta.is_dir())
+            .map(|p| p.to_string_lossy().into_owned());
         let _ = terminado.send(Ok(ruta));
     })
     .await
@@ -87,20 +96,50 @@ async fn ruta_de(app: &tauri::AppHandle, uri: &str) -> Result<Option<String>, St
 
 /// Hace el montaje, contestando la pregunta de la contraseña.
 async fn montar(app: &tauri::AppHandle, credencial: Credencial) -> Result<(), String> {
-    en_el_hilo_principal(app, move |terminado| {
+    // Un cancelador de verdad y no `Cancellable::NONE`.
+    //
+    // Sin él, cuando se cumple el tope de espera la operación **sigue corriendo**
+    // en el bucle principal: nadie la para, y queda un montaje a medias
+    // intentando contra un servidor que no contesta. Con esto, agotarse el
+    // tiempo también la cancela.
+    let cancelador = gio::Cancellable::new();
+    let para_el_tope = cancelador.clone();
+
+    let resultado = en_el_hilo_principal(app, move |terminado| {
         let archivo = gio::File::for_uri(&credencial.uri);
         let operacion = gio::MountOperation::new();
+        let cancelador = cancelador.clone();
 
         let usuario = credencial.usuario.clone();
         let secreto = credencial.secreto.clone();
-        operacion.connect_ask_password(move |operacion, _mensaje, _usuario_previo, _dominio, _flags| {
-            operacion.set_username(Some(&usuario));
-            operacion.set_password(Some(&secreto));
+        // Una sola vez.
+        //
+        // gvfs vuelve a preguntar cuando el servidor rechaza lo que se le dio, y
+        // contestar lo mismo otra vez es un bucle: el rechazo de verdad no
+        // llegaría nunca y lo que vería la persona sería el tope de tiempo, que
+        // no dice nada sobre su contraseña. A la segunda se corta.
+        let ya_contesto = std::cell::Cell::new(false);
+        operacion.connect_ask_password(move |operacion, _mensaje, _usuario_previo, _dominio, flags| {
+            if ya_contesto.replace(true) {
+                operacion.reply(gio::MountOperationResult::Aborted);
+                return;
+            }
+
+            // Sólo lo que pidió. Poner una contraseña donde no se pidió ninguna
+            // —un montaje anónimo, por ejemplo— es mandarla sin motivo.
+            if flags.contains(gio::AskPasswordFlags::NEED_USERNAME) {
+                operacion.set_username(Some(&usuario));
+            }
+            if flags.contains(gio::AskPasswordFlags::NEED_PASSWORD) {
+                operacion.set_password(Some(&secreto));
+            }
             // Que gvfs **no** la guarde. La credencial ya vive en el servicio de
             // cuentas; una copia en otro llavero es otro lugar del que puede
             // filtrarse y otro que hay que acordarse de limpiar al borrar la
             // cuenta.
-            operacion.set_password_save(gio::PasswordSave::Never);
+            if flags.contains(gio::AskPasswordFlags::SAVING_SUPPORTED) {
+                operacion.set_password_save(gio::PasswordSave::Never);
+            }
             operacion.reply(gio::MountOperationResult::Handled);
         });
 
@@ -116,7 +155,7 @@ async fn montar(app: &tauri::AppHandle, credencial: Credencial) -> Result<(), St
         archivo.mount_enclosing_volume(
             gio::MountMountFlags::NONE,
             Some(&operacion),
-            gio::Cancellable::NONE,
+            Some(&cancelador),
             move |resultado| {
                 let respuesta = match resultado {
                     Ok(()) => Ok(()),
@@ -130,7 +169,14 @@ async fn montar(app: &tauri::AppHandle, credencial: Credencial) -> Result<(), St
             },
         );
     })
-    .await
+    .await;
+
+    // Si se agotó la espera, cancelar: la operación sigue viva en el bucle
+    // principal hasta que alguien la pare.
+    if resultado.is_err() {
+        para_el_tope.cancel();
+    }
+    resultado
 }
 
 /// Dice qué pasó en términos de lo que la persona puede hacer.

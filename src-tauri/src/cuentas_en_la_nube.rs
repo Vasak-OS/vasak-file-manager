@@ -75,12 +75,27 @@ pub async fn listar_discos_en_la_nube() -> Result<Vec<DiscoEnLaNube>, String> {
 }
 
 /// Lo que hace falta para montar una cuenta.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// **Sin `Debug` derivado**, a propósito: `secreto` es la contraseña o el token
+/// de la cuenta, y un `Debug` derivado lo escribiría entero en cualquier
+/// registro, en cualquier `dbg!` de paso, y en el mensaje de cualquier pánico
+/// que la lleve adentro. Se implementa a mano y se tacha.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Credencial {
     /// La dirección WebDAV, ya en el esquema que entiende gvfs.
     pub uri: String,
     pub usuario: String,
     pub secreto: String,
+}
+
+impl std::fmt::Debug for Credencial {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Credencial")
+            .field("uri", &self.uri)
+            .field("usuario", &self.usuario)
+            .field("secreto", &"<tachado>")
+            .finish()
+    }
 }
 
 /// El bus del **sistema**: ahí vive el servicio de cuentas, porque los tokens
@@ -235,6 +250,26 @@ mod tests {
         let sin_url = json!({ "username": "ana" });
         let error = credencial_desde(&sin_url, "x".into()).unwrap_err();
         assert!(error.contains("volvé a conectarla"), "{error}");
+    }
+
+    /// El secreto no puede aparecer en un registro ni en un pánico.
+    ///
+    /// Con `Debug` derivado se escribiría entero en cualquier lado que formatee
+    /// la credencial — y eso incluye lugares que nadie eligió, como el mensaje
+    /// de un pánico.
+    #[test]
+    fn el_secreto_no_se_imprime() {
+        let credencial = Credencial {
+            uri: "davs://nube.ejemplo.com/x/".into(),
+            usuario: "ana".into(),
+            secreto: "la-contrasena-de-verdad".into(),
+        };
+
+        let impreso = format!("{credencial:?}");
+        assert!(!impreso.contains("la-contrasena-de-verdad"), "{impreso}");
+        // Y lo que sí sirve para diagnosticar se sigue viendo.
+        assert!(impreso.contains("davs://nube.ejemplo.com/x/"), "{impreso}");
+        assert!(impreso.contains("ana"), "{impreso}");
     }
 
     /// **El límite de este programa.** Pide `drive` y nada más: el correo es de
