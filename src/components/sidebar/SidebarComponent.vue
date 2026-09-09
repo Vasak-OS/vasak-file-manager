@@ -6,12 +6,19 @@ import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
+import { useCloudDrives } from '@/composables/use-cloud-drives';
 import { useDrives } from '@/composables/use-drives';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 
 const { drives, refresh } = useDrives();
+const {
+	drives: cloudDrives,
+	montando,
+	refresh: refreshCloud,
+	mount: mountCloud,
+} = useCloudDrives();
 const workspacesStore = useWorkspacesStore();
 const userPathsStore = useUserPathsStore();
 const { t } = useI18n();
@@ -21,13 +28,27 @@ const usbIcon = useReactiveIcon(() => getIconSource('drive-removable-media-usb')
 const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
 const homeIcon = useReactiveIcon(() => getIconSource('user-home'));
 const rootIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
+const cloudIcon = useReactiveIcon(() => getIconSource('folder-cloud'));
 
 async function openDrive(path: string) {
 	await workspacesStore.openNewTabGroup(path);
 }
 
+/**
+ * Abre un disco en la nube: lo monta si hace falta y navega a su ruta.
+ *
+ * Se monta en vez de hablar WebDAV desde acá porque todo este gestor trabaja
+ * sobre rutas — leer, previsualizar, buscar, arrastrar—. Con el montaje, lo que
+ * se abre es una ruta de verdad y el resto del programa funciona sin enterarse.
+ */
+async function openCloudDrive(id: string) {
+	const ruta = await mountCloud(id);
+	if (ruta) await openDrive(ruta);
+}
+
 onMounted(async () => {
 	refresh();
+	refreshCloud();
 });
 </script>
 
@@ -76,6 +97,34 @@ onMounted(async () => {
     </div>
 
     <div>
+      <!-- Los discos en la nube de las cuentas conectadas. Sólo `drive`: el
+           correo es de la aplicación de correo y el calendario de la suya. -->
+      <Tooltip v-for="nube in cloudDrives" :key="nube.id" :delay-duration="0">
+        <TooltipTrigger as-child>
+          <button
+            class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary disabled:opacity-50"
+            size="icon"
+            :disabled="montando === nube.id || nube.necesita_reconectarse"
+            @click="openCloudDrive(nube.id)"
+          >
+            <img
+              :src="cloudIcon"
+              class="nav-sidebar-drive-icon h-6 w-6"
+              :class="nube.necesita_reconectarse && 'grayscale'"
+            />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <!-- El motivo, no un botón apagado sin explicación: la persona tiene
+               que saber que le falta reconectarla desde Configuración. -->
+          {{
+            nube.necesita_reconectarse
+              ? t('cloudNeedsReconnect').replace('{0}', nube.nombre)
+              : nube.nombre
+          }}
+        </TooltipContent>
+      </Tooltip>
+
       <Tooltip v-for="drive in drives" :key="drive.path" :delay-duration="0">
         <TooltipTrigger as-child>
           <button class="p-1 rounded-corner bg-ui-surface/80 hover:bg-primary" size="icon" @click="openDrive(drive.path)">

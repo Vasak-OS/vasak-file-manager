@@ -61,6 +61,8 @@ tauri-plugin-drag-and-drop-wayland = "2.1"
 tauri-plugin-vsk-contextual-menu = "2"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-vsk-journal = "2"
+zbus = { version = "4", default-features = false, features = ["tokio"] }
+gio = "0.18"
 
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.
