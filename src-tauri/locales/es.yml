@@ -269,6 +269,7 @@ menu: Menú
 actions: Acciones
 home: Inicio
 root: Raíz
+cloudNeedsReconnect: "{0}: hay que volver a conectarla desde Configuración"
 search: Buscar
 driveNotMounted: Unidad no montada
 freeOf: libres de

@@ -269,6 +269,7 @@ menu: Menu
 actions: Actions
 home: Home
 root: Root
+cloudNeedsReconnect: "{0}: it has to be connected again from Settings"
 search: Search
 driveNotMounted: Drive not mounted
 freeOf: free of

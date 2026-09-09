@@ -1,3 +1,5 @@
+mod cuentas_en_la_nube;
+mod montar_nube;
 mod startup_path;
 mod dir_reader;
 mod dir_size;
@@ -135,6 +137,8 @@ pub fn run() {
         .plugin(tauri_plugin_vsk_journal::init())
         .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
+            cuentas_en_la_nube::listar_discos_en_la_nube,
+            montar_nube::montar_disco_en_la_nube,
             video_thumbnail,
             clipboard::clipboard_read_text,
             clipboard::clipboard_write_text,
