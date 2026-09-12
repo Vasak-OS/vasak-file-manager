@@ -10,6 +10,15 @@ import { disableWebViewFeatures } from '@/utils/web-view-features';
 import '@/assets/main.css';
 import { captureFailures } from '@vasakgroup/plugin-vsk-journal';
 
+/**
+ * Cuánto se espera a las traducciones antes de montar.
+ *
+ * Se espera para que la primera pantalla no muestre las claves crudas, pero con
+ * un plazo: si el backend no contesta, es mejor una interfaz con las claves a la
+ * vista que una ventana en blanco para siempre.
+ */
+const PLAZO_TRADUCCIONES_MS = 3000;
+
 // Una violación de CSP no se ve: el recurso no carga y la interfaz queda a
 // medias sin decir nada. Se sanean **las dos** URLs, porque `sourceFile` también
 // puede llevar query con datos sensibles.
@@ -86,6 +95,19 @@ const pinia = createPinia();
 
 app.directive('wave', waveDirective);
 
-i18n.load();
 app.use(pinia);
+// Se esperan las traducciones antes de montar: montando primero, la ventana
+// enseña las claves crudas —«views.home.title» donde va el texto— hasta que el
+// catálogo termina de cargar.
+//
+// Antes esto era un `i18n.load()` suelto, sin esperar. Y hasta la 2.3.0 del
+// plugin esperarlo tampoco habría servido: la clase y el composable guardaban el
+// catálogo por separado, y el `t()` de los componentes lee el del composable.
+await Promise.race([
+	i18n.load().catch((error) => {
+		console.error('No se pudieron cargar las traducciones', error);
+	}),
+	new Promise((resolve) => setTimeout(resolve, PLAZO_TRADUCCIONES_MS)),
+]);
+
 app.mount('#app');
