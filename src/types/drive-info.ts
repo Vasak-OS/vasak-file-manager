@@ -11,5 +11,7 @@ export type DriveInfo = {
 	is_removable: boolean;
 	is_read_only: boolean;
 	is_mounted: boolean;
+	/** Si hay que abrirla con una frase de paso antes de poder montarla. */
+	is_encrypted: boolean;
 	device_path: string;
 };

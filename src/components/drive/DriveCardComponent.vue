@@ -2,9 +2,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ComputedRef, computed, Ref, ref } from 'vue';
+import { ComputedRef, computed, markRaw, Ref, ref } from 'vue';
+import CustomError from '@/components/ui/toast/CustomError.vue';
+import { toast } from '@/components/ui/toast/toaster';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import { avisoDeFallo } from '@/tools/aviso-de-montaje';
 import type { DriveInfo } from '@/types/drive-info';
 import toReadableBytes from '@/utils/byte-parser';
 
@@ -20,12 +23,16 @@ const networkIcon = useReactiveIcon(() => getIconSource('preferences-system-netw
 const usbIcon = useReactiveIcon(() => getIconSource('drive-removable-media-usb'));
 const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
 const ejectIcon = useReactiveIcon(() => getIconSource('media-eject'));
+const lockedIcon = useReactiveIcon(() => getIconSource('object-locked'));
 
 const isLowSpace = computed(() => props.drive.percent_used >= 100 - LOW_SPACE_THRESHOLD);
 
 const formattedSpaceInfo = computed(() => {
 	if (!props.drive.is_mounted) {
-		return t('driveNotMounted');
+		// Una unidad cifrada sin abrir no está «no montada» a secas: hace falta la
+		// frase de paso, y decirlo antes del clic evita que el diálogo aparezca
+		// como una sorpresa.
+		return props.drive.is_encrypted ? t('drive.encryptedLocked') : t('driveNotMounted');
 	}
 
 	const available = toReadableBytes(props.drive.available_space, 1);
@@ -60,10 +67,30 @@ async function mountAndNavigate() {
 			await navigateToDrive(mountPoint);
 		}
 	} catch (mountError) {
+		// Esto antes se iba a la consola y la ventana no mostraba nada: el clic
+		// parecía no haber ocurrido. Ver `avisoDeFallo`.
 		console.error('Failed to mount drive:', mountError);
+		mostrarFallo(mountError);
 	} finally {
 		isMounting.value = false;
 	}
+}
+
+function mostrarFallo(mountError: unknown) {
+	const aviso = avisoDeFallo(mountError);
+
+	// Cerrar el diálogo de la contraseña no es un fallo: no se avisa nada.
+	if (!aviso) {
+		return;
+	}
+
+	toast.custom(markRaw(CustomError), {
+		componentProps: {
+			title: t(aviso.claveDelTitulo),
+			description: aviso.detalle,
+		},
+		duration: 6000,
+	});
 }
 
 async function navigateToDrive(drivePath: string) {
@@ -94,6 +121,15 @@ async function handleUnmount(clickEvent?: Event) {
   }" @click="handleClick">
     <div class="relative flex w-14 h-14 flex-col shrink-0 items-center justify-center gap-0.5">
         <img :src="driveIcon.value" class="text-tx-muted h-5 w-5" />
+        <!-- El candado dice que ese clic va a pedir una frase de paso. Sin él,
+             el diálogo aparece sin que nada lo anunciara. -->
+        <img
+          v-if="drive.is_encrypted"
+          :src="lockedIcon"
+          class="absolute bottom-1 right-1 h-3 w-3"
+          :alt="t('drive.encrypted')"
+          :title="t('drive.encrypted')"
+        />
         <span v-if="drive.is_mounted" class="text-tx-muted text-[11px] font-medium">
           {{ drive.percent_used }}%
         </span>
