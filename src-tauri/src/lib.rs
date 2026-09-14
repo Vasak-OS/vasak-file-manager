@@ -1,9 +1,10 @@
 mod cuentas_en_la_nube;
-mod montar_nube;
-mod startup_path;
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;
+mod montaje;
+mod montar_nube;
+mod startup_path;
 
 mod clipboard;
 mod compress;
@@ -11,15 +12,15 @@ mod extract;
 mod file_operations;
 mod global_search;
 mod idle_monitor;
+mod mount_watcher;
 mod open_with;
 mod polkit;
 mod read_file;
-mod mount_watcher;
 mod system_icons;
-mod video_thumbnail;
 mod terminal;
 mod undo;
 pub mod utils;
+mod video_thumbnail;
 
 // Sólo lo necesita el descubrimiento del webview, que es de debug.
 #[cfg(debug_assertions)]
@@ -101,7 +102,8 @@ pub fn run() {
                         }
                     }
                 }
-                let icon_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("icons/icon.png");
+                let icon_path =
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("icons/icon.png");
                 if icon_path.exists() {
                     if let Ok(image) = tauri::image::Image::from_path(&icon_path) {
                         let _ = window.set_icon(image);

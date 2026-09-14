@@ -45,7 +45,20 @@ pub struct DriveInfo {
     pub is_removable: bool,
     pub is_read_only: bool,
     pub is_mounted: bool,
+    /// Si hay que abrirla con una frase de paso antes de poder montarla.
+    ///
+    /// La ventana lo usa para dos cosas: mostrar el candado, y saber que un clic
+    /// acá va a abrir un diálogo en vez de montar y listo.
+    pub is_encrypted: bool,
     pub device_path: String,
+}
+
+/// Lo que `lsblk` y `udisks2` llaman a una partición LUKS.
+pub const SISTEMA_DE_ARCHIVOS_CIFRADO: &str = "crypto_LUKS";
+
+/// Si ese sistema de archivos es en realidad un volumen cifrado sin abrir.
+pub fn es_cifrado(file_system: &str) -> bool {
+    file_system.eq_ignore_ascii_case(SISTEMA_DE_ARCHIVOS_CIFRADO)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,10 +81,10 @@ pub struct NetworkShareParams {
 }
 
 fn is_hidden(path: &Path) -> bool {
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .map(|name| name.starts_with('.'))
-            .unwrap_or(false)
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.starts_with('.'))
+        .unwrap_or(false)
 }
 
 fn get_extension(path: &Path) -> Option<String> {
@@ -456,13 +469,15 @@ fn linux_get_unmounted_drive_infos(
                 continue;
             }
 
-            let label = get_device_label(&dev_path).unwrap_or_else(|| partition_name.to_uppercase());
+            let label =
+                get_device_label(&dev_path).unwrap_or_else(|| partition_name.to_uppercase());
             let file_system = fs_type.unwrap_or_default();
 
             drives.push(DriveInfo {
                 name: label,
                 path: normalize_path(&dev_path),
                 mount_point: String::new(),
+                is_encrypted: es_cifrado(&file_system),
                 file_system,
                 drive_type: drive_type.clone(),
                 total_space,
@@ -511,8 +526,6 @@ pub fn get_system_drives() -> Result<Vec<DriveInfo>, String> {
             continue;
         }
 
-
-
         if !seen_paths.insert(path.clone()) {
             continue;
         }
@@ -547,11 +560,7 @@ pub fn get_system_drives() -> Result<Vec<DriveInfo>, String> {
             }
         };
 
-        let display_name = {
-
-                mount_point_last_component(&mount_point)
-
-        };
+        let display_name = { mount_point_last_component(&mount_point) };
 
         let device_path = disk.name().to_string_lossy().to_string();
         let canonical_device_path = fs::canonicalize(&device_path)
@@ -575,6 +584,9 @@ pub fn get_system_drives() -> Result<Vec<DriveInfo>, String> {
             is_removable: disk.is_removable(),
             is_read_only: disk.is_read_only(),
             is_mounted: true,
+            // Una unidad montada ya está abierta: lo que se ve es el volumen en
+            // claro, no el cifrado que hay debajo.
+            is_encrypted: false,
             device_path,
         });
     }
@@ -622,7 +634,7 @@ fn get_partition_fs_type(device_name: &str) -> Option<String> {
 
 #[tauri::command]
 pub fn get_mountable_devices() -> Result<Vec<MountableDevice>, String> {
-  Ok(linux_get_mountable_devices())
+    Ok(linux_get_mountable_devices())
 }
 
 fn linux_get_mountable_devices() -> Vec<MountableDevice> {
@@ -735,45 +747,26 @@ fn linux_get_mountable_devices() -> Vec<MountableDevice> {
 // Mount / unmount commands
 // ---------------------------------------------------------------------------
 
+/// Monta una unidad, pidiendo lo que haga falta.
+///
+/// El trabajo está en `montaje`: acá sólo queda el comando. Lo que cambió es que
+/// ahora el error llega entero hasta la ventana en vez de perderse, y que una
+/// partición cifrada se puede abrir. Ver ese módulo.
 #[tauri::command]
-pub fn mount_drive(device_path: String) -> Result<String, String> {
-
-        if let Ok(output) = std::process::Command::new("udisksctl")
-            .args(["mount", "-b", &device_path])
-            .output()
-        {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-                let mount_point = stdout
-                    .split(" at ")
-                    .nth(1)
-                    .map(|segment| segment.trim().trim_end_matches('.').to_string())
-                    .unwrap_or_default();
-                return Ok(mount_point);
-            }
-        }
-
-        if let Ok(output) = std::process::Command::new("gio")
-            .args(["mount", "-d", &device_path])
-            .output()
-        {
-            if output.status.success() {
-                return Ok(String::new());
-            }
-        }
-
-        Err(format!(
-            "Could not mount {}. Install udisks2 for automatic mounting.",
-            device_path
-        ))
-
+pub async fn mount_drive(device_path: String) -> Result<String, crate::montaje::FalloDeMontaje> {
+    crate::montaje::montar(&device_path).await
 }
 
+/// Desmonta la unidad, y cierra lo que hubiera que cerrar.
+///
+/// Lo segundo es la otra mitad de poder abrir discos cifrados: desmontar deja el
+/// volumen en claro abierto en `/dev/mapper`, y quien expulsó un disco cifrado
+/// espera justamente lo contrario. Ver `montaje::cerrar_volumen_cifrado`.
 #[tauri::command]
-pub fn unmount_drive(device_path: String, mount_point: String) -> Result<(), String> {
-
-        linux_unmount(&device_path, &mount_point)
-
+pub async fn unmount_drive(device_path: String, mount_point: String) -> Result<(), String> {
+    linux_unmount(&device_path, &mount_point)?;
+    crate::montaje::cerrar_volumen_cifrado(&device_path).await;
+    Ok(())
 }
 
 fn linux_unmount(device_path: &str, mount_point: &str) -> Result<(), String> {
@@ -822,30 +815,26 @@ fn linux_unmount(device_path: &str, mount_point: &str) -> Result<(), String> {
 
 #[tauri::command]
 pub fn mount_network_share(params: NetworkShareParams) -> Result<String, String> {
+    let mount_base = { "/mnt" };
 
-        let mount_base = {
-          "/mnt"
-        };
+    let mount_point = format!("{}/{}", mount_base, params.mount_name);
 
-        let mount_point = format!("{}/{}", mount_base, params.mount_name);
+    fs::create_dir_all(&mount_point)
+        .map_err(|dir_error| format!("Failed to create mount point: {}", dir_error))?;
 
-        fs::create_dir_all(&mount_point)
-            .map_err(|dir_error| format!("Failed to create mount point: {}", dir_error))?;
+    let result = match params.protocol.as_str() {
+        "sshfs" => mount_sshfs(&params, &mount_point),
+        "nfs" => mount_nfs(&params, &mount_point),
+        "smb" => mount_smb(&params, &mount_point),
+        unknown => Err(format!("Unknown protocol: {}", unknown)),
+    };
 
-        let result = match params.protocol.as_str() {
-            "sshfs" => mount_sshfs(&params, &mount_point),
-            "nfs" => mount_nfs(&params, &mount_point),
-            "smb" => mount_smb(&params, &mount_point),
-            unknown => Err(format!("Unknown protocol: {}", unknown)),
-        };
+    if result.is_err() {
+        let _ = fs::remove_dir(&mount_point);
+    }
 
-        if result.is_err() {
-            let _ = fs::remove_dir(&mount_point);
-        }
-
-        result.map(|_| mount_point)
+    result.map(|_| mount_point)
 }
-
 
 fn mount_sshfs(params: &NetworkShareParams, mount_point: &str) -> Result<(), String> {
     let username = params.username.as_deref().unwrap_or("root");

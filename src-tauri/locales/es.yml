@@ -299,6 +299,11 @@ toolbar:
   newTab: Pestaña nueva
 drive:
   eject: Expulsar
+  encrypted: Unidad cifrada
+  encryptedLocked: Cifrada — pide una frase de paso
+  mountFailed: No se pudo montar la unidad
+  mountNotAuthorized: No se autorizó el montaje
+  mountWrongPassphrase: La frase de paso no abrió la unidad
 progress:
   completed: Completado
 operations:

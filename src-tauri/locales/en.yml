@@ -299,6 +299,11 @@ toolbar:
   newTab: New tab
 drive:
   eject: Eject
+  encrypted: Encrypted drive
+  encryptedLocked: Encrypted — asks for a passphrase
+  mountFailed: The drive could not be mounted
+  mountNotAuthorized: The mount was not authorized
+  mountWrongPassphrase: That passphrase did not open the drive
 progress:
   completed: Completed
 operations:
