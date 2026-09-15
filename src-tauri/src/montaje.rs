@@ -185,84 +185,6 @@ pub fn punto_de_montaje_de(salida: &str) -> String {
         .unwrap_or_default()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cerrar_el_dialogo_no_es_un_error_que_haya_que_mostrar() {
-        let fallo =
-            clasificar("ar.net.vasak.os.DeviceUnlock.Cancelado", "se cerró").expect("hay agente");
-
-        assert_eq!(fallo.codigo, CANCELADO);
-    }
-
-    #[test]
-    fn los_demas_errores_si_se_muestran() {
-        for (nombre, codigo) in [
-            ("ar.net.vasak.os.DeviceUnlock.NoAutorizado", NO_AUTORIZADO),
-            (
-                "ar.net.vasak.os.DeviceUnlock.FraseIncorrecta",
-                FRASE_INCORRECTA,
-            ),
-            ("ar.net.vasak.os.DeviceUnlock.Fallo", FALLO),
-        ] {
-            let fallo = clasificar(nombre, "detalle").expect("hay agente");
-
-            assert_eq!(fallo.codigo, codigo);
-            assert_ne!(fallo.codigo, CANCELADO);
-        }
-    }
-
-    #[test]
-    fn que_no_haya_agente_no_es_un_fallo_de_montaje() {
-        // Es la diferencia entre mostrar un error y probar por el otro camino.
-        assert_eq!(
-            clasificar("org.freedesktop.DBus.Error.ServiceUnknown", "no such name"),
-            Err(SinAgente)
-        );
-        assert_eq!(
-            clasificar("org.freedesktop.DBus.Error.NameHasNoOwner", ""),
-            Err(SinAgente)
-        );
-    }
-
-    #[test]
-    fn un_error_que_no_se_conoce_se_muestra_igual() {
-        // Antes todo terminaba en «instalá udisks2»; ahora lo que no se reconoce
-        // llega con su detalle, que es más útil que una causa inventada.
-        let fallo = clasificar("org.freedesktop.UDisks2.Error.DeviceBusy", "target is busy")
-            .expect("hay agente");
-
-        assert_eq!(fallo.codigo, FALLO);
-        assert_eq!(fallo.detalle, "target is busy");
-    }
-
-    #[test]
-    fn un_error_sin_detalle_se_queda_con_el_nombre() {
-        let fallo =
-            clasificar("org.freedesktop.UDisks2.Error.DeviceBusy", "  ").expect("hay agente");
-
-        assert_eq!(fallo.detalle, "org.freedesktop.UDisks2.Error.DeviceBusy");
-    }
-
-    #[test]
-    fn se_saca_el_punto_de_montaje_de_lo_que_dice_udisksctl() {
-        assert_eq!(
-            punto_de_montaje_de("Mounted /dev/sdb1 at /run/media/pato/Datos.\n"),
-            "/run/media/pato/Datos"
-        );
-    }
-
-    #[test]
-    fn una_salida_que_no_tiene_esa_forma_no_inventa_una_ruta() {
-        // Devolver algo a medias haría que la ventana navegue a una ruta que no
-        // existe; vacío es lo que ya sabe manejar.
-        assert_eq!(punto_de_montaje_de("Mounted /dev/sdb1"), "");
-        assert_eq!(punto_de_montaje_de(""), "");
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Cerrar lo que se abrió
 // ---------------------------------------------------------------------------
@@ -365,4 +287,82 @@ async fn propiedad(
 
     let cuerpo = respuesta.body();
     cuerpo.deserialize::<OwnedValue>().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cerrar_el_dialogo_no_es_un_error_que_haya_que_mostrar() {
+        let fallo =
+            clasificar("ar.net.vasak.os.DeviceUnlock.Cancelado", "se cerró").expect("hay agente");
+
+        assert_eq!(fallo.codigo, CANCELADO);
+    }
+
+    #[test]
+    fn los_demas_errores_si_se_muestran() {
+        for (nombre, codigo) in [
+            ("ar.net.vasak.os.DeviceUnlock.NoAutorizado", NO_AUTORIZADO),
+            (
+                "ar.net.vasak.os.DeviceUnlock.FraseIncorrecta",
+                FRASE_INCORRECTA,
+            ),
+            ("ar.net.vasak.os.DeviceUnlock.Fallo", FALLO),
+        ] {
+            let fallo = clasificar(nombre, "detalle").expect("hay agente");
+
+            assert_eq!(fallo.codigo, codigo);
+            assert_ne!(fallo.codigo, CANCELADO);
+        }
+    }
+
+    #[test]
+    fn que_no_haya_agente_no_es_un_fallo_de_montaje() {
+        // Es la diferencia entre mostrar un error y probar por el otro camino.
+        assert_eq!(
+            clasificar("org.freedesktop.DBus.Error.ServiceUnknown", "no such name"),
+            Err(SinAgente)
+        );
+        assert_eq!(
+            clasificar("org.freedesktop.DBus.Error.NameHasNoOwner", ""),
+            Err(SinAgente)
+        );
+    }
+
+    #[test]
+    fn un_error_que_no_se_conoce_se_muestra_igual() {
+        // Antes todo terminaba en «instalá udisks2»; ahora lo que no se reconoce
+        // llega con su detalle, que es más útil que una causa inventada.
+        let fallo = clasificar("org.freedesktop.UDisks2.Error.DeviceBusy", "target is busy")
+            .expect("hay agente");
+
+        assert_eq!(fallo.codigo, FALLO);
+        assert_eq!(fallo.detalle, "target is busy");
+    }
+
+    #[test]
+    fn un_error_sin_detalle_se_queda_con_el_nombre() {
+        let fallo =
+            clasificar("org.freedesktop.UDisks2.Error.DeviceBusy", "  ").expect("hay agente");
+
+        assert_eq!(fallo.detalle, "org.freedesktop.UDisks2.Error.DeviceBusy");
+    }
+
+    #[test]
+    fn se_saca_el_punto_de_montaje_de_lo_que_dice_udisksctl() {
+        assert_eq!(
+            punto_de_montaje_de("Mounted /dev/sdb1 at /run/media/pato/Datos.\n"),
+            "/run/media/pato/Datos"
+        );
+    }
+
+    #[test]
+    fn una_salida_que_no_tiene_esa_forma_no_inventa_una_ruta() {
+        // Devolver algo a medias haría que la ventana navegue a una ruta que no
+        // existe; vacío es lo que ya sabe manejar.
+        assert_eq!(punto_de_montaje_de("Mounted /dev/sdb1"), "");
+        assert_eq!(punto_de_montaje_de(""), "");
+    }
 }
