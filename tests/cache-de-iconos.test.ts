@@ -92,6 +92,42 @@ describe('la caché de iconos', () => {
 		expect(llamadas).toBe(2);
 	});
 
+	/**
+	 * El caso que aparece al cambiar de tema con la red lenta: el pedido viejo
+	 * sigue en vuelo cuando se vacía la caché, alguien vuelve a pedir el mismo
+	 * icono, y recién entonces el viejo falla. Si el manejador del error borrara
+	 * lo que haya en el nombre —y no su propio pedido— se llevaría puesto el
+	 * nuevo: el nombre quedaría vacío con un pedido en vuelo, y el siguiente que
+	 * preguntara arrancaría un tercero.
+	 */
+	test('un pedido viejo que falla no se lleva puesto al nuevo', async () => {
+		let fallar: (error: Error) => void = () => {};
+		let llamadas = 0;
+
+		const cache = crearCacheDeIconos(async (nombre) => {
+			llamadas++;
+			if (llamadas === 1) {
+				return await new Promise<string>((_, rechazar) => {
+					fallar = rechazar;
+				});
+			}
+			return `data:imagen-de-${nombre}`;
+		});
+
+		const viejo = cache.pedir('folder');
+		cache.olvidar();
+		const nuevo = cache.pedir('folder');
+
+		fallar(new Error('el pedido viejo se cayó'));
+		await expect(viejo).rejects.toThrow('el pedido viejo se cayó');
+
+		expect(await nuevo).toBe('data:imagen-de-folder');
+		// El nuevo sigue guardado: quien pregunte ahora no arranca un tercero.
+		expect(cache.guardados).toBe(1);
+		expect(await cache.pedir('folder')).toBe('data:imagen-de-folder');
+		expect(llamadas).toBe(2);
+	});
+
 	test('olvidar hace que se vuelvan a pedir', async () => {
 		const backend = contador();
 		const cache = crearCacheDeIconos(backend.pedir);
@@ -110,6 +146,16 @@ describe('el cambio de tema', () => {
 		join(import.meta.dir, '..', 'src', 'composables', 'useReactiveIcon.ts'),
 		'utf8'
 	);
+
+	test('descarta la respuesta del pedido viejo', () => {
+		// Al cambiar el tema se dispara un pedido nuevo sin cancelar el anterior,
+		// y el anterior puede contestar último: sin esta comparación escribiría
+		// el icono del tema viejo encima del nuevo, y ahí se queda hasta el
+		// siguiente cambio de tema.
+		expect(COMPOSABLE).toContain('const mio = ++ultimoPedido;');
+		expect(COMPOSABLE).toContain('if (mio === ultimoPedido) source.value = nuevo;');
+		expect(COMPOSABLE).toContain("if (mio === ultimoPedido) source.value = '';");
+	});
 
 	test('vacía la caché antes de pedir de nuevo', () => {
 		// Si se vaciara después —o desde otro oyente, donde el orden no está

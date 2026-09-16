@@ -9,13 +9,27 @@ const version = ref(0);
 export function useReactiveIcon(fetcher: () => Promise<string>) {
 	const source = ref('');
 
+	/**
+	 * Cuál es el pedido que vale.
+	 *
+	 * Al cambiar el tema se dispara uno nuevo sin cancelar el anterior, y el
+	 * anterior puede contestar último: sin esta comparación escribiría el icono
+	 * del tema viejo encima del nuevo, y ahí se queda hasta el siguiente
+	 * cambio. Vale para los tres caminos —`getFileIcon`, `getIconSource` y
+	 * `getSymbolSource`—, porque el que llega tarde es el mismo problema en los
+	 * tres.
+	 */
+	let ultimoPedido = 0;
+
 	watch(
 		version,
 		async () => {
+			const mio = ++ultimoPedido;
 			try {
-				source.value = await fetcher();
+				const nuevo = await fetcher();
+				if (mio === ultimoPedido) source.value = nuevo;
 			} catch {
-				source.value = '';
+				if (mio === ultimoPedido) source.value = '';
 			}
 		},
 		{ immediate: true }

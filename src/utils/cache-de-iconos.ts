@@ -36,8 +36,15 @@ export function crearCacheDeIconos(
 			const guardado = pendientes.get(nombre);
 			if (guardado) return guardado;
 
-			const pedido = pedirAlBackend(nombre).catch((error) => {
-				pendientes.delete(nombre);
+			// Se borra **este** pedido, no lo que haya en el nombre. Si entre
+			// medio alguien llamó a `olvidar()` y otro ya pidió el mismo icono,
+			// lo guardado es el pedido nuevo: borrarlo porque falló el viejo
+			// dejaría el nombre vacío con un pedido en vuelo, y el siguiente que
+			// preguntara arrancaría un tercero.
+			const pedido: Promise<string> = pedirAlBackend(nombre).catch((error) => {
+				if (pendientes.get(nombre) === pedido) {
+					pendientes.delete(nombre);
+				}
 				throw error;
 			});
 
