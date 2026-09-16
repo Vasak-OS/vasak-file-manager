@@ -2,7 +2,7 @@
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
@@ -114,6 +114,93 @@ const groupedEntries = computed<GroupedEntries>(() => {
 		others,
 	};
 });
+
+/**
+ * En cuántas columnas se acomoda cada sección.
+ *
+ * Las flechas lo necesitan para saber qué hay arriba y abajo sin medir cada
+ * tarjeta — ver `recorrido-visual`. No se recalcula la cuenta de `auto-fill` a
+ * mano: se le pregunta al navegador cuántas pistas resolvió, que es exacto y no
+ * se desincroniza si mañana cambia el `minmax()` del CSS.
+ */
+const rejillas = ref<Record<keyof GroupedEntries, HTMLElement | null>>({
+	dirs: null,
+	images: null,
+	videos: null,
+	others: null,
+});
+
+const columnas = ref<Record<keyof GroupedEntries, number>>({
+	dirs: 1,
+	images: 1,
+	videos: 1,
+	others: 1,
+});
+
+function setRejilla(grupo: keyof GroupedEntries, element: Element | null) {
+	rejillas.value[grupo] = element instanceof HTMLElement ? element : null;
+}
+
+function medirColumnas() {
+	for (const grupo of Object.keys(rejillas.value) as (keyof GroupedEntries)[]) {
+		const element = rejillas.value[grupo];
+
+		if (!element) {
+			columnas.value[grupo] = 1;
+			continue;
+		}
+
+		const pistas = getComputedStyle(element).gridTemplateColumns.trim();
+		// Con la sección oculta o sin medir todavía, `none` es la respuesta.
+		columnas.value[grupo] = pistas && pistas !== 'none' ? pistas.split(/\s+/).length : 1;
+	}
+
+	informar();
+}
+
+function informar() {
+	ctx.registrarSeccionesVisuales([
+		{ entradas: groupedEntries.value.dirs, columnas: columnas.value.dirs },
+		{ entradas: groupedEntries.value.images, columnas: columnas.value.images },
+		{ entradas: groupedEntries.value.videos, columnas: columnas.value.videos },
+		{ entradas: groupedEntries.value.others, columnas: columnas.value.others },
+	]);
+}
+
+let observador: ResizeObserver | null = null;
+
+onMounted(() => {
+	medirColumnas();
+
+	if (typeof ResizeObserver !== 'undefined') {
+		observador = new ResizeObserver(() => medirColumnas());
+
+		for (const element of Object.values(rejillas.value)) {
+			if (element) observador.observe(element);
+		}
+	}
+});
+
+// Cambiar de directorio cambia qué secciones existen, y una sección que
+// aparece es una rejilla nueva que hay que medir y vigilar.
+watch(groupedEntries, async () => {
+	await nextTick();
+
+	if (observador) {
+		observador.disconnect();
+
+		for (const element of Object.values(rejillas.value)) {
+			if (element) observador.observe(element);
+		}
+	}
+
+	medirColumnas();
+});
+
+onBeforeUnmount(() => {
+	observador?.disconnect();
+	observador = null;
+});
 </script>
 
 <template>
@@ -124,7 +211,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
         <span>{{ t('fileBrowser.folders') }}</span>
         <span class="py-0.5 px-2 rounded-corner bg-ui-bg/80 text-[11px]">{{ groupedEntries.dirs.length }}</span>
       </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
+      <div :ref="(el) => setRejilla('dirs', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
         <button v-for="entry in groupedEntries.dirs" :key="entry.path"
           class="relative flex overflow-hidden border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-18 !flex-row items-center py-2 px-3 gap-2.5"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
@@ -166,7 +253,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
         <span>{{ t('fileBrowser.images') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.images.length }}</span>
       </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
+      <div :ref="(el) => setRejilla('images', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.images" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
@@ -200,7 +287,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
         <span>{{ t('fileBrowser.videos') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.videos.length }}</span>
       </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
+      <div :ref="(el) => setRejilla('videos', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.videos" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{
@@ -243,7 +330,7 @@ const groupedEntries = computed<GroupedEntries>(() => {
         <span>{{ t('fileBrowser.otherFiles') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.others.length }}</span>
       </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
+      <div :ref="(el) => setRejilla('others', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <button v-for="entry in groupedEntries.others" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"

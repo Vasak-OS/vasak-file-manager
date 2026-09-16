@@ -67,6 +67,7 @@ provideFileBrowserContext({
 	contextMenu: fb.contextMenu,
 	getVideoThumbnail: fb.getVideoThumbnail,
 	setEntriesContainerRef: fb.setEntriesContainerRef,
+	registrarSeccionesVisuales: fb.registrarSeccionesVisuales,
 	onEntryMouseDown: fb.onEntryMouseDown,
 	onEntryMouseUp: fb.onEntryMouseUp,
 	openEntryContextMenu: entryContextMenu.openEntryContextMenu,
