@@ -212,17 +212,23 @@ describe('las dos vistas informan cómo se ven', () => {
 		expect(LISTA).toContain('ctx.registrarSeccionesVisuales(');
 	});
 
-	test('la cuadrícula le pregunta al navegador cuántas columnas resolvió', () => {
-		// En vez de recalcular el `auto-fill` a mano, que se desincroniza si
-		// mañana cambia el `minmax()` del CSS.
-		expect(REJILLA).toContain('getComputedStyle(element).gridTemplateColumns');
+	test('la cuadrícula cuenta las columnas una sola vez y con eso dibuja', () => {
+		// El mismo número que decide dónde se corta cada fila es el que se le
+		// escribe a la fila. Si una de las dos cosas saliera de otro lado —del
+		// `auto-fill` del CSS, por ejemplo— podrían discrepar, y una fila con
+		// más tarjetas de las que entran se parte en dos y se pisa con la
+		// siguiente.
+		expect(REJILLA).toContain('columnasQueEntran(anchos.value[clave]');
+		// En dos mitades para no escribir un `${` dentro de una cadena, que el
+		// linter toma por una plantilla mal escrita.
+		expect(REJILLA).toContain('gridTemplateColumns: `repeat(');
+		expect(REJILLA).toContain(', minmax(0, 1fr))`');
 		expect(REJILLA).toContain('ResizeObserver');
 	});
 
 	test('la cuadrícula informa las cuatro secciones, en el orden en que se ven', () => {
-		const informar = REJILLA.slice(REJILLA.indexOf('function informar()'));
-		const grupos = [...informar.matchAll(/groupedEntries\.value\.(\w+)/g)].map(([, g]) => g);
-
-		expect(grupos).toEqual(['dirs', 'images', 'videos', 'others']);
+		expect(REJILLA).toContain("const CLAVES: Clave[] = ['dirs', 'images', 'videos', 'others'];");
+		expect(REJILLA).toContain('ctx.registrarSeccionesVisuales(');
+		expect(REJILLA).toContain('entradas: groupedEntries.value[clave]');
 	});
 });

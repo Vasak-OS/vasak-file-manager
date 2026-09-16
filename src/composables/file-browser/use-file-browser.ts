@@ -231,12 +231,30 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		dataSource.silentRefresh
 	);
 
+	/**
+	 * Cómo llevar la pantalla hasta una entrada, según la vista que esté puesta.
+	 *
+	 * Lo informa la vista porque es la que tiene el desplazador. Si no hay
+	 * ninguna informada —o la entrada no está en su lista— se contesta que no, y
+	 * quien llamó se las arregla con el DOM, que es lo que se hacía antes.
+	 */
+	const desplazarAEntrada = ref<((path: string) => boolean) | null>(null);
+
+	function registrarDesplazamiento(desplazar: ((path: string) => boolean) | null) {
+		desplazarAEntrada.value = desplazar;
+	}
+
+	function desplazarA(path: string): boolean {
+		return desplazarAEntrada.value?.(path) ?? false;
+	}
+
 	const { entriesContainerRef, setEntriesContainerRef } = useFileBrowserFocus({
 		entries: dataSource.entries,
 		pendingFocusRequest: selection.pendingFocusRequest,
 		currentPath: dataSource.currentPath,
 		selectEntryByPath: selection.selectEntryByPath,
 		clearPendingFocusRequest: selection.clearPendingFocusRequest,
+		desplazarA,
 	});
 
 	const videoThumbnails = !isExternalMode
@@ -337,6 +355,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 				entries: dataSource.entries,
 				selectedEntries: selection.selectedEntries,
 				secciones: () => seccionesVisuales.value,
+				desplazarA,
 				selectEntryByPath: selection.selectEntryByPath,
 				goBack: dataSource.goBack,
 				openEntry: async (entry) => {
@@ -431,6 +450,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		entriesContainerRef,
 		setEntriesContainerRef,
 		registrarSeccionesVisuales,
+		registrarDesplazamiento,
 
 		openWithState: dialogs.openWithState,
 		newItemDialogState: dialogs.newItemDialogState,

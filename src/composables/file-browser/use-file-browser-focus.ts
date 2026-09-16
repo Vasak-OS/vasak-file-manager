@@ -20,6 +20,7 @@ export function useFileBrowserFocus(options: {
 	currentPath: Ref<string>;
 	selectEntryByPath: (path: string) => boolean;
 	clearPendingFocusRequest: () => void;
+	desplazarA: (path: string) => boolean;
 }) {
 	const entriesContainerRef = ref<HTMLElement | null>(null);
 
@@ -39,18 +40,40 @@ export function useFileBrowserFocus(options: {
 		return container.querySelector<HTMLElement>(`[data-entry-path="${escapedPath}"]`);
 	}
 
+	/**
+	 * Enfoca una entrada, trayéndola a la vista si hace falta.
+	 *
+	 * Con las vistas virtualizadas, una entrada fuera de la ventana **no existe
+	 * en el DOM**: no alcanza con buscarla y desplazarse a ella. Primero se le
+	 * pide al desplazador que la traiga y después se la busca, dándole un par de
+	 * ciclos para dibujarse. Sin eso, esto devolvía `false` para cualquier
+	 * entrada que no estuviera a la vista —enfocar el archivo recién creado en
+	 * una carpeta larga, por ejemplo— y el pedido de foco se perdía.
+	 */
 	async function focusEntryInView(path: string): Promise<boolean> {
+		const loLlevoElDesplazador = options.desplazarA(path);
+
 		await nextTick();
-		const entryElement = getEntryElement(path);
+
+		let entryElement = getEntryElement(path);
+
+		for (let intento = 0; intento < 3 && !entryElement; intento++) {
+			await nextTick();
+			entryElement = getEntryElement(path);
+		}
 
 		if (!entryElement) {
 			return false;
 		}
 
-		entryElement.scrollIntoView({
-			block: 'center',
-			inline: 'nearest',
-		});
+		// Si ya la trajo el desplazador, moverla otra vez se ve como un salto.
+		if (!loLlevoElDesplazador) {
+			entryElement.scrollIntoView({
+				block: 'center',
+				inline: 'nearest',
+			});
+		}
+
 		entryElement.focus({
 			preventScroll: true,
 		});
