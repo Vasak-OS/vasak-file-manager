@@ -147,15 +147,20 @@ export function vecinoVertical(
 	const vecina = conEntradas[siguiente];
 	const columnasVecina = columnasDe(vecina);
 
+	// La columna se recorta al ancho de la sección vecina antes de nada. Sin
+	// esto, viniendo de una sección más ancha que la de al lado, la columna
+	// sobrante caía en la **fila siguiente** de la vecina en vez de en la
+	// primera: bajando desde la cuarta de cuatro columnas a una sección de dos,
+	// el índice 3 es la segunda fila.
+	const columnaVecina = Math.min(columna, columnasVecina - 1);
+
 	if (direccion === 'abajo') {
 		// La primera fila de la sección de abajo, en la misma columna.
-		const indice = Math.min(columna, vecina.entradas.length - 1);
-		return vecina.entradas[indice];
+		return vecina.entradas[Math.min(columnaVecina, vecina.entradas.length - 1)];
 	}
 
 	// La última fila de la sección de arriba, en la misma columna.
 	const inicioUltimaFila =
 		Math.floor((vecina.entradas.length - 1) / columnasVecina) * columnasVecina;
-	const indice = Math.min(inicioUltimaFila + columna, vecina.entradas.length - 1);
-	return vecina.entradas[indice];
+	return vecina.entradas[Math.min(inicioUltimaFila + columnaVecina, vecina.entradas.length - 1)];
 }

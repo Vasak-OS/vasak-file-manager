@@ -123,6 +123,25 @@ describe('los casos que rompen', () => {
 		expect(nombre(vecinoVertical(conVacias, '/dir/carpeta1', 'abajo'))).toBe('otro1');
 	});
 
+	test('viniendo de una sección más ancha, se cae en la primera fila de la angosta', () => {
+		// Cuatro columnas arriba, dos abajo: la columna 3 no existe en la de
+		// abajo. Sin recortarla, el índice 3 es la **segunda** fila de la
+		// vecina, y bajar una fila saltaría dos.
+		const anchaYAngosta = [seccion('carpeta', 4, 4), seccion('imagen', 6, 2)];
+
+		expect(nombre(vecinoVertical(anchaYAngosta, '/dir/carpeta3', 'abajo'))).toBe('imagen1');
+		expect(nombre(vecinoVertical(anchaYAngosta, '/dir/carpeta2', 'abajo'))).toBe('imagen1');
+		expect(nombre(vecinoVertical(anchaYAngosta, '/dir/carpeta0', 'abajo'))).toBe('imagen0');
+	});
+
+	test('subiendo a una sección más angosta también se recorta la columna', () => {
+		// Dos columnas arriba, cuatro abajo: subiendo desde la columna 3 hay que
+		// caer en la última fila de la de arriba, no más allá.
+		const angostaYAncha = [seccion('carpeta', 5, 2), seccion('imagen', 4, 4)];
+
+		expect(nombre(vecinoVertical(angostaYAncha, '/dir/imagen3', 'arriba'))).toBe('carpeta4');
+	});
+
 	test('cero columnas no divide por cero', () => {
 		// Puede llegar así de una medición que ocurrió con el panel oculto.
 		const rota: SeccionVisual[] = [{ entradas: [entrada('a'), entrada('b')], columnas: 0 }];
