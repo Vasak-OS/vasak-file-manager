@@ -277,11 +277,13 @@ watchEffect(() => {
 </script>
 
 <template>
-  <!-- Sin alto fijo: ahora el alto sale de lo que ocupan las filas, que es lo
-       que hace que el `ScrollArea` de afuera tenga algo que desplazar. Con el
-       `h-[calc(100vh-144px)]` que había, el contenido virtualizado quedaba
-       recortado en esa altura. -->
-  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200">
+  <!-- El alto fijo es lo que hace que esto se pueda desplazar, y por eso vuelve:
+       toda la cadena de arriba resuelve su alto con `h-full`, así que sin un
+       tope acá el `ScrollArea` crece hasta el alto del contenido y deja de
+       tener algo que desplazar — medido: el viewport pasaba a 448.835 px de
+       alto y su `scrollHeight` era el mismo número. Las filas desbordan este
+       alto, y eso es lo que el `ScrollArea` desplaza. -->
+  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200 h-[calc(100vh-144px)]">
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
         <img :src="folderIcon" class="w-4 h-4" />

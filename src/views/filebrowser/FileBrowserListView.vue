@@ -134,7 +134,11 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="flex flex-col" style="padding-right: var(--file-browser-list-right-gutter);">
+  <!-- El alto fijo es lo que hace que esto se pueda desplazar: toda la cadena
+       de arriba resuelve su alto con `h-full`, así que sin un tope acá el
+       `ScrollArea` crece hasta el alto del contenido y deja de tener algo que
+       desplazar. Las filas desbordan este alto, y eso es lo que se desplaza. -->
+  <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
     <!-- `page-mode`: quien desplaza es el `ScrollArea` que envuelve a la vista,
          no el desplazador. Así la barra sigue siendo la misma de siempre. -->
     <DynamicScroller
