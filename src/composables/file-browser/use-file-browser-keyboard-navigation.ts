@@ -1,28 +1,38 @@
 import { nextTick, type Ref } from 'vue';
+import {
+	type SeccionVisual,
+	vecinoLineal,
+	vecinoVertical,
+} from '@/composables/file-browser/recorrido-visual';
 import type { DirEntry } from '@/types/dir-entry';
-import type { Layout } from '@/types/navigator';
 import { entryPathSelector } from '@/utils/css-escape';
 
-const ROW_TOLERANCE_PX = 30;
-const OVERLAP_TOLERANCE_PX = 2;
-
+/**
+ * A dónde llevan las flechas.
+ *
+ * Esto medía rectángulos: pedía todos los elementos con `[data-entry-path]` y
+ * comparaba `getBoundingClientRect()` para saber cuál estaba abajo. Funcionaba
+ * mientras el directorio entero estuviera dibujado — con la lista virtualizada
+ * hay unas veinte filas en el DOM y la veintiuno no existe, así que la flecha
+ * se quedaba sin a dónde ir.
+ *
+ * Ahora el recorrido sale de `recorrido-visual`, que trabaja sobre los datos.
+ * Lo único que se sigue preguntando a la pantalla es en cuántas columnas se
+ * acomoda cada sección, y eso lo informa la vista: es un número por sección y
+ * no una medición por entrada.
+ *
+ * El DOM sigue usándose para **enfocar y desplazar**, que es otra cosa: ahí el
+ * elemento existe porque se acaba de seleccionar.
+ */
 export function useFileBrowserKeyboardNavigation(options: {
 	entries: Ref<DirEntry[]>;
 	selectedEntries: Ref<DirEntry[]>;
-	layout: () => Layout | undefined;
+	secciones: () => SeccionVisual[];
 	selectEntryByPath: (path: string) => boolean;
 	goBack: () => void;
 	openEntry: (entry: DirEntry) => void;
 	entriesContainerRef: Ref<HTMLElement | null>;
 }) {
-	function getAllEntryElements(): HTMLElement[] {
-		const container = options.entriesContainerRef.value;
-
-		if (!container) return [];
-
-		return Array.from(container.querySelectorAll<HTMLElement>('[data-entry-path]'));
-	}
-
 	function getEntryElement(path: string): HTMLElement | null {
 		const container = options.entriesContainerRef.value;
 
@@ -36,8 +46,18 @@ export function useFileBrowserKeyboardNavigation(options: {
 		return selected.length > 0 ? selected[selected.length - 1] : null;
 	}
 
-	function findEntryByPath(path: string): DirEntry | undefined {
-		return options.entries.value.find((entry) => entry.path === path);
+	/**
+	 * Las secciones tal como se ven, con su cantidad de columnas.
+	 *
+	 * Si la vista no informó ninguna —la de lista no necesita hacerlo— se toman
+	 * las entradas en una sola columna, que es exactamente esa vista.
+	 */
+	function seccionesVisibles(): SeccionVisual[] {
+		const informadas = options.secciones();
+
+		if (informadas.length > 0) return informadas;
+
+		return [{ entradas: options.entries.value, columnas: 1 }];
 	}
 
 	async function selectAndFocusEntry(entry: DirEntry) {
@@ -55,145 +75,28 @@ export function useFileBrowserKeyboardNavigation(options: {
 		}
 	}
 
-	function navigateFlat(direction: 'previous' | 'next') {
-		const allElements = getAllEntryElements();
-
-		if (allElements.length === 0) return;
-
-		const lastSelected = getLastSelectedEntry();
-		let targetIndex: number;
-
-		if (!lastSelected) {
-			targetIndex = direction === 'next' ? 0 : allElements.length - 1;
-		} else {
-			const currentIndex = allElements.findIndex(
-				(element) => element.dataset.entryPath === lastSelected.path
-			);
-
-			if (currentIndex === -1) {
-				targetIndex = direction === 'next' ? 0 : allElements.length - 1;
-			} else {
-				targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
-			}
-		}
-
-		if (targetIndex < 0 || targetIndex >= allElements.length) return;
-
-		const targetPath = allElements[targetIndex].dataset.entryPath;
-
-		if (!targetPath) return;
-
-		const targetEntry = findEntryByPath(targetPath);
-
-		if (targetEntry) {
-			selectAndFocusEntry(targetEntry);
-		}
+	function irA(entry: DirEntry | null) {
+		if (entry) selectAndFocusEntry(entry);
 	}
 
-	function navigateGridVertical(direction: 'up' | 'down') {
-		const entries = options.entries.value;
-
-		if (entries.length === 0) return;
-
-		const lastSelected = getLastSelectedEntry();
-
-		if (!lastSelected) {
-			selectAndFocusEntry(direction === 'down' ? entries[0] : entries[entries.length - 1]);
-			return;
-		}
-
-		const currentElement = getEntryElement(lastSelected.path);
-
-		if (!currentElement) return;
-
-		const currentRect = currentElement.getBoundingClientRect();
-		const currentCenterX = currentRect.left + currentRect.width / 2;
-		const allElements = getAllEntryElements();
-
-		let nearestRowCenterY: number | null = null;
-
-		for (const element of allElements) {
-			if (element === currentElement) continue;
-
-			const rect = element.getBoundingClientRect();
-			const centerY = rect.top + rect.height / 2;
-
-			if (direction === 'down') {
-				if (rect.top >= currentRect.bottom - OVERLAP_TOLERANCE_PX) {
-					if (nearestRowCenterY === null || centerY < nearestRowCenterY) {
-						nearestRowCenterY = centerY;
-					}
-				}
-			} else {
-				if (rect.bottom <= currentRect.top + OVERLAP_TOLERANCE_PX) {
-					if (nearestRowCenterY === null || centerY > nearestRowCenterY) {
-						nearestRowCenterY = centerY;
-					}
-				}
-			}
-		}
-
-		if (nearestRowCenterY === null) return;
-
-		let bestEntry: DirEntry | null = null;
-		let bestHorizontalDist = Infinity;
-
-		for (const element of allElements) {
-			if (element === currentElement) continue;
-
-			const rect = element.getBoundingClientRect();
-			const centerY = rect.top + rect.height / 2;
-
-			if (Math.abs(centerY - nearestRowCenterY) > ROW_TOLERANCE_PX) continue;
-
-			const centerX = rect.left + rect.width / 2;
-			const horizontalDist = Math.abs(centerX - currentCenterX);
-
-			if (horizontalDist < bestHorizontalDist) {
-				bestHorizontalDist = horizontalDist;
-				const path = element.dataset.entryPath;
-
-				if (path) {
-					const entry = findEntryByPath(path);
-
-					if (entry) {
-						bestEntry = entry;
-					}
-				}
-			}
-		}
-
-		if (bestEntry) {
-			selectAndFocusEntry(bestEntry);
-		}
+	function rutaActual(): string | null {
+		return getLastSelectedEntry()?.path ?? null;
 	}
 
 	function navigateUp() {
-		const layout = options.layout();
-
-		if (layout === 'grid') {
-			navigateGridVertical('up');
-		} else {
-			navigateFlat('previous');
-		}
+		irA(vecinoVertical(seccionesVisibles(), rutaActual(), 'arriba'));
 	}
 
 	function navigateDown() {
-		const layout = options.layout();
-
-		if (layout === 'grid') {
-			navigateGridVertical('down');
-		} else {
-			navigateFlat('next');
-		}
+		irA(vecinoVertical(seccionesVisibles(), rutaActual(), 'abajo'));
 	}
 
 	function navigateLeft() {
-		navigateFlat('previous');
+		irA(vecinoLineal(seccionesVisibles(), rutaActual(), 'anterior'));
 	}
 
 	function navigateRight() {
-		navigateFlat('next');
+		irA(vecinoLineal(seccionesVisibles(), rutaActual(), 'siguiente'));
 	}
 
 	function openSelected() {

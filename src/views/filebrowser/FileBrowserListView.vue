@@ -2,7 +2,7 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
-import { computed, type Ref, ref } from 'vue';
+import { computed, type Ref, ref, watchEffect } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
@@ -86,6 +86,17 @@ function isDirLoadingWithProgress(entry: DirEntry): boolean {
 	const sizeInfo = dirSizesStore.getSize(entry.path);
 	return !!(sizeInfo && sizeInfo.status === 'Loading' && sizeInfo.size > 0);
 }
+
+/**
+ * Una sola sección, de una sola columna.
+ *
+ * Se informa aunque sea lo que se asume por omisión: al pasar de la cuadrícula
+ * a la lista hay que **reemplazar** las cuatro secciones que dejó la otra
+ * vista, o las flechas seguirían moviéndose como si hubiera columnas.
+ */
+watchEffect(() => {
+	ctx.registrarSeccionesVisuales([{ entradas: props.entries, columnas: 1 }]);
+});
 
 function handleEntryKeydown(event: KeyboardEvent): void {
 	if (event.code === 'Space') {

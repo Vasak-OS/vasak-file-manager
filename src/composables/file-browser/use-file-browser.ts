@@ -1,5 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, nextTick, ref, toRef } from 'vue';
+import type { SeccionVisual } from '@/composables/file-browser/recorrido-visual';
 import { useFileBrowserActions } from '@/composables/file-browser/use-file-browser-actions';
 import { useFileBrowserDialogs } from '@/composables/file-browser/use-file-browser-dialogs';
 import { useFileBrowserDrag } from '@/composables/file-browser/use-file-browser-drag';
@@ -316,11 +317,26 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		navigateBack: () => {},
 	};
 
+	/**
+	 * Cómo se ven las entradas: en cuántas secciones y con cuántas columnas cada
+	 * una. Lo informa la vista, que es la única que lo sabe — la de lista es una
+	 * sección de una columna y no necesita decir nada; la de cuadrícula son
+	 * cuatro, con anchos distintos.
+	 *
+	 * Existe para que las flechas no tengan que medir la pantalla. Ver
+	 * `recorrido-visual`.
+	 */
+	const seccionesVisuales = ref<SeccionVisual[]>([]);
+
+	function registrarSeccionesVisuales(secciones: SeccionVisual[]) {
+		seccionesVisuales.value = secciones;
+	}
+
 	const keyboardNav = !isExternalMode
 		? useFileBrowserKeyboardNavigation({
 				entries: dataSource.entries,
 				selectedEntries: selection.selectedEntries,
-				layout: options.layout,
+				secciones: () => seccionesVisuales.value,
 				selectEntryByPath: selection.selectEntryByPath,
 				goBack: dataSource.goBack,
 				openEntry: async (entry) => {
@@ -414,6 +430,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		getVideoThumbnail: videoThumbnails.getVideoThumbnail,
 		entriesContainerRef,
 		setEntriesContainerRef,
+		registrarSeccionesVisuales,
 
 		openWithState: dialogs.openWithState,
 		newItemDialogState: dialogs.newItemDialogState,

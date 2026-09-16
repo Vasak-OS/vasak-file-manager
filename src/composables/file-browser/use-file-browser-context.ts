@@ -6,6 +6,7 @@ import {
 	provide,
 	type Ref,
 } from 'vue';
+import type { SeccionVisual } from '@/composables/file-browser/recorrido-visual';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ContextMenuAction, ContextMenuState } from '@/types/file-browser';
 
@@ -22,6 +23,17 @@ export interface FileBrowserContext {
 
 	getVideoThumbnail: (entry: DirEntry) => string | undefined;
 	setEntriesContainerRef: (element: Element | ComponentPublicInstance | null) => void;
+
+	/**
+	 * La vista informa cómo se ven las entradas: en cuántas secciones y con
+	 * cuántas columnas cada una.
+	 *
+	 * Es lo único que las flechas necesitan saber de la pantalla. Antes lo
+	 * averiguaban midiendo cada elemento dibujado, que es justamente lo que deja
+	 * de existir al virtualizar. La de lista no la llama: una sola sección de
+	 * una columna es lo que se asume.
+	 */
+	registrarSeccionesVisuales: (secciones: SeccionVisual[]) => void;
 
 	onEntryMouseDown: (entry: DirEntry, event: MouseEvent) => void;
 	onEntryMouseUp: (entry: DirEntry, event: MouseEvent) => void;
