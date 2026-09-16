@@ -3,6 +3,8 @@ import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
 import { computed, type Ref, ref, watchEffect } from 'vue';
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
@@ -88,6 +90,32 @@ function isDirLoadingWithProgress(entry: DirEntry): boolean {
 }
 
 /**
+ * El desplazador, para poder llevar la vista a una fila que todavía no está
+ * dibujada.
+ *
+ * Con la lista virtualizada, `scrollIntoView` sobre el elemento no alcanza:
+ * cuando la fila está fuera de la ventana no existe en el DOM. Hay que pedirle
+ * al desplazador que la ponga a la vista, y recién entonces el elemento aparece
+ * y se lo puede enfocar.
+ */
+/**
+ * Se tipa por lo que se usa y no con `InstanceType`: el componente está
+ * declarado como una función genérica y `InstanceType` no aplica sobre eso.
+ */
+const desplazador = ref<{ scrollToItem: (indice: number) => void } | null>(null);
+
+watchEffect(() => {
+	ctx.registrarDesplazamiento((path: string) => {
+		const indice = props.entries.findIndex((entrada) => entrada.path === path);
+
+		if (indice === -1) return false;
+
+		desplazador.value?.scrollToItem(indice);
+		return true;
+	});
+});
+
+/**
  * Una sola sección, de una sola columna.
  *
  * Se informa aunque sea lo que se asume por omisión: al pasar de la cuadrícula
@@ -106,9 +134,30 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
+  <!-- El alto fijo es lo que hace que esto se pueda desplazar: toda la cadena
+       de arriba resuelve su alto con `h-full`, así que sin un tope acá el
+       `ScrollArea` crece hasta el alto del contenido y deja de tener algo que
+       desplazar. Las filas desbordan este alto, y eso es lo que se desplaza. -->
   <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
-    <div :key="ctx.currentPath.value" class="flex flex-col">
-      <button v-for="entry in props.entries" :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5" :class="{
+    <!-- `page-mode`: quien desplaza es el `ScrollArea` que envuelve a la vista,
+         no el desplazador. Así la barra sigue siendo la misma de siempre. -->
+    <DynamicScroller
+      :key="ctx.currentPath.value"
+      ref="desplazador"
+      :items="props.entries"
+      :min-item-size="44"
+      key-field="path"
+      page-mode
+      class="flex flex-col"
+      v-slot="{ item: entry, index, active }"
+    >
+      <DynamicScrollerItem
+        :item="entry"
+        :active="active"
+        :size-dependencies="[entry.name, ctx.entryDescription?.(entry)]"
+        :data-index="index"
+      >
+      <button :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5 w-full" :class="{
         'opacity-50': entry.is_hidden,
       }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -142,6 +191,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           {{ formatDate(entry.modified_time) }}
         </span>
       </button>
-    </div>
+      </DynamicScrollerItem>
+    </DynamicScroller>
   </div>
 </template>

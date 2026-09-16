@@ -2,9 +2,17 @@
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { storeToRefs } from 'pinia';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
+import { RecycleScroller } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
+import {
+	columnasQueEntran,
+	enFilas,
+	type Fila,
+	SEPARACION_PX,
+} from '@/composables/file-browser/filas-de-cuadricula';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
@@ -116,94 +124,165 @@ const groupedEntries = computed<GroupedEntries>(() => {
 });
 
 /**
- * En cuántas columnas se acomoda cada sección.
+ * Cada sección se dibuja por filas, y sólo las filas que se ven.
  *
- * Las flechas lo necesitan para saber qué hay arriba y abajo sin medir cada
- * tarjeta — ver `recorrido-visual`. No se recalcula la cuenta de `auto-fill` a
- * mano: se le pregunta al navegador cuántas pistas resolvió, que es exacto y no
- * se desincroniza si mañana cambia el `minmax()` del CSS.
+ * La cuadrícula son cuatro rejillas con encabezado pegajoso, ancho mínimo y
+ * alto de tarjeta propios. Virtualizar tarjeta por tarjeta obligaría a
+ * calcularle la posición a cada una —el modo grilla del desplazador pide el
+ * tamaño exacto y pierde el `1fr` del CSS—, así que se virtualiza **por filas**:
+ * cada elemento del desplazador es una fila entera, y adentro la fila sigue
+ * siendo una rejilla de CSS como antes. Las tarjetas no se tocaron.
+ *
+ * La cuenta de columnas se hace acá y no se le pregunta al navegador porque ya
+ * no hay una rejilla entera que medir: es la misma cuenta que hace
+ * `auto-fill minmax(min, 1fr)`, y como también es la que se le escribe a la
+ * fila, no hay dos fuentes que puedan discrepar.
  */
-const rejillas = ref<Record<keyof GroupedEntries, HTMLElement | null>>({
+interface FormaDeSeccion {
+	/** El ancho mínimo de tarjeta que pedía el `minmax()`. */
+	minimo: number;
+	/** Alto de la tarjeta; la fila mide esto más la separación. */
+	altoTarjeta: number;
+}
+
+const FORMA: Record<keyof GroupedEntries, FormaDeSeccion> = {
+	dirs: { minimo: 180, altoTarjeta: 72 },
+	images: { minimo: 170, altoTarjeta: 120 },
+	videos: { minimo: 170, altoTarjeta: 120 },
+	others: { minimo: 170, altoTarjeta: 120 },
+};
+
+type Clave = keyof GroupedEntries;
+
+const CLAVES: Clave[] = ['dirs', 'images', 'videos', 'others'];
+
+const contenedores = ref<Record<Clave, HTMLElement | null>>({
 	dirs: null,
 	images: null,
 	videos: null,
 	others: null,
 });
 
-const columnas = ref<Record<keyof GroupedEntries, number>>({
-	dirs: 1,
-	images: 1,
-	videos: 1,
-	others: 1,
+const anchos = ref<Record<Clave, number>>({ dirs: 0, images: 0, videos: 0, others: 0 });
+
+function setContenedor(clave: Clave, element: Element | null) {
+	contenedores.value[clave] = element instanceof HTMLElement ? element : null;
+}
+
+function medirAnchos() {
+	for (const clave of CLAVES) {
+		anchos.value[clave] = contenedores.value[clave]?.clientWidth ?? 0;
+	}
+}
+
+function columnasDe(clave: Clave): number {
+	return columnasQueEntran(anchos.value[clave], FORMA[clave].minimo);
+}
+
+const columnas = computed<Record<Clave, number>>(() => ({
+	dirs: columnasDe('dirs'),
+	images: columnasDe('images'),
+	videos: columnasDe('videos'),
+	others: columnasDe('others'),
+}));
+
+const filas = computed<Record<Clave, Fila[]>>(() => ({
+	dirs: enFilas(groupedEntries.value.dirs, columnas.value.dirs),
+	images: enFilas(groupedEntries.value.images, columnas.value.images),
+	videos: enFilas(groupedEntries.value.videos, columnas.value.videos),
+	others: enFilas(groupedEntries.value.others, columnas.value.others),
+}));
+
+function altoDeFila(clave: Clave): number {
+	return FORMA[clave].altoTarjeta + SEPARACION_PX;
+}
+
+function estiloDeFila(clave: Clave) {
+	return { gridTemplateColumns: `repeat(${columnas.value[clave]}, minmax(0, 1fr))` };
+}
+
+/** Los desplazadores, para poder llevar la vista a una fila sin dibujar. */
+const desplazadores = ref<Record<Clave, { scrollToItem: (indice: number) => void } | null>>({
+	dirs: null,
+	images: null,
+	videos: null,
+	others: null,
 });
 
-function setRejilla(grupo: keyof GroupedEntries, element: Element | null) {
-	rejillas.value[grupo] = element instanceof HTMLElement ? element : null;
-}
-
-function medirColumnas() {
-	for (const grupo of Object.keys(rejillas.value) as (keyof GroupedEntries)[]) {
-		const element = rejillas.value[grupo];
-
-		if (!element) {
-			columnas.value[grupo] = 1;
-			continue;
-		}
-
-		const pistas = getComputedStyle(element).gridTemplateColumns.trim();
-		// Con la sección oculta o sin medir todavía, `none` es la respuesta.
-		columnas.value[grupo] = pistas && pistas !== 'none' ? pistas.split(/\s+/).length : 1;
-	}
-
-	informar();
-}
-
-function informar() {
-	ctx.registrarSeccionesVisuales([
-		{ entradas: groupedEntries.value.dirs, columnas: columnas.value.dirs },
-		{ entradas: groupedEntries.value.images, columnas: columnas.value.images },
-		{ entradas: groupedEntries.value.videos, columnas: columnas.value.videos },
-		{ entradas: groupedEntries.value.others, columnas: columnas.value.others },
-	]);
+function setDesplazador(clave: Clave, instancia: unknown) {
+	desplazadores.value[clave] =
+		(instancia as { scrollToItem: (indice: number) => void } | null) ?? null;
 }
 
 let observador: ResizeObserver | null = null;
 
+function vigilarContenedores() {
+	if (!observador) return;
+
+	observador.disconnect();
+
+	for (const clave of CLAVES) {
+		const element = contenedores.value[clave];
+		if (element) observador.observe(element);
+	}
+}
+
 onMounted(() => {
-	medirColumnas();
+	medirAnchos();
 
 	if (typeof ResizeObserver !== 'undefined') {
-		observador = new ResizeObserver(() => medirColumnas());
-
-		for (const element of Object.values(rejillas.value)) {
-			if (element) observador.observe(element);
-		}
+		observador = new ResizeObserver(() => medirAnchos());
+		vigilarContenedores();
 	}
 });
 
 // Cambiar de directorio cambia qué secciones existen, y una sección que
-// aparece es una rejilla nueva que hay que medir y vigilar.
+// aparece es un contenedor nuevo que hay que medir y vigilar.
 watch(groupedEntries, async () => {
 	await nextTick();
-
-	if (observador) {
-		observador.disconnect();
-
-		for (const element of Object.values(rejillas.value)) {
-			if (element) observador.observe(element);
-		}
-	}
-
-	medirColumnas();
+	vigilarContenedores();
+	medirAnchos();
 });
 
 onBeforeUnmount(() => {
 	observador?.disconnect();
 	observador = null;
 });
+
+watchEffect(() => {
+	ctx.registrarSeccionesVisuales(
+		CLAVES.map((clave) => ({
+			entradas: groupedEntries.value[clave],
+			columnas: columnas.value[clave],
+		}))
+	);
+});
+
+watchEffect(() => {
+	ctx.registrarDesplazamiento((path: string) => {
+		for (const clave of CLAVES) {
+			const indice = filas.value[clave].findIndex((fila) =>
+				fila.entradas.some((entrada) => entrada.path === path)
+			);
+
+			if (indice !== -1) {
+				desplazadores.value[clave]?.scrollToItem(indice);
+				return true;
+			}
+		}
+
+		return false;
+	});
+});
 </script>
 
 <template>
+  <!-- El alto fijo es lo que hace que esto se pueda desplazar, y por eso vuelve:
+       toda la cadena de arriba resuelve su alto con `h-full`, así que sin un
+       tope acá el `ScrollArea` crece hasta el alto del contenido y deja de
+       tener algo que desplazar — medido: el viewport pasaba a 448.835 px de
+       alto y su `scrollHeight` era el mismo número. Las filas desbordan este
+       alto, y eso es lo que el `ScrollArea` desplaza. -->
   <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200 h-[calc(100vh-144px)]">
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
@@ -211,8 +290,17 @@ onBeforeUnmount(() => {
         <span>{{ t('fileBrowser.folders') }}</span>
         <span class="py-0.5 px-2 rounded-corner bg-ui-bg/80 text-[11px]">{{ groupedEntries.dirs.length }}</span>
       </div>
-      <div :ref="(el) => setRejilla('dirs', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
-        <button v-for="entry in groupedEntries.dirs" :key="entry.path"
+      <div :ref="(el) => setContenedor('dirs', el as Element | null)">
+        <RecycleScroller
+          :ref="(el) => setDesplazador('dirs', el)"
+          :items="filas.dirs"
+          :item-size="altoDeFila('dirs')"
+          key-field="clave"
+          page-mode
+          v-slot="{ item: fila }"
+        >
+        <div class="grid gap-3" :style="estiloDeFila('dirs')">
+        <button v-for="entry in fila.entradas" :key="entry.path"
           class="relative flex overflow-hidden border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-18 !flex-row items-center py-2 px-3 gap-2.5"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
@@ -244,6 +332,8 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </button>
+        </div>
+        </RecycleScroller>
       </div>
     </template>
 
@@ -253,8 +343,17 @@ onBeforeUnmount(() => {
         <span>{{ t('fileBrowser.images') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.images.length }}</span>
       </div>
-      <div :ref="(el) => setRejilla('images', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
-        <button v-for="entry in groupedEntries.images" :key="entry.path"
+      <div :ref="(el) => setContenedor('images', el as Element | null)">
+        <RecycleScroller
+          :ref="(el) => setDesplazador('images', el)"
+          :items="filas.images"
+          :item-size="altoDeFila('images')"
+          key-field="clave"
+          page-mode
+          v-slot="{ item: fila }"
+        >
+        <div class="grid gap-3" :style="estiloDeFila('images')">
+        <button v-for="entry in fila.entradas" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
@@ -278,6 +377,8 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </button>
+        </div>
+        </RecycleScroller>
       </div>
     </template>
 
@@ -287,8 +388,17 @@ onBeforeUnmount(() => {
         <span>{{ t('fileBrowser.videos') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.videos.length }}</span>
       </div>
-      <div :ref="(el) => setRejilla('videos', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
-        <button v-for="entry in groupedEntries.videos" :key="entry.path"
+      <div :ref="(el) => setContenedor('videos', el as Element | null)">
+        <RecycleScroller
+          :ref="(el) => setDesplazador('videos', el)"
+          :items="filas.videos"
+          :item-size="altoDeFila('videos')"
+          key-field="clave"
+          page-mode
+          v-slot="{ item: fila }"
+        >
+        <div class="grid gap-3" :style="estiloDeFila('videos')">
+        <button v-for="entry in fila.entradas" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{
             'opacity-50': entry.is_hidden,
@@ -321,6 +431,8 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </button>
+        </div>
+        </RecycleScroller>
       </div>
     </template>
 
@@ -330,8 +442,17 @@ onBeforeUnmount(() => {
         <span>{{ t('fileBrowser.otherFiles') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.others.length }}</span>
       </div>
-      <div :ref="(el) => setRejilla('others', el as Element | null)" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
-        <button v-for="entry in groupedEntries.others" :key="entry.path"
+      <div :ref="(el) => setContenedor('others', el as Element | null)">
+        <RecycleScroller
+          :ref="(el) => setDesplazador('others', el)"
+          :items="filas.others"
+          :item-size="altoDeFila('others')"
+          key-field="clave"
+          page-mode
+          v-slot="{ item: fila }"
+        >
+        <div class="grid gap-3" :style="estiloDeFila('others')">
+        <button v-for="entry in fila.entradas" :key="entry.path"
           class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
@@ -355,6 +476,8 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </button>
+        </div>
+        </RecycleScroller>
       </div>
     </template>
   </div>

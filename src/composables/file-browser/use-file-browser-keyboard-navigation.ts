@@ -21,13 +21,16 @@ import { entryPathSelector } from '@/utils/css-escape';
  * acomoda cada sección, y eso lo informa la vista: es un número por sección y
  * no una medición por entrada.
  *
- * El DOM sigue usándose para **enfocar y desplazar**, que es otra cosa: ahí el
- * elemento existe porque se acaba de seleccionar.
+ * Enfocar sigue necesitando el elemento, y ahí está la otra mitad: con la vista
+ * virtualizada, la fila a la que se va **todavía no existe**. Primero se le pide
+ * al desplazador que la ponga a la vista y después se la busca, reintentando un
+ * par de veces mientras se dibuja.
  */
 export function useFileBrowserKeyboardNavigation(options: {
 	entries: Ref<DirEntry[]>;
 	selectedEntries: Ref<DirEntry[]>;
 	secciones: () => SeccionVisual[];
+	desplazarA: (path: string) => boolean;
 	selectEntryByPath: (path: string) => boolean;
 	goBack: () => void;
 	openEntry: (entry: DirEntry) => void;
@@ -60,19 +63,49 @@ export function useFileBrowserKeyboardNavigation(options: {
 		return [{ entradas: options.entries.value, columnas: 1 }];
 	}
 
+	/**
+	 * Busca el elemento, dándole tiempo a dibujarse.
+	 *
+	 * Después de pedirle al desplazador que vaya a una fila, esa fila se crea en
+	 * el ciclo siguiente — o en el otro, porque el desplazador recalcula al
+	 * enterarse del scroll. Un solo `nextTick` alcanza a veces y a veces no, y
+	 * cuando no, el foco se pierde sin que falle nada.
+	 */
+	async function esperarElemento(path: string, intentos = 3): Promise<HTMLElement | null> {
+		for (let intento = 0; intento < intentos; intento++) {
+			const element = getEntryElement(path);
+
+			if (element) return element;
+
+			await nextTick();
+		}
+
+		return getEntryElement(path);
+	}
+
 	async function selectAndFocusEntry(entry: DirEntry) {
 		options.selectEntryByPath(entry.path);
+
+		// Con la vista virtualizada la fila puede no existir todavía: se le pide
+		// al desplazador que la traiga antes de buscarla.
+		const loLlevoElDesplazador = options.desplazarA(entry.path);
+
 		await nextTick();
 
-		const element = getEntryElement(entry.path);
+		const element = await esperarElemento(entry.path);
 
-		if (element) {
+		if (!element) return;
+
+		// Si el desplazador ya la puso a la vista, mover otra vez con
+		// `scrollIntoView` la reacomoda de nuevo y se ve un salto.
+		if (!loLlevoElDesplazador) {
 			element.scrollIntoView({
 				block: 'nearest',
 				inline: 'nearest',
 			});
-			element.focus({ preventScroll: true });
 		}
+
+		element.focus({ preventScroll: true });
 	}
 
 	function irA(entry: DirEntry | null) {

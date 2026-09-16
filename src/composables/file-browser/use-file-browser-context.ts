@@ -35,6 +35,16 @@ export interface FileBrowserContext {
 	 */
 	registrarSeccionesVisuales: (secciones: SeccionVisual[]) => void;
 
+	/**
+	 * La vista informa cómo llevar la pantalla hasta una entrada.
+	 *
+	 * Con las vistas virtualizadas, `scrollIntoView` sobre el elemento no
+	 * alcanza: una fila fuera de la ventana **no existe en el DOM**. Hay que
+	 * pedirle al desplazador que la ponga a la vista, y recién entonces aparece
+	 * y se la puede enfocar. Devuelve si supo hacerlo.
+	 */
+	registrarDesplazamiento: (desplazar: ((path: string) => boolean) | null) => void;
+
 	onEntryMouseDown: (entry: DirEntry, event: MouseEvent) => void;
 	onEntryMouseUp: (entry: DirEntry, event: MouseEvent) => void;
 	openEntryContextMenu: (entry: DirEntry, event: MouseEvent) => void;
