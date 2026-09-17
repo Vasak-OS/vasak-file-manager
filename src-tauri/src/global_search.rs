@@ -1,3 +1,4 @@
+use crate::utils::normalize_path;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -13,7 +14,6 @@ use tantivy::schema::{
 use tantivy::{doc, Index, IndexReader, IndexWriter, Term};
 use tauri::Manager;
 use walkdir::WalkDir;
-use crate::utils::normalize_path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalSearchSettings {
@@ -544,7 +544,7 @@ fn build_query(
     let max_distance = if options.typo_tolerance { 2 } else { 1 };
 
     let mut subqueries: Vec<(tantivy::query::Occur, Box<dyn Query>)> = Vec::new();
-    
+
     for word in &words {
         let term = Term::from_field_text(fields.name, word);
         let fuzzy = FuzzyTermQuery::new(term, max_distance, true);
@@ -859,9 +859,9 @@ pub async fn global_search_start_scan(
             state.status.is_scan_in_progress = false;
             state.status.is_parallel_scan = false;
             state.status.current_drive_root = None;
-            
+
             let was_cancelled = state.cancel_flag.load(Ordering::SeqCst);
-            
+
             if let Ok(count) = result {
                 if !was_cancelled {
                     state.status.last_scan_time = Some(now_millis());
@@ -931,13 +931,13 @@ pub async fn global_search_index_paths(
 
     for dir_path in &settings.paths {
         let path = Path::new(dir_path);
-        
+
         if !path.exists() || !path.is_dir() {
             continue;
         }
 
         let normalized_dir = normalize_path(dir_path);
-        
+
         if is_ignored_path(&normalized_dir, &ignored_paths) {
             continue;
         }
@@ -1024,9 +1024,7 @@ pub async fn global_search_query(
         // arriba garantizaba que estuvieran: cualquier cambio en esa condición
         // los convertía en un panic. Así el compilador lo garantiza.
         match (&state.index, &state.reader, &state.fields) {
-            (Some(index), Some(reader), Some(fields)) => {
-                (index.clone(), reader.clone(), *fields)
-            }
+            (Some(index), Some(reader), Some(fields)) => (index.clone(), reader.clone(), *fields),
             _ => {
                 let (index, reader, fields) = open_or_create_index(&index_path)?;
                 let listo = (index.clone(), reader.clone(), fields);
@@ -1107,6 +1105,12 @@ pub async fn global_search_query(
                 .and_then(|extension| extension.to_str())
                 .map(|extension| extension.to_lowercase());
 
+            // Con el mismo tipo de contenido que en el listado: es de donde sale
+            // el icono, y un resultado de búsqueda sin él caería en la hoja en
+            // blanco mientras el mismo archivo, visto en su carpeta, sale bien.
+            let mime =
+                crate::tipo_de_contenido::por_el_nombre(Path::new(&path_value), doc_is_file == 1);
+
             Some(GlobalSearchResultEntry {
                 name: name_value,
                 ext,
@@ -1116,7 +1120,7 @@ pub async fn global_search_query(
                 modified_time,
                 accessed_time: 0,
                 created_time: 0,
-                mime: None,
+                mime,
                 is_file: doc_is_file == 1,
                 is_dir: doc_is_dir == 1,
                 is_symlink: false,
@@ -1131,10 +1135,7 @@ pub async fn global_search_query(
 
     for entry in results {
         let drive_root = get_drive_root(&entry.path);
-        drive_groups
-            .entry(drive_root)
-            .or_default()
-            .push(entry);
+        drive_groups.entry(drive_root).or_default().push(entry);
     }
 
     let mut final_results: Vec<GlobalSearchResultEntry> = Vec::new();
@@ -1185,8 +1186,7 @@ pub async fn global_search_query_paths(
                             collected_paths.push(entry_result.path());
                         }
                     }
-                }
-                else {
+                } else {
                     collected_paths.push(path.to_path_buf());
                 }
             }
@@ -1259,7 +1259,7 @@ pub async fn global_search_query_paths(
                 modified_time,
                 accessed_time,
                 created_time,
-                mime: None,
+                mime: crate::tipo_de_contenido::por_el_nombre(path, is_file),
                 is_file,
                 is_dir,
                 is_symlink: metadata.is_symlink(),
