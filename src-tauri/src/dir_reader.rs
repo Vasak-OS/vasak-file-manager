@@ -1,4 +1,5 @@
 use crate::utils::normalize_path;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -93,63 +94,6 @@ fn get_extension(path: &Path) -> Option<String> {
         .map(|ext| ext.to_lowercase())
 }
 
-fn get_mime_type(extension: &Option<String>) -> Option<String> {
-    extension.as_ref().map(|ext| {
-        match ext.as_str() {
-            "txt" | "text" => "text/plain",
-            "html" | "htm" => "text/html",
-            "css" => "text/css",
-            "js" | "mjs" => "text/javascript",
-            "json" => "application/json",
-            "xml" => "application/xml",
-            "pdf" => "application/pdf",
-            "zip" => "application/zip",
-            "tar" => "application/x-tar",
-            "gz" | "gzip" => "application/gzip",
-            "rar" => "application/vnd.rar",
-            "7z" => "application/x-7z-compressed",
-            "png" => "image/png",
-            "jpg" | "jpeg" => "image/jpeg",
-            "gif" => "image/gif",
-            "webp" => "image/webp",
-            "svg" => "image/svg+xml",
-            "ico" => "image/x-icon",
-            "mp3" => "audio/mpeg",
-            "wav" => "audio/wav",
-            "ogg" => "audio/ogg",
-            "flac" => "audio/flac",
-            "mp4" => "video/mp4",
-            "webm" => "video/webm",
-            "avi" => "video/x-msvideo",
-            "mkv" => "video/x-matroska",
-            "mov" => "video/quicktime",
-            "doc" => "application/msword",
-            "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "xls" => "application/vnd.ms-excel",
-            "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "ppt" => "application/vnd.ms-powerpoint",
-            "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "rs" => "text/x-rust",
-            "ts" | "tsx" => "text/typescript",
-            "vue" => "text/x-vue",
-            "py" => "text/x-python",
-            "rb" => "text/x-ruby",
-            "go" => "text/x-go",
-            "java" => "text/x-java",
-            "c" | "h" => "text/x-c",
-            "cpp" | "hpp" | "cc" => "text/x-c++",
-            "md" | "markdown" => "text/markdown",
-            "yaml" | "yml" => "text/yaml",
-            "toml" => "text/x-toml",
-            "exe" => "application/x-msdownload",
-            "dll" => "application/x-msdownload",
-            "so" => "application/x-sharedlib",
-            _ => "application/octet-stream",
-        }
-        .to_string()
-    })
-}
-
 fn read_entry(path: &Path) -> Option<DirEntry> {
     let metadata = match fs::metadata(path) {
         Ok(meta) => meta,
@@ -198,11 +142,10 @@ fn read_entry(path: &Path) -> Option<DirEntry> {
         None
     };
 
-    let mime = if is_file {
-        get_mime_type(&extension)
-    } else {
-        None
-    };
+    // Sólo lo que sale del nombre, que no toca el disco. Mirar adentro cuesta
+    // 150 µs por archivo y no se puede repartir entre los núcleos, así que eso lo
+    // pide la ventana y sólo para lo que llega a dibujar. Ver `tipo_de_contenido`.
+    let mime = crate::tipo_de_contenido::por_el_nombre(path, is_file);
 
     Some(DirEntry {
         name,
@@ -235,20 +178,21 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
 
     let read_result = fs::read_dir(directory).map_err(|error| error.to_string())?;
 
-    let mut entries: Vec<DirEntry> = Vec::new();
-    let mut dir_count = 0;
-    let mut file_count = 0;
+    // Leer las entradas en paralelo.
+    //
+    // Cada una hace lo suyo sin mirar a las demás —dos `stat`, contar lo que hay
+    // adentro si es carpeta, y adivinar el tipo de contenido—, así que el lazo
+    // secuencial que había sólo servía para sumar esperas de disco. El orden que
+    // se pierda no importa: abajo se ordena igual.
+    let rutas: Vec<std::path::PathBuf> = read_result.flatten().map(|entry| entry.path()).collect();
 
-    for entry in read_result.flatten() {
-        if let Some(dir_entry) = read_entry(&entry.path()) {
-            if dir_entry.is_dir {
-                dir_count += 1;
-            } else if dir_entry.is_file {
-                file_count += 1;
-            }
-            entries.push(dir_entry);
-        }
-    }
+    let mut entries: Vec<DirEntry> = rutas
+        .par_iter()
+        .filter_map(|ruta| read_entry(ruta))
+        .collect();
+
+    let dir_count = entries.iter().filter(|entrada| entrada.is_dir).count();
+    let file_count = entries.iter().filter(|entrada| entrada.is_file).count();
 
     entries.sort_by(|first, second| match (first.is_dir, second.is_dir) {
         (true, false) => std::cmp::Ordering::Less,

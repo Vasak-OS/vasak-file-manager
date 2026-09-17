@@ -18,6 +18,7 @@ mod polkit;
 mod read_file;
 mod system_icons;
 mod terminal;
+mod tipo_de_contenido;
 mod undo;
 pub mod utils;
 mod video_thumbnail;
@@ -145,6 +146,8 @@ pub fn run() {
             clipboard::clipboard_read_text,
             clipboard::clipboard_write_text,
             dir_reader::read_dir,
+            tipo_de_contenido::iconos_de_tipo,
+            tipo_de_contenido::mirando_adentro,
             startup_path::startup_path,
             dir_reader::get_system_drives,
             dir_reader::get_parent_dir,
