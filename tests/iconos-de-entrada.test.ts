@@ -197,9 +197,15 @@ describe('crearResolutorDeIconos', () => {
 		expect(await resolutor.nombreDeIcono(entrada({ mime: 'text/x-rust' }))).toBe('text-x-rust');
 	});
 
-	test('un fallo no queda pegado: el siguiente vuelve a intentar', async () => {
+	/**
+	 * Una fila siempre dibuja algo. Si esto fallara hacia afuera,
+	 * `useReactiveIcon` lo convertiría en una cadena vacía y la fila quedaría
+	 * **sin icono**, que se ve peor que un genérico.
+	 */
+	test('si el backend no contesta se dibuja el genérico, no nada', async () => {
 		let falla = true;
 		const resolutor = crearResolutorDeIconos({
+			tipoDelArchivo: async () => SIN_RESOLVER,
 			cadenaDelTipo: async () => {
 				if (falla) throw new Error('sin backend');
 				return ['image-png'];
@@ -207,12 +213,30 @@ describe('crearResolutorDeIconos', () => {
 			tieneIcono: async () => true,
 		});
 
-		await expect(resolutor.nombreDeIcono(entrada({ mime: 'image/png' }))).rejects.toThrow();
+		expect(await resolutor.nombreDeIcono(entrada({ mime: 'image/png' }))).toBe(GENERICO);
+
+		// Pero el error sí se vio adentro: el pedido que falló no quedó guardado.
 		expect(resolutor.guardados).toBe(0);
 
 		falla = false;
 
+		// Y por eso el siguiente vuelve a intentar en vez de quedar con el
+		// genérico pegado al tipo hasta que cambie el tema.
 		expect(await resolutor.nombreDeIcono(entrada({ mime: 'image/png' }))).toBe('image-png');
+	});
+
+	test('tampoco falla cuando lo que no contesta es mirar adentro', async () => {
+		const resolutor = crearResolutorDeIconos({
+			tipoDelArchivo: async () => {
+				throw new Error('sin backend');
+			},
+			cadenaDelTipo: async () => ['image-png'],
+			tieneIcono: async () => true,
+		});
+
+		expect(
+			await resolutor.nombreDeIcono(entrada({ path: '/usr/bin/ls', mime: SIN_RESOLVER }))
+		).toBe(GENERICO);
 	});
 });
 

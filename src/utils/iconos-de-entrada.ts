@@ -55,7 +55,17 @@ export const GENERICO = 'application-x-generic';
 export const SIN_RESOLVER = 'application/octet-stream';
 
 export interface ResolutorDeIconos {
-	/** El nombre del icono de esa entrada. */
+	/**
+	 * El nombre del icono de esa entrada.
+	 *
+	 * No falla nunca: si el backend no contesta, cae en el genérico. Quien
+	 * llama dibuja lo que reciba, y un rechazo acá termina en una fila **sin
+	 * icono** —`useReactiveIcon` convierte el error en una cadena vacía—.
+	 *
+	 * Que no falle hacia afuera no quiere decir que se olvide el error: adentro
+	 * las cachés sí lo ven y tiran el pedido que falló, para que el siguiente
+	 * vuelva a intentar en vez de quedar con el genérico pegado.
+	 */
 	nombreDeIcono(entry: DirEntry): Promise<string>;
 	/** Tira lo resuelto. Va cuando cambia el tema de iconos. */
 	olvidar(): void;
@@ -111,12 +121,15 @@ export function crearResolutorDeIconos(opciones: {
 
 			const delListado = entry.mime ?? SIN_RESOLVER;
 
-			if (delListado !== SIN_RESOLVER) return porElTipo(delListado);
+			if (delListado !== SIN_RESOLVER) return porElTipo(delListado).catch(() => GENERICO);
 
 			// Sin extensión que valga: hay que mirar adentro. Es el único caso que
 			// cuesta una pregunta por archivo, y el motivo de que se haga acá
 			// —cuando la fila se dibuja— y no al abrir la carpeta.
-			return opciones.tipoDelArchivo(entry.path).then(porElTipo);
+			return opciones
+				.tipoDelArchivo(entry.path)
+				.then(porElTipo)
+				.catch(() => GENERICO);
 		},
 
 		olvidar(): void {

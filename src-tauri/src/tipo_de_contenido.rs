@@ -202,6 +202,17 @@ fn nombres_de_icono(tipo: &str) -> Vec<String> {
 
 /// Los primeros bytes del archivo, o nada si no se puede leer.
 fn cabecera_de(path: &Path) -> Option<Vec<u8>> {
+    // Sólo archivos regulares, y no por prolijidad: abrir una **FIFO** sin nadie
+    // del otro lado deja a `File::open` esperando para siempre. Una tubería con
+    // nombre y sin extensión llega hasta acá como cualquier otra entrada, y con
+    // ella se colgaría el comando entero —no esa fila: las sesenta del lote, que
+    // viajan juntas—. Lo mismo vale para un dispositivo de caracteres.
+    //
+    // Lo que sale del nombre se conserva igual, que es lo que se dibuja.
+    if !path.is_file() {
+        return None;
+    }
+
     let mut archivo = File::open(path).ok()?;
     let mut bytes = vec![0_u8; CABECERA];
     let leidos = archivo.read(&mut bytes).ok()?;
@@ -368,6 +379,45 @@ mod pruebas {
             tipo_leyendo(Path::new("/no/existe/esto.png")).as_deref(),
             Some("image/png"),
             "no se puede leer, así que queda lo que dijo el nombre"
+        );
+    }
+
+    /// Una tubería con nombre no cuelga el lote entero.
+    ///
+    /// `File::open` sobre una FIFO sin escritor espera para siempre. Como las
+    /// entradas de una pantalla viajan juntas, una sola tubería sin extensión en
+    /// la carpeta dejaba a las sesenta sin icono y el comando sin volver.
+    ///
+    /// Se mide contra un reloj en vez de llamar y ya: si la protección se cae,
+    /// esto tiene que fallar, no colgarse.
+    #[test]
+    fn una_tuberia_no_deja_esperando() {
+        let carpeta = carpeta_de("tuberia");
+        let tuberia = carpeta.join("sin-nadie-del-otro-lado");
+
+        let nombre = CString::new(tuberia.as_os_str().as_bytes()).expect("ruta sin ceros");
+        // SAFETY: `nombre` termina en cero y vive hasta el final de la llamada.
+        let creada = unsafe { libc::mkfifo(nombre.as_ptr(), 0o644) };
+
+        if creada != 0 {
+            // Un sistema de archivos que no admite FIFOs. No hay nada que probar.
+            return;
+        }
+
+        let (mandar, recibir) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = mandar.send(tipo_leyendo(&tuberia));
+        });
+
+        let contestada = recibir.recv_timeout(std::time::Duration::from_secs(5));
+
+        assert!(
+            contestada.is_ok(),
+            "se quedó esperando a que alguien escribiera en la tubería"
+        );
+        assert!(
+            contestada.unwrap().is_some(),
+            "sin poder mirar adentro igual tiene que quedar lo que dijo el nombre"
         );
     }
 

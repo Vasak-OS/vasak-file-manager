@@ -193,6 +193,11 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
 
     let dir_count = entries.iter().filter(|entrada| entrada.is_dir).count();
     let file_count = entries.iter().filter(|entrada| entrada.is_file).count();
+    // El total sale de la lista y no de sumar los dos contadores: una tubería con
+    // nombre, un zócalo o un dispositivo no son ni carpeta ni archivo regular,
+    // así que no entran en ninguno de los dos y el total decía menos de las
+    // entradas que se devolvían.
+    let total_count = entries.len();
 
     entries.sort_by(|first, second| match (first.is_dir, second.is_dir) {
         (true, false) => std::cmp::Ordering::Less,
@@ -203,7 +208,7 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
     Ok(DirContents {
         path: normalize_path(&path),
         entries,
-        total_count: dir_count + file_count,
+        total_count,
         dir_count,
         file_count,
     })
