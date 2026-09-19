@@ -12,7 +12,7 @@
         "@tauri-apps/plugin-opener": "~2.5.5",
         "@tauri-apps/plugin-shell": "^2.3.6",
         "@tauri-apps/plugin-store": "^2.4.4",
-        "@vasakgroup/plugin-config-manager": "^2.5.0",
+        "@vasakgroup/plugin-config-manager": "^2.6.0",
         "@vasakgroup/plugin-drag-and-drop-wayland": "^2.1.0",
         "@vasakgroup/plugin-vicons": "^2.2.0",
         "@vasakgroup/plugin-vsk-contextual-menu": "^2.0.2",
@@ -274,7 +274,7 @@
 
     "@types/ws": ["@types/ws@8.18.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg=="],
 
-    "@vasakgroup/plugin-config-manager": ["@vasakgroup/plugin-config-manager@2.5.0", "", { "dependencies": { "@tauri-apps/api": "^2.11.0", "pinia": "^3.0.4", "vue": "^3.5.35" } }, "sha512-WzAXj2j7mAsqU/690/If7P2qIpjAJtusKGMh9HMpP3JLxev80mdNtHDrRND+twZTtA670gk3v99r2AetfNCkSw=="],
+    "@vasakgroup/plugin-config-manager": ["@vasakgroup/plugin-config-manager@2.6.0", "", { "dependencies": { "@tauri-apps/api": "^2.11.0", "pinia": "^3.0.4", "vue": "^3.5.35" } }, "sha512-whuljNNZ+bupRmX8jHe/z+8N1BQkLEuEwSsqKp7LfJ4StlgSk9rDcQnIENQ6O8QKU8RFCuf1yQ9lbG9k8ajG8A=="],
 
     "@vasakgroup/plugin-drag-and-drop-wayland": ["@vasakgroup/plugin-drag-and-drop-wayland@2.1.0", "", { "dependencies": { "@tauri-apps/api": "^2.11.1" } }, "sha512-gofeFhKfoXC7pOaOx2sQ/qPEfv4AIfrwqBbrqYsQGXVWaSF3KXsro0AMkIYDi/niWCxseBUPj/ji1Xq8wljNgQ=="],
 
