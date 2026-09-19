@@ -528,7 +528,7 @@ onUnmounted(() => {
 
 <template>
 	
-  <div class="h-[calc(100vh-54px)] w-full flex flex-col pr-1">
+  <div class="h-full min-h-0 w-full flex flex-col">
 		<div class="navigator-page__panes-wrapper">
 			<div class="navigator-page__panes-container">
 				<GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
@@ -539,7 +539,7 @@ onUnmounted(() => {
 						<template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">
 							<ResizablePanel :default-size="50" :min-size="15" @mousedown="handlePaneFocus(tab.id)">
 								<FileBrowserComponent :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)" :tab="tab"
-									:pane-index="index" :layout="currentLayout" class="navigator-page__pane"
+									:pane-index="index" :layout="currentLayout" class="navigator-page__pane rounded-corner border border-ui-border bg-ui-surface/70 overflow-hidden"
 									@update:selected-entries="(entries) => handleSelectionChange(entries, tab.id)"
 									@update:current-dir-entry="handleCurrentDirChange" />
 							</ResizablePanel>
@@ -551,13 +551,15 @@ onUnmounted(() => {
 							<FileBrowserComponent :key="workspacesStore.currentTabGroup[0].id"
 								:ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
 								:tab="workspacesStore.currentTabGroup[0]" :pane-index="0" :layout="currentLayout"
-								class="navigator-page__pane"
+								toolbar-teleport-target=".window-path-teleport-target"
+								class="navigator-page__pane rounded-corner border border-ui-border bg-ui-surface/70 overflow-hidden"
 								@update:selected-entries="(entries) => handleSelectionChange(entries, workspacesStore.currentTabGroup![0].id)"
 								@update:current-dir-entry="handleCurrentDirChange" />
 						</ResizablePanel>
 					</template>
 					<ResizablePanel v-else :default-size="100">
-						<FileBrowserComponent ref="singlePaneRef" :layout="currentLayout" class="navigator-page__pane"
+						<FileBrowserComponent ref="singlePaneRef" :layout="currentLayout"
+							toolbar-teleport-target=".window-path-teleport-target" class="navigator-page__pane rounded-corner border border-ui-border bg-ui-surface/70 overflow-hidden"
 							@update:selected-entries="(entries) => handleSelectionChange(entries)"
 							@update:current-dir-entry="handleCurrentDirChange" />
 					</ResizablePanel>

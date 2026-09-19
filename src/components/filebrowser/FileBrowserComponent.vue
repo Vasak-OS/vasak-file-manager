@@ -24,6 +24,16 @@ const props = defineProps<{
 	externalEntries?: DirEntry[];
 	basePath?: string;
 	hideToolbar?: boolean;
+	/**
+	 * Dónde dibujar la barra de ruta, si no es acá adentro.
+	 *
+	 * Con un solo panel la barra sube al nivel de la ventana y cruza todo el
+	 * ancho, que es donde se la espera. En vista dividida **no** se pasa: cada
+	 * panel muestra una ruta distinta y lleva su propio historial de atrás y
+	 * adelante, así que una sola barra arriba tendría que elegir cuál de las dos
+	 * dice —y la otra quedaría sin ruta visible—.
+	 */
+	toolbarTeleportTarget?: string;
 	hideStatusBar?: boolean;
 	entryDescription?: (entry: DirEntry) => string | undefined;
 }>();
@@ -108,13 +118,24 @@ defineExpose({
 
 <template>
   <div ref="fileBrowserRef" class="flex h-full flex-col relative overflow-hidden">
-    <FileBrowserToolbarComponent v-if="!hideToolbar" v-model:path-input="fb.pathInput.value"
+    <!-- `defer`: Vue arma el árbol entero en memoria y recién después lo mete
+         en el documento, así que sin esto el destino todavía no existe cuando
+         este teletransporte se monta —`querySelector` da nulo y la barra no se
+         dibuja en ningún lado—. Con `defer` el destino se busca después del
+         ciclo de dibujado. -->
+    <Teleport
+      defer
+      :to="props.toolbarTeleportTarget || 'body'"
+      :disabled="!props.toolbarTeleportTarget">
+      <FileBrowserToolbarComponent v-if="!hideToolbar" :standalone="!!props.toolbarTeleportTarget"
+      v-model:path-input="fb.pathInput.value"
       v-model:filter-query="fb.filterQuery.value" v-model:is-filter-open="fb.isFilterOpen.value"
       :can-go-back="fb.canGoBack.value" :can-go-forward="fb.canGoForward.value" :can-go-up="!!fb.parentPath.value"
       :is-loading="fb.isLoading.value || fb.isRefreshing.value" @go-back="fb.goBack" @go-forward="fb.goForward"
       @go-up="fb.navigateToParent" @go-home="fb.navigateToHome" @refresh="fb.refresh" @submit-path="fb.handlePathSubmit"
       @navigate-to="fb.navigateToPath" @create-new-directory="fb.openNewItemDialog('directory')"
       @create-new-file="fb.openNewItemDialog('file')" />
+    </Teleport>
 
     <FileBrowserContentComponent :layout="props.layout" />
 

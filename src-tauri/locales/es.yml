@@ -274,6 +274,12 @@ search: Buscar
 driveNotMounted: Unidad no montada
 freeOf: libres de
 mounting: Montando
+barraLateral:
+  plegar: Plegar la barra lateral
+  desplegar: Desplegar la barra lateral
+  lugares: Lugares
+  discos: Discos
+  nube: En la nube
 textMenu:
   copy: Copiar
   cut: Cortar
