@@ -233,34 +233,33 @@ function handleDeleteClick() {
   </div>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('open-with')"
-    @select="emitAction('open-with')" @click="emitAction('open-with')">
+    @select="emitAction('open-with')">
     <span>{{ t('fileBrowser.actions.openWith') }}</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('open-in-new-tab')"
-    class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('open-in-new-tab')"
-    @click="emitAction('open-in-new-tab')">
+    class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('open-in-new-tab')">
     <img :src="plusIcon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.openInNewTab') }}</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('share')" @select="emitAction('share')"
-    @click="emitAction('share')" class="flex items-center gap-2">
+    class="flex items-center gap-2">
     <img :src="share2Icon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.share') }}</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('extract-here')"
-    @select="emitAction('extract-here')" @click="emitAction('extract-here')" class="flex items-center gap-2">
+    @select="emitAction('extract-here')" class="flex items-center gap-2">
     <img :src="extractIcon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.extractHere') }}</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('compress')"
-    @select="emitAction('compress')" @click="emitAction('compress')" class="flex items-center gap-2">
+    @select="emitAction('compress')" class="flex items-center gap-2">
     <img :src="extractIcon" class="h-4 w-4" />
     <span>{{ t('fileBrowser.actions.compress') }}</span>
   </component>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"
-    @click="emitAction('toggle-favorite')" class="flex items-center gap-2">
+    class="flex items-center gap-2">
     <img :src="starIcon" class="h-4 w-4" :fill="allSelectedAreFavorites ? 'currentColor' : 'none'" />
     <span>{{ t(allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites') }}</span>
   </component>
