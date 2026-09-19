@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+
+const { t } = useI18n();
+
 defineProps<{
 	error: string;
 }>();
@@ -13,7 +17,7 @@ defineEmits<{
     <AlertCircleIcon :size="32" />
     <span>{{ error }}</span>
     <button type="button" class="rounded border border-ui-border bg-secondary text-tx-on-secondary px-3 py-1.5 text-xs leading-[1.2] cursor-pointer hover:bg-secondary/90" @click="$emit('goHome')">
-      'fileBrowser.goHome'
+      {{ t('fileBrowser.goHome') }}
     </button>
   </div>
 </template>

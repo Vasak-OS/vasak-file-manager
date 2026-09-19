@@ -5,6 +5,7 @@ import { computed, watch } from 'vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
 import { formatDate, formatRelativeTime } from '@/utils/date-formatter';
@@ -118,7 +119,10 @@ const properties = computed<PropertyItem[]>(() => {
 	if (entry.is_dir && entry.item_count !== null) {
 		items.push({
 			title: t('items'),
-			value: t('fileBrowser.itemCount').replace('{0}', String(entry.item_count)),
+			value: interpolar(
+				t(claveSegunCantidad('fileBrowser.itemCount', entry.item_count)),
+				entry.item_count
+			),
 		});
 	}
 

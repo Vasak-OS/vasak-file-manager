@@ -17,6 +17,7 @@ import { useFileBrowserContext } from '@/composables/file-browser/use-file-brows
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import type { GroupedEntries } from '@/types/file-browser';
 import { formatBytes } from '@/utils/byte-parser';
@@ -64,10 +65,14 @@ function getDirSizeDisplay(entry: DirEntry): string | null {
 	const sizeInfo = dirSizesStore.getSize(entry.path);
 	// `t()` y no la clave escrita a mano: así como estaba, cada carpeta de la
 	// cuadrícula mostraba literalmente «fileBrowser.itemCount 3» en lugar de
-	// «3 elementos».
+	// «3 elementos». Y con la clave según la cantidad, porque una carpeta con
+	// un solo archivo decía «1 elementos».
 	const itemCountStr =
 		entry.item_count !== null
-			? t('fileBrowser.itemCount').replace('{0}', String(entry.item_count))
+			? interpolar(
+					t(claveSegunCantidad('fileBrowser.itemCount', entry.item_count)),
+					entry.item_count
+				)
 			: null;
 
 	if (!sizeInfo) {

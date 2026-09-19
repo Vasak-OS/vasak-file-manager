@@ -4,6 +4,7 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 
 const props = defineProps<{
 	isActive: boolean;
@@ -18,11 +19,8 @@ const CopyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
 const FolderInputIcon = useReactiveIcon(() => getSymbolSource('folder-open'));
 
 const description = computed(() => {
-	if (props.operationType === 'copy') {
-		return `drag.dropToCopyItems ${props.itemCount}`;
-	}
-
-	return `drag.dropToMoveItems ${props.itemCount}`;
+	const base = props.operationType === 'copy' ? 'drag.dropToCopyItems' : 'drag.dropToMoveItems';
+	return interpolar(t(claveSegunCantidad(base, props.itemCount)), props.itemCount);
 });
 
 const operationIcon = computed(() =>

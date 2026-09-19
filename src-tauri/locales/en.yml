@@ -23,6 +23,20 @@ filter:
   showHiddenItems: Show Hidden Items
   filter: Filter
 globalSearch:
+  driveScanInProgress: Scanning drives…
+  scanningInParallel: Scanning several drives at once…
+  indexStatus:
+    committing: Saving the index…
+  indexedItemsOne: "{0} item indexed"
+  indexedItemsOther: "{0} items indexed"
+  relativeTime:
+    justNow: just now
+    minutesOne: "{0} minute ago"
+    minutesOther: "{0} minutes ago"
+    hoursOne: "{0} hour ago"
+    hoursOther: "{0} hours ago"
+    daysOne: "{0} day ago"
+    daysOther: "{0} days ago"
   exactMatch: Exact Match
   globalSearch: Global Search
   noDrivesSelected: No drives selected
@@ -32,6 +46,12 @@ globalSearch:
   searchDataIncomplete: Search data incomplete
   searchStats:
     nothingFound: Nothing found
+    foundOnDrives: "Results: {0} · Drives: {1}"
+    searchedOne: Searched {0} item
+    searchedOther: Searched {0} items
+    searchingLevelsDeepOne: up to {0} level deep
+    searchingLevelsDeepOther: up to {0} levels deep
+    indexed: indexed {0}
   showDirectories: Show Directories
   showFiles: Show Files
   showSearchSettings: Show Search Settings
@@ -42,7 +62,8 @@ fileBrowser:
   selected: Selected
   fileCount: "{0} files"
   directoryCount: "{0} folders"
-  itemCount: "{0} items"
+  itemCountOne: "{0} item"
+  itemCountOther: "{0} items"
   matchedNOfItems: "Matched {0} of {1} items"
   showingNOfItems: "Showing {0} of {1} items"
   selectedItems: "Selected: {0}"
@@ -222,16 +243,33 @@ dialogs:
 name: Name
 create: Create
 drag:
+  copyItemsOne: Copy {0} item
+  copyItemsOther: Copy {0} items
+  moveItemsOne: Move {0} item
+  moveItemsOther: Move {0} items
+  dropToCopyItemsOne: Drop to copy {0} item
+  dropToCopyItemsOther: Drop to copy {0} items
+  dropToMoveItemsOne: Drop to move {0} item
+  dropToMoveItemsOther: Drop to move {0} items
   holdShiftToChangeMode: Hold Shift to change drag mode
   holdCtrlForCurrentDirDrop: Hold Ctrl to drop in current directory
   dragging: Dragging
   dropping: Dropping
 conflictDialog:
+  descriptionOne: There is already {0} item with that name at the destination.
+  descriptionOther: There are already {0} items with those names at the destination.
+  sourceSize: "Source: {0}"
+  destinationSize: "Destination: {0}"
+  directory: Folder
+  andMoreOne: and {0} more
+  andMoreOther: and {0} more
   title: File Conflict
   skip: Skip
   keepBoth: Keep Both
   replace: Replace
 notifications:
+  skippedCountOne: "{0} item skipped"
+  skippedCountOther: "{0} items skipped"
   copyingItems: Copying items...
   copied: Items copied
   movingItems: Moving items...
@@ -299,12 +337,14 @@ tags:
   newTag: New tag
 window:
   minimize: Minimize
+  close: Close the window
   maximize: Maximize
 toolbar:
   infoPanel: Info panel
   newTab: New tab
 drive:
   eject: Eject
+  unmount: Unmount
   encrypted: Encrypted drive
   encryptedLocked: Encrypted — asks for a passphrase
   mountFailed: The drive could not be mounted

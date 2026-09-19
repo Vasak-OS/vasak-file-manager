@@ -338,33 +338,14 @@ describe('la barra de ruta', () => {
 });
 
 describe('las claves de traducción', () => {
-	/**
-	 * Lo que ya estaba así antes de esta rama.
-	 *
-	 * No es un descuido de acá: son pantallas enteras que imprimen la clave en
-	 * vez del texto —la búsqueda global es la peor, con `globalSearch.*` y un
-	 * `` `item, ${n}` `` de contador—. Arreglarlas es escribir y revisar
-	 * traducciones de media aplicación, que es un trabajo aparte del de la
-	 * barra lateral y va por su propio issue.
-	 *
-	 * Se excepcionan **nombrándolas**, no ensanchando la regla: cada archivo
-	 * que se arregle sale de esta lista, y el resto del árbol —el 95%— queda
-	 * cubierto desde hoy.
-	 */
-	const DEUDA = [
-		'views/GlobalSearchView.vue',
-		'composables/file-browser/use-file-browser-selection.ts',
-		'components/navigator/ClipboardToolbarComponent.vue',
-		'components/filebrowser/FileBrowserStatusBarComponent.vue',
-		'components/drag/DragOverlayComponent.vue',
-		'components/drag/InboundDragOverlayComponent.vue',
-		'components/dialogs/ConflictDialogComponent.vue',
-	];
-
 	test('no se escriben a mano adentro de una cadena', async () => {
 		// `` `fileBrowser.itemCount ${n}` `` no es una traducción: es la clave
-		// impresa tal cual. Cada carpeta de la cuadrícula decía
-		// «fileBrowser.itemCount 3» en vez de «3 elementos».
+		// impresa tal cual. Se veía en toda la aplicación —la búsqueda global
+		// entera, los carteles de arrastre, el diálogo de conflictos, la
+		// cuadrícula— porque nadie las hacía pasar por `t()`.
+		//
+		// Este guardia tuvo una lista de excepciones con siete archivos. Está
+		// vacía: si vuelve a aparecer una, la prueba la nombra.
 		const raices = [...locales.matchAll(/^(\w+):$/gm)].map((coincidencia) => coincidencia[1]);
 		expect(raices.length).toBeGreaterThan(5);
 
@@ -372,7 +353,7 @@ describe('las claves de traducción', () => {
 			...new Bun.Glob('**/*.{vue,ts}').scanSync({
 				cwd: new URL('../src', import.meta.url).pathname,
 			}),
-		].filter((archivo) => !DEUDA.includes(archivo));
+		];
 		// Sin esto, un glob que no encuentra nada deja la prueba en verde.
 		expect(fuentes.length).toBeGreaterThan(50);
 

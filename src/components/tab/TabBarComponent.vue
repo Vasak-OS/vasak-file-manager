@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          'tabs.newTab'
+          {{ t('tabs.newTab') }}
           <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
         </TooltipContent>
       </Tooltip>

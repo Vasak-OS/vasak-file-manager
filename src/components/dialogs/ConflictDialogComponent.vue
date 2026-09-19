@@ -11,6 +11,7 @@ import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { ConflictItem, ConflictResolution } from '@/stores/runtime/clipboard';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import toReadableBytes from '@/utils/byte-parser';
 
 const props = defineProps<{
@@ -87,7 +88,7 @@ function handleOpenChange(open: boolean) {
           {{ t('conflictDialog.title') }}
         </DialogTitle>
         <DialogDescription class="text-tx-muted text-sm leading-normal">
-          {{ `conflictDialog.description ${conflictCount}` }}
+          {{ interpolar(t(claveSegunCantidad('conflictDialog.description', conflictCount)), conflictCount) }}
         </DialogDescription>
       </DialogHeader>
 
@@ -100,22 +101,22 @@ function handleOpenChange(open: boolean) {
               <span v-if="conflict.source_size !== null || conflict.destination_size !== null"
                 class="text-tx-muted text-xs">
                 <template v-if="conflict.source_size !== null">
-                  {{ `conflictDialog.sourceSize ${formatSize(conflict.source_size)}` }}
+                  {{ interpolar(t('conflictDialog.sourceSize'), formatSize(conflict.source_size)) }}
                 </template>
                 <span v-if="conflict.source_size !== null && conflict.destination_size !== null">
                   {{ sizeSeparator }}
                 </span>
                 <template v-if="conflict.destination_size !== null">
-                  {{ `conflictDialog.destinationSize ${formatSize(conflict.destination_size)}` }}
+                  {{ interpolar(t('conflictDialog.destinationSize'), formatSize(conflict.destination_size)) }}
                 </template>
               </span>
               <span v-else-if="conflict.source_is_dir" class="text-tx-muted text-xs">
-                'directory'
+                {{ t('conflictDialog.directory') }}
               </span>
             </div>
           </div>
           <div v-if="remainingCount > 0" class="px-3 py-1.5 text-tx-muted text-[13px] italic">
-            {{ `conflictDialog.andMore ${remainingCount}` }}
+            {{ interpolar(t(claveSegunCantidad('conflictDialog.andMore', remainingCount)), remainingCount) }}
           </div>
         </div>
       </ScrollArea>
