@@ -18,6 +18,15 @@ import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 
 const props = defineProps<{
+	/**
+	 * Si la barra está sola en la ventana en vez de arriba de un panel.
+	 *
+	 * Suelta es una tarjeta con borde entero y fondo de superficie, como los
+	 * demás paneles del escritorio. Arriba de un panel alcanza con la línea de
+	 * abajo: el borde y el fondo ya se los pone el panel, y repetirlos dibuja
+	 * un marco adentro de otro.
+	 */
+	standalone?: boolean;
 	pathInput: string;
 	filterQuery: string;
 	canGoBack: boolean;
@@ -116,7 +125,11 @@ function handleFilterInteractOutside(event?: Event) {
 </script>
 
 <template>
-  <div class="@container flex h-12 items-center p-2 border-b border-ui-border gap-3">
+  <div
+    class="@container flex h-12 items-center p-2 gap-3"
+    :class="props.standalone
+      ? 'rounded-corner border border-ui-border bg-ui-surface/70'
+      : 'border-b border-ui-border'">
     <div class="hidden @[400px]:flex shrink-0 gap-1">
       <Tooltip>
         <TooltipTrigger as-child>

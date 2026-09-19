@@ -127,7 +127,8 @@ defineExpose({
       defer
       :to="props.toolbarTeleportTarget || 'body'"
       :disabled="!props.toolbarTeleportTarget">
-      <FileBrowserToolbarComponent v-if="!hideToolbar" v-model:path-input="fb.pathInput.value"
+      <FileBrowserToolbarComponent v-if="!hideToolbar" :standalone="!!props.toolbarTeleportTarget"
+      v-model:path-input="fb.pathInput.value"
       v-model:filter-query="fb.filterQuery.value" v-model:is-filter-open="fb.isFilterOpen.value"
       :can-go-back="fb.canGoBack.value" :can-go-forward="fb.canGoForward.value" :can-go-up="!!fb.parentPath.value"
       :is-loading="fb.isLoading.value || fb.isRefreshing.value" @go-back="fb.goBack" @go-forward="fb.goForward"

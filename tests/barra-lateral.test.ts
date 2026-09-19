@@ -19,6 +19,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
+import ResizableHandle from '@/components/ui/ResizableHandle.vue';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
 import { olvidarTodo, responder } from './dobles';
@@ -293,11 +294,30 @@ describe('la barra de ruta', () => {
 		expect(solo).toContain('toolbar-teleport-target=".window-path-teleport-target"');
 	});
 
-	test('la ventana tiene dónde ponerla, arriba de la barra lateral', () => {
+	test('la ventana tiene dónde ponerla, y no encima de la barra lateral', () => {
+		// La barra de ruta es de lo que se está mirando, no de la ventana: va
+		// en la columna de contenido, después de la lateral. Cruzándola por
+		// encima, la lateral dejaba de llegar de arriba abajo y quedaba
+		// acortada sin motivo.
 		expect(layout).toContain('window-path-teleport-target');
-		expect(layout.indexOf('window-path-teleport-target')).toBeLessThan(
-			layout.indexOf('<SidebarComponent')
+		expect(layout.indexOf('<SidebarComponent')).toBeLessThan(
+			layout.indexOf('window-path-teleport-target')
 		);
+		expect(layout.indexOf('window-path-teleport-target')).toBeLessThan(
+			layout.indexOf('<NavigatorBarComponent')
+		);
+	});
+
+	test('y no se le suma un hueco propio', () => {
+		// La ventana separa todo con `gap-1`. Un `p-1` extra alrededor de la
+		// barra de ruta hacía el doble de distancia justo ahí, y esta ventana
+		// se leía distinta de las otras del escritorio.
+		const clases = layout.match(/class="window-path-teleport-target([^"]*)"/)?.[1] ?? '';
+		// Las clases del propio destino, no las del vecino: `gap-1` contiene
+		// `p-1` como subcadena y buscar a ojo dentro de un trozo de plantilla
+		// daba por relleno lo que era separación. Pasó.
+		const relleno = clases.split(/\s+/).filter((clase) => /^p[xytblre]?-/.test(clase));
+		expect(relleno).toEqual([]);
 	});
 
 	test('en vista dividida cada panel se queda con la suya', () => {
@@ -365,5 +385,54 @@ describe('las claves de traducción', () => {
 		}
 
 		expect(culpables).toEqual([]);
+	});
+});
+
+describe('la división de la pantalla', () => {
+	test('cada panel es su propia tarjeta', () => {
+		// Dos paneles del mismo color pegados uno al otro: el contenido de la
+		// derecha parecía seguir al de la izquierda. Se probó con una línea
+		// divisoria adentro de un panel único y quedaba peor que separarlos:
+		// dos tarjetas con su borde y su fondo dicen solas dónde termina una.
+		const panes = navegador.slice(navegador.indexOf('<ResizablePanelGroup'));
+		// El espacio o la comilla después de `pane` a propósito: sin eso el
+		// contenedor `navigator-page__panes` cuenta como un panel más.
+		const apariciones = [...panes.matchAll(/class="navigator-page__pane( [^"]*)?"/g)];
+		// Los tres usos: los dos de la vista dividida y el del panel único.
+		expect(apariciones).toHaveLength(3);
+
+		for (const [, resto = ''] of apariciones) {
+			expect(resto).toContain('rounded-corner');
+			expect(resto).toContain('border-ui-border');
+			expect(resto).toContain('bg-ui-surface/70');
+		}
+	});
+
+	test('el tirador es el aire entre las dos, y se estira de arriba abajo', () => {
+		// `h-full` sobre una fila sin alto definido se resuelve en `auto`, y en
+		// un div vacío eso es cero: el tirador ocupaba su ancho —los paneles se
+		// corrían— pero no se dibujaba nada de lo que se le pusiera. Se vio
+		// pintándolo de rojo.
+		//
+		// El contexto del grupo va puesto: sin él el tirador se cree vertical
+		// —la división de la pantalla es horizontal— y se comprobaría la rama
+		// que no es. Pasó: el sabotaje de la rama horizontal no volteaba nada.
+		for (const horizontal of [true, false]) {
+			const vista = mount(ResizableHandle, {
+				global: {
+					provide: {
+						'resizable-panel-group': { startDrag() {}, isHorizontal: { value: horizontal } },
+					},
+				},
+			});
+
+			const clases = vista.find('div').classes();
+			expect(clases).toContain('self-stretch');
+			expect(clases).not.toContain('h-full');
+			expect(clases).not.toContain('w-full');
+			// Sin fondo propio: el hueco deja ver la ventana entre las dos
+			// tarjetas, que es lo que las separa.
+			expect(clases.some((clase) => /^bg-/.test(clase))).toBe(false);
+		}
 	});
 });

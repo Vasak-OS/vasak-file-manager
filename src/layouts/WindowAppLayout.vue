@@ -51,25 +51,36 @@ function handleToggleInfoPanel() {
         @toggle-info-panel="handleToggleInfoPanel" />
     </TopBarComponent>
 
-    <!-- La barra de ruta del panel único, subida acá para que cruce la ventana
-         entera y no se corra de lugar al plegar la lateral. Con la vista
-         dividida cada panel se queda con la suya y este hueco desaparece
-         —`empty:hidden`—, que es lo único que deja ver las dos rutas a la vez. -->
-    <div class="window-path-teleport-target shrink-0 empty:hidden"></div>
-
     <!-- `p-1` y `gap-1`: la barra lateral es una tarjeta con borde y esquina
-         redondeada, y pegada al borde de la ventana se le come el redondeo. -->
+         redondeada, y pegada al borde de la ventana se le come el redondeo. Es
+         la misma distancia que separa todo lo demás en el escritorio, y es la
+         única que se pone: cualquier hueco de más acá adentro hace que esta
+         ventana se lea distinta de las otras. -->
     <div class="flex min-h-0 flex-1 gap-1 p-1">
       <SidebarComponent />
-      <div class="flex min-h-0 min-w-0 flex-1 gap-1">
-        <div class="min-w-0 flex-1">
-          <NavigatorBarComponent 
-            @update:selected-entries="handleSelectedEntriesUpdate"
-            @update:current-dir-entry="handleCurrentDirEntryUpdate" />
+
+      <!-- La columna de contenido. La barra lateral queda **afuera** de ella y
+           llega de arriba abajo: la barra de ruta es de lo que se está mirando,
+           no de la ventana, así que cruzarla por encima de la lateral la
+           acortaba sin motivo. -->
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+        <!-- La barra de ruta del panel único, subida acá para que cruce el
+             contenido entero y no se corra de lugar al plegar la lateral. Con
+             la vista dividida cada panel se queda con la suya y este hueco
+             desaparece —`empty:hidden`—, que es lo único que deja ver las dos
+             rutas a la vez. -->
+        <div class="window-path-teleport-target shrink-0 empty:hidden"></div>
+
+        <div class="flex min-h-0 flex-1 gap-1">
+          <div class="min-w-0 flex-1">
+            <NavigatorBarComponent 
+              @update:selected-entries="handleSelectedEntriesUpdate"
+              @update:current-dir-entry="handleCurrentDirEntryUpdate" />
+          </div>
+          <ContentInformation v-if="isInfoPanelVisible"
+            :selected-entries="selectedEntries"
+            :current-dir-entry="currentDirEntry" />
         </div>
-        <ContentInformation v-if="isInfoPanelVisible"
-          :selected-entries="selectedEntries"
-          :current-dir-entry="currentDirEntry" />
       </div>
     </div>
   </div>
