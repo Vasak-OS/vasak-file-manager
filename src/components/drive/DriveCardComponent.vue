@@ -168,7 +168,7 @@ async function handleUnmount(clickEvent?: Event) {
       role="button"
       tabindex="0"
       class="flex h-7 w-7 shrink-0 items-center justify-center rounded-corner hover:bg-ui-surface/80 focus-visible:outline-2 focus-visible:outline-primary"
-      :title="t('unmount')"
+      :title="t('drive.unmount')"
       @click.stop.prevent="handleUnmount"
       @keydown.enter.stop.prevent="handleUnmount"
     >

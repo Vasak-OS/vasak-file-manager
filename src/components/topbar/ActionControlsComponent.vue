@@ -20,7 +20,7 @@ const maximizeIcon = useReactiveIcon(() => getSymbolSource('window-maximize'));
       <img :src="maximizeIcon" class="h-6 w-6 inline-block" :alt="t('window.maximize')">
     </span>
     <span class="p-1 bg-ui-bg/80 rounded-corner hover:bg-status-error border border-ui-border" @click="appWindow.close()">
-      <img :src="closeIcon" class="h-6 w-6 inline-block" :alt="t('close')">
+      <img :src="closeIcon" class="h-6 w-6 inline-block" :alt="t('window.close')">
     </span>
   </div>
 </template>

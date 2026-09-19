@@ -523,7 +523,10 @@ export function useFileBrowserSelection(
 			} else if (skippedCount > 0) {
 				toastData.value.title = isCopy ? 'notifications.copied' : 'notifications.moved';
 				toastData.value.itemCount = successCount;
-				toastData.value.description = `notifications.skippedCount ${skippedCount}`;
+				toastData.value.description = interpolar(
+					t(claveSegunCantidad('notifications.skippedCount', skippedCount)),
+					skippedCount
+				);
 			} else {
 				toastData.value.title = isCopy ? 'notifications.copied' : 'notifications.moved';
 				toastData.value.itemCount = successCount;
@@ -698,7 +701,10 @@ export function useFileBrowserSelection(
 				} else if (skippedCount > 0) {
 					toastData.value.title = isCopy ? 'notifications.copied' : 'notifications.moved';
 					toastData.value.itemCount = successCount;
-					toastData.value.description = `notifications.skippedCount ${skippedCount}`;
+					toastData.value.description = interpolar(
+						t(claveSegunCantidad('notifications.skippedCount', skippedCount)),
+						skippedCount
+					);
 				} else {
 					toastData.value.title = isCopy ? 'notifications.copied' : 'notifications.moved';
 					toastData.value.itemCount = successCount;

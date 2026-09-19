@@ -16,6 +16,7 @@ import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
+import { interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 
 const MAX_VISIBLE_ITEMS = 100;
@@ -91,13 +92,15 @@ const clipboardItemsHeader = computed(() => {
 	const displayed = Math.min(matched, MAX_VISIBLE_ITEMS);
 
 	if (clipboardItemsFilterQuery.value) {
-		return `fileBrowser.matchedNOfItems, ${matched}, ${total}`;
+		return interpolar(t('fileBrowser.matchedNOfItems'), matched, total);
 	}
 
 	if (total > MAX_VISIBLE_ITEMS) {
-		const hidden = Math.max(total - displayed, 0);
-
-		return `fileBrowser.showingNOfItems, ${hidden}, ${total}`;
+		// `displayed` y no los que quedan escondidos: la frase es «Mostrando
+		// {0} de {1} elementos», así que con la cuenta de escondidos decía
+		// «Mostrando 45 de 53» mientras se veían 8. No se notaba porque lo que
+		// se dibujaba era la clave, no la frase.
+		return interpolar(t('fileBrowser.showingNOfItems'), displayed, total);
 	}
 
 	return null;
@@ -220,7 +223,7 @@ function openCollapsedPopover() {
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--collapsed">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.actions')" :aria-label="t('fileBrowser.actions')">
+                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('actions')" :aria-label="t('actions')">
                     <img :src="ellipsisVerticalIcon" class="h-4 w-4 inline-block" />
                   </button>
                 </DropdownMenuTrigger>

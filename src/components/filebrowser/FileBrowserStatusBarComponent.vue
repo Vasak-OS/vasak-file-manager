@@ -14,6 +14,7 @@ import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
+import { interpolar } from '@/tools/interpolar';
 import type { ContextMenuAction } from '@/types/contextMenu';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
@@ -133,13 +134,13 @@ const showItemsHeader = computed(() => {
 	const displayed = Math.min(matched, MAX_VISIBLE_ITEMS);
 
 	if (itemsFilterQuery.value) {
-		return `fileBrowser.matchedNOfItems ${matched} ${total}`;
+		return interpolar(t('fileBrowser.matchedNOfItems'), matched, total);
 	}
 
 	if (total > MAX_VISIBLE_ITEMS) {
-		const hidden = Math.max(total - displayed, 0);
-
-		return `fileBrowser.showingNOfItems ${hidden} ${total}`;
+		// `displayed` y no los escondidos, por lo mismo que en la barra del
+		// portapapeles: la frase dice «Mostrando {0} de {1}».
+		return interpolar(t('fileBrowser.showingNOfItems'), displayed, total);
 	}
 
 	return null;

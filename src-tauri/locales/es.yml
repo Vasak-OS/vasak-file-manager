@@ -23,6 +23,20 @@ filter:
   showHiddenItems: Mostrar Elementos Ocultos
   filter: Filtro
 globalSearch:
+  driveScanInProgress: Recorriendo las unidades…
+  scanningInParallel: Recorriendo varias unidades a la vez…
+  indexStatus:
+    committing: Guardando el índice…
+  indexedItemsOne: "{0} elemento indexado"
+  indexedItemsOther: "{0} elementos indexados"
+  relativeTime:
+    justNow: recién
+    minutesOne: hace {0} minuto
+    minutesOther: hace {0} minutos
+    hoursOne: hace {0} hora
+    hoursOther: hace {0} horas
+    daysOne: hace {0} día
+    daysOther: hace {0} días
   exactMatch: Coincidencia Exacta
   globalSearch: Búsqueda Global
   noDrivesSelected: Sin unidades seleccionadas
@@ -32,6 +46,12 @@ globalSearch:
   searchDataIncomplete: Datos de búsqueda incompletos
   searchStats:
     nothingFound: Sin resultados
+    foundOnDrives: "Resultados: {0} · Unidades: {1}"
+    searchedOne: Se buscó en {0} elemento
+    searchedOther: Se buscó en {0} elementos
+    searchingLevelsDeepOne: hasta {0} nivel de profundidad
+    searchingLevelsDeepOther: hasta {0} niveles de profundidad
+    indexed: indexado {0}
   showDirectories: Mostrar Carpetas
   showFiles: Mostrar Archivos
   showSearchSettings: Mostrar Configuración de Búsqueda
@@ -42,7 +62,8 @@ fileBrowser:
   selected: Seleccionado
   fileCount: "{0} archivos"
   directoryCount: "{0} carpetas"
-  itemCount: "{0} elementos"
+  itemCountOne: "{0} elemento"
+  itemCountOther: "{0} elementos"
   matchedNOfItems: "Se encontraron {0} de {1} elementos"
   showingNOfItems: "Mostrando {0} de {1} elementos"
   selectedItems: "Seleccionados: {0}"
@@ -222,16 +243,33 @@ relativeTime:
   hoursAgo: "Hace {0} horas"
   daysAgo: "Hace {0} días"
 drag:
+  copyItemsOne: Copiar {0} elemento
+  copyItemsOther: Copiar {0} elementos
+  moveItemsOne: Mover {0} elemento
+  moveItemsOther: Mover {0} elementos
+  dropToCopyItemsOne: Soltar para copiar {0} elemento
+  dropToCopyItemsOther: Soltar para copiar {0} elementos
+  dropToMoveItemsOne: Soltar para mover {0} elemento
+  dropToMoveItemsOther: Soltar para mover {0} elementos
   holdShiftToChangeMode: Mantén presionado Shift para cambiar el modo de arrastre
   holdCtrlForCurrentDirDrop: Mantén presionado Ctrl para soltar en el directorio actual
   dragging: Arrastrando
   dropping: Soltando
 conflictDialog:
+  descriptionOne: Ya hay {0} elemento con ese nombre en el destino.
+  descriptionOther: Ya hay {0} elementos con esos nombres en el destino.
+  sourceSize: "Origen: {0}"
+  destinationSize: "Destino: {0}"
+  directory: Carpeta
+  andMoreOne: y {0} más
+  andMoreOther: y {0} más
   title: Conflicto de Archivo
   skip: Omitir
   keepBoth: Mantener Ambos
   replace: Reemplazar
 notifications:
+  skippedCountOne: Se omitió {0} elemento
+  skippedCountOther: Se omitieron {0} elementos
   copyingItems: Copiando elementos...
   copied: Elementos copiados
   movingItems: Moviendo elementos...
@@ -299,12 +337,14 @@ tags:
   newTag: Nueva etiqueta
 window:
   minimize: Minimizar
+  close: Cerrar la ventana
   maximize: Maximizar
 toolbar:
   infoPanel: Panel de información
   newTab: Pestaña nueva
 drive:
   eject: Expulsar
+  unmount: Desmontar
   encrypted: Unidad cifrada
   encryptedLocked: Cifrada — pide una frase de paso
   mountFailed: No se pudo montar la unidad

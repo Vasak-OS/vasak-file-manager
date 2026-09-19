@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import { DirEntry } from '@/types/dir-entry';
 
 const props = defineProps<{
@@ -36,11 +37,8 @@ const operationIcon = computed(() =>
 );
 
 const description = computed(() => {
-	if (props.operationType === 'copy') {
-		return `drag.copyItems ${props.itemCount}`;
-	}
-
-	return `drag.moveItems ${props.itemCount}`;
+	const base = props.operationType === 'copy' ? 'drag.copyItems' : 'drag.moveItems';
+	return interpolar(t(claveSegunCantidad(base, props.itemCount)), props.itemCount);
 });
 </script>
 

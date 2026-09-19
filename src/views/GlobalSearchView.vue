@@ -12,6 +12,7 @@ import NumberFieldInput from '@/components/ui/number-field/NumberFieldInput.vue'
 import { getDriveByPath } from '@/composables/use-drives';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import type { DriveInfo } from '@/types/drive-info';
 
@@ -23,7 +24,7 @@ const emit = defineEmits<{
 	'update:selectedEntries': [entries: DirEntry[]];
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const globalSearchStore = useGlobalSearchStore();
 const inputRef = ref<HTMLInputElement | null>(null);
@@ -59,6 +60,17 @@ const showScanProgress = computed(
 );
 const isCommitting = computed(() => globalSearchStore.isCommitting);
 
+/**
+ * Cuánto hace que se indexó, en palabras.
+ *
+ * Estaba escrito en inglés a mano —«2 minutes ago», con la `s` del plural
+ * puesta con un ternario—, así que en español decía eso mismo. Ahora sale del
+ * archivo de traducciones, con la clave según la cantidad para que no diga
+ * «hace 1 minutos».
+ *
+ * Más de una semana se muestra como fecha, que es lo que se entiende mejor a
+ * esa distancia, y va en el idioma de la interfaz y no en el del sistema.
+ */
 function formatRelativeTime(timestamp: number): string {
 	const now = Date.now();
 	const diff = now - timestamp;
@@ -67,12 +79,18 @@ function formatRelativeTime(timestamp: number): string {
 	const hours = Math.floor(minutes / 60);
 	const days = Math.floor(hours / 24);
 
-	if (seconds < 60) return 'Just now';
-	if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-	if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-	if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+	if (seconds < 60) return t('globalSearch.relativeTime.justNow');
+	if (minutes < 60) {
+		return interpolar(t(claveSegunCantidad('globalSearch.relativeTime.minutes', minutes)), minutes);
+	}
+	if (hours < 24) {
+		return interpolar(t(claveSegunCantidad('globalSearch.relativeTime.hours', hours)), hours);
+	}
+	if (days < 7) {
+		return interpolar(t(claveSegunCantidad('globalSearch.relativeTime.days', days)), days);
+	}
 
-	return new Date(timestamp).toLocaleDateString();
+	return new Date(timestamp).toLocaleDateString(locale.value);
 }
 
 const lastScanRelative = computed(() => {
@@ -256,7 +274,7 @@ onMounted(async () => {
         <input
           ref="inputRef"
           :value="globalSearchStore.query"
-          :placeholder="'globalSearch.globalSearch'"
+          :placeholder="t('globalSearch.globalSearch')"
           class="flex-1 pl-10 pr-10"
           :disabled="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
           @input="globalSearchStore.setQuery(String(($event.target as HTMLInputElement).value ?? ''))"
@@ -343,8 +361,8 @@ onMounted(async () => {
       <div v-if="showScanProgress" class="flex flex-col gap-2 bg-primary/5 px-4 py-3">
         <div class="flex flex-wrap items-center gap-2 text-[13px]">
           <span class="text-tx-muted">
-            {{ isCommitting ? 'globalSearch.indexStatus.committing' : (globalSearchStore.isParallelScan ?
-              'globalSearch.scanningInParallel' : 'globalSearch.driveScanInProgress') }}
+            {{ isCommitting ? t('globalSearch.indexStatus.committing') : (globalSearchStore.isParallelScan ?
+              t('globalSearch.scanningInParallel') : t('globalSearch.driveScanInProgress')) }}
           </span>
           <span v-if="globalSearchStore.currentDriveRoot && !isCommitting && !globalSearchStore.isParallelScan"
             class="rounded-corner-sm bg-primary/15 px-2 py-0.5 font-mono text-xs font-medium text-primary">
@@ -359,13 +377,16 @@ onMounted(async () => {
             :style="{ width: isCommitting ? '100%' : `${globalSearchStore.scanProgress}%` }" />
         </div>
         <div class="text-xs text-tx-muted">
-          {{ `globalSearch.indexedItems, ${globalSearchStore.indexedItemCount.toLocaleString()}` }}
+          {{ interpolar(
+            t(claveSegunCantidad('globalSearch.indexedItems', globalSearchStore.indexedItemCount)),
+            globalSearchStore.indexedItemCount.toLocaleString(locale)
+          ) }}
         </div>
       </div>
 
       <div v-if="globalSearchStore.results.length > 0"
         class="h-[var(--results-header-height)] bg-transparent px-0.5 text-xs font-medium leading-[var(--results-header-height)] text-tx-muted">
-        {{ `globalSearch.searchStats.foundOnDrives, ${totalResultsCount}, ${groupedResults.length}` }}
+        {{ interpolar(t('globalSearch.searchStats.foundOnDrives'), totalResultsCount, groupedResults.length) }}
       </div>
 
       <div class="flex-1 overflow-y-auto">
@@ -380,11 +401,16 @@ onMounted(async () => {
               {{ t('globalSearch.globalSearch') }}
             </span>
             <span class="text-[13px] text-tx-muted">
-              {{ `globalSearch.searchStats.searched', ${ globalSearchStore.indexedItemCount.toLocaleString() }` }}
-              ({{ `globalSearch.searchStats.searchingLevelsDeep, ${ scanDepth }` }}<template
-                v-if="lastScanRelative">, {{ `globalSearch.searchStats.indexed, ${
-                  lastScanRelative
-                }`.toLowerCase() }}</template>)
+              {{ interpolar(
+                t(claveSegunCantidad('globalSearch.searchStats.searched', globalSearchStore.indexedItemCount)),
+                globalSearchStore.indexedItemCount.toLocaleString(locale)
+              ) }}
+              ({{ interpolar(
+                t(claveSegunCantidad('globalSearch.searchStats.searchingLevelsDeep', scanDepth)),
+                scanDepth
+              ) }}<template v-if="lastScanRelative">, {{
+                interpolar(t('globalSearch.searchStats.indexed'), lastScanRelative)
+              }}</template>)
             </span>
             <button variant="outline" size="sm" class="mt-2 gap-1.5" @click="openSearchSettings">
               <img :src="settingsIcon" class="h-4 w-4" />
@@ -405,7 +431,10 @@ onMounted(async () => {
                   {{ group.driveInfo?.name || group.driveRoot }}
                 </span>
                 <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-tx-muted">
-                  {{ `item, ${group.entries.length}` }}
+                  {{ interpolar(
+                    t(claveSegunCantidad('fileBrowser.itemCount', group.entries.length)),
+                    group.entries.length
+                  ) }}
                 </span>
                 <img :src="chevronDownIcon" class="h-4 w-4 shrink-0 text-tx-muted transition-transform duration-150 ease-out"
                   :class="{ '-rotate-90': isDriveCollapsed(group.driveRoot) }" />
