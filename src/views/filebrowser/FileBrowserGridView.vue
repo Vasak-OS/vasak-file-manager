@@ -62,8 +62,13 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 
 function getDirSizeDisplay(entry: DirEntry): string | null {
 	const sizeInfo = dirSizesStore.getSize(entry.path);
+	// `t()` y no la clave escrita a mano: así como estaba, cada carpeta de la
+	// cuadrícula mostraba literalmente «fileBrowser.itemCount 3» en lugar de
+	// «3 elementos».
 	const itemCountStr =
-		entry.item_count !== null ? `fileBrowser.itemCount ${entry.item_count}` : null;
+		entry.item_count !== null
+			? t('fileBrowser.itemCount').replace('{0}', String(entry.item_count))
+			: null;
 
 	if (!sizeInfo) {
 		return itemCountStr || '—';

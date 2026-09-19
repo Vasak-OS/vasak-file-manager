@@ -528,7 +528,7 @@ onUnmounted(() => {
 
 <template>
 	
-  <div class="h-[calc(100vh-54px)] w-full flex flex-col pr-1">
+  <div class="h-full min-h-0 w-full flex flex-col overflow-hidden rounded-corner border border-ui-border bg-ui-surface/70">
 		<div class="navigator-page__panes-wrapper">
 			<div class="navigator-page__panes-container">
 				<GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
@@ -551,13 +551,15 @@ onUnmounted(() => {
 							<FileBrowserComponent :key="workspacesStore.currentTabGroup[0].id"
 								:ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
 								:tab="workspacesStore.currentTabGroup[0]" :pane-index="0" :layout="currentLayout"
+								toolbar-teleport-target=".window-path-teleport-target"
 								class="navigator-page__pane"
 								@update:selected-entries="(entries) => handleSelectionChange(entries, workspacesStore.currentTabGroup![0].id)"
 								@update:current-dir-entry="handleCurrentDirChange" />
 						</ResizablePanel>
 					</template>
 					<ResizablePanel v-else :default-size="100">
-						<FileBrowserComponent ref="singlePaneRef" :layout="currentLayout" class="navigator-page__pane"
+						<FileBrowserComponent ref="singlePaneRef" :layout="currentLayout"
+							toolbar-teleport-target=".window-path-teleport-target" class="navigator-page__pane"
 							@update:selected-entries="(entries) => handleSelectionChange(entries)"
 							@update:current-dir-entry="handleCurrentDirChange" />
 					</ResizablePanel>

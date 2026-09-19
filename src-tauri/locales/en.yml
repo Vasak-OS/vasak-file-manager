@@ -274,6 +274,12 @@ search: Search
 driveNotMounted: Drive not mounted
 freeOf: free of
 mounting: Mounting
+barraLateral:
+  plegar: Collapse the sidebar
+  desplegar: Expand the sidebar
+  lugares: Places
+  discos: Drives
+  nube: In the cloud
 textMenu:
   copy: Copy
   cut: Cut
