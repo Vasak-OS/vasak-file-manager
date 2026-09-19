@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { WindowFrame } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import NavigatorBarComponent from '@/components/navigator/NavigatorBarComponent.vue';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
@@ -8,8 +10,8 @@ import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import ContentInformation from '../components/content/ContentInformation.vue';
-import TopBarComponent from '../components/topbar/TopBarComponent.vue';
 
+const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const globalSearchStore = useGlobalSearchStore();
 
@@ -39,17 +41,25 @@ function handleToggleInfoPanel() {
 }
 </script>
 <template>
-  <div class="h-screen w-screen bg-ui-bg/80 rounded-corner-window flex flex-col border border-ui-border overflow-hidden">
-    <!-- La barra superior cruza la ventana entera. La lateral va **abajo** de
-         ella y no a su costado: las pestañas y los botones de ventana son de la
-         ventana, no de un panel, y con la barra lateral comiéndose ese ancho
-         esta ventana quedaba distinta de todas las demás del escritorio. -->
-    <TopBarComponent>
+  <!-- La barra cruza la ventana entera. La lateral va **abajo** de ella y no a
+       su costado: las pestañas y los botones de ventana son de la ventana, no
+       de un panel, y con la barra lateral comiéndose ese ancho esta ventana
+       quedaba distinta de todas las demás del escritorio. -->
+  <WindowFrame
+    :minimize-label="t('window.minimize')"
+    :maximize-label="t('window.maximize')"
+    :close-label="t('window.close')">
+    <template #barra>
       <TabBarComponent teleport-target="" />
+    </template>
+
+    <!-- Los botones de la ventana —dividir, panel de información— junto a los
+         de la ventana, que es donde el resto de las aplicaciones los pone. -->
+    <template #acciones>
       <NavigatorToolbarActionsComponent :is-split-view="isSplitView" :is-global-search-open="globalSearchStore.isOpen"
         :show-info-panel="isInfoPanelVisible" @toggle-split-view="handleToggleSplitView"
         @toggle-info-panel="handleToggleInfoPanel" />
-    </TopBarComponent>
+    </template>
 
     <!-- `p-1` y `gap-1`: la barra lateral es una tarjeta con borde y esquina
          redondeada, y pegada al borde de la ventana se le come el redondeo. Es
@@ -83,5 +93,5 @@ function handleToggleInfoPanel() {
         </div>
       </div>
     </div>
-  </div>
+  </WindowFrame>
 </template>
