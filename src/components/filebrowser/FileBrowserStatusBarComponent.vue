@@ -224,7 +224,7 @@ function openCollapsedPopover() {
                     <span class="hidden @[600px]:inline">{{ t('menu') }}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" class="w-[200px] p-2">
+                <DropdownMenuContent align="end" side="top" class="min-w-[200px] p-2">
                   <ActionMenuComponent :selected-entries="selectedEntriesArray"
                     :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
                     @action="emit('contextMenuAction', $event)" />
