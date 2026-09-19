@@ -88,11 +88,18 @@ fn ningun_texto_esta_vacio() {
             for parte in clave.split('.') {
                 actual = &actual[parte];
             }
-            if actual.as_str().map(|s| s.trim().is_empty()).unwrap_or(false) {
+            if actual
+                .as_str()
+                .map(|s| s.trim().is_empty())
+                .unwrap_or(false)
+            {
                 vacias.push(clave.clone());
             }
         }
-        assert!(vacias.is_empty(), "textos vacíos en {idioma}.yml: {vacias:?}");
+        assert!(
+            vacias.is_empty(),
+            "textos vacíos en {idioma}.yml: {vacias:?}"
+        );
     }
 }
 
@@ -109,7 +116,11 @@ fn los_marcadores_de_interpolacion_coinciden() {
         let texto = v.as_str().unwrap_or_default();
         let mut encontrados: Vec<String> = texto
             .match_indices('{')
-            .filter_map(|(i, _)| texto[i..].find('}').map(|j| texto[i..i + j + 1].to_string()))
+            .filter_map(|(i, _)| {
+                texto[i..]
+                    .find('}')
+                    .map(|j| texto[i..i + j + 1].to_string())
+            })
             .collect();
         encontrados.sort();
         encontrados
@@ -139,14 +150,36 @@ fn las_claves_nuevas_estan_donde_se_las_busca() {
     for idioma in ["es", "en"] {
         let raiz = catalogo(idioma);
         for (grupo, claves) in [
-            ("statusCenter", &["title", "clearFinished", "working", "pending", "completed", "cancelled", "failed"][..]),
+            (
+                "statusCenter",
+                &[
+                    "title",
+                    "clearFinished",
+                    "working",
+                    "pending",
+                    "completed",
+                    "cancelled",
+                    "failed",
+                ][..],
+            ),
             ("tags", &["title", "newTag"][..]),
             ("window", &["minimize", "maximize", "close"][..]),
             ("drive", &["eject", "unmount"][..]),
             ("toolbar", &["infoPanel", "newTab"][..]),
-            ("operations", &["copyingOne", "copyingOther", "movingOne", "movingOther",
-                             "trashingOne", "trashingOther", "deletingOne", "deletingOther",
-                             "calculatingSize"][..]),
+            (
+                "operations",
+                &[
+                    "copyingOne",
+                    "copyingOther",
+                    "movingOne",
+                    "movingOther",
+                    "trashingOne",
+                    "trashingOther",
+                    "deletingOne",
+                    "deletingOther",
+                    "calculatingSize",
+                ][..],
+            ),
             ("operationLabels", &["copying", "moving", "deleting"][..]),
             ("keys", &["esc", "tab", "shiftTab", "enter", "ctrlP"][..]),
         ] {
@@ -168,8 +201,16 @@ fn las_claves_nuevas_estan_donde_se_las_busca() {
 fn las_etiquetas_con_cantidad_llevan_su_marcador() {
     for idioma in ["es", "en"] {
         let raiz = catalogo(idioma);
-        for clave in ["copyingOne", "copyingOther", "movingOne", "movingOther",
-                      "trashingOne", "trashingOther", "deletingOne", "deletingOther"] {
+        for clave in [
+            "copyingOne",
+            "copyingOther",
+            "movingOne",
+            "movingOther",
+            "trashingOne",
+            "trashingOther",
+            "deletingOne",
+            "deletingOther",
+        ] {
             let texto = raiz["operations"][clave].as_str().unwrap_or("");
             assert!(
                 texto.contains("{0}"),
