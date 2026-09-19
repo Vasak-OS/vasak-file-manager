@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@vasakgroup/vue-libvasak';
 import type { ComponentPublicInstance } from 'vue';
 import { ref } from 'vue';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
-import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
-import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
-import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
-import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
@@ -182,14 +184,20 @@ function handleFilterInteractOutside(event?: Event) {
         @navigate="handleAddressBarNavigate" />
       <DropdownMenu :open="isCreateMenuOpen" @update:open="handleCreateMenuOpenChange">
         <Tooltip>
-          <DropdownMenuTrigger as-child>
-            <TooltipTrigger as-child>
+          <!-- El disparador va **pegado** al botón y no envolviendo al del
+               tooltip: `as-child` le pone encima `aria-haspopup` y
+               `aria-expanded`, y eso tiene que quedar en lo que recibe el foco.
+               Apagado porque quien abre y cierra es el botón: con los dos
+               manejadores en el mismo elemento, su `stopPropagation` no frena
+               al del disparador y el menú se abriría y cerraría de un clic. -->
+          <TooltipTrigger as-child>
+            <DropdownMenuTrigger as-child :disabled="true">
               <button type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
                 @click="handleCreateMenuButtonClick" :aria-label="t('fileBrowser.createNew')">
                 <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="h-6 w-6" />
               </button>
-            </TooltipTrigger>
-          </DropdownMenuTrigger>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
           <TooltipContent>{{ t('fileBrowser.newDirectoryFile') }}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end" side="bottom" class="min-w-30">

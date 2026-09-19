@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
 import ActionMenuComponent from '@/components/menu/ActionMenuComponent.vue';
-import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
-import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
-import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
-import DropdownMenuSeparator from '@/components/ui/dropdown/DropdownMenuSeparator.vue';
-import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
@@ -222,7 +224,7 @@ function openCollapsedPopover() {
                     <span class="hidden @[600px]:inline">{{ t('menu') }}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" class="w-[200px] p-2">
+                <DropdownMenuContent align="end" side="top" class="min-w-[200px] p-2">
                   <ActionMenuComponent :selected-entries="selectedEntriesArray"
                     :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
                     @action="emit('contextMenuAction', $event)" />

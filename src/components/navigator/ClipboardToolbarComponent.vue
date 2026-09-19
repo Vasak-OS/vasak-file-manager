@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
-import DropdownMenu from '@/components/ui/dropdown/DropdownMenu.vue';
-import DropdownMenuContent from '@/components/ui/dropdown/DropdownMenuContent.vue';
-import DropdownMenuItem from '@/components/ui/dropdown/DropdownMenuItem.vue';
-import DropdownMenuTrigger from '@/components/ui/dropdown/DropdownMenuTrigger.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
