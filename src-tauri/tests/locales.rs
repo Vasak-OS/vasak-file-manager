@@ -141,7 +141,8 @@ fn las_claves_nuevas_estan_donde_se_las_busca() {
         for (grupo, claves) in [
             ("statusCenter", &["title", "clearFinished", "working", "pending", "completed", "cancelled", "failed"][..]),
             ("tags", &["title", "newTag"][..]),
-            ("window", &["minimize", "maximize"][..]),
+            ("window", &["minimize", "maximize", "close"][..]),
+            ("drive", &["eject", "unmount"][..]),
             ("toolbar", &["infoPanel", "newTab"][..]),
             ("operations", &["copyingOne", "copyingOther", "movingOne", "movingOther",
                              "trashingOne", "trashingOther", "deletingOne", "deletingOther",

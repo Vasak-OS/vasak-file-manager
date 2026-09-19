@@ -268,8 +268,8 @@ conflictDialog:
   keepBoth: Keep Both
   replace: Replace
 notifications:
-  skippedCountOne: {0} item skipped
-  skippedCountOther: {0} items skipped
+  skippedCountOne: "{0} item skipped"
+  skippedCountOther: "{0} items skipped"
   copyingItems: Copying items...
   copied: Items copied
   movingItems: Moving items...

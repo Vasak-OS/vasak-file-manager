@@ -10,9 +10,14 @@
  * Y varias de las claves que nombraban **no existían** en los `.yml`, así que
  * envolverlas en `t()` sin mirar habría cambiado una clave visible por otra.
  *
- * De ahí los cuatro guardias de acá: ninguna clave escrita a mano, ninguna
- * clave suelta entre comillas en una plantilla, ninguna clave que no exista, y
- * los dos idiomas con las mismas.
+ * De ahí los tres guardias de acá: ninguna clave escrita a mano, ninguna clave
+ * suelta entre comillas en una plantilla y ninguna clave que no exista en los
+ * dos idiomas.
+ *
+ * Lo que se comprueba de los `.yml` en sí —que parseen, que los dos tengan las
+ * mismas claves, que ningún texto esté vacío, que los marcadores coincidan—
+ * vive en `src-tauri/tests/locales.rs`, que los lee con el mismo `serde_yaml`
+ * que la aplicación. Acá se mira lo que esa prueba no puede ver: el fuente.
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -76,11 +81,16 @@ function clavesUsadas(): Map<string, string[]> {
 	for (const { archivo, contenido } of fuentes) {
 		// `(?<![\w$.])` para no confundirse con el final de otra palabra:
 		// `clearTimeout(...)` termina en `t(` y contaba como una traducción.
-		for (const [, clave] of contenido.matchAll(/(?<![\w$.])t\('([^']+)'\)/g)) {
+		//
+		// Las dos comillas y el espacio opcional a propósito: el repositorio
+		// escribe `t('…')`, pero un `t( "…" )` que se colara quedaba fuera del
+		// escaneo y con él la clave que nombra, que es justo lo que estos
+		// guardias tienen que ver.
+		for (const [, clave] of contenido.matchAll(/(?<![\w$.])t\(\s*['"]([^'"]+)['"]\s*\)/g)) {
 			anotar(clave, archivo);
 		}
 		// La forma de las cantidades: una base que se convierte en dos claves.
-		for (const [, base] of contenido.matchAll(/claveSegunCantidad\('([^']+)'/g)) {
+		for (const [, base] of contenido.matchAll(/claveSegunCantidad\(\s*['"]([^'"]+)['"]/g)) {
 			anotar(`${base}One`, archivo);
 			anotar(`${base}Other`, archivo);
 		}
@@ -139,7 +149,7 @@ describe('las claves', () => {
 			for (const expresion of expresiones) {
 				// Una expresión que llama a `t()` ya pasa por las traducciones.
 				if (expresion.includes('t(')) continue;
-				for (const [, clave] of expresion.matchAll(/'([A-Za-z0-9_]+\.[A-Za-z0-9_.]+)'/g)) {
+				for (const [, clave] of expresion.matchAll(/['"]([A-Za-z0-9_]+\.[A-Za-z0-9_.]+)['"]/g)) {
 					// Sólo si es una clave de verdad: hay cadenas con punto que
 					// no lo son —una ruta, una extensión, un selector—.
 					if (rutasEs.has(clave)) culpables.push(`${archivo} → '${clave}'`);
@@ -168,15 +178,6 @@ describe('las claves', () => {
 		}
 
 		expect(faltan).toEqual([]);
-	});
-
-	test('los dos idiomas tienen las mismas', () => {
-		// Una clave en uno solo es una pantalla que se ve bien en un idioma y
-		// muestra la clave en el otro.
-		const soloEnEs = [...rutasEs].filter((ruta) => !rutasEn.has(ruta));
-		const soloEnEn = [...rutasEn].filter((ruta) => !rutasEs.has(ruta));
-
-		expect({ soloEnEs, soloEnEn }).toEqual({ soloEnEs: [], soloEnEn: [] });
 	});
 });
 
@@ -217,7 +218,7 @@ describe('las cantidades', () => {
 		// elementos», sin decir cuántos.
 		const bases = new Set<string>();
 		for (const { contenido } of fuentes) {
-			for (const [, base] of contenido.matchAll(/claveSegunCantidad\('([^']+)'/g)) {
+			for (const [, base] of contenido.matchAll(/claveSegunCantidad\(\s*['"]([^'"]+)['"]/g)) {
 				bases.add(base);
 			}
 		}
