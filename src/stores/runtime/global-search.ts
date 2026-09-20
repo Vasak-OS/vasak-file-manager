@@ -65,6 +65,19 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const totalDrivesCount = ref(0);
 	const isInitialized = ref(false);
 	const lastError = ref<string | null>(null);
+	/**
+	 * El recorrido no tiene ninguna unidad que mirar.
+	 *
+	 * Iba adentro de `lastError` como la cadena `'No drives available for
+	 * scanning'`, escrita a mano y en inglés en un campo que por lo demás trae
+	 * texto del backend. Dos problemas: no se podía traducir, y **pisaba el
+	 * error de verdad** —la lista queda vacía sobre todo cuando `get_system_drives`
+	 * falla, y ese `catch` ya había anotado el motivo—.
+	 *
+	 * Ahora es un estado aparte: quien lo dibuja elige el texto, y `lastError`
+	 * se queda con lo que de verdad falló.
+	 */
+	const sinUnidades = ref(false);
 
 	const statusPollTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const debounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -249,9 +262,11 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			const driveRoots = await getDriveRoots();
 
 			if (driveRoots.length === 0) {
-				lastError.value = 'No drives available for scanning';
+				sinUnidades.value = true;
 				return;
 			}
+
+			sinUnidades.value = false;
 
 			startStatusPolling();
 
@@ -633,8 +648,13 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		//}
 
 		if (driveRoots.length === 0) {
+			// Éste no lo decía de ninguna manera: se volvía y ya. Es el mismo
+			// caso que el de arriba y se cuenta igual.
+			sinUnidades.value = true;
 			return;
 		}
+
+		sinUnidades.value = false;
 
 		try {
 			await invoke('global_search_start_scan', {
@@ -685,6 +705,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		getIsIndexStale,
 		isInitialized,
 		lastError,
+		sinUnidades,
 		senalDeInactividad,
 		getIsUserIdle,
 		open,
