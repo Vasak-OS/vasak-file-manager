@@ -158,11 +158,19 @@ function handleEntryKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-  <!-- El alto fijo es lo que hace que esto se pueda desplazar: toda la cadena
-       de arriba resuelve su alto con `h-full`, así que sin un tope acá el
-       `ScrollArea` crece hasta el alto del contenido y deja de tener algo que
-       desplazar. Las filas desbordan este alto, y eso es lo que se desplaza. -->
-  <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
+  <div class="flex flex-col" style="padding-right: var(--file-browser-list-right-gutter);">
+    <!-- Sin alto propio. Acá iba un `h-[calc(100vh-210px)]`: el alto de la
+         ventana menos lo que alguien contó a mano que ocupan la barra de la
+         ventana, la de pestañas, la de ruta, los títulos de columna y la de
+         estado. Hacía falta porque la cadena de altos se cortaba en los dos
+         envoltorios sin CSS de la barra del navegador, y sin un tope el que
+         desplaza crecía hasta su contenido; arreglada la cadena, el tope sobra.
+         Y sobra que sea un número: contar el alto de lo de alrededor a mano deja
+         de ser cierto en cuanto algo de eso cambia —la barra de la ventana a un
+         costado, la de ruta que desaparece en vista dividida, el navegador
+         embebido sin barra de estado—, y entonces la lista pide un alto que no
+         tiene nada que ver con el lugar donde está. Ahora crece con sus filas y
+         el `ScrollArea` de arriba, que sí sabe cuánto lugar hay, la desplaza. -->
     <!-- `v-bind="modoPagina"`: quien desplaza es el `ScrollArea` que envuelve
          a la vista, no el desplazador. El porqué de la forma está arriba. -->
     <DynamicScroller
