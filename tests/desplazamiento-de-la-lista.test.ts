@@ -89,7 +89,13 @@ function montarLista() {
  * mirar.
  */
 function conAltoDeVentana(alto: number) {
-	const original = Element.prototype.getBoundingClientRect;
+	const rectangulo = Element.prototype.getBoundingClientRect;
+	// Se guarda el descriptor y no el número: `innerHeight` puede ser un
+	// captador del prototipo, y volver a ponerle el valor viejo dejaría un dato
+	// propio donde no lo había. Sin restaurarlo, el 800 queda puesto para todo
+	// lo que corra después en el mismo proceso —comprobado con una prueba
+	// suelta en otro archivo, que lo veía—. Lo marcó la revisión.
+	const descriptor = Object.getOwnPropertyDescriptor(window, 'innerHeight');
 	Object.defineProperty(window, 'innerHeight', { value: alto, configurable: true });
 	Element.prototype.getBoundingClientRect = () =>
 		({
@@ -103,7 +109,9 @@ function conAltoDeVentana(alto: number) {
 			y: 0,
 		}) as DOMRect;
 	return () => {
-		Element.prototype.getBoundingClientRect = original;
+		Element.prototype.getBoundingClientRect = rectangulo;
+		if (descriptor) Object.defineProperty(window, 'innerHeight', descriptor);
+		else Reflect.deleteProperty(window, 'innerHeight');
 	};
 }
 
@@ -139,8 +147,13 @@ describe('el desplazador de la lista', () => {
 			new URL('../node_modules/vue-virtual-scroller/dist/vue-virtual-scroller.css', import.meta.url)
 		).text();
 
-		expect(hoja.replace(/\s+/g, '')).toContain(
-			'.vue-recycle-scroller.direction-vertical:not(.page-mode){overflow-y:auto}'
+		// Con una expresión y no con el texto exacto: la librería puede juntar la
+		// regla con otras en una lista de selectores, o sumarle propiedades, sin
+		// cambiar lo que hace. Lo que tiene que seguir siendo cierto es que el
+		// `overflow` del desplazador vertical esté condicionado a **no** estar en
+		// modo página. Lo marcó la revisión.
+		expect(hoja.replace(/\s+/g, '')).toMatch(
+			/\.vue-recycle-scroller[^{]*\.direction-vertical:not\(\.page-mode\)[^{]*\{[^}]*overflow-y:auto/
 		);
 	});
 
@@ -149,9 +162,12 @@ describe('el desplazador de la lista', () => {
 		// dibujar: sin esto las dos de arriba podrían pasar sobre un desplazador
 		// vacío.
 		const restaurar = conAltoDeVentana(800);
-		const vista = montarLista();
+		// El montaje va adentro del `try`: si revienta, el alto falso tiene que
+		// irse igual.
+		let vista: ReturnType<typeof montarLista> | null = null;
 
 		try {
+			vista = montarLista();
 			await vista.vm.$nextTick();
 			await new Promise((sigue) => setTimeout(sigue, 0));
 			await vista.vm.$nextTick();
@@ -159,7 +175,7 @@ describe('el desplazador de la lista', () => {
 			expect(vista.findAll('[data-entry-path]').length).toBeGreaterThan(0);
 			expect(vista.text()).toContain('archivo-0');
 		} finally {
-			vista.unmount();
+			vista?.unmount();
 			restaurar();
 		}
 	});
