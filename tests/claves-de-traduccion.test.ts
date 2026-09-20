@@ -24,9 +24,19 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mount } from '@vue/test-utils';
 import DragOverlayComponent from '@/components/drag/DragOverlayComponent.vue';
 
+/** Los carteles montados, para bajarlos al terminar cada prueba. */
+const montados: Array<ReturnType<typeof mount>> = [];
+
 // El cartel de arrastre se teletransporta al `body`, así que lo montado se
 // limpia a mano: si no, lo de una prueba lo ve la siguiente.
+//
+// Y se desmonta de verdad, no sólo se vacía el `body`: el cartel usa
+// `useReactiveIcon`, que lleva la cuenta de cuántos la usan en una variable
+// del módulo y se suscribe al cambio de tema sólo cuando esa cuenta pasa de
+// cero a uno. Uno que queda montado nunca la baja, y la siguiente prueba —acá
+// o en otro archivo— se salta la suscripción. Lo marcó la revisión.
 afterEach(() => {
+	while (montados.length) montados.pop()?.unmount();
 	document.body.innerHTML = '';
 });
 
@@ -242,7 +252,7 @@ describe('el cartel que sigue al puntero', () => {
 	// para comprobar que elige la clave correcta: el `t()` de los dobles
 	// devuelve la clave, así que lo que se dibuja **es** la que se eligió.
 	function arrastrando(itemCount: number, operationType: 'copy' | 'move') {
-		return mount(DragOverlayComponent, {
+		const cartel = mount(DragOverlayComponent, {
 			props: {
 				isActive: true,
 				itemCount,
@@ -253,6 +263,8 @@ describe('el cartel que sigue al puntero', () => {
 			},
 			attachTo: document.body,
 		});
+		montados.push(cartel);
+		return cartel;
 	}
 
 	test('un archivo se arrastra en singular', () => {
