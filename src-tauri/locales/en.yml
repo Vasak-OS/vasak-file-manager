@@ -62,7 +62,6 @@ globalSearch:
     indexed: indexed {0}
   showDirectories: Show Directories
   showFiles: Show Files
-  showSearchSettings: Show Search Settings
   typoTolerance: Typo Tolerance
 fileBrowser:
   sortAscending: Sorted ascending

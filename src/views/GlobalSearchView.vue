@@ -38,13 +38,10 @@ const typoTolerance = ref(true);
 const scanDepth = ref(6);
 
 const searchIcon = useReactiveIcon(() => getSymbolSource('search'));
-const settingsIcon = useReactiveIcon(() => getSymbolSource('settings-configure'));
 const chevronDownIcon = useReactiveIcon(() => getSymbolSource('arrow-down'));
 const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const loaderIcon = useReactiveIcon(() => getSymbolSource('content-loading-symbolic'));
 const slidersHorizontalIcon = useReactiveIcon(() => getSymbolSource('dialog-filters'));
-
-function openSearchSettings() {}
 
 function toggleOptions() {
 	showOptions.value = !showOptions.value;
@@ -445,10 +442,15 @@ onMounted(async () => {
                 interpolar(t('globalSearch.searchStats.indexed'), lastScanRelative)
               }}</template>)
             </span>
-            <button class="mt-2 gap-1.5" @click="openSearchSettings">
-              <img :src="settingsIcon" class="h-4 w-4" />
-              {{ t('globalSearch.showSearchSettings') }}
-            </button>
+            <!-- Acá iba un botón «mostrar ajustes de búsqueda». Su manejador
+                 era una función vacía —cuerpo `{}`—, así que apretarlo no
+                 hacía nada. Y no es que faltara conectarlo —no
+                 hay ninguna pantalla de ajustes de la búsqueda, ni en esta
+                 aplicación ni en vasak-settings—: lo que habría que ajustar
+                 —la profundidad del recorrido, las rutas ignoradas, el
+                 recorrido en paralelo, las unidades elegidas— está **comentado**
+                 en el store y hoy son valores fijos. Un botón que ofrece algo
+                 que no existe en ningún lado es peor que no tenerlo. -->
           </div>
 
           <EmptyState v-else-if="globalSearchStore.results.length === 0 && !globalSearchStore.isSearching"

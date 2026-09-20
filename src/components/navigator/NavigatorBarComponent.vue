@@ -486,6 +486,14 @@ function callActivePaneMethod(
 }
 
 function registerShortcutHandlers() {
+	// `toggleGlobalSearch` estaba **definido** —Ctrl+Shift+F, con su etiqueta
+	// traducida y editable desde los ajustes de atajos— y nunca se le registró
+	// un manejador, así que la tecla no hacía nada. Es la misma mitad que
+	// faltaba del botón de la barra: la búsqueda global tenía todo salvo algo
+	// que la llamara.
+	shortcutsStore.registerHandler('toggleGlobalSearch', () => {
+		globalSearchStore.toggle();
+	});
 	shortcutsStore.registerHandler('toggleHiddenFiles', handleHiddenFilesShortcut);
 	shortcutsStore.registerHandler('toggleFilter', handleFilterShortcut);
 	shortcutsStore.registerHandler('copy', handleCopyShortcut);
