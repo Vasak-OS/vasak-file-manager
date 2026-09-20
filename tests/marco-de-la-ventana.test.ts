@@ -18,6 +18,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
 import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import WindowAppLayout from '@/layouts/WindowAppLayout.vue';
+import { olvidarTodo, variantesPedidas } from './dobles';
 
 let vista: VueWrapper | null = null;
 /** Lo que cada llamada a `ranura()` dejó montado, para desmontarlo después. */
@@ -53,6 +54,7 @@ function ranura(ventana: VueWrapper, nombre: string) {
 
 beforeEach(() => {
 	setActivePinia(createPinia());
+	olvidarTodo();
 });
 
 afterEach(() => {
@@ -123,5 +125,32 @@ describe('lo que la barra no se lleva puesto', () => {
 
 		expect(barra.contains(lateral)).toBe(false);
 		expect(barra.compareDocumentPosition(lateral) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+});
+
+describe('los botones de la ventana', () => {
+	/** Deja que terminen las resoluciones del montaje. */
+	async function asentar() {
+		for (let i = 0; i < 4; i++) {
+			await Promise.resolve();
+			await new Promise((sigue) => setTimeout(sigue, 0));
+		}
+	}
+
+	test('piden los iconos en la variante simbólica', async () => {
+		// Con la 0.7.0 de la librería los tres salían de la variante en color, y
+		// `window-close` en color —en los temas derivados de Breeze, que es lo
+		// que son los de VasakOS— es el círculo rojo relleno de KDE: quedaba
+		// desparejo con minimizar y maximizar, que son trazos grises. Antes de
+		// mudarse al marco compartido esta ventana los pedía con
+		// `getSymbolSource`. El guardia queda acá además de en la librería
+		// porque lo que lo destapa es esta ventana: si el bloqueo de
+		// dependencias volviera atrás, la prueba de allá seguiría en verde.
+		abrir();
+		await asentar();
+
+		expect(variantesPedidas('window-minimize')).toEqual(['symbol']);
+		expect(variantesPedidas('window-maximize')).toEqual(['symbol']);
+		expect(variantesPedidas('window-close')).toEqual(['symbol']);
 	});
 });
