@@ -1,3 +1,4 @@
+use crate::utils::normalize_path;
 use lru::LruCache;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -9,7 +10,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
-use crate::utils::normalize_path;
 
 /// Cuántos tamaños de carpeta se recuerdan.
 ///
@@ -51,14 +51,12 @@ struct CacheEntry {
     dir_mtime: u64,
 }
 
-static SIZE_CACHE: Lazy<Mutex<LruCache<String, CacheEntry>>> = Lazy::new(|| {
-    Mutex::new(LruCache::new(CACHE_SIZE))
-});
+static SIZE_CACHE: Lazy<Mutex<LruCache<String, CacheEntry>>> =
+    Lazy::new(|| Mutex::new(LruCache::new(CACHE_SIZE)));
 
 // Map of path -> cancellation token for active calculations
-static ACTIVE_CALCULATIONS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> = Lazy::new(|| {
-    Mutex::new(HashMap::new())
-});
+static ACTIVE_CALCULATIONS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 // Store for current progress of active calculations
 #[derive(Debug, Clone)]
@@ -68,9 +66,8 @@ struct CalculationProgress {
     dir_count: Arc<AtomicU64>,
 }
 
-static CALCULATION_PROGRESS: Lazy<Mutex<HashMap<String, CalculationProgress>>> = Lazy::new(|| {
-    Mutex::new(HashMap::new())
-});
+static CALCULATION_PROGRESS: Lazy<Mutex<HashMap<String, CalculationProgress>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn register_calculation(path: &str) -> (Arc<AtomicBool>, CalculationProgress) {
     let normalized = normalize_path(path);
@@ -142,10 +139,7 @@ fn set_cached_size(path: &str, entry: CacheEntry) {
     }
 }
 
-fn calculate_dir_size_with_timeout(
-    path: &Path,
-    timeout: Duration,
-) -> DirSizeResult {
+fn calculate_dir_size_with_timeout(path: &Path, timeout: Duration) -> DirSizeResult {
     let path_str = normalize_path(&path.to_string_lossy());
 
     if !path.exists() {

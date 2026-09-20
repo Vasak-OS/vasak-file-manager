@@ -57,16 +57,14 @@ pub async fn montar_disco_en_la_nube(
 
     montar(&app, credencial.clone()).await?;
 
-    ruta_de(&app, &credencial.uri)
-        .await?
-        .ok_or_else(|| {
-            // Pasa si gvfsd-fuse no está corriendo: el montaje existe para las
-            // aplicaciones que hablan gio, pero no hay ninguna ruta que este
-            // gestor pueda abrir.
-            "se montó, pero el sistema no expuso una ruta para abrirlo. \
+    ruta_de(&app, &credencial.uri).await?.ok_or_else(|| {
+        // Pasa si gvfsd-fuse no está corriendo: el montaje existe para las
+        // aplicaciones que hablan gio, pero no hay ninguna ruta que este
+        // gestor pueda abrir.
+        "se montó, pero el sistema no expuso una ruta para abrirlo. \
              ¿Está gvfs instalado por completo?"
-                .to_string()
-        })
+            .to_string()
+    })
 }
 
 /// La ruta local de una dirección de gvfs, si está montada **y sirve**.
@@ -119,29 +117,31 @@ async fn montar(app: &tauri::AppHandle, credencial: Credencial) -> Result<(), St
         // llegaría nunca y lo que vería la persona sería el tope de tiempo, que
         // no dice nada sobre su contraseña. A la segunda se corta.
         let ya_contesto = std::cell::Cell::new(false);
-        operacion.connect_ask_password(move |operacion, _mensaje, _usuario_previo, _dominio, flags| {
-            if ya_contesto.replace(true) {
-                operacion.reply(gio::MountOperationResult::Aborted);
-                return;
-            }
+        operacion.connect_ask_password(
+            move |operacion, _mensaje, _usuario_previo, _dominio, flags| {
+                if ya_contesto.replace(true) {
+                    operacion.reply(gio::MountOperationResult::Aborted);
+                    return;
+                }
 
-            // Sólo lo que pidió. Poner una contraseña donde no se pidió ninguna
-            // —un montaje anónimo, por ejemplo— es mandarla sin motivo.
-            if flags.contains(gio::AskPasswordFlags::NEED_USERNAME) {
-                operacion.set_username(Some(&usuario));
-            }
-            if flags.contains(gio::AskPasswordFlags::NEED_PASSWORD) {
-                operacion.set_password(Some(&secreto));
-            }
-            // Que gvfs **no** la guarde. La credencial ya vive en el servicio de
-            // cuentas; una copia en otro llavero es otro lugar del que puede
-            // filtrarse y otro que hay que acordarse de limpiar al borrar la
-            // cuenta.
-            if flags.contains(gio::AskPasswordFlags::SAVING_SUPPORTED) {
-                operacion.set_password_save(gio::PasswordSave::Never);
-            }
-            operacion.reply(gio::MountOperationResult::Handled);
-        });
+                // Sólo lo que pidió. Poner una contraseña donde no se pidió ninguna
+                // —un montaje anónimo, por ejemplo— es mandarla sin motivo.
+                if flags.contains(gio::AskPasswordFlags::NEED_USERNAME) {
+                    operacion.set_username(Some(&usuario));
+                }
+                if flags.contains(gio::AskPasswordFlags::NEED_PASSWORD) {
+                    operacion.set_password(Some(&secreto));
+                }
+                // Que gvfs **no** la guarde. La credencial ya vive en el servicio de
+                // cuentas; una copia en otro llavero es otro lugar del que puede
+                // filtrarse y otro que hay que acordarse de limpiar al borrar la
+                // cuenta.
+                if flags.contains(gio::AskPasswordFlags::SAVING_SUPPORTED) {
+                    operacion.set_password_save(gio::PasswordSave::Never);
+                }
+                operacion.reply(gio::MountOperationResult::Handled);
+            },
+        );
 
         // gvfs puede querer preguntar otra cosa —un certificado que no
         // reconoce, por ejemplo— y esa señal no está enlazada en gio 0.18: el

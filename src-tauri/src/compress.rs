@@ -9,7 +9,9 @@ use std::time::Duration;
 use tauri::AppHandle;
 use walkdir::WalkDir;
 
-use crate::file_operations::{emit_progress, is_cancelled, register_operation, unregister_operation};
+use crate::file_operations::{
+    emit_progress, is_cancelled, register_operation, unregister_operation,
+};
 use crate::undo;
 
 /// How often the supervisor loop checks for cancellation / publishes progress.
@@ -179,7 +181,10 @@ pub fn compress_items(
     let destination = Path::new(&destination_dir);
 
     if !destination.is_dir() {
-        return failure(format!("Destination is not a directory: {}", destination_dir));
+        return failure(format!(
+            "Destination is not a directory: {}",
+            destination_dir
+        ));
     }
 
     let sources: Vec<PathBuf> = source_paths.iter().map(PathBuf::from).collect();
@@ -279,7 +284,10 @@ pub fn compress_items(
                     unregister_operation(id);
                 }
 
-                return failure(format!("Failed while waiting for {}: {}", spec.program, error));
+                return failure(format!(
+                    "Failed while waiting for {}: {}",
+                    spec.program, error
+                ));
             }
         }
     };

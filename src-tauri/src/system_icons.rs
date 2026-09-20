@@ -24,7 +24,7 @@ static ICON_DATA_URL_CACHE: Lazy<Mutex<LruCache<String, String>>> =
     Lazy::new(|| Mutex::new(LruCache::new(CACHE_ICONOS)));
 
 fn normalize_path_for_os(path: &str) -> PathBuf {
-        PathBuf::from(path)
+    PathBuf::from(path)
 }
 
 fn has_unique_icon(extension: &Option<String>) -> bool {

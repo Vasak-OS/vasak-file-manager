@@ -150,10 +150,7 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
     // si cada escritor tiene el suyo.
     static NONCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let parcial = destino.with_extension(format!(
-        "parcial-{}-{nonce}.jpg",
-        std::process::id()
-    ));
+    let parcial = destino.with_extension(format!("parcial-{}-{nonce}.jpg", std::process::id()));
 
     let mut orden = Command::new("ffmpeg");
     orden

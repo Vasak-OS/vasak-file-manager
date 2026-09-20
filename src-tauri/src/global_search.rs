@@ -1,3 +1,5 @@
+mod contrato;
+
 use crate::utils::normalize_path;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -8,9 +10,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, Query, TermQuery};
-use tantivy::schema::{
-    Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, FAST, STORED, STRING,
-};
+use tantivy::schema::{Field, IndexRecordOption, Schema, Value};
 use tantivy::{doc, Index, IndexReader, IndexWriter, Term};
 use tauri::Manager;
 use walkdir::WalkDir;
@@ -165,42 +165,29 @@ fn is_ignored_path(path: &str, ignored_paths: &[String]) -> bool {
     })
 }
 
+/// El esquema, del contrato que se comparte con el lanzador.
+///
+/// Sigue devolviendo la estructura de campos de este módulo para no tocar sus
+/// treinta usos: lo que importa es que los **nombres** y las opciones vivan en
+/// un solo lugar, que es lo que el otro repositorio tiene que espejar.
 fn build_schema() -> (Schema, GlobalSearchIndexFields) {
-    let mut schema_builder = Schema::builder();
-
-    let name_indexing = TextFieldIndexing::default()
-        .set_tokenizer("default")
-        .set_index_option(IndexRecordOption::WithFreqsAndPositions);
-    let name_options = TextOptions::default()
-        .set_indexing_options(name_indexing)
-        .set_stored();
-
-    let path = schema_builder.add_text_field("path", STRING | STORED);
-    let name = schema_builder.add_text_field("name", name_options);
-    let name_lower = schema_builder.add_text_field("name_lower", STRING | STORED);
-
-    let is_file = schema_builder.add_u64_field("is_file", FAST | STORED);
-    let is_dir = schema_builder.add_u64_field("is_dir", FAST | STORED);
-    let modified_time = schema_builder.add_u64_field("modified_time", FAST | STORED);
-    let size = schema_builder.add_u64_field("size", FAST | STORED);
-
-    let schema = schema_builder.build();
+    let (esquema, campos) = contrato::esquema();
     (
-        schema,
+        esquema,
         GlobalSearchIndexFields {
-            path,
-            name,
-            name_lower,
-            is_file,
-            is_dir,
-            modified_time,
-            size,
+            path: campos.ruta,
+            name: campos.nombre,
+            name_lower: campos.nombre_minuscula,
+            is_file: campos.es_archivo,
+            is_dir: campos.es_directorio,
+            modified_time: campos.modificado,
+            size: campos.tamanio,
         },
     )
 }
 
 fn index_dir(base_dir: &Path) -> PathBuf {
-    base_dir.join("global-search").join("index")
+    contrato::directorio_del_indice(base_dir)
 }
 
 fn calculate_dir_size(path: &Path) -> u64 {
@@ -227,7 +214,7 @@ fn calculate_dir_size(path: &Path) -> u64 {
 }
 
 fn meta_file(base_dir: &Path) -> PathBuf {
-    base_dir.join("global-search").join("status.json")
+    contrato::archivo_de_estado(base_dir)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

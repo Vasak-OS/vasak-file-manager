@@ -201,7 +201,8 @@ fn restore_from_trash(paths: &[PathBuf], deleted_after: i64) -> Result<usize, St
 }
 
 fn parent_of(path: &Path) -> Option<String> {
-    path.parent().map(|parent| parent.to_string_lossy().to_string())
+    path.parent()
+        .map(|parent| parent.to_string_lossy().to_string())
 }
 
 /// Describes the operation that a call to `undo_last_operation` would reverse.
@@ -390,7 +391,12 @@ mod tests {
         clear_undo_history();
 
         // An action with nothing to reverse is never offered to the user.
-        push("copy", 0, false, UndoAction::RemoveCreated { paths: Vec::new() });
+        push(
+            "copy",
+            0,
+            false,
+            UndoAction::RemoveCreated { paths: Vec::new() },
+        );
         assert!(get_undo_info().is_none());
 
         let dir = temp_dir("stack");

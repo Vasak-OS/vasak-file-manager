@@ -1,6 +1,6 @@
+mod linux;
 mod types;
 mod utils;
-mod linux;
 
 pub use types::{GetAssociatedProgramsResult, OpenWithResult};
 
@@ -10,7 +10,7 @@ use utils::canonicalize_path;
 
 #[tauri::command]
 pub fn get_associated_programs(file_path: String) -> GetAssociatedProgramsResult {
-        linux::get_associated_programs_impl(&file_path)
+    linux::get_associated_programs_impl(&file_path)
 }
 
 #[tauri::command]
@@ -29,15 +29,14 @@ pub fn open_with_program(
 
     let absolute_file_path = canonicalize_path(file);
 
-        if arguments.is_empty() {
-            if let Some(result) = linux::open_with_desktop_id(&program_path, &absolute_file_path) {
-                if result.success {
-                    return result;
-                }
+    if arguments.is_empty() {
+        if let Some(result) = linux::open_with_desktop_id(&program_path, &absolute_file_path) {
+            if result.success {
                 return result;
             }
+            return result;
         }
-    
+    }
 
     let program = Path::new(&program_path);
     if !program.exists() {
@@ -69,7 +68,6 @@ pub fn open_with_program(
         }
     }
 
-
     match command.spawn() {
         Ok(_) => OpenWithResult {
             success: true,
@@ -84,18 +82,14 @@ pub fn open_with_program(
 
 #[tauri::command]
 pub fn open_with_default(file_path: String) -> OpenWithResult {
-
-        match Command::new("xdg-open").arg(&file_path).spawn() {
-            Ok(_) => OpenWithResult {
-                success: true,
-                error: None,
-            },
-            Err(spawn_error) => OpenWithResult {
-                success: false,
-                error: Some(format!("Failed to open file: {}", spawn_error)),
-            },
-        }
-    
+    match Command::new("xdg-open").arg(&file_path).spawn() {
+        Ok(_) => OpenWithResult {
+            success: true,
+            error: None,
+        },
+        Err(spawn_error) => OpenWithResult {
+            success: false,
+            error: Some(format!("Failed to open file: {}", spawn_error)),
+        },
+    }
 }
-
-
