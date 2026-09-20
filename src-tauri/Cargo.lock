@@ -5877,7 +5877,7 @@ dependencies = [
 
 [[package]]
 name = "vasak-file-manager"
-version = "0.14.6"
+version = "0.15.1"
 dependencies = [
  "base64 0.22.1",
  "file_icon_provider",

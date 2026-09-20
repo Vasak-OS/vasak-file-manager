@@ -53,11 +53,13 @@ function handleToggleInfoPanel() {
       <TabBarComponent teleport-target="" />
     </template>
 
-    <!-- Los botones de la ventana —dividir, panel de información— junto a los
-         de la ventana, que es donde el resto de las aplicaciones los pone. -->
+    <!-- Los botones de la ventana —búsqueda global, dividir, panel de
+         información— junto a los de la ventana, que es donde el resto de las
+         aplicaciones los pone. -->
     <template #acciones>
       <NavigatorToolbarActionsComponent :is-split-view="isSplitView" :is-global-search-open="globalSearchStore.isOpen"
         :show-info-panel="isInfoPanelVisible" @toggle-split-view="handleToggleSplitView"
+        @toggle-global-search="globalSearchStore.toggle()"
         @toggle-info-panel="handleToggleInfoPanel" />
     </template>
 
