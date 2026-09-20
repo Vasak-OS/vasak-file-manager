@@ -295,6 +295,32 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Lo que falló, dicho.
+         `lastError` existía desde siempre, se escribía en trece lugares —el
+         estado del índice, el arranque, el recorrido, cada búsqueda— y **no lo
+         leía nadie**: cuando algo se rompía, el panel se quedaba con el mismo
+         cartel de «todavía no hay índice» y no había forma de enterarse.
+         El título va traducido y el detalle no: es lo que contesta el backend,
+         y es preferible mostrarlo tal cual —sirve para un informe de error— a
+         tragárselo. Se limpia solo: cada operación que sale bien pone
+         `lastError` en nulo. -->
+    <div v-if="globalSearchStore.lastError || globalSearchStore.sinUnidades"
+      class="mx-2 mt-2 flex flex-col gap-0.5 rounded-corner bg-status-error/10 px-3 py-2 text-[13px] text-status-error">
+      <span class="font-medium">{{
+        globalSearchStore.sinUnidades
+          ? t('globalSearch.noDrivesToScan')
+          : t('globalSearch.somethingFailed')
+      }}</span>
+      <span v-if="globalSearchStore.sinUnidades" class="text-status-error/80">{{
+        t('globalSearch.noDrivesToScanDescription') }}</span>
+      <!-- El detalle va **además** de lo de arriba y no en su lugar: quedarse
+           sin unidades pasa sobre todo porque preguntar por ellas falló, y con
+           un `v-else` el motivo volvía a quedar escondido. Lo destapó la
+           prueba que recorre ese caso entero. -->
+      <span v-if="globalSearchStore.lastError" class="break-words text-status-error/80">{{
+        globalSearchStore.lastError }}</span>
+    </div>
+
     <div v-if="showOptions" class="mx-1 mb-4 flex gap-6 rounded-corner-sm border-b border-ui-border bg-ui-surface/30 px-4 py-3">
       <div class="flex flex-col gap-2">
         <span class="text-[11px] font-medium uppercase text-tx-muted">{{ t('globalSearch.results') }}</span>

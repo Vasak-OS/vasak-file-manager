@@ -39,6 +39,11 @@ globalSearch:
     daysOther: "{0} days ago"
   exactMatch: Exact Match
   globalSearch: Global Search
+  somethingFailed: Global search hit a problem
+  noDrivesToScan: No drives to go through
+  noDrivesToScanDescription: >-
+    The index is built by going through the drives on this computer, and none were
+    reported. Nothing can be searched until at least one shows up.
   indexEmpty: Nothing indexed yet
   indexEmptyDescription: >-
     Global search reads an index of your drives, and that index is still empty. It is built

@@ -14,7 +14,7 @@
  * es lo único que puede explicárselo.
  */
 
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import GlobalSearchView from '@/views/GlobalSearchView.vue';
@@ -42,6 +42,17 @@ async function conElIndice(estado: Record<string, unknown>) {
 }
 
 let vista: VueWrapper | null = null;
+
+afterEach(() => {
+	// `useReactiveIcon` lleva la cuenta de cuántos la usan en una variable del
+	// módulo y se suscribe al cambio de tema sólo cuando esa cuenta pasa de cero
+	// a uno. Una vista que queda montada nunca la baja, y la siguiente prueba
+	// —acá o **en otro archivo**— se salta la suscripción. Así se rompió la del
+	// cambio de tema de `plantillas-estrictas`, que pasa sola y fallaba con la
+	// suite entera.
+	vista?.unmount();
+	vista = null;
+});
 
 beforeEach(() => {
 	setActivePinia(createPinia());
