@@ -31,7 +31,7 @@ import FileBrowserErrorComponent from '@/components/filebrowser/FileBrowserError
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ResizablePanel from '@/components/ui/ResizablePanel.vue';
-import { olvidarTodo, ponerEnElTema } from './dobles';
+import { emitir, olvidarTodo, ponerEnElTema } from './dobles';
 
 beforeEach(() => {
 	olvidarTodo();
@@ -46,37 +46,75 @@ async function asentar(vueltas = 8) {
 }
 
 describe('la pantalla de error', () => {
+	/**
+	 * La pantalla montada, y desmontada pase lo que pase.
+	 *
+	 * `useReactiveIcon` lleva la cuenta de cuántos la usan en una variable del
+	 * módulo, y se suscribe al cambio de tema sólo cuando esa cuenta pasa de
+	 * cero a uno. Una pantalla que queda montada nunca la baja, así que la
+	 * siguiente prueba se salta la suscripción y un cambio de tema no le
+	 * cambia el icono. Lo marcó la revisión.
+	 */
+	async function conLaPantalla(mirar: (pantalla: ReturnType<typeof montarError>) => Promise<void>) {
+		const pantalla = montarError();
+		try {
+			await mirar(pantalla);
+		} finally {
+			pantalla.unmount();
+		}
+	}
+
+	function montarError() {
+		return mount(FileBrowserErrorComponent, {
+			props: { error: 'No se pudo leer la carpeta' },
+		});
+	}
+
 	test('dibuja el icono del tema', async () => {
 		ponerEnElTema('dialog-error', 'data:image/svg+xml,error');
 
-		const pantalla = mount(FileBrowserErrorComponent, {
-			props: { error: 'No se pudo leer la carpeta' },
-		});
-		await asentar();
+		await conLaPantalla(async (pantalla) => {
+			await asentar();
 
-		expect(pantalla.get('img').attributes('src')).toBe('data:image/svg+xml,error');
+			expect(pantalla.get('img').attributes('src')).toBe('data:image/svg+xml,error');
+		});
 	});
 
 	test('y sigue mostrando el mensaje y el botón', async () => {
-		const pantalla = mount(FileBrowserErrorComponent, {
-			props: { error: 'No se pudo leer la carpeta' },
+		await conLaPantalla(async (pantalla) => {
+			expect(pantalla.text()).toContain('No se pudo leer la carpeta');
+			await pantalla.get('button').trigger('click');
+			expect(pantalla.emitted('goHome')).toHaveLength(1);
 		});
-
-		expect(pantalla.text()).toContain('No se pudo leer la carpeta');
-		await pantalla.get('button').trigger('click');
-		expect(pantalla.emitted('goHome')).toHaveLength(1);
 	});
 
 	test('sin icono en el tema, no deja un roto colgado', async () => {
 		// El doble del tema devuelve cadena vacía para lo que no tiene, igual
 		// que el plugin de verdad. Un `<img src="">` dibuja el icono de imagen
 		// rota del navegador, que es peor que no dibujar nada.
-		const pantalla = mount(FileBrowserErrorComponent, {
-			props: { error: 'No se pudo leer la carpeta' },
-		});
-		await asentar();
+		await conLaPantalla(async (pantalla) => {
+			await asentar();
 
-		expect(pantalla.find('img').exists()).toBe(false);
+			expect(pantalla.find('img').exists()).toBe(false);
+		});
+	});
+
+	test('y el tema que cambia después le cambia el icono', async () => {
+		// Es lo que se pierde si una prueba deja su pantalla montada: la cuenta
+		// de `useReactiveIcon` no vuelve a cero, la suscripción no se rehace y
+		// esto pasa a mirar un icono que ya no se actualiza.
+		ponerEnElTema('dialog-error', 'data:image/svg+xml,viejo');
+
+		await conLaPantalla(async (pantalla) => {
+			await asentar();
+			expect(pantalla.get('img').attributes('src')).toBe('data:image/svg+xml,viejo');
+
+			ponerEnElTema('dialog-error', 'data:image/svg+xml,nuevo');
+			await emitir('vicons:theme-changed', null);
+			await asentar();
+
+			expect(pantalla.get('img').attributes('src')).toBe('data:image/svg+xml,nuevo');
+		});
 	});
 });
 
