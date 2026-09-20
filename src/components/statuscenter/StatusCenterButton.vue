@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { cancelFileOperation } from '@/stores/runtime/file-operation-runner';
 import { type Operation, useStatusCenterStore } from '@/stores/runtime/status-center';
@@ -55,7 +53,7 @@ async function cancel(op: Operation) {
   <Popover>
     <PopoverTrigger as-child>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button
             class="relative bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary/15': activeCount > 0 }"

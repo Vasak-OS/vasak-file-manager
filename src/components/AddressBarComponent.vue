@@ -8,6 +8,9 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import Popover from '@/components/ui/popover/Popover.vue';
@@ -16,9 +19,6 @@ import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
 import { toast } from '@/components/ui/toast/toaster';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirContents } from '@/types/dir-entry';
 
@@ -365,7 +365,7 @@ onUnmounted(() => {
   <div ref="addressBarRef" class="address-bar relative flex overflow-hidden flex-1 h-10 items-center bg-ui-bg/80 rounded-corner gap-1 transition-colors p-1 border border-ui-border">
     <DropdownMenu v-model:open="isActionsMenuOpen">
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <DropdownMenuTrigger as-child :disabled="true">
             <button type="button" class="shrink-0 h-7 w-7 p-1" @click.stop="isActionsMenuOpen = true" :aria-label="t('settings.addressBar.addressBarActions')">
               <img :src="ellipsisVerticalIcon" :alt="t('settings.addressBar.addressBarActions')" />
@@ -432,7 +432,7 @@ onUnmounted(() => {
           <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="t('settings.addressBar.enterValidPath')"
             class="h-8 flex-1 mr-2 text-[13px] bg-transparent" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
           <Tooltip>
-            <TooltipTrigger as-child>
+            <TooltipTrigger>
               <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm"
                 :class="{ 'bg-primary/15 text-primary stroke-primary': isPinned }" @click="isPinned = !isPinned">
                 <img :src="pinIcon" class="h-4 w-4" />
@@ -447,7 +447,7 @@ onUnmounted(() => {
             </TooltipContent>
           </Tooltip>
           <Tooltip>
-            <TooltipTrigger as-child>
+            <TooltipTrigger>
               <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm text-tx-main/70 hover:text-tx-main"
                 @click="isEditorOpen = false">
                 <img :src="xIcon" class="h-4 w-4" />
@@ -487,7 +487,7 @@ onUnmounted(() => {
     </Popover>
 
     <Tooltip>
-      <TooltipTrigger as-child>
+      <TooltipTrigger>
         <button type="button" class="shrink-0 h-7 w-7 p-1" @click="openEditor" :aria-label="t('settings.addressBar.editAddress')">
           <img :src="textCursorIcon" :alt="t('settings.addressBar.editAddress')" />
         </button>

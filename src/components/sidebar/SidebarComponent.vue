@@ -24,12 +24,16 @@
  * el botón de expulsar sigue apareciendo al pasar por encima.
  */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SideBar, SideButton, SideGroup } from '@vasakgroup/vue-libvasak';
+import {
+	SideBar,
+	SideButton,
+	SideGroup,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@vasakgroup/vue-libvasak';
 import { onMounted } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { type CloudDrive, useCloudDrives } from '@/composables/use-cloud-drives';
 import { useDrives } from '@/composables/use-drives';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
@@ -129,7 +133,7 @@ onMounted(async () => {
         :title="t('barraLateral.discos')"
         :collapsed="collapsed">
         <Tooltip v-for="drive in drives" :key="drive.path" :delay-duration="0">
-          <TooltipTrigger as-child>
+          <TooltipTrigger>
             <SideButton
               :label="drive.name"
               :icon="iconoDe(drive)"

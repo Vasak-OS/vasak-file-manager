@@ -3,16 +3,18 @@ import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@vasakgroup/vue-libvasak';
 import { computed, ref, watch } from 'vue';
-import Dialog from '@/components/ui/dialog/Dialog.vue';
-import DialogContent from '@/components/ui/dialog/DialogContent.vue';
-import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
-import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
-import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirEntry } from '@/types/dir-entry';
 
@@ -295,7 +297,7 @@ const canSaveCommand = computed(() => {
               </div>
               <div class="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                 <Tooltip>
-                  <TooltipTrigger as-child>
+                  <TooltipTrigger>
                     <button type="button" @click.stop="runCommand(command)">
                       <img :src="playIcon" class="w-3.5 h-3.5" />
                     </button>
@@ -303,7 +305,7 @@ const canSaveCommand = computed(() => {
                   <TooltipContent>{{ t('run') }}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
-                  <TooltipTrigger as-child>
+                  <TooltipTrigger>
                     <button type="button" @click.stop="startEditingCommand(command)">
                       <img :src="infoIcon" class="w-3.5 h-3.5" />
                     </button>
@@ -311,7 +313,7 @@ const canSaveCommand = computed(() => {
                   <TooltipContent>{{ t('edit') }}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
-                  <TooltipTrigger as-child>
+                  <TooltipTrigger>
                     <button type="button" class="hover:text-status-error"
                       @click.stop="deleteCommand(command.id)">
                       <img :src="trash2Icon" class="w-3.5 h-3.5" />
@@ -355,7 +357,7 @@ const canSaveCommand = computed(() => {
             <div class="flex items-center gap-1.5">
               <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
               <Tooltip>
-                <TooltipTrigger as-child>
+                <TooltipTrigger>
                   <img :src="infoIcon" class="w-3.5 h-3.5 text-tx-muted cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>

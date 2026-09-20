@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
@@ -89,7 +87,7 @@ onBeforeUnmount(() => {
       </div>
 
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
             <img v-if="plusIcon" :src="plusIcon" :alt="t('toolbar.newTab')" class="w-3.5 h-3.5" />
           </button>

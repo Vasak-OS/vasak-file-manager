@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
@@ -162,7 +160,7 @@ function handleDeleteClick() {
 <template>
   <div class="flex justify-center gap-1">
     <Tooltip :delay-duration="300" v-if="isActionVisible('rename')">
-      <TooltipTrigger as-child>
+      <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
           <img :src="pencilIcon" />
         </button>
@@ -173,7 +171,7 @@ function handleDeleteClick() {
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('copy')">
-      <TooltipTrigger as-child>
+      <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
           <img :src="copyIcon" />
         </button>
@@ -186,7 +184,7 @@ function handleDeleteClick() {
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('cut')">
-      <TooltipTrigger as-child>
+      <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
           <img :src="cutIcon" />
         </button>
@@ -199,7 +197,7 @@ function handleDeleteClick() {
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="canPasteToSelectedDirectory">
-      <TooltipTrigger as-child>
+      <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
           <img :src="clipboardPasteIcon" />
         </button>
@@ -212,7 +210,7 @@ function handleDeleteClick() {
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('delete')">
-      <TooltipTrigger as-child>
+      <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 hover:text-status-error disabled:cursor-not-allowed disabled:opacity-60"
           @click="handleDeleteClick">
           <img :src="shredderIcon" v-if="isShiftHeld" />
