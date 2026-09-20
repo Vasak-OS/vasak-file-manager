@@ -529,8 +529,22 @@ onUnmounted(() => {
 <template>
 	
   <div class="h-full min-h-0 w-full flex flex-col">
-		<div class="navigator-page__panes-wrapper">
-			<div class="navigator-page__panes-container">
+		<!-- Los dos envoltorios llevaban sólo el nombre: no hay ninguna regla en
+		     la hoja que los toque, así que eran bloques de alto automático y la
+		     cadena de altos se cortaba acá. Todo lo de abajo —el grupo de
+		     paneles, cada panel, el navegador, su `ScrollArea`— pide su alto con
+		     `h-full`, y contra un `auto` eso vuelve a ser `auto`: el que
+		     desplaza crecía hasta el alto de su contenido y se quedaba sin nada
+		     que desplazar. De ahí salieron los `calc(100vh - …)` de las dos
+		     vistas, que son el alto de la ventana menos lo que alguien contó a
+		     mano que ocupa lo de alrededor.
+		     Con el alto repartido por `flex`, el número deja de hacer falta.
+		     El contenedor **no** es `flex`: adentro conviven la búsqueda global
+		     y los paneles, y hoy la búsqueda tapa a los paneles por flujo
+		     normal más el recorte de `overflow-hidden`. Volverlo columna los
+		     pondría a repartirse el alto, que es otro cambio. -->
+		<div class="navigator-page__panes-wrapper flex min-h-0 flex-1 flex-col">
+			<div class="navigator-page__panes-container min-h-0 flex-1 overflow-hidden">
 				<GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
 					class="flex-1" @close="globalSearchStore.close()"
 					@open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />

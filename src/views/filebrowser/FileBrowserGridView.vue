@@ -287,13 +287,14 @@ watchEffect(() => {
 </script>
 
 <template>
-  <!-- El alto fijo es lo que hace que esto se pueda desplazar, y por eso vuelve:
-       toda la cadena de arriba resuelve su alto con `h-full`, así que sin un
-       tope acá el `ScrollArea` crece hasta el alto del contenido y deja de
-       tener algo que desplazar — medido: el viewport pasaba a 448.835 px de
-       alto y su `scrollHeight` era el mismo número. Las filas desbordan este
-       alto, y eso es lo que el `ScrollArea` desplaza. -->
-  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200 h-[calc(100vh-144px)]">
+  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200">
+    <!-- Sin alto propio, por lo mismo que la vista de lista. Acá iba un
+         `h-[calc(100vh-144px)]` —y su comentario contaba que había vuelto porque
+         sin él «el `ScrollArea` crece hasta el alto del contenido y deja de tener
+         algo que desplazar», medido en 448,835 px—. Era cierto: la cadena de
+         altos se cortaba en los dos envoltorios sin CSS de la barra del
+         navegador, así que el `ScrollArea` tampoco tenía alto propio. Arreglado
+         eso, la cuadrícula crece con sus filas y desplaza el de arriba. -->
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
         <img :src="folderIcon" class="w-4 h-4" />
