@@ -391,9 +391,16 @@ onMounted(async () => {
 
       <div class="flex-1 overflow-y-auto">
         <div class="flex min-h-full flex-col gap-0.5 pr-[var(--search-scroll-gutter)]">
+          <!-- La condición es «el índice está vacío y nadie lo está armando».
+               El texto decía «Datos de búsqueda incompletos · Sin unidades
+               seleccionadas», que es de cuando se elegían unidades a mano —eso
+               está comentado en el store desde hace rato y hoy se recorren
+               todas—. O sea que nombraba una causa que no existe y dejaba sin
+               nombrar la que sí: todavía no hay índice. De paso lo dice el
+               campo de arriba, que está apagado con esta misma condición. -->
           <EmptyState v-if="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
-            :icon="searchIcon" :title="t('globalSearch.searchDataIncomplete')"
-            :description="t('globalSearch.noDrivesSelected')" :bordered="false" />
+            :icon="searchIcon" :title="t('globalSearch.indexEmpty')"
+            :description="t('globalSearch.indexEmptyDescription')" :bordered="false" />
 
           <div v-else-if="!globalSearchStore.query.trim()" class="flex flex-col items-center justify-center gap-3 px-6 py-16">
             <img :src="searchIcon" class="text-tx-muted/30" />

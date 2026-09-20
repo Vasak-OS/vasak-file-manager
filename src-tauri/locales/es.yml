@@ -39,11 +39,14 @@ globalSearch:
     daysOther: hace {0} días
   exactMatch: Coincidencia Exacta
   globalSearch: Búsqueda Global
-  noDrivesSelected: Sin unidades seleccionadas
+  indexEmpty: Todavía no hay nada indexado
+  indexEmptyDescription: >-
+    La búsqueda global mira un índice de las unidades, y ese índice todavía está vacío. Se
+    arma recorriéndolas: empieza solo la primera vez y sigue cuando la computadora está en
+    reposo. El campo de arriba queda apagado hasta que haya algo para buscar.
   options: Opciones
   resultLimit: Límite de Resultados
   results: Resultados
-  searchDataIncomplete: Datos de búsqueda incompletos
   searchStats:
     nothingFound: Sin resultados
     foundOnDrives: "Resultados: {0} · Unidades: {1}"
