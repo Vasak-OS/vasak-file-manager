@@ -104,13 +104,36 @@ export function ponerEnElTema(nombre: string, fuente: string | (() => Promise<st
  * haría fallar a componentes que no tienen por qué atrapar nada.
  */
 export async function getIconSource(nombre: string) {
+	pedidosDeIcono.push({ nombre, variante: 'icon' });
 	const puesto = temaDeIconos.get(nombre) ?? '';
 	return typeof puesto === 'function' ? await puesto() : puesto;
 }
 
+/**
+ * Qué se le pidió al tema, y en qué variante.
+ *
+ * Las dos variantes son una cadena desde afuera, así que sin anotarlo no hay
+ * forma de comprobar cuál se pidió. Importa en los botones de la ventana: en
+ * color, `window-close` de los temas derivados de Breeze —los de VasakOS lo
+ * son— es el círculo rojo relleno de KDE, y el simbólico una equis del mismo
+ * gris que los otros dos.
+ */
+export const pedidosDeIcono: Array<{ nombre: string; variante: 'icon' | 'symbol' }> = [];
+
+/** Las variantes con que se pidió un nombre, en orden. */
+export function variantesPedidas(nombre: string) {
+	return pedidosDeIcono.filter((pedido) => pedido.nombre === nombre).map((p) => p.variante);
+}
+
 /** Los símbolos salen del mismo tema: un doble aparte mentiría distinto. */
 export async function getSymbolSource(nombre: string) {
-	return await getIconSource(nombre);
+	// Se anota **antes** de resolver y se queda con su propia entrada: el
+	// `await` cede, y con dos resoluciones cruzadas la última entrada de la
+	// lista puede ser de otra.
+	const mio = pedidosDeIcono.length;
+	const fuente = await getIconSource(nombre);
+	pedidosDeIcono[mio].variante = 'symbol';
+	return fuente;
 }
 
 /** Deja los dobles como recién puestos. Va en el `beforeEach` de cada prueba. */
@@ -119,4 +142,5 @@ export function olvidarTodo() {
 	respuestas.clear();
 	oyentes.clear();
 	temaDeIconos.clear();
+	pedidosDeIcono.length = 0;
 }
