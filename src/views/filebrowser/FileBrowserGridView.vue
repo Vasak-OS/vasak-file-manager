@@ -324,13 +324,13 @@ watchEffect(() => {
             <div class="absolute inset-0 rounded-corner pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div class="relative z-1 flex w-auto h-auto shrink-0 items-center justify-center">
-            <EntryIconComponent :entry="entry" :size="24"
+            <EntryIconComponent :entry="entry"
               class="text-primary h-6 w-6" />
           </div>
           <div class="relative z-1 overflow-hidden min-w-0 flex-1 flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
             <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
             <div class="flex items-center text-[11px] gap-1.5 text-tx-muted opacity-100 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
-              <img :src="loaderIcon" v-if="isDirLoadingWithProgress(entry)" :size="12"
+              <img :src="loaderIcon" v-if="isDirLoadingWithProgress(entry)"
                 class="shrink-0 animate-spin text-tx-muted" />
               <span class="inline-flex items-center">
                 <template v-if="getDirSizeDisplay(entry)">{{ getDirSizeDisplay(entry) }}</template>
@@ -476,7 +476,7 @@ watchEffect(() => {
             <div class="absolute inset-0 rounded-corner pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div class="absolute top-2 left-2 w-12 h-12 bg-transparent">
-            <EntryIconComponent :entry="entry" :size="48" class="text-tx-muted w-12 h-12" />
+            <EntryIconComponent :entry="entry" class="text-tx-muted w-12 h-12" />
           </div>
           <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
             <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>

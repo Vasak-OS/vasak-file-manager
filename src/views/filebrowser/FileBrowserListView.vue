@@ -139,23 +139,33 @@ function handleEntryKeydown(event: KeyboardEvent): void {
        `ScrollArea` crece hasta el alto del contenido y deja de tener algo que
        desplazar. Las filas desbordan este alto, y eso es lo que se desplaza. -->
   <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
-    <!-- `page-mode`: quien desplaza es el `ScrollArea` que envuelve a la vista,
-         no el desplazador. Así la barra sigue siendo la misma de siempre. -->
+    <!-- Iba un `page-mode` acá, para que desplazara el `ScrollArea` que
+         envuelve a la vista y no el desplazador. En esta versión de
+         `vue-virtual-scroller` `DynamicScroller` no declara esa propiedad
+         —sólo `RecycleScroller`— y encima lleva `inheritAttrs: false`, así que
+         el atributo no llegaba a ningún lado: el desplazador siempre trabajó
+         con su propio `overflow`, que es de dónde sale el alto fijo de acá
+         arriba. Se saca porque no hacía nada; que el `ScrollArea` vuelva a ser
+         el único que desplaza es otro cambio, con su propia prueba a ojo. -->
     <DynamicScroller
       :key="ctx.currentPath.value"
       ref="desplazador"
       :items="props.entries"
       :min-item-size="44"
       key-field="path"
-      page-mode
       class="flex flex-col"
-      v-slot="{ item: entry, index, active }"
+      v-slot="{ item: entry, active }"
     >
+      <!-- El `:data-index="index"` que traía el ejemplo de la librería no lo
+           leía nadie —ni el CSS, ni un `querySelector`, ni una prueba—, y
+           `DynamicScrollerItem` tampoco lo necesita: su `index` sólo hace
+           falta en modo «arreglo simple», y acá las entradas se identifican
+           por `key-field="path"`. Era decoración del DOM, y con él se va el
+           `index` de la ranura, que ya no usa nadie. -->
       <DynamicScrollerItem
         :item="entry"
         :active="active"
         :size-dependencies="[entry.name, ctx.entryDescription?.(entry)]"
-        :data-index="index"
       >
       <button :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5 w-full" :class="{
         'opacity-50': entry.is_hidden,
@@ -172,7 +182,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
         </div>
         <div class="relative z-10 flex overflow-hidden items-center pr-4 gap-2.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
           <img v-if="ctx.isEntrySelected(entry)" :src="selectedIcon" :alt="t('fileBrowser.selected')" class="h-4 w-4" />
-          <EntryIconComponent :entry="entry" :size="18" class="h-4 w-4 shrink-0 text-tx-muted" :class="{'text-primary': entry.is_dir}" />
+          <EntryIconComponent :entry="entry" class="h-4 w-4 shrink-0 text-tx-muted" :class="{'text-primary': entry.is_dir}" />
           <div class="flex overflow-hidden min-w-0 flex-1 flex-col gap-0.5">
             <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
             <span v-if="ctx.entryDescription?.(entry)" class="overflow-hidden text-tx-muted text-[11px] text-ellipsis whitespace-nowrap">{{
@@ -183,7 +193,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           {{ getItemsDisplay(entry) }}
         </span>
         <span v-if="showSizeColumn" class="relative z-10 flex items-center gap-1.5 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-tx-muted text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
-          <img :src="loaderCircleIcon" :alt="t('operations.calculatingSize')" v-if="isDirLoadingWithProgress(entry)" :size="12" class="shrink-0 animate-spin text-tx-muted" />
+          <img :src="loaderCircleIcon" :alt="t('operations.calculatingSize')" v-if="isDirLoadingWithProgress(entry)" class="shrink-0 animate-spin text-tx-muted" />
           <Skeleton v-if="getSizeDisplay(entry) === null" class="w-[50px] h-3" />
           <template v-else>{{ getSizeDisplay(entry) }}</template>
         </span>

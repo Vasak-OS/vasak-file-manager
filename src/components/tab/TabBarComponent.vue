@@ -72,8 +72,13 @@ onBeforeUnmount(() => {
     <div class="flex max-w-[calc(100vw-288px)] h-full items-center gap-1 animate-sigma-ui-fade-in">
       <div ref="scrollContainerRef" class="flex overflow-auto items-center" @wheel.prevent="handleWheel" @scroll="onScroll">
         <div class="tab-bar__base flex w-fit items-center justify-center h-fit">
+          <!-- `TabDraggableComponent` sólo declara `items` y `parent-selector`.
+               Acá venía además un `:draggable-bg-color-var`, de cuando el
+               componente pintaba el fantasma del arrastre con esa variable:
+               hoy no existe, así que caía como atributo sobre el `<div>` de
+               afuera y no lo leía nadie. Lo destapó `strictTemplates`. -->
           <TabDraggableComponent :items="workspacesStore.currentWorkspace?.tabGroups || []"
-            :draggable-bg-color-var="'window-toolbar-color'" parent-selector=".tab-bar"
+            parent-selector=".tab-bar"
             @set="setTabs($event as TabGroup[])" @drag-start="previewEnabled = false" @drag-end="previewEnabled = true">
             <template #item="{ item }">
               <TabComponent :tab-group="((item as TabType[]) || [])" :preview-enabled="previewEnabled"
@@ -85,7 +90,7 @@ onBeforeUnmount(() => {
 
       <Tooltip>
         <TooltipTrigger as-child>
-          <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" variant="ghost" size="xs" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
+          <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
             <img v-if="plusIcon" :src="plusIcon" :alt="t('toolbar.newTab')" class="w-3.5 h-3.5" />
           </button>
         </TooltipTrigger>

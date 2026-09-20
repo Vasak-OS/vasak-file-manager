@@ -153,9 +153,9 @@ const sortedEntries = computed(() => {
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
               <img :src="infoIcon" alt="" />
-              <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'size' && listSortDirection === 'asc'" :size="12"
+              <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'size' && listSortDirection === 'asc'"
                 class="h-4 w-4" />
-              <img :src="arrowDownIcon" :alt="t('fileBrowser.sortDescending')" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'" :size="12"
+              <img :src="arrowDownIcon" :alt="t('fileBrowser.sortDescending')" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'"
                 class="h-4 w-4" />
             </button>
           </TooltipTrigger>

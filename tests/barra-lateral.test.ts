@@ -406,6 +406,7 @@ describe('la división de la pantalla', () => {
 					},
 				},
 			});
+			montadas.push(vista);
 
 			const clases = vista.find('div').classes();
 			expect(clases).toContain('self-stretch');

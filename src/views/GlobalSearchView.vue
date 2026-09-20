@@ -279,17 +279,17 @@ onMounted(async () => {
           :disabled="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
           @input="globalSearchStore.setQuery(String(($event.target as HTMLInputElement).value ?? ''))"
         />
-        <button v-if="globalSearchStore.query" variant="ghost" size="icon" class="absolute right-1 h-8 w-8"
+        <button v-if="globalSearchStore.query" class="absolute right-1 h-8 w-8"
           @click="clearQuery">
           <img :src="xIcon" class="h-4 w-4" />
         </button>
       </div>
       <div class="flex items-center gap-1">
-        <button variant="ghost" size="icon" class="text-tx-muted data-[active]:bg-primary/10 data-[active]:text-primary"
+        <button class="text-tx-muted data-[active]:bg-primary/10 data-[active]:text-primary"
           :data-active="showOptions || undefined" @click="toggleOptions">
           <img :src="slidersHorizontalIcon" class="h-4 w-4" />
         </button>
-        <button variant="outline" size="icon" @click="handleClose">
+        <button @click="handleClose">
           <img :src="xIcon" class="h-4 w-4" />
         </button>
       </div>
@@ -396,7 +396,7 @@ onMounted(async () => {
             :description="t('globalSearch.noDrivesSelected')" :bordered="false" />
 
           <div v-else-if="!globalSearchStore.query.trim()" class="flex flex-col items-center justify-center gap-3 px-6 py-16">
-            <img :src="searchIcon" :size="48" class="text-tx-muted/30" />
+            <img :src="searchIcon" class="text-tx-muted/30" />
             <span class="text-base font-medium text-tx-main">
               {{ t('globalSearch.globalSearch') }}
             </span>
@@ -412,7 +412,7 @@ onMounted(async () => {
                 interpolar(t('globalSearch.searchStats.indexed'), lastScanRelative)
               }}</template>)
             </span>
-            <button variant="outline" size="sm" class="mt-2 gap-1.5" @click="openSearchSettings">
+            <button class="mt-2 gap-1.5" @click="openSearchSettings">
               <img :src="settingsIcon" class="h-4 w-4" />
               {{ t('globalSearch.showSearchSettings') }}
             </button>

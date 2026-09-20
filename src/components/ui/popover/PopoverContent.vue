@@ -94,7 +94,7 @@ const updatePositionIfOpen = () => {
 
 const handleClickOutside = (event: MouseEvent) => {
 	const target = event.target as HTMLElement;
-	if (!target.closest('[popover-content]') && !target.closest('.popover-trigger')) {
+	if (!target.closest('[data-popover-content]') && !target.closest('.popover-trigger')) {
 		popover?.closePopover();
 	}
 };
@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
 				ref="contentRef"
 				:class="[props.class, 'rounded-corner border border-primary bg-ui-bg/80 shadow-lg']"
 				:style="[{ position: 'fixed', top: `${position.top}px`, left: `${position.left}px`, zIndex: 50 }, props.style]"
-				popover-content
+				data-popover-content
 				@click="(e) => e.stopPropagation()"
 			>
 				<slot />

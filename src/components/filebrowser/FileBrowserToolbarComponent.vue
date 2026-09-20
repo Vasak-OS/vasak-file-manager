@@ -212,7 +212,7 @@ function handleFilterInteractOutside(event?: Event) {
         </DropdownMenuContent>
       </DropdownMenu>
       <Tooltip>
-        <Popover :open="isFilterOpen" :modal="false" @update:open="emit('update:isFilterOpen', $event)">
+        <Popover :open="isFilterOpen" @update:open="emit('update:isFilterOpen', $event)">
           <TooltipTrigger as-child>
             <PopoverTrigger as-child>
               <button ref="filterTriggerRef" type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"

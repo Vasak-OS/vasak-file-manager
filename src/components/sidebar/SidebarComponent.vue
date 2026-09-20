@@ -139,7 +139,6 @@ onMounted(async () => {
           <TooltipContent
             side="right"
             :side-offset="12"
-            :collision-padding="6"
             class="border-0 bg-transparent p-0">
             <DriveCard :drive="drive" />
           </TooltipContent>

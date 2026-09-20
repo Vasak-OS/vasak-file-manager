@@ -260,7 +260,7 @@ function handleDeleteClick() {
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"
     class="flex items-center gap-2">
-    <img :src="starIcon" class="h-4 w-4" :fill="allSelectedAreFavorites ? 'currentColor' : 'none'" />
+    <img :src="starIcon" class="h-4 w-4" />
     <span>{{ t(allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites') }}</span>
   </component>
   <div v-if="isActionVisible('edit-tags')" class="py-1.5">
