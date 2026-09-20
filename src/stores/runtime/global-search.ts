@@ -48,6 +48,24 @@ const DEBOUNCE_DELAY_MS = 200;
  */
 const EVENTO_INACTIVIDAD = 'idle://changed';
 
+/**
+ * Quién puede fallar en la búsqueda global.
+ *
+ * Cada uno tiene su casillero de error: son operaciones distintas, fallan por
+ * motivos distintos y se recuperan por separado.
+ */
+type OrigenDeError = 'busqueda' | 'raices' | 'recorrido' | 'arranque' | 'estado' | 'inactividad';
+
+/** En qué orden se muestran cuando hay más de uno puesto. */
+const ORDEN_DE_LOS_ERRORES: OrigenDeError[] = [
+	'busqueda',
+	'raices',
+	'recorrido',
+	'arranque',
+	'estado',
+	'inactividad',
+];
+
 export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const isOpen = ref(false);
 	const query = ref('');
@@ -65,7 +83,49 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const scannedDrivesCount = ref(0);
 	const totalDrivesCount = ref(0);
 	const isInitialized = ref(false);
-	const lastError = ref<string | null>(null);
+	/**
+	 * Lo último que falló, **por origen**.
+	 *
+	 * Era una sola ranura, y eso hacía que cada operación que salía bien borrara
+	 * el error de otra que seguía siendo cierta. El caso que lo destapó:
+	 * enumerar las raíces falla y lo anota; medio segundo después el sondeo de
+	 * estado contesta bien y pone la ranura en nulo. El motivo por el que no hay
+	 * nada que buscar desaparece del cartel y queda sólo «todavía no hay nada
+	 * indexado», que no explica nada.
+	 *
+	 * Con un casillero por origen, cada operación limpia **el suyo** al salir
+	 * bien y no toca los demás.
+	 */
+	const errores = ref<Partial<Record<OrigenDeError, string>>>({});
+
+	/** Anota lo que falló en el casillero de quien falló. */
+	function anotarError(origen: OrigenDeError, error: unknown) {
+		errores.value = { ...errores.value, [origen]: String(error) };
+	}
+
+	/** Y lo borra cuando esa misma operación vuelve a salir bien. */
+	function olvidarError(origen: OrigenDeError) {
+		if (errores.value[origen] === undefined) return;
+		const resto = { ...errores.value };
+		delete resto[origen];
+		errores.value = resto;
+	}
+
+	/**
+	 * El que se muestra, cuando hay más de uno.
+	 *
+	 * El orden es por lo que le sirve a quien mira: primero lo que rompió la
+	 * búsqueda que acaba de escribir, después lo que explica que no haya índice,
+	 * y al final lo de fondo. La detección de inactividad va última porque sin
+	 * ella la búsqueda funciona igual —sólo deja de reindexarse sola—.
+	 */
+	const lastError = computed<string | null>(() => {
+		for (const origen of ORDEN_DE_LOS_ERRORES) {
+			const mensaje = errores.value[origen];
+			if (mensaje) return mensaje;
+		}
+		return null;
+	});
 	/**
 	 * El recorrido no tiene ninguna raíz que mirar.
 	 *
@@ -171,15 +231,16 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			// llevaba puesto también el recorrido de las unidades—.
 			const casa = await homeDir();
 			if (casa) raices.push(casa);
+			olvidarError('raices');
 		} catch (error) {
-			lastError.value = String(error);
+			anotarError('raices', error);
 		}
 
 		try {
 			const systemDrives = await invoke<Array<{ path: string }>>('get_system_drives');
 			raices.push(...systemDrives.map((drive) => drive.path));
 		} catch (error) {
-			lastError.value = String(error);
+			anotarError('raices', error);
 		}
 
 		return [...new Set(raices.filter((raiz) => raiz.length > 0))];
@@ -203,9 +264,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		try {
 			const status = await invoke<GlobalSearchStatus>('global_search_get_status');
 			updateStatusFromResponse(status);
-			lastError.value = null;
+			olvidarError('estado');
 		} catch (error) {
-			lastError.value = String(error);
+			anotarError('estado', error);
 		}
 	}
 
@@ -216,7 +277,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			const status = await invoke<GlobalSearchStatus>('global_search_init');
 			updateStatusFromResponse(status);
 			isInitialized.value = true;
-			lastError.value = null;
+			olvidarError('arranque');
 
 			await startIdleDetection();
 
@@ -226,7 +287,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 				await startScan();
 			}
 		} catch (error) {
-			lastError.value = String(error);
+			anotarError('arranque', error);
 			isInitialized.value = true;
 			await startIdleDetection();
 		}
@@ -324,9 +385,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			});
 
 			await refreshStatus();
-			lastError.value = null;
+			olvidarError('recorrido');
 		} catch (error) {
-			lastError.value = String(error);
+			anotarError('recorrido', error);
 			isScanInProgress.value = false;
 		}
 	}
@@ -352,7 +413,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 				waited += pollIntervalMs;
 			}
 		} catch (error) {
-			lastError.value = String(error);
+			anotarError('estado', error);
 		}
 	}
 
@@ -439,10 +500,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 				is_hidden: Boolean(item.is_hidden),
 			}));
 
-			lastError.value = null;
+			olvidarError('busqueda');
 		} catch (error) {
 			if (!searchAbortController.value?.signal.aborted) {
-				lastError.value = String(error);
+				anotarError('busqueda', error);
 				results.value = [];
 			}
 		} finally {
@@ -632,7 +693,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			// Sin backend que conteste no hay señal, y sin señal no se reindexa
 			// solo. Se anota el error pero no se cae nada: la búsqueda sigue
 			// funcionando, y el escaneo manual también.
-			lastError.value = String(error);
+			anotarError('inactividad', error);
 			aplicarEstadoDeInactividad(null);
 		}
 	}
@@ -707,8 +768,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			});
 
 			startStatusPolling();
+			olvidarError('recorrido');
 		} catch (error) {
-			lastError.value = String(error);
+			anotarError('recorrido', error);
 		}
 	}
 
@@ -745,6 +807,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		getIsIndexStale,
 		isInitialized,
 		lastError,
+		errores,
 		sinRaices,
 		senalDeInactividad,
 		getIsUserIdle,
