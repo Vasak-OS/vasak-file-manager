@@ -27,6 +27,16 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'toggle-split-view': [];
 	'toggle-info-panel': [];
+	/**
+	 * Abrir o cerrar la búsqueda global.
+	 *
+	 * Este componente ya recibía `isGlobalSearchOpen` —lo usa para apagar el
+	 * botón de dividir, que no tiene sentido con la búsqueda abierta—, pero no
+	 * había forma de abrirla: nadie llamaba a `toggle()` ni a `open()` desde
+	 * ninguna parte de la interfaz, y tampoco había atajo. La vista se montaba
+	 * con `v-show` y no se mostraba nunca.
+	 */
+	'toggle-global-search': [];
 }>();
 
 const isLayoutPopoverOpen = ref(false);
@@ -36,6 +46,10 @@ const currentLayout = computed(() => {
 const layoutGridIcon = useReactiveIcon(() => getSymbolSource('view-grid'));
 const layoutListIcon = useReactiveIcon(() => getSymbolSource('view-list-text'));
 const splitViewIcon = useReactiveIcon(() => getSymbolSource('view-split-left-right'));
+// `search` y no `system-search`: ése es el de la búsqueda rápida de cada panel,
+// que es otra cosa. Éste es el mismo que la propia vista de búsqueda global
+// dibuja en su campo.
+const globalSearchIcon = useReactiveIcon(() => getSymbolSource('search'));
 const infoPanelIcon = useReactiveIcon(() => getSymbolSource('swap-panels'));
 
 async function setLayout(layoutName: LayoutType) {
@@ -71,6 +85,17 @@ async function setLayout(layoutName: LayoutType) {
           </button>
         </PopoverContent>
       </Popover>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <button
+            class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
+            :class="{ 'bg-primary hover:bg-secondary': props.isGlobalSearchOpen }"
+            @click="emit('toggle-global-search')" :aria-label="t('globalSearch.globalSearch')">
+            <img :src="globalSearchIcon" :alt="t('globalSearch.globalSearch')" height="24" width="24" class="fill-primary" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{{ t('globalSearch.globalSearch') }}</TooltipContent>
+      </Tooltip>
       <Tooltip>
         <TooltipTrigger as-child>
           <button

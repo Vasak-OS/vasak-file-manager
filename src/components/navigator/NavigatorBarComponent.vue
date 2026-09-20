@@ -396,6 +396,15 @@ function handleEscapeKey(): boolean {
 		return true;
 	}
 
+	// La búsqueda global, última: Escape va sacando una capa por vez, y la
+	// selección hecha dentro de la búsqueda tiene que poder limpiarse sin que
+	// el panel se cierre de paso. Va acá porque el panel tapa el contenido
+	// entero y salir tenía una sola puerta, la cruz de adentro.
+	if (globalSearchStore.isOpen) {
+		globalSearchStore.close();
+		return true;
+	}
+
 	return false;
 }
 
