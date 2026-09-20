@@ -40,10 +40,11 @@ globalSearch:
   exactMatch: Coincidencia Exacta
   globalSearch: Búsqueda Global
   somethingFailed: La búsqueda global tuvo un problema
-  noDrivesToScan: No hay ninguna unidad que recorrer
-  noDrivesToScanDescription: >-
-    El índice se arma recorriendo las unidades de esta computadora, y no se informó
-    ninguna. Hasta que aparezca alguna no hay nada que buscar.
+  nothingToScan: No hay nada que recorrer
+  nothingToScanDescription: >-
+    El índice se arma recorriendo la carpeta del usuario y las unidades que haya, y
+    no se pudo resolver ninguna de las dos. Hasta que vuelva alguna no hay nada que
+    buscar.
   indexEmpty: Todavía no hay nada indexado
   indexEmptyDescription: >-
     La búsqueda global mira un índice de las unidades, y ese índice todavía está vacío. Se

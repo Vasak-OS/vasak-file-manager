@@ -40,10 +40,11 @@ globalSearch:
   exactMatch: Exact Match
   globalSearch: Global Search
   somethingFailed: Global search hit a problem
-  noDrivesToScan: No drives to go through
-  noDrivesToScanDescription: >-
-    The index is built by going through the drives on this computer, and none were
-    reported. Nothing can be searched until at least one shows up.
+  nothingToScan: Nothing to go through
+  nothingToScanDescription: >-
+    The index is built by going through your home folder and whatever drives are
+    attached, and neither could be resolved. Nothing can be searched until one of
+    them comes back.
   indexEmpty: Nothing indexed yet
   indexEmptyDescription: >-
     Global search reads an index of your drives, and that index is still empty. It is built
