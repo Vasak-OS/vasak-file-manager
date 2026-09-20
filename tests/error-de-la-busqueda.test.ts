@@ -46,21 +46,33 @@ afterEach(() => {
 beforeEach(() => {
 	setActivePinia(createPinia());
 	olvidarTodo();
-	responder('get_index_status', { indexed_item_count: 0 });
+	// El comando de verdad es `global_search_get_status`; las pruebas viejas le
+	// contestaban a uno que no existe y acertaban por no contestar nada.
+	responder('global_search_get_status', { is_scan_in_progress: false, indexed_item_count: 0 });
 });
 
+/**
+ * El panel montado y **abierto**.
+ *
+ * Abierto de verdad: el estado del índice se pide cuando `isOpen` cambia, que
+ * es por donde entran los errores del sondeo. Montado y cerrado no se pide
+ * nada.
+ */
 async function abrirElPanel() {
 	vista = mount(GlobalSearchView);
+	await useGlobalSearchStore().open();
 	await asentar();
 	return vista;
 }
 
 describe('un error del backend', () => {
 	test('se dibuja, con un título traducido y el detalle tal cual', async () => {
-		const panel = await abrirElPanel();
-		const store = useGlobalSearchStore();
+		// Por el camino de verdad: el sondeo de estado falla y lo anota.
+		responder('global_search_get_status', () => {
+			throw new Error('El índice está corrupto: invalid segment meta.json');
+		});
 
-		store.lastError = 'El índice está corrupto: invalid segment meta.json';
+		const panel = await abrirElPanel();
 		await panel.vm.$nextTick();
 
 		const texto = panel.text();
@@ -70,9 +82,8 @@ describe('un error del backend', () => {
 	});
 
 	test('y sin error no hay nada dibujado', async () => {
-		// El cartel se limpia solo: cada operación que sale bien pone
-		// `lastError` en nulo. Si quedara puesto, diría que algo falla cuando ya
-		// no falla.
+		// El cartel se limpia solo: cada operación que sale bien borra **su**
+		// casillero. Si quedara puesto, diría que algo falla cuando ya no falla.
 		const panel = await abrirElPanel();
 
 		expect(panel.text()).not.toContain('globalSearch.somethingFailed');
@@ -140,5 +151,67 @@ describe('quedarse sin unidades que recorrer', () => {
 		expect(store.sinRaices).toBe(true);
 		expect(pedidos('global_search_start_scan')).toHaveLength(0);
 		expect(panel.text()).toContain('globalSearch.nothingToScan');
+	});
+});
+
+describe('un error no lo borra el éxito de otra cosa', () => {
+	test('el sondeo de estado que sale bien deja en pie el de las raíces', async () => {
+		// Es el caso que lo destapó y la razón de tener un casillero por
+		// origen: enumerar las raíces falla y lo anota; medio segundo después
+		// el sondeo contesta bien y —con una sola ranura— ponía el motivo en
+		// nulo. El cartel se quedaba con «todavía no hay nada indexado», que no
+		// explica por qué.
+		responder('global_search_get_status', { is_scan_in_progress: false, indexed_item_count: 0 });
+		responder('get_system_drives', () => {
+			throw new Error('permission denied');
+		});
+		const panel = await abrirElPanel();
+		const store = useGlobalSearchStore();
+
+		await store.startScan();
+		expect(store.lastError).toContain('permission denied');
+
+		// El sondeo, que sale bien.
+		await store.refreshStatus();
+		await panel.vm.$nextTick();
+
+		expect(store.lastError).toContain('permission denied');
+		expect(panel.text()).toContain('permission denied');
+	});
+
+	test('y cada origen limpia el suyo cuando vuelve a salir bien', async () => {
+		// La otra mitad: si nadie limpiara, el cartel diría para siempre algo
+		// que ya se arregló.
+		responder('global_search_get_status', { is_scan_in_progress: false, indexed_item_count: 0 });
+		responder('get_system_drives', () => {
+			throw new Error('permission denied');
+		});
+		const panel = await abrirElPanel();
+		const store = useGlobalSearchStore();
+
+		await store.startScan();
+		expect(store.lastError).toContain('permission denied');
+
+		// Las unidades vuelven.
+		responder('get_system_drives', [{ path: '/mnt/red' }]);
+		await store.startScan();
+		await panel.vm.$nextTick();
+
+		expect(store.lastError).toBeNull();
+		expect(panel.text()).not.toContain('permission denied');
+	});
+
+	test('y con dos puestos se muestra el que más explica', async () => {
+		// El orden no es casual: primero lo que rompió la búsqueda que alguien
+		// acaba de escribir, después lo que explica que no haya índice.
+		const panel = await abrirElPanel();
+		const store = useGlobalSearchStore();
+
+		store.errores = { estado: 'no se pudo leer el estado', raices: 'permission denied' };
+		await panel.vm.$nextTick();
+
+		expect(store.lastError).toBe('permission denied');
+		expect(panel.text()).toContain('permission denied');
+		expect(panel.text()).not.toContain('no se pudo leer el estado');
 	});
 });
