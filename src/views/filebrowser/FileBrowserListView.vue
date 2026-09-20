@@ -104,6 +104,30 @@ function isDirLoadingWithProgress(entry: DirEntry): boolean {
  */
 const desplazador = ref<{ scrollToItem: (indice: number) => void } | null>(null);
 
+/**
+ * El modo página, que `DynamicScroller` reenvía pero no declara.
+ *
+ * Quien desplaza la lista es el `ScrollArea` que la envuelve, no el
+ * desplazador: es lo mismo que hace la cuadrícula, y es lo que deja una sola
+ * barra —la del tema, con el hueco que le reserva
+ * `--file-browser-list-right-gutter`— en vez de dos, una adentro de la otra.
+ *
+ * Va por `v-bind` y no como atributo suelto por un agujero de los tipos que
+ * publica la librería. `DynamicScroller` declara sus propiedades a mano y deja
+ * afuera las que sólo reenvía, pero su plantilla hace `v-bind="$attrs"` sobre
+ * el `RecycleScroller` de adentro, que sí declara `pageMode`. O sea que el
+ * atributo **sí** llega; lo que no llega es al tipo, y con `strictTemplates`
+ * `vue-tsc` lo mide contra las propiedades declaradas y lo rechaza. Escrito
+ * así llega igual y no hay que apagarle el chequeo a nada más.
+ *
+ * Esto se sacó una vez, leyendo esas propiedades declaradas y dando por hecho
+ * que el atributo no hacía nada. Sí lo hacía: la lista quedó con su propia
+ * barra adentro de la del tema. Por eso la prueba que lo vigila monta la vista
+ * y mira la clase `page-mode` del elemento, que es lo único que distingue un
+ * caso del otro sin abrir la ventana.
+ */
+const modoPagina = { pageMode: true };
+
 watchEffect(() => {
 	ctx.registrarDesplazamiento((path: string) => {
 		const indice = props.entries.findIndex((entrada) => entrada.path === path);
@@ -139,20 +163,15 @@ function handleEntryKeydown(event: KeyboardEvent): void {
        `ScrollArea` crece hasta el alto del contenido y deja de tener algo que
        desplazar. Las filas desbordan este alto, y eso es lo que se desplaza. -->
   <div class="flex flex-col h-[calc(100vh-210px)]" style="padding-right: var(--file-browser-list-right-gutter);">
-    <!-- Iba un `page-mode` acá, para que desplazara el `ScrollArea` que
-         envuelve a la vista y no el desplazador. En esta versión de
-         `vue-virtual-scroller` `DynamicScroller` no declara esa propiedad
-         —sólo `RecycleScroller`— y encima lleva `inheritAttrs: false`, así que
-         el atributo no llegaba a ningún lado: el desplazador siempre trabajó
-         con su propio `overflow`, que es de dónde sale el alto fijo de acá
-         arriba. Se saca porque no hacía nada; que el `ScrollArea` vuelva a ser
-         el único que desplaza es otro cambio, con su propia prueba a ojo. -->
+    <!-- `v-bind="modoPagina"`: quien desplaza es el `ScrollArea` que envuelve
+         a la vista, no el desplazador. El porqué de la forma está arriba. -->
     <DynamicScroller
       :key="ctx.currentPath.value"
       ref="desplazador"
       :items="props.entries"
       :min-item-size="44"
       key-field="path"
+      v-bind="modoPagina"
       class="flex flex-col"
       v-slot="{ item: entry, active }"
     >
