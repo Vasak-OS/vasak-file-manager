@@ -62,7 +62,6 @@ globalSearch:
     indexed: indexado {0}
   showDirectories: Mostrar Carpetas
   showFiles: Mostrar Archivos
-  showSearchSettings: Mostrar Configuración de Búsqueda
   typoTolerance: Tolerancia a Errores
 fileBrowser:
   sortAscending: Orden ascendente

@@ -1,6 +1,6 @@
 [package]
 name = "vasak-file-manager"
-version = "0.15.3"
+version = "0.15.4"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
