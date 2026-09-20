@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { EmptyState, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
-import EmptyState from '@/components/ui/EmptyState.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { Layout } from '@/types/navigator';
@@ -24,7 +21,6 @@ const props = defineProps<{
 	layout?: Layout;
 }>();
 const { t } = useI18n();
-const folderOpenIcon = useReactiveIcon(() => getIconSource('folder-open'));
 
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
@@ -147,7 +143,7 @@ const sortedEntries = computed(() => {
             class="h-4 w-4" />
         </button>
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
-          <TooltipTrigger as-child>
+          <TooltipTrigger>
             <button type="button"
               class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
               @click="handleColumnHeaderClick('size')">
@@ -200,7 +196,7 @@ const sortedEntries = computed(() => {
       </div>
       <Popover :open="isColumnsPopoverOpen" @update:open="isColumnsPopoverOpen = $event">
         <Tooltip>
-          <TooltipTrigger as-child>
+          <TooltipTrigger>
             <PopoverTrigger as-child>
               <button type="button" class="absolute top-1/2 right-0 w-7 h-7 text-tx-muted -translate-y-1/2">
                 <img :src="columnsIcon" :alt="t('fileBrowser.columns')" class="h-4 w-4" />
@@ -239,8 +235,8 @@ const sortedEntries = computed(() => {
     <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
 
     <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="flex flex-1 items-center justify-center p-4"
-      :icon="folderOpenIcon" :title="t('fileBrowser.directoryIsEmpty')"
-      :description="t('fileBrowser.directoryIsEmptyDescription')" :bordered="false" />
+      icon="folder-open" :title="t('fileBrowser.directoryIsEmpty')"
+      :note="t('fileBrowser.directoryIsEmptyDescription')" />
 
     <template v-else>
       <ScrollArea class="relative min-h-0 flex-1">

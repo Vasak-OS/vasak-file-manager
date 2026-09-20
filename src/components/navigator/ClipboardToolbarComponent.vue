@@ -6,15 +6,15 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
@@ -170,7 +170,7 @@ function openCollapsedPopover() {
 
               <template v-if="isSplitView">
                 <Tooltip :delay-duration="300">
-                  <TooltipTrigger as-child>
+                  <TooltipTrigger>
                     <button class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane1 }" :disabled="!canPasteToPane1"
                       @click="emit('pasteToPane', 0)">
@@ -185,7 +185,7 @@ function openCollapsedPopover() {
                 </Tooltip>
 
                 <Tooltip :delay-duration="300">
-                  <TooltipTrigger as-child>
+                  <TooltipTrigger>
                     <button class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane2 }" :disabled="!canPasteToPane2"
                       @click="emit('pasteToPane', 1)">
@@ -201,7 +201,7 @@ function openCollapsedPopover() {
               </template>
 
               <Tooltip v-else :delay-duration="300">
-                <TooltipTrigger as-child>
+                <TooltipTrigger>
                   <button class="clipboard-toolbar__button"
                     :class="{ 'clipboard-toolbar__button--disabled': !canPaste }" :disabled="!canPaste"
                     @click="emit('paste')">

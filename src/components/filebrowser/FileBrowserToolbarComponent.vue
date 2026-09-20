@@ -6,6 +6,9 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
 import type { ComponentPublicInstance } from 'vue';
 import { ref } from 'vue';
@@ -13,9 +16,6 @@ import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 
@@ -134,7 +134,7 @@ function handleFilterInteractOutside(event?: Event) {
       : 'border-b border-ui-border'">
     <div class="hidden @[400px]:flex shrink-0 gap-1">
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoBack"
             @click="emit('goBack')" :aria-label="t('fileBrowser.goBack')">
             <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="w-[18px] h-[18px]" />
@@ -143,7 +143,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipContent>{{ t('fileBrowser.goBack') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoForward"
             @click="emit('goForward')" :aria-label="t('fileBrowser.goForward')">
             <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="w-[18px] h-[18px]" />
@@ -152,7 +152,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipContent>{{ t('fileBrowser.goForward') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoUp"
             @click="emit('goUp')" :aria-label="t('fileBrowser.goUp')">
             <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="w-[18px] h-[18px]" />
@@ -161,7 +161,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipContent>{{ t('fileBrowser.goUp') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" @click="emit('goHome')" :aria-label="t('fileBrowser.goHome')">
             <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="w-[18px] h-[18px]" />
           </button>
@@ -169,7 +169,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipContent>{{ t('fileBrowser.goHome') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" :disabled="isLoading"
             @click="emit('refresh')" :aria-label="t('fileBrowser.refresh')">
             <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="w-[18px] h-[18px]" :class="{ 'animate-spin': isLoading }" />
@@ -190,7 +190,7 @@ function handleFilterInteractOutside(event?: Event) {
                Apagado porque quien abre y cierra es el botón: con los dos
                manejadores en el mismo elemento, su `stopPropagation` no frena
                al del disparador y el menú se abriría y cerraría de un clic. -->
-          <TooltipTrigger as-child>
+          <TooltipTrigger>
             <DropdownMenuTrigger as-child :disabled="true">
               <button type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
                 @click="handleCreateMenuButtonClick" :aria-label="t('fileBrowser.createNew')">
@@ -213,7 +213,7 @@ function handleFilterInteractOutside(event?: Event) {
       </DropdownMenu>
       <Tooltip>
         <Popover :open="isFilterOpen" @update:open="emit('update:isFilterOpen', $event)">
-          <TooltipTrigger as-child>
+          <TooltipTrigger>
             <PopoverTrigger as-child>
               <button ref="filterTriggerRef" type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
                 :class="{ 'bg-primary': filterQuery }">

@@ -12,7 +12,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { AppBar, WindowControls, WindowFrame } from '@vasakgroup/vue-libvasak';
+import {
+	AppBar,
+	olvidarLosIconosDelTema,
+	WindowControls,
+	WindowFrame,
+} from '@vasakgroup/vue-libvasak';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
@@ -53,6 +58,10 @@ function ranura(ventana: VueWrapper, nombre: string) {
 }
 
 beforeEach(() => {
+	// La librería memoriza el icono resuelto por nombre, y esa memoria vive en
+	// su módulo: sin vaciarla, la segunda prueba que monte la ventana no vuelve
+	// a pedir nada y contar pedidos da cero. Pasó justo acá al subir a la 0.15.
+	olvidarLosIconosDelTema();
 	setActivePinia(createPinia());
 	olvidarTodo();
 });

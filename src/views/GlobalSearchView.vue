@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { EmptyState } from '@vasakgroup/vue-libvasak';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
-import EmptyState from '@/components/ui/EmptyState.vue';
 import NumberField from '@/components/ui/number-field/NumberField.vue';
 import NumberFieldContent from '@/components/ui/number-field/NumberFieldContent.vue';
 import NumberFieldDecrement from '@/components/ui/number-field/NumberFieldDecrement.vue';
@@ -422,8 +422,8 @@ onMounted(async () => {
                nombrar la que sí: todavía no hay índice. De paso lo dice el
                campo de arriba, que está apagado con esta misma condición. -->
           <EmptyState v-if="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
-            :icon="searchIcon" :title="t('globalSearch.indexEmpty')"
-            :description="t('globalSearch.indexEmptyDescription')" :bordered="false" />
+            icon="search" icon-type="symbol" :title="t('globalSearch.indexEmpty')"
+            :note="t('globalSearch.indexEmptyDescription')" />
 
           <div v-else-if="!globalSearchStore.query.trim()" class="flex flex-col items-center justify-center gap-3 px-6 py-16">
             <img :src="searchIcon" class="text-tx-muted/30" />
@@ -454,7 +454,7 @@ onMounted(async () => {
           </div>
 
           <EmptyState v-else-if="globalSearchStore.results.length === 0 && !globalSearchStore.isSearching"
-            :icon="searchIcon" :title="t('globalSearch.searchStats.nothingFound')" :bordered="false" />
+            icon="search" icon-type="symbol" :title="t('globalSearch.searchStats.nothingFound')" />
 
           <template v-else-if="globalSearchStore.results.length > 0">
             <div v-for="group in groupedResults" :key="group.driveRoot">

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import StatusCenterButton from '@/components/statuscenter/StatusCenterButton.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
-import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
-import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import type { Layout } from '@/types/navigator';
@@ -63,7 +61,7 @@ async function setLayout(layoutName: LayoutType) {
       <Popover :open="isLayoutPopoverOpen" @update:open="isLayoutPopoverOpen = $event">
         <PopoverTrigger as-child>
           <Tooltip>
-            <TooltipTrigger as-child>
+            <TooltipTrigger>
               <button class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border">
                 <img :src="layoutGridIcon" :alt="t('gridLayout')" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
                 <img :src="layoutListIcon" :alt="t('listLayout')" v-else height="24" width="24" class="fill-primary" />
@@ -86,7 +84,7 @@ async function setLayout(layoutName: LayoutType) {
         </PopoverContent>
       </Popover>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button
             class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary hover:bg-secondary': props.isGlobalSearchOpen }"
@@ -97,7 +95,7 @@ async function setLayout(layoutName: LayoutType) {
         <TooltipContent>{{ t('globalSearch.globalSearch') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button
             class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary hover:bg-secondary': props.isSplitView }"
@@ -109,7 +107,7 @@ async function setLayout(layoutName: LayoutType) {
         <TooltipContent>{{ t('splitView') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger as-child>
+        <TooltipTrigger>
           <button
             class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary hover:bg-secondary': props.showInfoPanel }"
