@@ -39,11 +39,14 @@ globalSearch:
     daysOther: "{0} days ago"
   exactMatch: Exact Match
   globalSearch: Global Search
-  noDrivesSelected: No drives selected
+  indexEmpty: Nothing indexed yet
+  indexEmptyDescription: >-
+    Global search reads an index of your drives, and that index is still empty. It is built
+    by going through them: it starts on its own the first time, and picks up again while the
+    computer is idle. The field above stays off until there is something to search.
   options: Options
   resultLimit: Result Limit
   results: Results
-  searchDataIncomplete: Search data incomplete
   searchStats:
     nothingFound: Nothing found
     foundOnDrives: "Results: {0} · Drives: {1}"
