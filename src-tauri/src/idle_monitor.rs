@@ -33,7 +33,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use wayland_client::protocol::{wl_registry, wl_seat};
-use wayland_client::{Connection, Dispatch, QueueHandle, delegate_noop};
+use wayland_client::{delegate_noop, Connection, Dispatch, QueueHandle};
 use wayland_protocols::ext::idle_notify::v1::client::{
     ext_idle_notification_v1::{self, ExtIdleNotificationV1},
     ext_idle_notifier_v1::ExtIdleNotifierV1,
@@ -116,7 +116,9 @@ impl Estado {
             available: self.disponible,
             is_idle: inactivo_desde.is_some(),
             idle_for_ms: inactivo_desde
-                .map(|desde| UMBRAL.as_millis() as u64 + ahora.duration_since(desde).as_millis() as u64)
+                .map(|desde| {
+                    UMBRAL.as_millis() as u64 + ahora.duration_since(desde).as_millis() as u64
+                })
                 .unwrap_or(0),
             threshold_ms: UMBRAL.as_millis() as u64,
         }

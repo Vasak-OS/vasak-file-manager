@@ -121,6 +121,7 @@ pub fn archivo_de_estado(base: &Path) -> PathBuf {
 #[cfg(test)]
 mod pruebas {
     use super::*;
+    use tantivy::schema::FieldType;
 
     #[test]
     fn los_nombres_de_los_campos_no_se_tocan() {
@@ -197,6 +198,53 @@ mod pruebas {
                 .get_index_record_option(),
             Some(IndexRecordOption::Basic),
             "la ruta va entera"
+        );
+    }
+
+    /// Con qué tokenizador se indexa un campo de texto.
+    ///
+    /// No hay atajo en `FieldType` para esto —sí lo hay para el detalle de
+    /// indexado—, así que hay que bajar hasta las opciones de texto.
+    fn tokenizador(esquema: &Schema, campo: Field) -> Option<&str> {
+        match esquema.get_field_entry(campo).field_type() {
+            FieldType::Str(opciones) => opciones.get_indexing_options().map(|o| o.tokenizer()),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn el_tokenizador_de_cada_campo_tampoco_se_toca() {
+        // El detalle de indexado y el tokenizador son dos cosas separadas, y la
+        // prueba de arriba sólo fija la primera. Quien cambie el tokenizador de
+        // `name` de `default` a `raw` deja aquella prueba en verde.
+        //
+        // Importa porque el lanzador no consulta con `QueryParser`: arma el
+        // término a mano, en minúsculas, y lo mete en una consulta difusa. Que
+        // los términos guardados estén en minúsculas no lo da el detalle de
+        // indexado, lo da el tokenizador `default`, que es el que baja.
+        //
+        // Con `raw` el proveedor no se rompe del todo, que sería visible: sigue
+        // encontrando los archivos que ya estaban en minúsculas y pierde los
+        // que tienen una mayúscula. No parece roto, parece incompleto.
+        //
+        // Comprobado al revés antes de darlo por bueno: poniéndole `raw` a
+        // `name` a mano, esta prueba falla y la de arriba sigue pasando.
+        let (esquema, campos) = esquema();
+
+        assert_eq!(
+            tokenizador(&esquema, campos.nombre),
+            Some("default"),
+            "el nombre se parte en palabras y baja a minúsculas"
+        );
+        assert_eq!(
+            tokenizador(&esquema, campos.ruta),
+            Some("raw"),
+            "la ruta se guarda entera y tal cual"
+        );
+        assert_eq!(
+            tokenizador(&esquema, campos.nombre_minuscula),
+            Some("raw"),
+            "el nombre en minúsculas ya viene bajado de antes"
         );
     }
 }

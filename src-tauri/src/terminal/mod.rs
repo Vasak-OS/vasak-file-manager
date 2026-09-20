@@ -8,9 +8,7 @@ use std::process::Command;
 
 #[tauri::command]
 pub fn get_available_terminals() -> GetAvailableTerminalsResult {
-
-        get_available_terminals_linux()
-
+    get_available_terminals_linux()
 }
 
 #[tauri::command]
@@ -27,25 +25,20 @@ pub fn open_terminal(
         };
     }
 
-        open_terminal_linux(&directory_path, &terminal_id, as_admin)
-
+    open_terminal_linux(&directory_path, &terminal_id, as_admin)
 }
 
 #[tauri::command]
 pub fn get_terminal_icons() -> HashMap<String, String> {
-
-        HashMap::new()
-
+    HashMap::new()
 }
 
 fn command_exists(cmd: &str) -> bool {
-
-        Command::new("which")
-            .arg(cmd)
-            .output()
-            .map(|output| output.status.success())
-            .unwrap_or(false)
-    
+    Command::new("which")
+        .arg(cmd)
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
 }
 
 fn get_available_terminals_linux() -> GetAvailableTerminalsResult {
@@ -136,15 +129,15 @@ fn detect_terminal_from_env() -> Option<String> {
 fn detect_terminal_from_gsettings() -> Option<String> {
     let schemas = [
         ("org.gnome.desktop.default-applications.terminal", "exec"),
-        (
-            "org.cinnamon.desktop.default-applications.terminal",
-            "exec",
-        ),
+        ("org.cinnamon.desktop.default-applications.terminal", "exec"),
         ("org.mate.applications-terminal", "exec"),
     ];
 
     for (schema, key) in &schemas {
-        if let Ok(output) = Command::new("gsettings").args(["get", schema, key]).output() {
+        if let Ok(output) = Command::new("gsettings")
+            .args(["get", schema, key])
+            .output()
+        {
             if output.status.success() {
                 let value = String::from_utf8_lossy(&output.stdout)
                     .trim()
@@ -252,9 +245,7 @@ fn terminal_display_name(binary_name: &str) -> String {
             let mut chars = word.chars();
             match chars.next() {
                 None => String::new(),
-                Some(first_char) => {
-                    first_char.to_uppercase().to_string() + chars.as_str()
-                }
+                Some(first_char) => first_char.to_uppercase().to_string() + chars.as_str(),
             }
         })
         .collect::<Vec<_>>()
@@ -376,16 +367,11 @@ fn open_terminal_linux(
             "terminology" => Command::new("terminology")
                 .args(["--working-dir", directory_path])
                 .spawn(),
-            "urxvt" => Command::new("urxvt")
-                .args(["-cd", directory_path])
-                .spawn(),
+            "urxvt" => Command::new("urxvt").args(["-cd", directory_path]).spawn(),
             "xterm" => {
                 let escaped_path = directory_path.replace('\'', "'\\''");
                 Command::new("xterm")
-                    .args([
-                        "-e",
-                        &format!("cd '{}' && exec $SHELL", escaped_path),
-                    ])
+                    .args(["-e", &format!("cd '{}' && exec $SHELL", escaped_path)])
                     .spawn()
             }
             _ => Command::new(terminal_id)

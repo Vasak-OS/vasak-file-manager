@@ -1,3 +1,4 @@
+use crate::utils::normalize_path;
 use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
@@ -6,7 +7,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
-use crate::utils::normalize_path;
 
 static ACTIVE_WATCHERS: Lazy<Mutex<HashMap<String, WatcherHandle>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));

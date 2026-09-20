@@ -19,8 +19,8 @@ pub fn read_text_file(path: String) -> Result<String, String> {
     file.read_exact(&mut buffer)
         .map_err(|e| format!("Failed to read file: {e}"))?;
 
-    let content = String::from_utf8(buffer)
-        .map_err(|e| format!("File is not valid UTF-8 text: {e}"))?;
+    let content =
+        String::from_utf8(buffer).map_err(|e| format!("File is not valid UTF-8 text: {e}"))?;
 
     let is_truncated = file_size > MAX_PREVIEW_SIZE;
 
@@ -54,7 +54,8 @@ pub fn read_pdf_preview(path: String) -> Result<String, String> {
     }
 
     let result_file = format!("{}-1.png", tmp_output.display());
-    let data = fs::read(&result_file).map_err(|e| format!("Failed to read pdftoppm output: {e}"))?;
+    let data =
+        fs::read(&result_file).map_err(|e| format!("Failed to read pdftoppm output: {e}"))?;
 
     let _ = fs::remove_file(&result_file);
 

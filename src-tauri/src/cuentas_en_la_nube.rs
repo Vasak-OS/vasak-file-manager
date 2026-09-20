@@ -148,10 +148,7 @@ pub async fn credencial_de(account_id: &str) -> Result<Credencial, String> {
 }
 
 /// Arma la credencial a partir de lo que guardó el servicio.
-pub fn credencial_desde(
-    config: &serde_json::Value,
-    secreto: String,
-) -> Result<Credencial, String> {
+pub fn credencial_desde(config: &serde_json::Value, secreto: String) -> Result<Credencial, String> {
     let campo = |nombre: &str| config.get(nombre).and_then(|v| v.as_str());
 
     let url = campo("url").ok_or(
@@ -162,7 +159,11 @@ pub fn credencial_desde(
         .ok_or("la cuenta no guardó el usuario")?
         .to_string();
 
-    Ok(Credencial { uri: uri_para_gvfs(url)?, usuario, secreto })
+    Ok(Credencial {
+        uri: uri_para_gvfs(url)?,
+        usuario,
+        secreto,
+    })
 }
 
 /// Traduce una dirección WebDAV al esquema que entiende gvfs.
@@ -189,7 +190,9 @@ pub fn uri_para_gvfs(url: &str) -> Result<String, String> {
              viajaría a la vista de cualquiera en la red"
         ));
     }
-    Err(format!("«{url}» no es una dirección de archivos en la nube"))
+    Err(format!(
+        "«{url}» no es una dirección de archivos en la nube"
+    ))
 }
 
 #[cfg(test)]
@@ -215,7 +218,10 @@ mod tests {
     /// `http://` es una cuenta armada a mano contra esa recomendación.
     #[test]
     fn una_direccion_sin_cifrar_se_rechaza() {
-        for malo in ["http://nube.ejemplo.com/dav/", "dav://nube.ejemplo.com/dav/"] {
+        for malo in [
+            "http://nube.ejemplo.com/dav/",
+            "dav://nube.ejemplo.com/dav/",
+        ] {
             let error = uri_para_gvfs(malo).unwrap_err();
             assert!(error.contains("cifrado"), "{malo}: {error}");
         }
@@ -224,7 +230,10 @@ mod tests {
     #[test]
     fn lo_que_no_es_una_direccion_se_rechaza() {
         for malo in ["", "   ", "nube.ejemplo.com", "ftp://nube/x", "/home/ana"] {
-            assert!(uri_para_gvfs(malo).is_err(), "{malo:?} tenía que rechazarse");
+            assert!(
+                uri_para_gvfs(malo).is_err(),
+                "{malo:?} tenía que rechazarse"
+            );
         }
     }
 
