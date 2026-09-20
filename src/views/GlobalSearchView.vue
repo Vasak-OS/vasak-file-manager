@@ -301,15 +301,15 @@ onMounted(async () => {
          y es preferible mostrarlo tal cual —sirve para un informe de error— a
          tragárselo. Se limpia solo: cada operación que sale bien pone
          `lastError` en nulo. -->
-    <div v-if="globalSearchStore.lastError || globalSearchStore.sinUnidades"
+    <div v-if="globalSearchStore.lastError || globalSearchStore.sinRaices"
       class="mx-2 mt-2 flex flex-col gap-0.5 rounded-corner bg-status-error/10 px-3 py-2 text-[13px] text-status-error">
       <span class="font-medium">{{
-        globalSearchStore.sinUnidades
-          ? t('globalSearch.noDrivesToScan')
+        globalSearchStore.sinRaices
+          ? t('globalSearch.nothingToScan')
           : t('globalSearch.somethingFailed')
       }}</span>
-      <span v-if="globalSearchStore.sinUnidades" class="text-status-error/80">{{
-        t('globalSearch.noDrivesToScanDescription') }}</span>
+      <span v-if="globalSearchStore.sinRaices" class="text-status-error/80">{{
+        t('globalSearch.nothingToScanDescription') }}</span>
       <!-- El detalle va **además** de lo de arriba y no en su lugar: quedarse
            sin unidades pasa sobre todo porque preguntar por ellas falló, y con
            un `v-else` el motivo volvía a quedar escondido. Lo destapó la

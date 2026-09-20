@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { homeDir } from '@tauri-apps/api/path';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { sharedDrives } from '@/composables/use-drives';
@@ -66,7 +67,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const isInitialized = ref(false);
 	const lastError = ref<string | null>(null);
 	/**
-	 * El recorrido no tiene ninguna unidad que mirar.
+	 * El recorrido no tiene ninguna raíz que mirar.
 	 *
 	 * Iba adentro de `lastError` como la cadena `'No drives available for
 	 * scanning'`, escrita a mano y en inglés en un campo que por lo demás trae
@@ -77,7 +78,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	 * Ahora es un estado aparte: quien lo dibuja elige el texto, y `lastError`
 	 * se queda con lo que de verdad falló.
 	 */
-	const sinUnidades = ref(false);
+	const sinRaices = ref(false);
 
 	const statusPollTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const debounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -86,7 +87,18 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const driveChangeDebounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const senalDeInactividad = ref<SenalDeInactividad>('desconocida');
 	const dejarDeEscucharInactividad = ref<UnlistenFn | null>(null);
-	const lastKnownDriveCount = ref<number>(0);
+	/**
+	 * Cuántas unidades había la última vez que se miró, o `null` si todavía no
+	 * se miró ninguna vez.
+	 *
+	 * La diferencia importa. Era un `0`, y al arrancar se le escribía el largo
+	 * de una lista que todavía no se había cargado —también `0`—, así que el
+	 * primer aviso de unidades de cada sesión se tomaba por «éste es el valor
+	 * de partida» y no disparaba nada. En una máquina que arranca **sin**
+	 * unidades eso se repetía con la primera que se enchufara: seguía valiendo
+	 * cero, así que seguía pareciendo el valor de partida.
+	 */
+	const lastKnownDriveCount = ref<number | null>(null);
 
 	//const userSettingsStore = useUserSettingsStore();
 	const userStatsStore = useUserStatsStore();
@@ -126,17 +138,51 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return senalDeInactividad.value === 'inactiva';
 	}
 
+	/**
+	 * Por dónde se recorre: la carpeta del usuario y las unidades que haya.
+	 *
+	 * Antes eran sólo las unidades, y `get_system_drives` está escrito para la
+	 * sección «Discos» de la barra lateral: descarta `/` de forma explícita y
+	 * sólo deja lo que cuelgue de `/media`, `/mnt`, `/run/media` o sea un
+	 * sistema de archivos de red. O sea que en una máquina sin un pendiente
+	 * enchufado ni un recurso de red montado devuelve **nada**, y la búsqueda
+	 * global no tenía dónde buscar: el índice quedaba vacío para siempre y el
+	 * campo apagado. Medido en una máquina de verdad: cero candidatos entre
+	 * todos sus montajes.
+	 *
+	 * La carpeta del usuario es donde está lo que alguien busca, y es lo que
+	 * indexan por omisión los buscadores del resto de los escritorios. Las
+	 * unidades se suman cuando están, que es para lo que servía esto.
+	 *
+	 * Los dos caminos tienen su propio `try`: que falle preguntar por las
+	 * unidades no tiene por qué dejar sin recorrer la carpeta del usuario.
+	 */
 	async function getDriveRoots(): Promise<string[]> {
 		// const selected = userSettingsStore.userSettings.globalSearch.selectedDriveRoots;
 		// if (selected.length > 0) return selected;
 
+		const raices: string[] = [];
+
 		try {
-			const systemDrives = await invoke<Array<{ path: string }>>('get_system_drives');
-			return systemDrives.map((drive) => drive.path);
+			// Comprobada y no empujada a ciegas: si el complemento de rutas no
+			// contesta, `homeDir()` devuelve `undefined` en vez de lanzar, y un
+			// `undefined` adentro de la lista hacía reventar el filtro de abajo
+			// —o sea que fallar en preguntar por la carpeta del usuario se
+			// llevaba puesto también el recorrido de las unidades—.
+			const casa = await homeDir();
+			if (casa) raices.push(casa);
 		} catch (error) {
 			lastError.value = String(error);
-			return [];
 		}
+
+		try {
+			const systemDrives = await invoke<Array<{ path: string }>>('get_system_drives');
+			raices.push(...systemDrives.map((drive) => drive.path));
+		} catch (error) {
+			lastError.value = String(error);
+		}
+
+		return [...new Set(raices.filter((raiz) => raiz.length > 0))];
 	}
 
 	function updateStatusFromResponse(status: GlobalSearchStatus) {
@@ -171,8 +217,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			updateStatusFromResponse(status);
 			isInitialized.value = true;
 			lastError.value = null;
-
-			lastKnownDriveCount.value = sharedDrives.value.length;
 
 			await startIdleDetection();
 
@@ -262,11 +306,11 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			const driveRoots = await getDriveRoots();
 
 			if (driveRoots.length === 0) {
-				sinUnidades.value = true;
+				sinRaices.value = true;
 				return;
 			}
 
-			sinUnidades.value = false;
+			sinRaices.value = false;
 
 			startStatusPolling();
 
@@ -609,7 +653,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 		const currentCount = sharedDrives.value.length;
 
-		if (lastKnownDriveCount.value === 0) {
+		// La primera vez sólo se anota: el recorrido del arranque ya preguntó
+		// por las unidades al backend, así que no hay nada que rehacer porque la
+		// lista del frontend termine de cargarse.
+		if (lastKnownDriveCount.value === null) {
 			lastKnownDriveCount.value = currentCount;
 			return;
 		}
@@ -635,26 +682,19 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	async function startScanWithCurrentDrives() {
 		if (!isInitialized.value) return;
 
-		// const settings = userSettingsStore.userSettings.globalSearch;
-		// const selectedRoots = settings.selectedDriveRoots;
-		let driveRoots: string[];
-
-		// if (selectedRoots.length > 0) {
-		// 	driveRoots = selectedRoots.filter((root) =>
-		// 		sharedDrives.value.some((drive) => drive.path === root)
-		// 	);
-		// } else {
-		driveRoots = sharedDrives.value.map((drive) => drive.path);
-		//}
+		// Las mismas raíces que el recorrido del arranque, y no la lista del
+		// frontend: dos listas distintas para lo mismo es cómo se llega a que un
+		// camino indexe la carpeta del usuario y el otro no.
+		const driveRoots = await getDriveRoots();
 
 		if (driveRoots.length === 0) {
 			// Éste no lo decía de ninguna manera: se volvía y ya. Es el mismo
 			// caso que el de arriba y se cuenta igual.
-			sinUnidades.value = true;
+			sinRaices.value = true;
 			return;
 		}
 
-		sinUnidades.value = false;
+		sinRaices.value = false;
 
 		try {
 			await invoke('global_search_start_scan', {
@@ -705,7 +745,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		getIsIndexStale,
 		isInitialized,
 		lastError,
-		sinUnidades,
+		sinRaices,
 		senalDeInactividad,
 		getIsUserIdle,
 		open,

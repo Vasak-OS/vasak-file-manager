@@ -20,7 +20,7 @@ import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import GlobalSearchView from '@/views/GlobalSearchView.vue';
-import { olvidarTodo, responder } from './dobles';
+import { olvidarTodo, pedidos, responder } from './dobles';
 
 /** Deja que terminen las promesas del montaje. */
 async function asentar(vueltas = 6) {
@@ -84,11 +84,11 @@ describe('quedarse sin unidades que recorrer', () => {
 		const panel = await abrirElPanel();
 		const store = useGlobalSearchStore();
 
-		store.sinUnidades = true;
+		store.sinRaices = true;
 		await panel.vm.$nextTick();
 
 		const texto = panel.text();
-		expect(texto).toContain('globalSearch.noDrivesToScan');
+		expect(texto).toContain('globalSearch.nothingToScan');
 		expect(texto).not.toContain('No drives available for scanning');
 	});
 
@@ -103,11 +103,12 @@ describe('quedarse sin unidades que recorrer', () => {
 		expect(fuente).not.toContain('No drives available for scanning');
 	});
 
-	test('y no pisa el error que sí explica por qué no hay unidades', async () => {
-		// Es el caso de verdad, recorrido entero: `get_system_drives` falla, su
-		// `catch` anota el motivo, la lista de unidades queda vacía y el
-		// recorrido se corta. Antes, ese corte escribía una frase genérica
-		// encima del motivo y lo único que quedaba era la frase.
+	test('la carpeta del usuario alcanza, aunque fallen las unidades', async () => {
+		// Es el caso de verdad, recorrido entero: `get_system_drives` falla y su
+		// `catch` anota el motivo. Antes el recorrido se cortaba ahí, porque las
+		// unidades eran lo único que se miraba. Ahora la carpeta del usuario es
+		// una raíz por su cuenta y el recorrido sigue con ella.
+		responder('plugin:path|resolve_directory', '/home/quien');
 		responder('get_system_drives', () => {
 			throw new Error('permission denied');
 		});
@@ -117,9 +118,27 @@ describe('quedarse sin unidades que recorrer', () => {
 		await store.startScan();
 		await panel.vm.$nextTick();
 
-		expect(store.sinUnidades).toBe(true);
-		expect(store.lastError).toContain('permission denied');
-		// Y es el motivo lo que se lee, no la frase genérica.
-		expect(panel.text()).toContain('permission denied');
+		expect(store.sinRaices).toBe(false);
+		const pedido = pedidos('global_search_start_scan').at(-1);
+		const ajustes = pedido?.argumentos.settings as { drive_roots: string[] } | undefined;
+		expect(ajustes?.drive_roots).toEqual(['/home/quien']);
+	});
+
+	test('y sin carpeta ni unidades, lo dice', async () => {
+		// Las dos puntas caídas: el complemento de rutas no contesta y las
+		// unidades fallan. Ahí sí no hay nada que recorrer, y es lo único que
+		// el cartel puede decir.
+		responder('get_system_drives', () => {
+			throw new Error('permission denied');
+		});
+		const panel = await abrirElPanel();
+		const store = useGlobalSearchStore();
+
+		await store.startScan();
+		await panel.vm.$nextTick();
+
+		expect(store.sinRaices).toBe(true);
+		expect(pedidos('global_search_start_scan')).toHaveLength(0);
+		expect(panel.text()).toContain('globalSearch.nothingToScan');
 	});
 });
