@@ -54,7 +54,7 @@ function getUpdatedList(dropResult: DropResult) {
       @drag-start="emit('drag-start')" @drag-end="emit('drag-end')">
       <Draggable v-for="(item, index) in props.items" :key="'draggable-item-' + index" class="draggable-list__item"
         border>
-        <div class="item-drag-handle" drag>
+        <div class="item-drag-handle">
           <slot name="item" :item="item" />
         </div>
       </Draggable>

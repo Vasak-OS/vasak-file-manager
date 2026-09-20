@@ -189,7 +189,7 @@ const properties = computed<PropertyItem[]>(() => {
               <span v-if="dirSizeDisplay">{{ dirSizeDisplay }}</span>
               <span v-else>{{ t('calculating') }}...</span>
             </div>
-            <button size="xs" variant="ghost" class="info-panel-properties__cancel-btn" @click="handleCancelSize">
+            <button class="info-panel-properties__cancel-btn" @click="handleCancelSize">
               <img :src="xIcon" class="h-3.5 w-3.5" />
             </button>
           </template>
@@ -199,12 +199,12 @@ const properties = computed<PropertyItem[]>(() => {
               <span v-if="calculatedAgo" class="info-panel-properties__calculated-ago">{{ t('calculatedAgo').replace('{0}',
                 calculatedAgo) }}</span>
             </div>
-            <button v-if="showRecalculateButton" size="xs" variant="ghost"
+            <button v-if="showRecalculateButton"
               class="info-panel-properties__recalculate-btn" :title="t('recalculate')" @click="handleGetSize" :aria-label="t('recalculate')">
               <img :src="refreshCwIcon" class="h-3 w-3" />
             </button>
           </template>
-          <button v-else-if="showGetSizeButton" size="xs" variant="secondary" @click="handleGetSize">
+          <button v-else-if="showGetSizeButton" @click="handleGetSize">
             {{ t('getSize') }}
           </button>
         </div>

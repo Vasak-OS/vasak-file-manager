@@ -405,12 +405,12 @@ onUnmounted(() => {
                 <DropdownMenuTrigger as-child>
                   <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-tx-muted/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop="openSeparatorMenu(index)" :aria-label="t('settings.addressBar.showSiblingDirectories')">
-                    <img :src="chevronRightIcon" alt="" class="h-4 w-4 transition-transform duration-100 ease-in-out" :size="12"
+                    <img :src="chevronRightIcon" alt="" class="h-4 w-4 transition-transform duration-100 ease-in-out"
                       :class="{ 'rotate-90': openSeparatorIndex === index }" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[180px] max-w-[300px] p-0 [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-1.5 [&_[role=menuitem]]:text-xs [&_[role=menuitem]]:gap-2 [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex">
-                  <ScrollArea as-child class="max-h-[250px] py-1">
+                  <ScrollArea class="max-h-[250px] py-1">
                     <DropdownMenuItem v-for="dirPath in separatorDropdowns[index]" :key="dirPath"
                       @select="handleSeparatorNavigate(dirPath)" class="flex items-center justify-start">
                       <img :src="folderIcon" :alt="dirPath" class="h-4 w-4 inline-block shrink-0 mr-2" />
@@ -435,7 +435,7 @@ onUnmounted(() => {
             <TooltipTrigger as-child>
               <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm"
                 :class="{ 'bg-primary/15 text-primary stroke-primary': isPinned }" @click="isPinned = !isPinned">
-                <img :src="pinIcon" :size="14" class="h-4 w-4" />
+                <img :src="pinIcon" class="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent>

@@ -26,6 +26,18 @@ declare module 'vue3-smooth-dnd' {
 		shouldAnimateDrop?: (sourceContainerOptions: object, payload: unknown) => boolean;
 		shouldAcceptDrop?: (sourceContainerOptions: object, payload: unknown) => boolean;
 		getGhostParent?: () => Element | null;
+		/**
+		 * Los eventos, declarados como propiedades `on…`, que es como Vue los
+		 * tipa.
+		 *
+		 * El paquete no publica tipos —esta declaración está escrita a mano— y
+		 * faltaban los tres. Con `strictTemplates`, un `@drop` sobre el
+		 * contenedor pasó a ser un error aunque la librería sí lo emita: la
+		 * reordenación de pestañas funciona, lo que faltaba era decirlo.
+		 */
+		onDrop?: (resultado: DropResult) => void;
+		onDragStart?: (evento: unknown) => void;
+		onDragEnd?: (evento: unknown) => void;
 	}
 
 	export const Container: DefineComponent<ContainerProps>;

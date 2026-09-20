@@ -162,7 +162,7 @@ function openCollapsedPopover() {
             </div>
 
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--expanded">
-              <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
+              <button class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
                 @click="clipboardItemsPopoverOpen = true">
                 <img :src="eyeIcon" :alt="t('fileBrowser.showItems')" class="h-4 w-4 inline-block" />
                 <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.showItems') }}</span>
@@ -171,7 +171,7 @@ function openCollapsedPopover() {
               <template v-if="isSplitView">
                 <Tooltip :delay-duration="300">
                   <TooltipTrigger as-child>
-                    <button variant="ghost" size="sm" class="clipboard-toolbar__button"
+                    <button class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane1 }" :disabled="!canPasteToPane1"
                       @click="emit('pasteToPane', 0)">
                       <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane1')" class="h-4 w-4 inline-block" />
@@ -186,7 +186,7 @@ function openCollapsedPopover() {
 
                 <Tooltip :delay-duration="300">
                   <TooltipTrigger as-child>
-                    <button variant="ghost" size="sm" class="clipboard-toolbar__button"
+                    <button class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane2 }" :disabled="!canPasteToPane2"
                       @click="emit('pasteToPane', 1)">
                       <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane2')" class="h-4 w-4 inline-block" />
@@ -202,7 +202,7 @@ function openCollapsedPopover() {
 
               <Tooltip v-else :delay-duration="300">
                 <TooltipTrigger as-child>
-                  <button variant="ghost" size="sm" class="clipboard-toolbar__button"
+                  <button class="clipboard-toolbar__button"
                     :class="{ 'clipboard-toolbar__button--disabled': !canPaste }" :disabled="!canPaste"
                     @click="emit('paste')">
                     <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.paste')" class="h-4 w-4 inline-block" />
@@ -215,7 +215,7 @@ function openCollapsedPopover() {
                 </TooltipContent>
               </Tooltip>
 
-              <button variant="ghost" size="sm" class="clipboard-toolbar__button clipboard-toolbar__button--discard"
+              <button class="clipboard-toolbar__button clipboard-toolbar__button--discard"
                 :title="t('fileBrowser.discardClipboard')" @click="clipboardStore.clearClipboard()">
                 <img :src="xIcon" :alt="t('fileBrowser.discardClipboard')" class="h-4 w-4 inline-block" />
                 <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.discardClipboard') }}</span>
@@ -225,7 +225,7 @@ function openCollapsedPopover() {
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--collapsed">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button variant="ghost" size="sm" class="clipboard-toolbar__button" :title="t('actions')" :aria-label="t('actions')">
+                  <button class="clipboard-toolbar__button" :title="t('actions')" :aria-label="t('actions')">
                     <img :src="ellipsisVerticalIcon" class="h-4 w-4 inline-block" />
                   </button>
                 </DropdownMenuTrigger>
@@ -274,7 +274,7 @@ function openCollapsedPopover() {
                     <span class="clipboard-toolbar__item-name">{{ entry.name }}</span>
                     <span class="clipboard-toolbar__item-path">{{ entry.path }}</span>
                   </div>
-                  <button variant="ghost" size="icon" class="clipboard-toolbar__item-remove"
+                  <button class="clipboard-toolbar__item-remove"
                     :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)" :aria-label="t('fileBrowser.removeFromClipboard')">
                     <img :src="xIcon" :alt="t('fileBrowser.removeFromClipboard')" class="h-4 w-4" />
                   </button>
