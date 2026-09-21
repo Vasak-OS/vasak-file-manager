@@ -69,6 +69,17 @@ pub struct GlobalSearchStatus {
     pub is_index_valid: bool,
     pub scanned_drives_count: u32,
     pub total_drives_count: u32,
+    /// Cómo terminó el último escaneo, tal cual está escrito. Ver `contrato`.
+    ///
+    /// Va crudo a propósito: la ventana decide qué decir con cada valor, y un
+    /// valor que no conozca no puede impedirle leer el resto.
+    pub last_scan_state: Option<String>,
+    /// Si ese estado es un «en curso» que todavía vale.
+    ///
+    /// Un escaneo que se muere de golpe deja el «en curso» escrito para
+    /// siempre. Sin esto, la ventana diría «indexando» después de un reinicio y
+    /// no habría forma de destrabarlo.
+    pub last_scan_is_live: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -104,6 +115,8 @@ static GLOBAL_SEARCH_STATE: Lazy<Arc<RwLock<GlobalSearchState>>> = Lazy::new(|| 
             is_index_valid: false,
             scanned_drives_count: 0,
             total_drives_count: 0,
+            last_scan_state: None,
+            last_scan_is_live: false,
         },
         index: None,
         reader: None,
@@ -221,7 +234,40 @@ struct GlobalSearchMeta {
     last_scan_time: Option<u64>,
     indexed_item_count: u64,
     schema_version: u32,
+    /// Cómo terminó —o si terminó— el último escaneo. Ver `contrato`.
+    ///
+    /// Los tres campos que siguen son opcionales porque este archivo lo
+    /// escribieron versiones que no los tenían, y un `status.json` viejo tiene
+    /// que poder leerse **entero**: si el parseo fallara se perderían también
+    /// la versión y la fecha, que sí están. Agregar un campo no puede costar
+    /// más que no tenerlo.
+    ///
+    /// Lo que sostiene eso hoy es el `Option` —serde da `None` cuando falta—;
+    /// el `default` está de más mientras lo sean. Se deja igual porque es lo
+    /// único que sigue sosteniéndolo el día que alguien haga alguno
+    /// obligatorio, que es cuando esto se rompería en silencio para el lector
+    /// de enfrente. Comprobado: sin `Option` y sin `default`, un archivo viejo
+    /// no se lee.
+    #[serde(default)]
+    scan_state: Option<String>,
+    /// Cuándo se escribió ese estado, en milisegundos desde la época.
+    #[serde(default)]
+    scan_state_time: Option<u64>,
+    /// Cuánto vale ese estado si es «en curso», antes de darlo por muerto.
+    #[serde(default)]
+    scan_state_ttl_ms: Option<u64>,
 }
+
+/// Cuánto vale un «en curso» antes de considerarlo un escaneo que murió.
+///
+/// El estado se escribe una vez, al arrancar, así que este número tiene que
+/// cubrir un escaneo entero. Es un compromiso con dos lados y ninguno es grave:
+/// un escaneo que se muere de golpe se lee como «indexando» durante media hora
+/// más, y uno que tarda más que eso se lee como «incompleto», que es cierto
+/// mientras corre. Si los escaneos se vuelven largos, lo que corresponde es
+/// reescribir el estado en cada raíz recorrida —no subir este número—, y ahí el
+/// vencimiento pasa a cubrir una raíz en vez de todo.
+const SCAN_STATE_TTL_MS: u64 = 30 * 60 * 1000;
 
 const SCHEMA_VERSION: u32 = 1;
 
@@ -242,6 +288,47 @@ fn write_meta(base_dir: &Path, meta: &GlobalSearchMeta) -> Result<(), String> {
 
 fn ensure_dir(path: &Path) -> Result<(), String> {
     std::fs::create_dir_all(path).map_err(|error| error.to_string())
+}
+
+/// Deja escrito en qué estado quedó el escaneo, sin pisar lo demás.
+///
+/// Lee lo que había para no perder la fecha ni el conteo cuando el escaneo
+/// falla antes de tener uno nuevo: un fallo no puede además borrar lo poco que
+/// se sabía.
+fn write_scan_state(base_dir: &Path, estado: &str, conteo: Option<u64>) {
+    let previo = read_meta(base_dir);
+
+    let meta = GlobalSearchMeta {
+        last_scan_time: previo.as_ref().and_then(|m| m.last_scan_time),
+        indexed_item_count: conteo
+            .or_else(|| previo.as_ref().map(|m| m.indexed_item_count))
+            .unwrap_or(0),
+        schema_version: SCHEMA_VERSION,
+        scan_state: Some(estado.to_string()),
+        scan_state_time: Some(now_millis()),
+        scan_state_ttl_ms: Some(SCAN_STATE_TTL_MS),
+    };
+
+    let _ = write_meta(base_dir, &meta);
+}
+
+/// Si lo escrito es un «en curso» que todavía vale.
+///
+/// Sólo un «en curso» puede estar vivo; los tres estados terminales no. Y uno
+/// sin fecha o sin vencimiento no alcanza para decidir nada, así que se lo
+/// trata como no vigente en vez de inventarle un criterio: es el lado seguro,
+/// el que dice «incompleto» de más y no «indexando» para siempre.
+fn estado_en_curso_vigente(meta: &GlobalSearchMeta) -> bool {
+    if meta.scan_state.as_deref() != Some(contrato::ESTADO_EN_CURSO) {
+        return false;
+    }
+
+    match (meta.scan_state_time, meta.scan_state_ttl_ms) {
+        (Some(escrito_en), Some(vence_en)) => {
+            contrato::en_curso_sigue_vivo(escrito_en, vence_en, now_millis())
+        }
+        _ => false,
+    }
 }
 
 fn validate_index(index_path: &Path, base_dir: &Path) -> bool {
@@ -365,6 +452,8 @@ pub fn global_search_init() -> Result<GlobalSearchStatus, String> {
     state.status.index_size_bytes = index_size;
     state.status.last_scan_time = meta.as_ref().and_then(|m| m.last_scan_time);
     state.status.is_index_valid = is_valid && indexed_item_count > 0;
+    state.status.last_scan_state = meta.as_ref().and_then(|m| m.scan_state.clone());
+    state.status.last_scan_is_live = meta.as_ref().is_some_and(estado_en_curso_vigente);
 
     Ok(state.status.clone())
 }
@@ -701,6 +790,11 @@ pub async fn global_search_start_scan(settings: GlobalSearchSettings) -> Result<
         .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
     let index_path = index_dir(&base_dir);
 
+    // Queda escrito antes de empezar, no al terminar. Durante un primer escaneo
+    // largo el archivo no existía, y «no hay índice» es la peor lectura posible
+    // de «lo estoy construyendo ahora».
+    write_scan_state(&base_dir, contrato::ESTADO_EN_CURSO, None);
+
     let cancel_flag = {
         let state = GLOBAL_SEARCH_STATE
             .read()
@@ -874,19 +968,36 @@ pub async fn global_search_start_scan(settings: GlobalSearchSettings) -> Result<
 
             let was_cancelled = state.cancel_flag.load(Ordering::SeqCst);
 
-            if let Ok(count) = result {
-                if !was_cancelled {
-                    state.status.last_scan_time = Some(now_millis());
+            match result {
+                Ok(count) => {
+                    if !was_cancelled {
+                        state.status.last_scan_time = Some(now_millis());
+                    }
+                    state.status.indexed_item_count = count;
+
+                    let estado = if was_cancelled {
+                        contrato::ESTADO_CANCELADO
+                    } else {
+                        contrato::ESTADO_COMPLETO
+                    };
+
+                    let _ = write_meta(
+                        &base_dir,
+                        &GlobalSearchMeta {
+                            last_scan_time: state.status.last_scan_time,
+                            indexed_item_count: count,
+                            schema_version: SCHEMA_VERSION,
+                            scan_state: Some(estado.to_string()),
+                            scan_state_time: Some(now_millis()),
+                            scan_state_ttl_ms: Some(SCAN_STATE_TTL_MS),
+                        },
+                    );
                 }
-                state.status.indexed_item_count = count;
-                let _ = write_meta(
-                    &base_dir,
-                    &GlobalSearchMeta {
-                        last_scan_time: state.status.last_scan_time,
-                        indexed_item_count: count,
-                        schema_version: SCHEMA_VERSION,
-                    },
-                );
+                // Antes acá no se escribía nada, así que un escaneo que fallaba
+                // dejaba el estado del anterior y parecía que nada había
+                // pasado. Un cero por un error se veía igual que un cero de un
+                // disco vacío.
+                Err(_) => write_scan_state(&base_dir, contrato::ESTADO_FALLADO, None),
             }
         }
     });
@@ -1420,6 +1531,152 @@ mod pruebas {
         discard_index(&indice).unwrap();
 
         assert!(!indice.exists(), "acá sí se borra, a propósito");
+    }
+
+    #[test]
+    fn un_estado_viejo_sin_los_campos_nuevos_se_sigue_leyendo_entero() {
+        // Lo que escribió una versión anterior no tiene `scan_state` ni sus dos
+        // acompañantes. Si eso hiciera fallar el parseo, agregar el campo
+        // costaría **más** que no tenerlo: se perderían también la versión y la
+        // fecha, que sí están ahí.
+        //
+        // Quien sostiene esto hoy es el `Option`, no el `default`: sacar el
+        // `default` deja la prueba en verde, y por eso no alcanza como
+        // comprobación al revés. Lo que sí la hace fallar es volver el campo
+        // obligatorio y sin `default`, que es el cambio que hay que evitar.
+        let directorio = DirectorioDePrueba::nuevo("estado-viejo");
+        let archivo = contrato::archivo_de_estado(&directorio.0);
+        std::fs::create_dir_all(archivo.parent().unwrap()).unwrap();
+        std::fs::write(
+            &archivo,
+            r#"{"last_scan_time":1700000000000,"indexed_item_count":42,"schema_version":1}"#,
+        )
+        .unwrap();
+
+        let leido = read_meta(&directorio.0).expect("un estado viejo tiene que poder leerse");
+
+        assert_eq!(leido.last_scan_time, Some(1_700_000_000_000));
+        assert_eq!(leido.indexed_item_count, 42);
+        assert_eq!(leido.schema_version, 1);
+        assert_eq!(
+            leido.scan_state, None,
+            "falta el campo, que no es lo mismo que un valor desconocido"
+        );
+    }
+
+    #[test]
+    fn un_escaneo_fallado_no_se_lleva_puesto_lo_que_ya_se_sabia() {
+        // Un fallo tiene que poder decirse sin borrar la fecha ni el conteo del
+        // escaneo anterior: lo indexado hasta ayer sigue siendo cierto, y el
+        // lector necesita las tres cosas para distinguir «falló recién» de «no
+        // hay nada».
+        let directorio = DirectorioDePrueba::nuevo("fallado");
+        write_meta(
+            &directorio.0,
+            &GlobalSearchMeta {
+                last_scan_time: Some(1_700_000_000_000),
+                indexed_item_count: 99,
+                schema_version: SCHEMA_VERSION,
+                scan_state: Some(contrato::ESTADO_COMPLETO.to_string()),
+                scan_state_time: Some(1_700_000_000_000),
+                scan_state_ttl_ms: Some(SCAN_STATE_TTL_MS),
+            },
+        )
+        .unwrap();
+
+        write_scan_state(&directorio.0, contrato::ESTADO_FALLADO, None);
+
+        let leido = read_meta(&directorio.0).unwrap();
+        assert_eq!(leido.scan_state.as_deref(), Some(contrato::ESTADO_FALLADO));
+        assert_eq!(
+            leido.last_scan_time,
+            Some(1_700_000_000_000),
+            "la fecha del último escaneo bueno no se toca"
+        );
+        assert_eq!(leido.indexed_item_count, 99, "el conteo tampoco");
+    }
+
+    #[test]
+    fn el_en_curso_se_escribe_con_su_vencimiento() {
+        // Un «en curso» sin vencimiento deja al lector sin criterio, y ahí cada
+        // uno inventaría el suyo — que es justo lo que este campo evita.
+        let directorio = DirectorioDePrueba::nuevo("en-curso");
+
+        write_scan_state(&directorio.0, contrato::ESTADO_EN_CURSO, None);
+
+        let leido = read_meta(&directorio.0).unwrap();
+        assert_eq!(leido.scan_state.as_deref(), Some(contrato::ESTADO_EN_CURSO));
+        assert_eq!(leido.scan_state_ttl_ms, Some(SCAN_STATE_TTL_MS));
+
+        let escrito_en = leido.scan_state_time.expect("sin fecha no hay criterio");
+        assert!(
+            contrato::en_curso_sigue_vivo(escrito_en, SCAN_STATE_TTL_MS, now_millis()),
+            "recién escrito tiene que leerse como vivo"
+        );
+    }
+
+    /// Un estado con los tres campos puestos, para las pruebas de vigencia.
+    fn meta_con(estado: &str, escrito_en: u64, vence_en: u64) -> GlobalSearchMeta {
+        GlobalSearchMeta {
+            last_scan_time: None,
+            indexed_item_count: 0,
+            schema_version: SCHEMA_VERSION,
+            scan_state: Some(estado.to_string()),
+            scan_state_time: Some(escrito_en),
+            scan_state_ttl_ms: Some(vence_en),
+        }
+    }
+
+    #[test]
+    fn solo_un_en_curso_puede_estar_vigente() {
+        let ahora = now_millis();
+
+        assert!(estado_en_curso_vigente(&meta_con(
+            contrato::ESTADO_EN_CURSO,
+            ahora,
+            SCAN_STATE_TTL_MS
+        )));
+
+        // Los tres terminales no, por recientes que sean: ya terminaron.
+        for terminal in [
+            contrato::ESTADO_COMPLETO,
+            contrato::ESTADO_CANCELADO,
+            contrato::ESTADO_FALLADO,
+        ] {
+            assert!(
+                !estado_en_curso_vigente(&meta_con(terminal, ahora, SCAN_STATE_TTL_MS)),
+                "«{terminal}» ya terminó, no puede estar en curso"
+            );
+        }
+    }
+
+    #[test]
+    fn un_en_curso_sin_con_que_decidir_no_se_da_por_vivo() {
+        // Sin fecha o sin vencimiento no hay criterio, y ahí hay que elegir un
+        // lado. Se elige «no vigente»: cuesta un «incompleto» de más, mientras
+        // que darlo por vivo deja un «indexando» que nadie puede destrabar.
+        let ahora = now_millis();
+
+        let mut sin_fecha = meta_con(contrato::ESTADO_EN_CURSO, ahora, SCAN_STATE_TTL_MS);
+        sin_fecha.scan_state_time = None;
+        assert!(!estado_en_curso_vigente(&sin_fecha));
+
+        let mut sin_vencimiento = meta_con(contrato::ESTADO_EN_CURSO, ahora, SCAN_STATE_TTL_MS);
+        sin_vencimiento.scan_state_ttl_ms = None;
+        assert!(!estado_en_curso_vigente(&sin_vencimiento));
+    }
+
+    #[test]
+    fn un_en_curso_de_un_escaneo_que_murio_deja_de_estar_vigente() {
+        // El caso del reinicio: el proceso que lo escribió ya no está, pero el
+        // archivo sigue diciendo «en curso».
+        let hace_mucho = now_millis() - SCAN_STATE_TTL_MS - 1;
+
+        assert!(!estado_en_curso_vigente(&meta_con(
+            contrato::ESTADO_EN_CURSO,
+            hace_mucho,
+            SCAN_STATE_TTL_MS
+        )));
     }
 
     #[test]

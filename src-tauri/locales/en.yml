@@ -27,6 +27,7 @@ globalSearch:
   scanningInParallel: Scanning several drives at once…
   indexStatus:
     committing: Saving the index…
+  indexMayBeIncomplete: The last scan did not finish, so something may be missing.
   indexedItemsOne: "{0} item indexed"
   indexedItemsOther: "{0} items indexed"
   relativeTime:

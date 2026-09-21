@@ -5,6 +5,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { sharedDrives } from '@/composables/use-drives';
 import { SEARCH_CONSTANTS } from '@/constants/search';
+import { indiceEstaIncompleto } from '@/stores/runtime/global-search-estado';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 //import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
@@ -36,6 +37,8 @@ type GlobalSearchStatus = {
 	is_index_valid: boolean;
 	scanned_drives_count: number;
 	total_drives_count: number;
+	last_scan_state: string | null;
+	last_scan_is_live: boolean;
 };
 
 const DEBOUNCE_DELAY_MS = 200;
@@ -80,6 +83,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const currentDriveRoot = ref<string | null>(null);
 	const driveScanErrors = ref<GlobalSearchDriveScanError[]>([]);
 	const isIndexValid = ref(false);
+	const lastScanState = ref<string | null>(null);
+	const lastScanIsLive = ref(false);
 	const scannedDrivesCount = ref(0);
 	const totalDrivesCount = ref(0);
 	const isInitialized = ref(false);
@@ -169,6 +174,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return Math.round((scannedDrivesCount.value / totalDrivesCount.value) * 100);
 	});
 
+	const indiceIncompleto = computed(() =>
+		indiceEstaIncompleto(lastScanState.value, lastScanIsLive.value, isScanInProgress.value)
+	);
+
 	const needsScan = computed(() => {
 		if (isScanInProgress.value) return false;
 		if (!isIndexValid.value) return true;
@@ -256,6 +265,8 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		currentDriveRoot.value = status.current_drive_root ?? null;
 		driveScanErrors.value = Array.isArray(status.drive_scan_errors) ? status.drive_scan_errors : [];
 		isIndexValid.value = status.is_index_valid ?? false;
+		lastScanState.value = status.last_scan_state ?? null;
+		lastScanIsLive.value = status.last_scan_is_live ?? false;
 		scannedDrivesCount.value = status.scanned_drives_count ?? 0;
 		totalDrivesCount.value = status.total_drives_count ?? 0;
 	}
@@ -800,6 +811,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		currentDriveRoot,
 		driveScanErrors,
 		isIndexValid,
+		lastScanState,
+		lastScanIsLive,
+		indiceIncompleto,
 		scannedDrivesCount,
 		totalDrivesCount,
 		scanProgress,
