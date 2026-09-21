@@ -81,12 +81,31 @@ fn con_plazo(mut orden: Command) -> Result<std::process::Output, String> {
 /// escribe. Vive bajo `thumbnails/` para que las herramientas que limpian
 /// cachés la encuentren, y no para compartirla.
 fn directorio_cache() -> Option<PathBuf> {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))?;
-    let dir = base.join("thumbnails").join("vasak-video");
+    let dir = directorio_cache_bajo(dirs::cache_dir())?;
     std::fs::create_dir_all(&dir).ok()?;
     Some(dir)
+}
+
+/// Dónde iría, sin crear nada y sin leer el entorno.
+///
+/// Aparte por las dos cosas. Sin leer el entorno porque es global al proceso y
+/// las pruebas corren en paralelo: una que escriba una variable decide al azar
+/// el resultado de otra. Y sin crear el directorio para que la prueba compruebe
+/// la decisión en vez de dejar carpetas por el disco.
+///
+/// La base pasa por `dirs` en vez de leerse acá. Antes se aceptaba cualquier
+/// valor de `XDG_CACHE_HOME`, incluida la cadena vacía y cualquier ruta
+/// relativa, que el estándar manda ignorar — y como justo abajo se hace
+/// `create_dir_all`, con una base relativa las miniaturas se escribían bajo el
+/// directorio de trabajo del proceso, sin que nada fallara.
+///
+/// `dirs` implementa la regla como una sola y no como dos: una cadena vacía
+/// tampoco es absoluta, así que los dos casos salen de la misma comprobación.
+/// De `HOME` sólo mira que no esté vacía, así que el filtro de acá cierra esa
+/// otra mitad.
+fn directorio_cache_bajo(base: Option<PathBuf>) -> Option<PathBuf> {
+    let base = base.filter(|base| base.is_absolute())?;
+    Some(base.join("thumbnails").join("vasak-video"))
 }
 
 /// Nombre del archivo de caché para una ruta.
@@ -259,5 +278,33 @@ mod tests {
     fn un_archivo_que_no_existe_no_genera_nada() {
         let error = miniatura(Path::new("/no/existe/video.mp4")).unwrap_err();
         assert!(error.contains("no existe"), "{error}");
+    }
+
+    #[test]
+    fn la_cache_cuelga_de_thumbnails() {
+        // Bajo `thumbnails/` para que las herramientas que limpian cachés la
+        // encuentren, aunque no sea la caché de freedesktop.
+        assert_eq!(
+            directorio_cache_bajo(Some(PathBuf::from("/home/pato/.cache"))),
+            Some(PathBuf::from("/home/pato/.cache/thumbnails/vasak-video"))
+        );
+    }
+
+    #[test]
+    fn una_base_relativa_no_da_directorio() {
+        // Justo abajo se hace `create_dir_all`, así que una base relativa
+        // escribía las miniaturas bajo el directorio de trabajo del proceso y
+        // devolvía `Some`: quien llama creía que la caché estaba bien.
+        //
+        // Las cuatro formas de no ser absoluta: la del nombre suelto es la que
+        // se escapa cuando uno se acuerda sólo de la vacía.
+        for relativa in ["", "cache", "./cache", "../cache"] {
+            assert_eq!(
+                directorio_cache_bajo(Some(PathBuf::from(relativa))),
+                None,
+                "una base de {relativa:?} no tiene que dar directorio"
+            );
+        }
+        assert_eq!(directorio_cache_bajo(None), None);
     }
 }
