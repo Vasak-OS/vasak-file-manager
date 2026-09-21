@@ -198,51 +198,40 @@ pub fn esquema() -> (Schema, Campos) {
     )
 }
 
-/// El directorio compartido en la caché del usuario, o nada si no hay `HOME`.
+/// El directorio compartido en la caché del usuario.
 ///
 /// En caché y no en datos porque el índice es contenido derivado del disco: se
 /// rehace entero escaneando, no hay nada que no se pueda recuperar, y no tiene
 /// por qué sobrevivir a un borrado ni entrar en una copia de respaldo. Es el
 /// mismo criterio con el que `vasak-prism` guarda su catálogo de aplicaciones
 /// en caché y la frecuencia de uso en datos.
-///
-/// Una variable que no sea una ruta **absoluta** cuenta como ausente, y eso
-/// incluye la vacía. Es lo que pide el estándar XDG para las relativas, y el
-/// motivo es el mismo para las dos formas: una ruta que no arranca en la raíz
-/// se resuelve contra el directorio de trabajo de quien haya lanzado el
-/// programa, que en un servicio de systemd puede ser cualquiera. El índice
-/// terminaría escrito en un lugar impredecible, y peor, en uno distinto según
-/// desde dónde se lanzó.
 pub fn base_de_cache() -> Option<PathBuf> {
-    base_de_cache_con(std::env::var_os("XDG_CACHE_HOME"), std::env::var_os("HOME"))
+    base_de_cache_bajo(dirs::cache_dir())
 }
 
-/// Lo mismo, pero recibiendo las variables en vez de leerlas.
+/// Lo mismo, recibiendo la base en vez de leerla del entorno.
 ///
-/// Separado para poder probarlo: el entorno es global al proceso, y una prueba
-/// que lo cambia se lleva puesta cualquier otra que lea `HOME` al mismo tiempo
-/// —acá hay varias, en `open_with`—. Un fallo así aparece una vez cada tantas
-/// corridas y no en la que uno está mirando, que es la peor forma de fallar.
-pub fn base_de_cache_con(
-    cache: Option<std::ffi::OsString>,
-    casa: Option<std::ffi::OsString>,
-) -> Option<PathBuf> {
-    let base = match solo_si_es_absoluta(cache) {
-        Some(ruta) => ruta,
-        None => solo_si_es_absoluta(casa)?.join(".cache"),
-    };
-
+/// Aparte por dos motivos. El entorno es global al proceso y las pruebas corren
+/// en paralelo: una que escriba una variable decide al azar el resultado de
+/// otra, y eso ya pasó acá —la prueba de esta función cambiaba `HOME` y se
+/// llevaba puestas al azar las de `open_with`—. Y porque así la decisión propia
+/// se puede comprobar sin depender de en qué máquina corre.
+///
+/// **La base sale de `dirs` y no se calcula acá.** La regla de que una ruta XDG
+/// relativa se ignora estaba escrita a mano en dos repositorios de este taller
+/// y una tercera vez en `dirs`, que ya era dependencia directa y la resuelve
+/// igual: una cadena vacía tampoco es absoluta, así que los dos casos salen de
+/// la misma comprobación en vez de tratarse por separado —que es cómo se cubre
+/// uno y se deja el otro afuera—.
+///
+/// Lo que `dirs` **no** hace es mirar `HOME`, del que sólo comprueba que no
+/// esté vacío. Si `HOME` es relativo devuelve una base relativa, y el índice
+/// terminaría colgando del directorio de trabajo de quien haya lanzado el
+/// programa, que en un servicio de systemd puede ser cualquiera. El filtro de
+/// acá cierra esa mitad.
+pub fn base_de_cache_bajo(base: Option<PathBuf>) -> Option<PathBuf> {
+    let base = base.filter(|base| base.is_absolute())?;
     Some(base.join(COMPARTIDO))
-}
-
-/// El valor, pero sólo si es una ruta absoluta.
-///
-/// Una sola regla para los dos casos. Tratarlos por separado —la vacía por un
-/// lado, la relativa por otro— es cómo se cubre uno y se deja el otro afuera
-/// habiendo descrito el peligro de los dos.
-fn solo_si_es_absoluta(valor: Option<std::ffi::OsString>) -> Option<PathBuf> {
-    let ruta = PathBuf::from(valor?);
-    ruta.is_absolute().then_some(ruta)
 }
 
 /// Dónde vive el índice, a partir del directorio compartido.
@@ -337,47 +326,39 @@ mod pruebas {
         );
     }
 
-    /// Como llegan del entorno, sin tocar el del proceso.
-    fn var(valor: &str) -> Option<std::ffi::OsString> {
-        Some(std::ffi::OsString::from(valor))
+    #[test]
+    fn la_base_cuelga_del_directorio_compartido() {
+        assert_eq!(
+            base_de_cache_bajo(Some(PathBuf::from("/casa/.cache"))),
+            Some(PathBuf::from("/casa/.cache/vasak"))
+        );
     }
 
     #[test]
-    fn la_base_sale_de_la_cache_del_usuario() {
-        // `XDG_CACHE_HOME` cuando está.
-        assert_eq!(
-            base_de_cache_con(var("/otra/cache"), var("/casa")),
-            Some(PathBuf::from("/otra/cache/vasak"))
-        );
-
-        // Sin ella, `$HOME/.cache`.
-        assert_eq!(
-            base_de_cache_con(None, var("/casa")),
-            Some(PathBuf::from("/casa/.cache/vasak"))
-        );
-
-        // Lo que no es una ruta absoluta cuenta como ausente, y son dos formas
-        // del mismo problema: una ruta que no arranca en la raíz se resuelve
-        // contra el directorio de trabajo de quien haya lanzado el programa,
-        // que en un servicio de systemd puede ser cualquiera.
-        for valor in ["", "cache", "./cache", "../cache"] {
+    fn una_base_que_no_es_absoluta_no_sirve() {
+        // La mitad que `dirs` no cubre: de `HOME` sólo comprueba que no esté
+        // vacío, así que un `HOME` relativo le sale como base relativa. Y una
+        // ruta que no arranca en la raíz se resuelve contra el directorio de
+        // trabajo de quien haya lanzado el programa, que en un servicio de
+        // systemd puede ser cualquiera: el índice quedaría escrito en un lugar
+        // impredecible y distinto según desde dónde se lanzó.
+        //
+        // La cadena vacía entra en la misma comprobación y no en una aparte,
+        // que es la forma de no cubrir una de las dos.
+        for base in ["", "cache", "./cache", "../cache"] {
             assert_eq!(
-                base_de_cache_con(var(valor), var("/casa")),
-                Some(PathBuf::from("/casa/.cache/vasak")),
-                "«{valor}» no es una ruta absoluta y no puede usarse"
+                base_de_cache_bajo(Some(PathBuf::from(base))),
+                None,
+                "«{base}» no es una ruta absoluta"
             );
         }
+    }
 
-        // Y la misma regla para `HOME`, que es el respaldo: si tampoco es
-        // absoluta no hay dónde, y eso se dice en vez de inventarlo.
-        assert_eq!(
-            base_de_cache_con(None, var("casa")),
-            None,
-            "un HOME relativo tampoco sirve"
-        );
-
-        // Sin nada, nada.
-        assert_eq!(base_de_cache_con(None, None), None);
+    #[test]
+    fn sin_base_no_se_inventa_una() {
+        // `dirs` devuelve nada cuando no hay de dónde sacarla. Eso se dice, no
+        // se rellena con un valor por omisión.
+        assert_eq!(base_de_cache_bajo(None), None);
     }
 
     #[test]
