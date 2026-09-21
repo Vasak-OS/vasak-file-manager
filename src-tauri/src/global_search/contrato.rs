@@ -94,6 +94,19 @@ pub const ESTADO: &str = "status.json";
 /// Leído de golpe es contraintuitivo —la ausencia manda confiar y lo
 /// desconocido manda desconfiar— así que va el motivo y no sólo la regla,
 /// porque sin él alguien la «arregla».
+/// # La versión gana sobre el estado
+///
+/// `status.json` vive **fuera** del directorio de la versión, así que describe
+/// a la versión actual del gestor y no necesariamente al índice que el lector
+/// puede abrir. El día que esto pase a `v2`, un lector que sólo sabe leer `v1`
+/// ve dos señales ciertas y contradictorias: no encuentra `v1/index`, y el
+/// archivo le dice `schema_version: 2` con `scan_state: complete`.
+///
+/// La regla es que **si la versión del archivo no es la del índice que el
+/// lector sabe abrir, el estado no se mira**, diga lo que diga. Es «el índice
+/// es de otra versión», que es un caso propio y no «todo bien». Sin esto, la
+/// situación que este archivo vino a explicar se leería como la sana, que es
+/// exactamente al revés de para lo que está.
 pub const ESTADO_EN_CURSO: &str = "in_progress";
 /// Terminó y recorrió todo. Ver [`ESTADO_EN_CURSO`].
 pub const ESTADO_COMPLETO: &str = "complete";
