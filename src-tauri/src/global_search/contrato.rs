@@ -45,12 +45,26 @@ pub const CAMPO_MODIFICADO: &str = "modified_time";
 /// El tamaño en bytes.
 pub const CAMPO_TAMANIO: &str = "size";
 
+/// El directorio compartido de VasakOS dentro de la caché del usuario.
+///
+/// Compartido a propósito: no cuelga del nombre de ninguna de las dos
+/// aplicaciones porque no es de ninguna de las dos. La convención ya existía en
+/// el sistema —`~/.cache/vasak/wallpapers`— y esto la sigue: `vasak-prism/` es
+/// lo que es de una sola app, `vasak/` es lo que comparten.
+pub const COMPARTIDO: &str = "vasak";
 /// El subdirectorio donde vive todo lo de la búsqueda global.
 pub const DIRECTORIO: &str = "global-search";
-/// El índice propiamente dicho, adentro de ése.
+/// El índice propiamente dicho, adentro del directorio de la versión.
 pub const INDICE: &str = "index";
-/// Lo que se sabe del último escaneo, al lado del índice.
+/// Lo que se sabe del último escaneo. **Fuera** del directorio de la versión.
 pub const ESTADO: &str = "status.json";
+
+/// La versión del esquema, que va en la ruta.
+///
+/// Subirla cambia el directorio, así que el índice viejo deja de usarse solo y
+/// no hay que acordarse de borrar nada: un esquema nuevo nunca se lee con el
+/// código viejo, que es la forma de fallar que no se nota.
+pub const VERSION: u32 = 1;
 
 /// Los campos del esquema, ya resueltos contra un índice abierto.
 ///
@@ -108,12 +122,41 @@ pub fn esquema() -> (Schema, Campos) {
     )
 }
 
-/// Dónde vive el índice, a partir del directorio de datos de la aplicación.
+/// El directorio compartido en la caché del usuario, o nada si no hay `HOME`.
+///
+/// En caché y no en datos porque el índice es contenido derivado del disco: se
+/// rehace entero escaneando, no hay nada que no se pueda recuperar, y no tiene
+/// por qué sobrevivir a un borrado ni entrar en una copia de respaldo. Es el
+/// mismo criterio con el que `vasak-prism` guarda su catálogo de aplicaciones
+/// en caché y la frecuencia de uso en datos.
+///
+/// Una `XDG_CACHE_HOME` vacía cuenta como ausente: `PathBuf::from("")` da una
+/// ruta relativa, y el índice terminaría colgando del directorio de trabajo de
+/// quien haya lanzado la aplicación.
+pub fn base_de_cache() -> Option<PathBuf> {
+    let base = match std::env::var_os("XDG_CACHE_HOME") {
+        Some(valor) if !valor.is_empty() => PathBuf::from(valor),
+        _ => PathBuf::from(std::env::var_os("HOME")?).join(".cache"),
+    };
+
+    Some(base.join(COMPARTIDO))
+}
+
+/// Dónde vive el índice, a partir del directorio compartido.
 pub fn directorio_del_indice(base: &Path) -> PathBuf {
-    base.join(DIRECTORIO).join(INDICE)
+    base.join(DIRECTORIO)
+        .join(format!("v{VERSION}"))
+        .join(INDICE)
 }
 
 /// Dónde vive lo que se sabe del último escaneo.
+///
+/// Queda **afuera** del directorio de la versión, y es deliberado. Si cayera
+/// adentro, al subir a `v2` el lector de `vasak-prism` no encontraría ni el
+/// índice ni el archivo que le explicaría por qué: «existe y es de otra
+/// versión» le llegaría como «no existe», que es el caso que este archivo tiene
+/// que poder distinguir. Sería poner el cartel del otro lado de la puerta
+/// cerrada.
 pub fn archivo_de_estado(base: &Path) -> PathBuf {
     base.join(DIRECTORIO).join(ESTADO)
 }
@@ -151,20 +194,109 @@ mod pruebas {
 
     #[test]
     fn la_ruta_del_indice_tampoco() {
-        // La otra mitad. El lanzador la arma con esta misma forma, colgando del
-        // directorio de datos del gestor.
-        let base = Path::new("/casa/.local/share/ar.net.vasak.vasak-file-manager");
+        // La otra mitad. El lanzador la arma con esta misma forma, y con el
+        // mismo directorio compartido, que no es de ninguna de las dos apps.
+        let base = Path::new("/casa/.cache/vasak");
 
         assert_eq!(
             directorio_del_indice(base),
-            Path::new("/casa/.local/share/ar.net.vasak.vasak-file-manager/global-search/index")
+            Path::new("/casa/.cache/vasak/global-search/v1/index")
         );
+    }
+
+    #[test]
+    fn el_estado_queda_fuera_del_directorio_de_la_version() {
+        // Deliberado: es lo único que le permite al lanzador distinguir «el
+        // índice todavía no existe» de «existe y es de otra versión». Si el
+        // archivo viviera adentro de `v1/`, al pasar a `v2` desaparecería junto
+        // con el índice y los dos casos le llegarían iguales.
+        let base = Path::new("/casa/.cache/vasak");
+
         assert_eq!(
             archivo_de_estado(base),
-            Path::new(
-                "/casa/.local/share/ar.net.vasak.vasak-file-manager/global-search/status.json"
-            )
+            Path::new("/casa/.cache/vasak/global-search/status.json")
         );
+
+        // Y la forma, no sólo la cadena: el estado no puede quedar por debajo
+        // del directorio que se renueva al subir la versión.
+        let estado = archivo_de_estado(base);
+        let indice = directorio_del_indice(base);
+        let directorio_de_la_version = indice.parent().unwrap();
+
+        assert!(
+            !estado.starts_with(directorio_de_la_version),
+            "subir la versión se llevaría el estado puesto"
+        );
+        assert_ne!(
+            estado.parent().unwrap(),
+            directorio_de_la_version,
+            "el estado vive un nivel más arriba, en el directorio estable"
+        );
+    }
+
+    /// Corre algo con unas variables de entorno puestas, y las deja como
+    /// estaban. El entorno es global al proceso, así que estas pruebas van en
+    /// un solo `#[test]` y no en varios: dos en paralelo se pisan.
+    fn con_entorno<T>(valores: &[(&str, Option<&str>)], hacer: impl FnOnce() -> T) -> T {
+        let previos: Vec<(String, Option<std::ffi::OsString>)> = valores
+            .iter()
+            .map(|(nombre, _)| (nombre.to_string(), std::env::var_os(nombre)))
+            .collect();
+
+        for (nombre, valor) in valores {
+            match valor {
+                Some(valor) => std::env::set_var(nombre, valor),
+                None => std::env::remove_var(nombre),
+            }
+        }
+
+        let resultado = hacer();
+
+        for (nombre, previo) in previos {
+            match previo {
+                Some(valor) => std::env::set_var(&nombre, valor),
+                None => std::env::remove_var(&nombre),
+            }
+        }
+
+        resultado
+    }
+
+    #[test]
+    fn la_base_sale_de_la_cache_del_usuario() {
+        // `XDG_CACHE_HOME` cuando está.
+        let con_xdg = con_entorno(
+            &[
+                ("XDG_CACHE_HOME", Some("/otra/cache")),
+                ("HOME", Some("/casa")),
+            ],
+            base_de_cache,
+        );
+        assert_eq!(con_xdg, Some(PathBuf::from("/otra/cache/vasak")));
+
+        // Sin ella, `$HOME/.cache`.
+        let sin_xdg = con_entorno(
+            &[("XDG_CACHE_HOME", None), ("HOME", Some("/casa"))],
+            base_de_cache,
+        );
+        assert_eq!(sin_xdg, Some(PathBuf::from("/casa/.cache/vasak")));
+
+        // Vacía cuenta como ausente. Si no, `PathBuf::from("")` da una ruta
+        // relativa y el índice cuelga del directorio de trabajo de quien haya
+        // lanzado la aplicación, que puede ser cualquiera.
+        let vacia = con_entorno(
+            &[("XDG_CACHE_HOME", Some("")), ("HOME", Some("/casa"))],
+            base_de_cache,
+        );
+        assert_eq!(
+            vacia,
+            Some(PathBuf::from("/casa/.cache/vasak")),
+            "una variable vacía no es una ruta"
+        );
+
+        // Sin `HOME` no hay dónde, y eso se dice en vez de inventarlo.
+        let sin_nada = con_entorno(&[("XDG_CACHE_HOME", None), ("HOME", None)], base_de_cache);
+        assert_eq!(sin_nada, None);
     }
 
     #[test]

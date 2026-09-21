@@ -12,7 +12,6 @@ use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{Field, IndexRecordOption, Schema, Value};
 use tantivy::{doc, Index, IndexReader, IndexWriter, Term};
-use tauri::Manager;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,11 +270,44 @@ fn validate_index(index_path: &Path, base_dir: &Path) -> bool {
     }
 }
 
+/// Vacía el índice, en el lugar siempre que se pueda.
+///
+/// Que sea en el lugar no es una optimización. `vasak-prism` abre el índice una
+/// vez y se queda con el lector toda la sesión: los `commit` los sigue solo,
+/// pero borrar y recrear el directorio lo deja apuntando a segmentos que ya no
+/// existen, y a partir de ahí sirve una foto vieja o falla —las dos cosas en
+/// silencio, porque nadie vuelve a preguntar—.
+///
+/// Sólo se borra el directorio cuando el índice no se puede ni abrir, que es
+/// cuando no queda otra: ahí el lector del otro lado ya estaba roto igual.
 fn clear_index(index_path: &Path) -> Result<(), String> {
-    if index_path.exists() {
-        std::fs::remove_dir_all(index_path).map_err(|error| error.to_string())?;
+    if !index_path.exists() {
+        return Ok(());
     }
-    Ok(())
+
+    if let Ok(index) = Index::open_in_dir(index_path) {
+        if let Ok(mut writer) = index.writer::<tantivy::TantivyDocument>(15_000_000) {
+            if writer.delete_all_documents().is_ok() && writer.commit().is_ok() {
+                return Ok(());
+            }
+        }
+    }
+
+    discard_index(index_path)
+}
+
+/// Borra el índice del disco, esquema incluido.
+///
+/// Es lo que hay que hacer cuando el esquema guardado no es el que el código
+/// espera: vaciarlo en el lugar conservaría el esquema viejo y el índice nuevo
+/// no se podría crear encima. Rompe los lectores abiertos, así que se usa sólo
+/// acá; el rehacer de todos los días pasa por `clear_index`.
+fn discard_index(index_path: &Path) -> Result<(), String> {
+    if !index_path.exists() {
+        return Ok(());
+    }
+
+    std::fs::remove_dir_all(index_path).map_err(|error| error.to_string())
 }
 
 fn open_or_create_index(
@@ -289,7 +321,7 @@ fn open_or_create_index(
             let existing_schema = existing.schema();
             if existing_schema != schema {
                 drop(existing);
-                clear_index(index_path)?;
+                discard_index(index_path)?;
                 ensure_dir(index_path)?;
                 Index::create_in_dir(index_path, schema).map_err(|error| error.to_string())?
             } else {
@@ -308,11 +340,9 @@ fn open_or_create_index(
 }
 
 #[tauri::command]
-pub fn global_search_init(app: tauri::AppHandle) -> Result<GlobalSearchStatus, String> {
-    let base_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error: tauri::Error| error.to_string())?;
+pub fn global_search_init() -> Result<GlobalSearchStatus, String> {
+    let base_dir = contrato::base_de_cache()
+        .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
 
     let index_path = index_dir(&base_dir);
     let is_valid = validate_index(&index_path, &base_dir);
@@ -649,10 +679,7 @@ fn scan_drive(
 }
 
 #[tauri::command]
-pub async fn global_search_start_scan(
-    app: tauri::AppHandle,
-    settings: GlobalSearchSettings,
-) -> Result<(), String> {
+pub async fn global_search_start_scan(settings: GlobalSearchSettings) -> Result<(), String> {
     {
         let mut state = GLOBAL_SEARCH_STATE
             .write()
@@ -670,10 +697,8 @@ pub async fn global_search_start_scan(
         state.cancel_flag.store(false, Ordering::SeqCst);
     }
 
-    let base_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error: tauri::Error| error.to_string())?;
+    let base_dir = contrato::base_de_cache()
+        .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
     let index_path = index_dir(&base_dir);
 
     let cancel_flag = {
@@ -877,10 +902,7 @@ pub struct IndexPathsSettings {
 }
 
 #[tauri::command]
-pub async fn global_search_index_paths(
-    app: tauri::AppHandle,
-    settings: IndexPathsSettings,
-) -> Result<u64, String> {
+pub async fn global_search_index_paths(settings: IndexPathsSettings) -> Result<u64, String> {
     if settings.paths.is_empty() {
         return Ok(0);
     }
@@ -894,10 +916,8 @@ pub async fn global_search_index_paths(
         }
     }
 
-    let base_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error: tauri::Error| error.to_string())?;
+    let base_dir = contrato::base_de_cache()
+        .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
     let index_path = index_dir(&base_dir);
 
     let (index, reader, fields) = open_or_create_index(&index_path)?;
@@ -990,14 +1010,11 @@ pub async fn global_search_index_paths(
 
 #[tauri::command]
 pub async fn global_search_query(
-    app: tauri::AppHandle,
     query: String,
     options: GlobalSearchQueryOptions,
 ) -> Result<Vec<GlobalSearchResultEntry>, String> {
-    let base_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error: tauri::Error| error.to_string())?;
+    let base_dir = contrato::base_de_cache()
+        .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
     let index_path = index_dir(&base_dir);
 
     let (_index, reader, fields) = {
@@ -1305,4 +1322,112 @@ fn get_drive_root(path: &str) -> String {
         }
     }
     "/".to_string()
+}
+
+#[cfg(test)]
+mod pruebas {
+    use super::*;
+
+    /// Un directorio propio que se borra al salir del alcance.
+    ///
+    /// Hecho a mano para no sumar una dependencia por una prueba: el nombre
+    /// lleva el pid y un número que sube, así que dos pruebas en paralelo no se
+    /// pisan.
+    struct DirectorioDePrueba(PathBuf);
+
+    impl DirectorioDePrueba {
+        fn nuevo(nombre: &str) -> Self {
+            let ruta = std::env::temp_dir().join(format!(
+                "vasak-file-manager-{}-{}-{nombre}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&ruta).unwrap();
+            Self(ruta)
+        }
+    }
+
+    impl Drop for DirectorioDePrueba {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// Deja un índice con un documento adentro y devuelve con qué leerlo.
+    fn indice_con_un_documento(ruta: &Path) -> (Index, IndexReader) {
+        let (esquema, campos) = build_schema();
+        let index = Index::create_in_dir(ruta, esquema).unwrap();
+
+        let mut writer: IndexWriter = index.writer(15_000_000).unwrap();
+        writer
+            .add_document(doc!(
+                campos.path => "/casa/informe.pdf",
+                campos.name => "informe.pdf",
+                campos.name_lower => "informe.pdf",
+                campos.is_file => 1u64,
+                campos.is_dir => 0u64,
+                campos.modified_time => 0u64,
+                campos.size => 0u64,
+            ))
+            .unwrap();
+        writer.commit().unwrap();
+
+        let reader: IndexReader = index.reader_builder().try_into().unwrap();
+        (index, reader)
+    }
+
+    #[test]
+    fn vaciar_el_indice_no_deja_colgado_al_que_ya_lo_tenia_abierto() {
+        // Esto es lo que le pasa a `vasak-prism`: abre el índice una vez y se
+        // queda con el lector toda la sesión. Los `commit` los sigue solo, pero
+        // si el directorio se borra y se recrea, el lector queda apuntando a
+        // segmentos que no existen y a partir de ahí sirve una foto vieja o
+        // falla, las dos cosas sin decir nada.
+        //
+        // Por eso `clear_index` vacía en el lugar. La prueba es que un lector
+        // abierto de antes siga siendo válido después.
+        let directorio = DirectorioDePrueba::nuevo("vaciar");
+        let (_index, lector) = indice_con_un_documento(&directorio.0);
+
+        assert_eq!(lector.searcher().num_docs(), 1);
+
+        clear_index(&directorio.0).unwrap();
+
+        lector
+            .reload()
+            .expect("el lector de antes tiene que seguir valiendo");
+        assert_eq!(
+            lector.searcher().num_docs(),
+            0,
+            "el índice quedó vacío, pero vivo"
+        );
+        assert!(directorio.0.exists(), "el directorio no se borra");
+    }
+
+    #[test]
+    fn descartar_el_indice_si_borra_el_directorio() {
+        // El otro camino, que es el que hay que usar cuando el esquema guardado
+        // no es el que el código espera: ahí vaciar no alcanza, porque el
+        // esquema viejo se queda y el índice nuevo no se puede crear encima.
+        let directorio = DirectorioDePrueba::nuevo("descartar");
+        let indice = directorio.0.join("index");
+        std::fs::create_dir_all(&indice).unwrap();
+        let (_index, _lector) = indice_con_un_documento(&indice);
+
+        discard_index(&indice).unwrap();
+
+        assert!(!indice.exists(), "acá sí se borra, a propósito");
+    }
+
+    #[test]
+    fn vaciar_lo_que_no_existe_no_es_un_error() {
+        let directorio = DirectorioDePrueba::nuevo("inexistente");
+        let nunca = directorio.0.join("no-esta");
+
+        assert!(clear_index(&nunca).is_ok());
+        assert!(discard_index(&nunca).is_ok());
+    }
 }
