@@ -59,6 +59,82 @@ pub const INDICE: &str = "index";
 /// Lo que se sabe del último escaneo. **Fuera** del directorio de la versión.
 pub const ESTADO: &str = "status.json";
 
+/// Cómo terminó —o si terminó— el último escaneo.
+///
+/// Van como cadena y no como un enum cerrado, y es deliberado: este archivo lo
+/// escribe el gestor y lo lee `vasak-prism`, y los dos se actualizan por
+/// separado. Si el lector deserializara contra un enum cerrado, agregar un
+/// quinto estado acá le rompería el archivo **entero** —perdería también la
+/// versión y la fecha—, o sea que agregar un estado le rompería más que no
+/// tener el campo. Con una cadena, un valor que no conoce es un valor que no
+/// conoce y el resto lo sigue leyendo.
+///
+/// Los nombres están elegidos por lo que el lector decide con cada uno, no por
+/// lo que le pasó al escaneo:
+///
+/// - `EN_CURSO`: hay uno corriendo. El índice está a medio construir y va a
+///   cambiar. Es el único no terminal, y el único que vence.
+/// - `COMPLETO`: terminó y recorrió todo. Acá —y sólo acá— la ausencia es
+///   ausencia: cero resultados significa que no hay nada que coincida.
+/// - `CANCELADO`: alguien lo paró. Lo indexado sirve, pero falta.
+/// - `FALLADO`: se cortó por un error. Igual que el anterior para quien lee.
+///
+/// # Falta el campo contra valor desconocido
+///
+/// No son lo mismo, y la regla es asimétrica a propósito:
+///
+/// - **Falta** → lo escribió un gestor viejo, que no tenía cómo avisar. Se
+///   trata como `COMPLETO`, que es como se venía tratando. Si no, cada
+///   instalación sin actualizar se llenaría de avisos por algo que siempre fue
+///   así.
+/// - **No se conoce** → lo escribió un gestor **más nuevo**, que sabe algo que
+///   el lector no. Ahí se va al lado conservador: no se confía en que la
+///   ausencia sea ausencia, y se dice.
+///
+/// Leído de golpe es contraintuitivo —la ausencia manda confiar y lo
+/// desconocido manda desconfiar— así que va el motivo y no sólo la regla,
+/// porque sin él alguien la «arregla».
+/// # La versión gana sobre el estado
+///
+/// `status.json` vive **fuera** del directorio de la versión, así que describe
+/// a la versión actual del gestor y no necesariamente al índice que el lector
+/// puede abrir. El día que esto pase a `v2`, un lector que sólo sabe leer `v1`
+/// ve dos señales ciertas y contradictorias: no encuentra `v1/index`, y el
+/// archivo le dice `schema_version: 2` con `scan_state: complete`.
+///
+/// La regla es que **si la versión del archivo no es la del índice que el
+/// lector sabe abrir, el estado no se mira**, diga lo que diga. Es «el índice
+/// es de otra versión», que es un caso propio y no «todo bien». Sin esto, la
+/// situación que este archivo vino a explicar se leería como la sana, que es
+/// exactamente al revés de para lo que está.
+pub const ESTADO_EN_CURSO: &str = "in_progress";
+/// Terminó y recorrió todo. Ver [`ESTADO_EN_CURSO`].
+pub const ESTADO_COMPLETO: &str = "complete";
+/// Alguien lo paró antes de terminar. Ver [`ESTADO_EN_CURSO`].
+pub const ESTADO_CANCELADO: &str = "cancelled";
+/// Se cortó por un error. Ver [`ESTADO_EN_CURSO`].
+pub const ESTADO_FALLADO: &str = "failed";
+
+/// Si un `EN_CURSO` todavía vale, o quedó de un escaneo que murió de golpe.
+///
+/// El acuerdo con `vasak-prism` es esta frase y ninguna constante: **si la
+/// fecha no está entre ahora y ahora más el vencimiento declarado, esto no está
+/// vivo**. El vencimiento lo declara el que escribe, porque el que sabe cuánto
+/// puede tardar razonablemente un escaneo es el que escanea; si los lectores
+/// eligieran cada uno su número, dirían cosas distintas sobre el mismo archivo
+/// —la ventana «indexando» y el lanzador «incompleto»— y eso no falla, sólo se
+/// contradice, que es peor.
+///
+/// Una fecha en el **futuro** cuenta como vencida. Un reloj corregido hacia
+/// atrás, o una máquina que arrancó con la hora mal, dejarían un `EN_CURSO` que
+/// no vence nunca y un «indexando» eterno que nadie puede destrabar. Es el
+/// mismo criterio que `tauri-plugin-vicons` aplica a su caché: tratarlo como
+/// vencido cuesta, como mucho, un «incompleto» de más; no tratarlo no tiene
+/// arreglo desde adentro.
+pub fn en_curso_sigue_vivo(escrito_en: u64, vence_en_ms: u64, ahora: u64) -> bool {
+    escrito_en <= ahora && ahora < escrito_en.saturating_add(vence_en_ms)
+}
+
 /// La versión del esquema, que va en la ruta.
 ///
 /// Subirla cambia el directorio, así que el índice viejo deja de usarse solo y
@@ -138,21 +214,34 @@ pub fn esquema() -> (Schema, Campos) {
 /// terminaría escrito en un lugar impredecible, y peor, en uno distinto según
 /// desde dónde se lanzó.
 pub fn base_de_cache() -> Option<PathBuf> {
-    let base = match ruta_absoluta_de("XDG_CACHE_HOME") {
+    base_de_cache_con(std::env::var_os("XDG_CACHE_HOME"), std::env::var_os("HOME"))
+}
+
+/// Lo mismo, pero recibiendo las variables en vez de leerlas.
+///
+/// Separado para poder probarlo: el entorno es global al proceso, y una prueba
+/// que lo cambia se lleva puesta cualquier otra que lea `HOME` al mismo tiempo
+/// —acá hay varias, en `open_with`—. Un fallo así aparece una vez cada tantas
+/// corridas y no en la que uno está mirando, que es la peor forma de fallar.
+pub fn base_de_cache_con(
+    cache: Option<std::ffi::OsString>,
+    casa: Option<std::ffi::OsString>,
+) -> Option<PathBuf> {
+    let base = match solo_si_es_absoluta(cache) {
         Some(ruta) => ruta,
-        None => ruta_absoluta_de("HOME")?.join(".cache"),
+        None => solo_si_es_absoluta(casa)?.join(".cache"),
     };
 
     Some(base.join(COMPARTIDO))
 }
 
-/// El valor de una variable de entorno, pero sólo si es una ruta absoluta.
+/// El valor, pero sólo si es una ruta absoluta.
 ///
 /// Una sola regla para los dos casos. Tratarlos por separado —la vacía por un
 /// lado, la relativa por otro— es cómo se cubre uno y se deja el otro afuera
 /// habiendo descrito el peligro de los dos.
-fn ruta_absoluta_de(nombre: &str) -> Option<PathBuf> {
-    let ruta = PathBuf::from(std::env::var_os(nombre)?);
+fn solo_si_es_absoluta(valor: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    let ruta = PathBuf::from(valor?);
     ruta.is_absolute().then_some(ruta)
 }
 
@@ -248,64 +337,32 @@ mod pruebas {
         );
     }
 
-    /// Corre algo con unas variables de entorno puestas, y las deja como
-    /// estaban. El entorno es global al proceso, así que estas pruebas van en
-    /// un solo `#[test]` y no en varios: dos en paralelo se pisan.
-    fn con_entorno<T>(valores: &[(&str, Option<&str>)], hacer: impl FnOnce() -> T) -> T {
-        let previos: Vec<(String, Option<std::ffi::OsString>)> = valores
-            .iter()
-            .map(|(nombre, _)| (nombre.to_string(), std::env::var_os(nombre)))
-            .collect();
-
-        for (nombre, valor) in valores {
-            match valor {
-                Some(valor) => std::env::set_var(nombre, valor),
-                None => std::env::remove_var(nombre),
-            }
-        }
-
-        let resultado = hacer();
-
-        for (nombre, previo) in previos {
-            match previo {
-                Some(valor) => std::env::set_var(&nombre, valor),
-                None => std::env::remove_var(&nombre),
-            }
-        }
-
-        resultado
+    /// Como llegan del entorno, sin tocar el del proceso.
+    fn var(valor: &str) -> Option<std::ffi::OsString> {
+        Some(std::ffi::OsString::from(valor))
     }
 
     #[test]
     fn la_base_sale_de_la_cache_del_usuario() {
         // `XDG_CACHE_HOME` cuando está.
-        let con_xdg = con_entorno(
-            &[
-                ("XDG_CACHE_HOME", Some("/otra/cache")),
-                ("HOME", Some("/casa")),
-            ],
-            base_de_cache,
+        assert_eq!(
+            base_de_cache_con(var("/otra/cache"), var("/casa")),
+            Some(PathBuf::from("/otra/cache/vasak"))
         );
-        assert_eq!(con_xdg, Some(PathBuf::from("/otra/cache/vasak")));
 
         // Sin ella, `$HOME/.cache`.
-        let sin_xdg = con_entorno(
-            &[("XDG_CACHE_HOME", None), ("HOME", Some("/casa"))],
-            base_de_cache,
+        assert_eq!(
+            base_de_cache_con(None, var("/casa")),
+            Some(PathBuf::from("/casa/.cache/vasak"))
         );
-        assert_eq!(sin_xdg, Some(PathBuf::from("/casa/.cache/vasak")));
 
-        // Lo que no es una ruta absoluta cuenta como ausente, y son dos
-        // formas del mismo problema: una ruta que no arranca en la raíz se
-        // resuelve contra el directorio de trabajo de quien haya lanzado el
-        // programa, que en un servicio de systemd puede ser cualquiera.
+        // Lo que no es una ruta absoluta cuenta como ausente, y son dos formas
+        // del mismo problema: una ruta que no arranca en la raíz se resuelve
+        // contra el directorio de trabajo de quien haya lanzado el programa,
+        // que en un servicio de systemd puede ser cualquiera.
         for valor in ["", "cache", "./cache", "../cache"] {
-            let resultado = con_entorno(
-                &[("XDG_CACHE_HOME", Some(valor)), ("HOME", Some("/casa"))],
-                base_de_cache,
-            );
             assert_eq!(
-                resultado,
+                base_de_cache_con(var(valor), var("/casa")),
                 Some(PathBuf::from("/casa/.cache/vasak")),
                 "«{valor}» no es una ruta absoluta y no puede usarse"
             );
@@ -313,15 +370,74 @@ mod pruebas {
 
         // Y la misma regla para `HOME`, que es el respaldo: si tampoco es
         // absoluta no hay dónde, y eso se dice en vez de inventarlo.
-        let casa_relativa = con_entorno(
-            &[("XDG_CACHE_HOME", None), ("HOME", Some("casa"))],
-            base_de_cache,
+        assert_eq!(
+            base_de_cache_con(None, var("casa")),
+            None,
+            "un HOME relativo tampoco sirve"
         );
-        assert_eq!(casa_relativa, None, "un HOME relativo tampoco sirve");
 
-        // Sin `HOME` no hay dónde, y eso se dice en vez de inventarlo.
-        let sin_nada = con_entorno(&[("XDG_CACHE_HOME", None), ("HOME", None)], base_de_cache);
-        assert_eq!(sin_nada, None);
+        // Sin nada, nada.
+        assert_eq!(base_de_cache_con(None, None), None);
+    }
+
+    #[test]
+    fn los_estados_del_escaneo_tampoco_se_tocan() {
+        // Son la otra mitad del contrato: `vasak-prism` los compara contra
+        // cadenas escritas a mano de su lado. Renombrar uno acá lo manda a la
+        // rama de «valor que no conozco», que es la conservadora — o sea que no
+        // se rompe, empieza a desconfiar de todo. Silencioso otra vez.
+        assert_eq!(ESTADO_EN_CURSO, "in_progress");
+        assert_eq!(ESTADO_COMPLETO, "complete");
+        assert_eq!(ESTADO_CANCELADO, "cancelled");
+        assert_eq!(ESTADO_FALLADO, "failed");
+    }
+
+    #[test]
+    fn un_en_curso_vence_por_su_propio_vencimiento() {
+        let escrito = 1_000_000u64;
+        let vence_en = 60_000u64;
+
+        assert!(
+            en_curso_sigue_vivo(escrito, vence_en, escrito),
+            "recién escrito está vivo"
+        );
+        assert!(
+            en_curso_sigue_vivo(escrito, vence_en, escrito + vence_en - 1),
+            "un milisegundo antes del vencimiento sigue vivo"
+        );
+        assert!(
+            !en_curso_sigue_vivo(escrito, vence_en, escrito + vence_en),
+            "justo en el vencimiento ya no"
+        );
+        assert!(
+            !en_curso_sigue_vivo(escrito, vence_en, escrito + vence_en * 10),
+            "mucho después tampoco"
+        );
+    }
+
+    #[test]
+    fn una_fecha_del_futuro_cuenta_como_vencida() {
+        // El caso que la frase sola no cubre: un reloj corregido hacia atrás
+        // deja un «en curso» que nunca vence, porque `escrito + vencimiento`
+        // siempre es mayor que ahora. Sin esto el estado queda en «indexando»
+        // para siempre y no hay forma de destrabarlo salvo borrar el archivo a
+        // mano.
+        let ahora = 1_000_000u64;
+        let escrito_mas_tarde = ahora + 1;
+
+        assert!(
+            !en_curso_sigue_vivo(escrito_mas_tarde, 60_000, ahora),
+            "algo escrito en el futuro no puede estar vivo"
+        );
+    }
+
+    #[test]
+    fn un_vencimiento_enorme_no_da_la_vuelta() {
+        // `escrito + vencimiento` se puede pasar de `u64` y envolver a un
+        // número chico, y entonces un «en curso» recién escrito se leería como
+        // vencido. Con saturación se queda arriba de todo, que es lo correcto:
+        // un vencimiento absurdo significa «esto no vence», no «ya venció».
+        assert!(en_curso_sigue_vivo(1_000, u64::MAX, 2_000));
     }
 
     #[test]

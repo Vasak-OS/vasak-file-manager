@@ -27,6 +27,7 @@ globalSearch:
   scanningInParallel: Recorriendo varias unidades a la vez…
   indexStatus:
     committing: Guardando el índice…
+  indexMayBeIncomplete: El último recorrido no terminó, así que puede faltar algo.
   indexedItemsOne: "{0} elemento indexado"
   indexedItemsOther: "{0} elementos indexados"
   relativeTime:

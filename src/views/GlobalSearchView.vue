@@ -407,6 +407,13 @@ onMounted(async () => {
         </div>
       </div>
 
+      <!-- Sin esto, «0 elementos indexados» se lee como un hecho cuando puede
+           ser un síntoma: el escaneo se canceló, falló, o murió a mitad. -->
+      <div v-if="globalSearchStore.indiceIncompleto"
+        class="bg-ui-surface/70 px-4 py-2 text-xs text-tx-muted">
+        {{ t('globalSearch.indexMayBeIncomplete') }}
+      </div>
+
       <div v-if="globalSearchStore.results.length > 0"
         class="h-[var(--results-header-height)] bg-transparent px-0.5 text-xs font-medium leading-[var(--results-header-height)] text-tx-muted">
         {{ interpolar(t('globalSearch.searchStats.foundOnDrives'), totalResultsCount, groupedResults.length) }}
