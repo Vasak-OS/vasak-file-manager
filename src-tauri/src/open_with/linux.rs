@@ -522,6 +522,35 @@ fn parse_gio_mime_output(content: &str) -> GioMimeInfo {
     info
 }
 
+/// An XDG base directory, or nothing.
+///
+/// `dirs` resolves these variables the way the spec asks: a relative value is
+/// **ignored** and the fallback is used, and the empty string falls out of the
+/// same rule because it is not an absolute path either. What `dirs` does not
+/// check is the fallback itself — it only tests `HOME` for emptiness — so that
+/// other half is closed here.
+///
+/// Written once rather than at each call site: this file spelled the same base
+/// out five times, which is exactly how five copies drift apart — four get
+/// fixed and one is left behind.
+/// The entries of an XDG directory list, absolute ones only.
+///
+/// The spec asks for the same here as for the single-value variables: a
+/// relative entry is ignored. `dirs` does not cover `XDG_DATA_DIRS` or
+/// `XDG_CONFIG_DIRS`, so the rule is applied here — once, for the five places
+/// in this file that walk one of those lists.
+fn bases_xdg(lista: &str) -> impl Iterator<Item = PathBuf> + '_ {
+    lista
+        .split(':')
+        .map(Path::new)
+        .filter(|base| base.is_absolute())
+        .map(Path::to_path_buf)
+}
+
+fn base_xdg(cual: Option<PathBuf>) -> Option<PathBuf> {
+    cual.filter(|base| base.is_absolute())
+}
+
 fn get_mimeapps_entries(mime_type: &str) -> MimeappsEntries {
     let mut entries = MimeappsEntries {
         default_app: None,
@@ -529,27 +558,13 @@ fn get_mimeapps_entries(mime_type: &str) -> MimeappsEntries {
         other_apps: Vec::new(),
     };
 
-    let config_home = env::var("XDG_CONFIG_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| {
-            env::var("HOME")
-                .ok()
-                .map(|home| PathBuf::from(home).join(".config"))
-        });
+    let config_home = base_xdg(dirs::config_dir());
 
     if let Some(base) = config_home.as_ref() {
         read_mimeapps_file(&base.join("mimeapps.list"), mime_type, &mut entries);
     }
 
-    let data_home = env::var("XDG_DATA_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| {
-            env::var("HOME")
-                .ok()
-                .map(|home| PathBuf::from(home).join(".local/share"))
-        });
+    let data_home = base_xdg(dirs::data_dir());
 
     if let Some(base) = data_home.as_ref() {
         read_mimeapps_file(
@@ -560,13 +575,13 @@ fn get_mimeapps_entries(mime_type: &str) -> MimeappsEntries {
     }
 
     let config_dirs = env::var("XDG_CONFIG_DIRS").unwrap_or_else(|_| "/etc/xdg".to_string());
-    for base in config_dirs.split(':').map(PathBuf::from) {
+    for base in bases_xdg(&config_dirs) {
         read_mimeapps_file(&base.join("mimeapps.list"), mime_type, &mut entries);
     }
 
     let data_dirs =
         env::var("XDG_DATA_DIRS").unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
-    for base in data_dirs.split(':').map(PathBuf::from) {
+    for base in bases_xdg(&data_dirs) {
         read_mimeapps_file(
             &base.join("applications").join("mimeapps.list"),
             mime_type,
@@ -620,14 +635,7 @@ fn get_xdg_default_app(mime_type: &str) -> Option<String> {
 fn get_mimeinfo_cache_apps(mime_type: &str) -> Vec<String> {
     let mut results: Vec<String> = Vec::new();
 
-    let data_home = env::var("XDG_DATA_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| {
-            env::var("HOME")
-                .ok()
-                .map(|home| PathBuf::from(home).join(".local/share"))
-        });
+    let data_home = base_xdg(dirs::data_dir());
 
     if let Some(base) = data_home.as_ref() {
         let cache_path = base.join("applications").join("mimeinfo.cache");
@@ -636,7 +644,7 @@ fn get_mimeinfo_cache_apps(mime_type: &str) -> Vec<String> {
 
     let data_dirs =
         env::var("XDG_DATA_DIRS").unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
-    for base in data_dirs.split(':').map(PathBuf::from) {
+    for base in bases_xdg(&data_dirs) {
         let cache_path = base.join("applications").join("mimeinfo.cache");
         merge_desktop_ids(&mut results, &read_mimeinfo_cache(&cache_path, mime_type));
     }
@@ -921,16 +929,12 @@ fn resolve_icon_path(icon_value: &str, desktop_file: Option<&PathBuf>) -> Option
 fn get_icon_dirs() -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = Vec::new();
 
-    if let Ok(data_home) = env::var("XDG_DATA_HOME") {
-        dirs.push(PathBuf::from(data_home));
-    } else if let Ok(home) = env::var("HOME") {
-        dirs.push(PathBuf::from(home).join(".local/share"));
+    if let Some(data_home) = base_xdg(dirs::data_dir()) {
+        dirs.push(data_home);
     }
 
     if let Ok(data_dirs) = env::var("XDG_DATA_DIRS") {
-        for entry in data_dirs.split(':') {
-            dirs.push(PathBuf::from(entry));
-        }
+        dirs.extend(bases_xdg(&data_dirs));
     } else {
         dirs.push(PathBuf::from("/usr/local/share"));
         dirs.push(PathBuf::from("/usr/share"));
@@ -942,16 +946,12 @@ fn get_icon_dirs() -> Vec<PathBuf> {
 fn find_desktop_file(desktop_id: &str) -> Option<PathBuf> {
     let mut search_dirs: Vec<PathBuf> = Vec::new();
 
-    if let Ok(data_home) = env::var("XDG_DATA_HOME") {
-        search_dirs.push(PathBuf::from(data_home).join("applications"));
-    } else if let Ok(home) = env::var("HOME") {
-        search_dirs.push(PathBuf::from(home).join(".local/share/applications"));
+    if let Some(data_home) = base_xdg(dirs::data_dir()) {
+        search_dirs.push(data_home.join("applications"));
     }
 
     if let Ok(data_dirs) = env::var("XDG_DATA_DIRS") {
-        for entry in data_dirs.split(':') {
-            search_dirs.push(PathBuf::from(entry).join("applications"));
-        }
+        search_dirs.extend(bases_xdg(&data_dirs).map(|base| base.join("applications")));
     } else {
         search_dirs.push(PathBuf::from("/usr/local/share/applications"));
         search_dirs.push(PathBuf::from("/usr/share/applications"));
