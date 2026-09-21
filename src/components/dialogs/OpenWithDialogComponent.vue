@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	Dialog,
@@ -9,22 +8,14 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	ThemeIcon,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
 import { computed, ref, watch } from 'vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirEntry } from '@/types/dir-entry';
-
-const plusIcon = useReactiveIcon(() => getSymbolSource('list-add'));
-const fileIcon = useReactiveIcon(() => getSymbolSource('application-x-executable'));
-const playIcon = useReactiveIcon(() => getSymbolSource('media-playback-start'));
-const infoIcon = useReactiveIcon(() => getSymbolSource('dialog-information'));
-const trash2Icon = useReactiveIcon(() => getSymbolSource('edit-delete'));
-const folderOpenIcon = useReactiveIcon(() => getSymbolSource('folder-open'));
-const loader2Icon = useReactiveIcon(() => getSymbolSource('process-working'));
 
 interface CustomCommand {
 	id: string;
@@ -279,7 +270,7 @@ const canSaveCommand = computed(() => {
           <div class="flex items-center justify-between">
             <span class="text-tx-muted text-xs font-medium tracking-wide uppercase">{{ t('openWith.customCommands') }}</span>
             <button type="button" @click="startAddingCommand">
-              <img :src="plusIcon" class="w-4 h-4" />
+              <ThemeIcon name="list-add" type="symbol" :size="16" />
               {{ t('openWith.addCustomCommand') }}
             </button>
           </div>
@@ -289,7 +280,7 @@ const canSaveCommand = computed(() => {
               :class="{ '!bg-primary/15 hover:!bg-primary/20': selectedCommandId === command.id }"
               @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
               <div class="flex overflow-hidden flex-1 items-center gap-2.5">
-                <img :src="fileIcon" class="w-4 h-4 shrink-0 text-tx-muted" />
+                <ThemeIcon name="application-x-executable" type="symbol" :size="16" class="shrink-0 text-tx-muted" />
                 <div class="flex overflow-hidden flex-col gap-0.5">
                   <span class="text-tx-main text-sm font-medium">{{ command.name }}</span>
                   <span class="overflow-hidden text-tx-muted text-xs text-ellipsis whitespace-nowrap">{{ command.programPath }}</span>
@@ -299,7 +290,7 @@ const canSaveCommand = computed(() => {
                 <Tooltip>
                   <TooltipTrigger>
                     <button type="button" @click.stop="runCommand(command)">
-                      <img :src="playIcon" class="w-3.5 h-3.5" />
+                      <ThemeIcon name="media-playback-start" type="symbol" :size="14" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{{ t('run') }}</TooltipContent>
@@ -307,7 +298,7 @@ const canSaveCommand = computed(() => {
                 <Tooltip>
                   <TooltipTrigger>
                     <button type="button" @click.stop="startEditingCommand(command)">
-                      <img :src="infoIcon" class="w-3.5 h-3.5" />
+                      <ThemeIcon name="dialog-information" type="symbol" :size="14" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{{ t('edit') }}</TooltipContent>
@@ -316,7 +307,7 @@ const canSaveCommand = computed(() => {
                   <TooltipTrigger>
                     <button type="button" class="hover:text-status-error"
                       @click.stop="deleteCommand(command.id)">
-                      <img :src="trash2Icon" class="w-3.5 h-3.5" />
+                      <ThemeIcon name="edit-delete" type="symbol" :size="14" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{{ t('fileBrowser.actions.delete') }}</TooltipContent>
@@ -348,7 +339,7 @@ const canSaveCommand = computed(() => {
               <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
                 class="flex-1" />
               <button type="button" :title="t('browse')" @click="handleSelectProgram" :aria-label="t('browse')">
-                <img :src="folderOpenIcon" class="w-4 h-4" />
+                <ThemeIcon name="folder-open" type="symbol" :size="16" />
               </button>
             </div>
           </div>
@@ -358,7 +349,7 @@ const canSaveCommand = computed(() => {
               <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
               <Tooltip>
                 <TooltipTrigger>
-                  <img :src="infoIcon" class="w-3.5 h-3.5 text-tx-muted cursor-help" />
+                  <ThemeIcon name="dialog-information" type="symbol" :size="14" class="text-tx-muted cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{{ t('openWith.argumentsHint') }}</p>
@@ -384,7 +375,7 @@ const canSaveCommand = computed(() => {
           {{ t('cancel') }}
         </button>
         <button type="button" :disabled="!canRun || isOpening" @click="handleRunSelected">
-          <img :src="loader2Icon" v-if="isOpening" class="w-4 h-4 animate-spin" />
+          <ThemeIcon name="process-working" type="symbol" :size="16" class="animate-spin" />
           {{ t('openWith.open') }}
         </button>
       </DialogFooter>

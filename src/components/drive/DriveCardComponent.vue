@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ComputedRef, computed, markRaw, Ref, ref } from 'vue';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { computed, markRaw, ref } from 'vue';
 import CustomError from '@/components/ui/toast/CustomError.vue';
 import { toast } from '@/components/ui/toast/toaster';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { avisoDeFallo } from '@/tools/aviso-de-montaje';
 import type { DriveInfo } from '@/types/drive-info';
@@ -19,11 +18,6 @@ const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const isMounting = ref(false);
 const LOW_SPACE_THRESHOLD = 15;
-const networkIcon = useReactiveIcon(() => getIconSource('preferences-system-network-iscsi'));
-const usbIcon = useReactiveIcon(() => getIconSource('drive-removable-media-usb'));
-const hardDriveIcon = useReactiveIcon(() => getIconSource('drive-harddisk'));
-const ejectIcon = useReactiveIcon(() => getIconSource('media-eject'));
-const lockedIcon = useReactiveIcon(() => getIconSource('object-locked'));
 
 const isLowSpace = computed(() => props.drive.percent_used >= 100 - LOW_SPACE_THRESHOLD);
 
@@ -40,12 +34,16 @@ const formattedSpaceInfo = computed(() => {
 	return `${available} ${t('freeOf')} ${total}`;
 });
 
-const driveIcon: ComputedRef<Ref<string>> = computed(() => {
+// Devuelve el **nombre** del icono y no un `Ref` con la fuente ya resuelta:
+// resolverlo, memorizarlo y volver a resolverlo al cambiar el tema es cosa de
+// `ThemeIcon`. De paso se va el `ComputedRef<Ref<…>>`, que era un ref adentro
+// de otro porque cada icono traía el suyo.
+const driveIcon = computed(() => {
 	if (props.drive.drive_type === 'Network') {
-		return networkIcon;
+		return 'preferences-system-network-iscsi';
 	}
 
-	return props.drive.is_removable ? usbIcon : hardDriveIcon;
+	return props.drive.is_removable ? 'drive-removable-media-usb' : 'drive-harddisk';
 });
 
 async function handleClick() {
@@ -120,16 +118,10 @@ async function handleUnmount(clickEvent?: Event) {
     'opacity-60 hover:opacity-100': !drive.is_mounted,
   }" @click="handleClick">
     <div class="relative flex w-14 h-14 flex-col shrink-0 items-center justify-center gap-0.5">
-        <img :src="driveIcon.value" class="text-tx-muted h-5 w-5" />
+        <ThemeIcon :name="driveIcon" :size="20" class="text-tx-muted" />
         <!-- El candado dice que ese clic va a pedir una frase de paso. Sin él,
              el diálogo aparece sin que nada lo anunciara. -->
-        <img
-          v-if="drive.is_encrypted"
-          :src="lockedIcon"
-          class="absolute bottom-1 right-1 h-3 w-3"
-          :alt="t('drive.encrypted')"
-          :title="t('drive.encrypted')"
-        />
+        <ThemeIcon name="object-locked" :size="12" :alt="t('drive.encrypted')" class="absolute bottom-1 right-1" />
         <span v-if="drive.is_mounted" class="text-tx-muted text-[11px] font-medium">
           {{ drive.percent_used }}%
         </span>
@@ -172,7 +164,7 @@ async function handleUnmount(clickEvent?: Event) {
       @click.stop.prevent="handleUnmount"
       @keydown.enter.stop.prevent="handleUnmount"
     >
-      <img :src="ejectIcon" class="h-4 w-4" :alt="t('drive.eject')" />
+      <ThemeIcon name="media-eject" :size="16" :alt="t('drive.eject')" />
     </span>
   </button>
 </template>

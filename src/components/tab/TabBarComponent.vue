@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { TabGroup, Tab as TabType } from '@/types/workspaces';
@@ -32,7 +30,6 @@ const { openNewTabGroup, closeTabGroup, setTabs } = workspacesStore;
 
 const previewEnabled = ref(true);
 const scrollContainerRef = ref<HTMLElement | null>(null);
-const plusIcon = useReactiveIcon(() => getSymbolSource('gtk-add'));
 let scrollDisableTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 function handleScrollActivity() {
@@ -89,7 +86,7 @@ onBeforeUnmount(() => {
       <Tooltip>
         <TooltipTrigger>
           <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
-            <img v-if="plusIcon" :src="plusIcon" :alt="t('toolbar.newTab')" class="w-3.5 h-3.5" />
+            <ThemeIcon name="gtk-add" type="symbol" :size="14" :alt="t('toolbar.newTab')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>

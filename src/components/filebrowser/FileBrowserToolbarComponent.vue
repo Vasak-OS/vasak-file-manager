@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	ThemeIcon,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
@@ -16,7 +16,6 @@ import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 
 const props = defineProps<{
@@ -59,16 +58,6 @@ const { t } = useI18n();
 const filterInputRef = ref<HTMLInputElement | null>(null);
 const filterTriggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null);
 const isCreateMenuOpen = ref(false);
-const plusIcon = useReactiveIcon(() => getSymbolSource('gtk-add'));
-const folderPlusIcon = useReactiveIcon(() => getSymbolSource('folder-new'));
-const filePlusIcon = useReactiveIcon(() => getSymbolSource('document-new'));
-const textSearchIcon = useReactiveIcon(() => getSymbolSource('system-search'));
-const xIcon = useReactiveIcon(() => getSymbolSource('dialog-close'));
-const arrowLeftIcon = useReactiveIcon(() => getSymbolSource('arrow-left'));
-const arrowRightIcon = useReactiveIcon(() => getSymbolSource('arrow-right'));
-const arrowUpIcon = useReactiveIcon(() => getSymbolSource('arrow-up'));
-const homeIcon = useReactiveIcon(() => getSymbolSource('user-home'));
-const refreshIcon = useReactiveIcon(() => getSymbolSource('refreshstructure'));
 
 function handleFilterAutoFocus(event?: Event) {
 	event?.preventDefault();
@@ -137,7 +126,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipTrigger>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoBack"
             @click="emit('goBack')" :aria-label="t('fileBrowser.goBack')">
-            <img :src="arrowLeftIcon" :alt="t('fileBrowser.goBack')" class="w-[18px] h-[18px]" />
+            <ThemeIcon name="arrow-left" type="symbol" :size="18" :alt="t('fileBrowser.goBack')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goBack') }}</TooltipContent>
@@ -146,7 +135,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipTrigger>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoForward"
             @click="emit('goForward')" :aria-label="t('fileBrowser.goForward')">
-            <img :src="arrowRightIcon" :alt="t('fileBrowser.goForward')" class="w-[18px] h-[18px]" />
+            <ThemeIcon name="arrow-right" type="symbol" :size="18" :alt="t('fileBrowser.goForward')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goForward') }}</TooltipContent>
@@ -155,7 +144,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipTrigger>
           <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoUp"
             @click="emit('goUp')" :aria-label="t('fileBrowser.goUp')">
-            <img :src="arrowUpIcon" :alt="t('fileBrowser.goUp')" class="w-[18px] h-[18px]" />
+            <ThemeIcon name="arrow-up" type="symbol" :size="18" :alt="t('fileBrowser.goUp')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goUp') }}</TooltipContent>
@@ -163,7 +152,7 @@ function handleFilterInteractOutside(event?: Event) {
       <Tooltip>
         <TooltipTrigger>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" @click="emit('goHome')" :aria-label="t('fileBrowser.goHome')">
-            <img :src="homeIcon" :alt="t('fileBrowser.goHome')" class="w-[18px] h-[18px]" />
+            <ThemeIcon name="user-home" type="symbol" :size="18" :alt="t('fileBrowser.goHome')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goHome') }}</TooltipContent>
@@ -172,7 +161,7 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipTrigger>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" :disabled="isLoading"
             @click="emit('refresh')" :aria-label="t('fileBrowser.refresh')">
-            <img :src="refreshIcon" :alt="t('fileBrowser.refresh')" class="w-[18px] h-[18px]" :class="{ 'animate-spin': isLoading }" />
+            <ThemeIcon name="refreshstructure" type="symbol" :size="18" :alt="t('fileBrowser.refresh')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.refresh') }}</TooltipContent>
@@ -194,7 +183,7 @@ function handleFilterInteractOutside(event?: Event) {
             <DropdownMenuTrigger as-child :disabled="true">
               <button type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
                 @click="handleCreateMenuButtonClick" :aria-label="t('fileBrowser.createNew')">
-                <img :src="plusIcon" :alt="t('fileBrowser.createNew')" class="h-6 w-6" />
+                <ThemeIcon name="gtk-add" type="symbol" :size="24" :alt="t('fileBrowser.createNew')" />
               </button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
@@ -202,11 +191,11 @@ function handleFilterInteractOutside(event?: Event) {
         </Tooltip>
         <DropdownMenuContent align="end" side="bottom" class="min-w-30">
           <DropdownMenuItem @click="emit('createNewDirectory')">
-            <img :src="folderPlusIcon" :alt="t('fileBrowser.newDirectory')" class="inline-block h-4 w-4" />
+            <ThemeIcon name="folder-new" type="symbol" :size="16" :alt="t('fileBrowser.newDirectory')" class="inline-block" />
             {{ t('fileBrowser.newDirectory') }}
           </DropdownMenuItem>
           <DropdownMenuItem @click="emit('createNewFile')">
-            <img :src="filePlusIcon" :alt="t('fileBrowser.newFile')" class="inline-block h-4 w-4" />
+            <ThemeIcon name="document-new" type="symbol" :size="16" :alt="t('fileBrowser.newFile')" class="inline-block" />
             {{ t('fileBrowser.newFile') }}
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -217,7 +206,7 @@ function handleFilterInteractOutside(event?: Event) {
             <PopoverTrigger as-child>
               <button ref="filterTriggerRef" type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
                 :class="{ 'bg-primary': filterQuery }">
-                <img :src="textSearchIcon" :alt="t('fileBrowser.filter')" class="h-6 w-6" />
+                <ThemeIcon name="system-search" type="symbol" :size="24" :alt="t('fileBrowser.filter')" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -233,7 +222,7 @@ function handleFilterInteractOutside(event?: Event) {
                 class="h-8 w-full pr-8 rounded-corner" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
               <button v-if="filterQuery" type="button" class="absolute right-1 flex h-7 w-7 items-center justify-center"
                 @click="clearFilter" :aria-label="t('fileBrowser.clearFilter')">
-                <img :src="xIcon" :alt="t('fileBrowser.clearFilter')" class="w-[18px] h-[18px]" />
+                <ThemeIcon name="dialog-close" type="symbol" :size="18" :alt="t('fileBrowser.clearFilter')" />
               </button>
             </div>
           </PopoverContent>

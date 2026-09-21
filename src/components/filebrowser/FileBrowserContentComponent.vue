@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { EmptyState, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import {
+	EmptyState,
+	ThemeIcon,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
@@ -25,10 +31,7 @@ const { t } = useI18n();
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
 const isColumnsPopoverOpen = ref(false);
-const arrowUpIcon = useReactiveIcon(() => getSymbolSource('arrow-up'));
-const arrowDownIcon = useReactiveIcon(() => getSymbolSource('arrow-down'));
 const infoIcon = useReactiveIcon(() => getSymbolSource('showinfo'));
-const columnsIcon = useReactiveIcon(() => getSymbolSource('view-file-columns'));
 
 const columnVisibility = ref({
 	items: true,
@@ -128,19 +131,15 @@ const sortedEntries = computed(() => {
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
-          <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'name' && listSortDirection === 'asc'" 
-            class="h-4 w-4" />
-          <img :src="arrowDownIcon" :alt="t('fileBrowser.sortDescending')" v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'" 
-            class="h-4 w-4" />
+          <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
+          <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
         </button>
         <button v-if="showItemsColumn" type="button"
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('items')">
           {{ t('fileBrowser.items') }}
-          <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'items' && listSortDirection === 'asc'" 
-            class="h-4 w-4" />
-          <img :src="arrowDownIcon" :alt="t('fileBrowser.sortDescending')" v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'"
-            class="h-4 w-4" />
+          <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
+          <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
         </button>
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
           <TooltipTrigger>
@@ -149,10 +148,8 @@ const sortedEntries = computed(() => {
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
               <img :src="infoIcon" alt="" />
-              <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'size' && listSortDirection === 'asc'"
-                class="h-4 w-4" />
-              <img :src="arrowDownIcon" :alt="t('fileBrowser.sortDescending')" v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'"
-                class="h-4 w-4" />
+              <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
+              <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" :side-offset="8" class="max-w-[300px]">
@@ -188,10 +185,8 @@ const sortedEntries = computed(() => {
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
-          <img :src="arrowUpIcon" :alt="t('fileBrowser.sortAscending')" v-if="listSortColumn === 'modified' && listSortDirection === 'asc'" 
-            class="h-4 w-4" />
-          <img :src="arrowDownIcon" :alt="t('fileBrowser.sortDescending')" v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'"
-            class="h-4 w-4" />
+          <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
+          <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
         </button>
       </div>
       <Popover :open="isColumnsPopoverOpen" @update:open="isColumnsPopoverOpen = $event">
@@ -199,7 +194,7 @@ const sortedEntries = computed(() => {
           <TooltipTrigger>
             <PopoverTrigger as-child>
               <button type="button" class="absolute top-1/2 right-0 w-7 h-7 text-tx-muted -translate-y-1/2">
-                <img :src="columnsIcon" :alt="t('fileBrowser.columns')" class="h-4 w-4" />
+                <ThemeIcon name="view-file-columns" type="symbol" :size="16" :alt="t('fileBrowser.columns')" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>

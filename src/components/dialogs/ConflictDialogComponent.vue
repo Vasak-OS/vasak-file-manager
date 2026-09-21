@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	Dialog,
@@ -8,10 +7,10 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { ConflictItem, ConflictResolution } from '@/stores/runtime/clipboard';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import toReadableBytes from '@/utils/byte-parser';
@@ -31,12 +30,6 @@ const { t } = useI18n();
 const isOpen = defineModel<boolean>('open', { required: true });
 const sizeSeparator = ' \u2192 ';
 const conflictCount = computed(() => props.conflicts.length);
-const FolderIcon = useReactiveIcon(() => getIconSource('folder'));
-const FileIcon = useReactiveIcon(() => getIconSource('application-rtf'));
-const AlertTriangleIcon = useReactiveIcon(() => getSymbolSource('dialog-warning'));
-const SkipForwardIcon = useReactiveIcon(() => getSymbolSource('media-skip-forward'));
-const CopyPlusIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
-const ArrowRightLeftIcon = useReactiveIcon(() => getSymbolSource('go-jump'));
 
 const visibleConflicts = computed(() => {
 	return props.conflicts.slice(0, 5);
@@ -86,7 +79,7 @@ function handleOpenChange(open: boolean) {
     <DialogContent class="w-[520px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
-          <img :src="AlertTriangleIcon" class="w-5 h-5 shrink-0 text-status-warning" />
+          <ThemeIcon name="dialog-warning" type="symbol" :size="20" class="shrink-0 text-status-warning" />
           {{ t('conflictDialog.title') }}
         </DialogTitle>
         <DialogDescription class="text-tx-muted text-sm leading-normal">
@@ -97,7 +90,10 @@ function handleOpenChange(open: boolean) {
       <ScrollArea class="max-h-[220px]">
         <div class="flex flex-col py-1 gap-0.5">
           <div v-for="conflict in visibleConflicts" :key="conflict.source_path" class="flex items-center px-3 py-2 rounded-corner bg-ui-surface/40 gap-2.5">
-            <img :src="conflict.source_is_dir ? FolderIcon : FileIcon" class="w-4 h-4 shrink-0 text-tx-muted" />
+            <ThemeIcon
+              :name="conflict.source_is_dir ? 'folder' : 'text-x-generic'"
+              :size="16"
+              class="text-tx-muted" />
             <div class="flex min-w-0 flex-col gap-0.5">
               <span class="overflow-hidden text-tx-main text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ conflict.source_name }}</span>
               <span v-if="conflict.source_size !== null || conflict.destination_size !== null"
@@ -126,15 +122,15 @@ function handleOpenChange(open: boolean) {
       <DialogFooter class="pt-1">
         <div class="flex w-full flex-wrap justify-end gap-1.5">
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleSkip">
-            <img :src="SkipForwardIcon" class="w-3.5 h-3.5 shrink-0" />
+            <ThemeIcon name="media-skip-forward" type="symbol" :size="14" class="shrink-0" />
             {{ t('conflictDialog.skip') }}
           </button>
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleKeepBoth">
-            <img :src="CopyPlusIcon" class="w-3.5 h-3.5 shrink-0" />
+            <ThemeIcon name="edit-copy" type="symbol" :size="14" class="shrink-0" />
             {{ t('conflictDialog.keepBoth') }}
           </button>
           <button type="button" class="inline-flex items-center gap-1.5" @click="handleReplace">
-            <img :src="ArrowRightLeftIcon" class="w-3.5 h-3.5 shrink-0" />
+            <ThemeIcon name="go-jump" type="symbol" :size="14" class="shrink-0" />
             {{ t('conflictDialog.replace') }}
           </button>
         </div>

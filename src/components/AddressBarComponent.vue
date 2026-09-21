@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { dirname } from '@tauri-apps/api/path';
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	ThemeIcon,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
@@ -44,14 +45,8 @@ const popoverWidth = ref(0);
 const separatorDropdowns = ref<{ [key: number]: string[] }>({});
 const openSeparatorIndex = ref<number | null>(null);
 const isActionsMenuOpen = ref(false);
-const copyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
-const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
-const folderIcon = useReactiveIcon(() => getIconSource('folder'));
 const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('view-more-symbolic'));
-const chevronRightIcon = useReactiveIcon(() => getSymbolSource('arrow-right'));
-const pinIcon = useReactiveIcon(() => getSymbolSource('pin'));
 const textCursorIcon = useReactiveIcon(() => getSymbolSource('edit-select-text'));
-const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const ignoreNextEditorClose = ref(false);
 
 function updatePopoverWidth() {
@@ -374,11 +369,11 @@ onUnmounted(() => {
         </TooltipTrigger>
         <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[200px] [&_[role=menuitem]]:max-w-none [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex [&_[role=menuitem]]:gap-2">
           <DropdownMenuItem @select="copyPathToClipboard">
-            <img :src="copyIcon" alt="" class="h-4 w-4 inline-block mr-2" />
+            <ThemeIcon name="edit-copy" type="symbol" :size="16" class="inline-block mr-2" />
             <span>{{ t('settings.addressBar.copyPathToClipboard') }}</span>
           </DropdownMenuItem>
           <DropdownMenuItem @select="openCopiedPath">
-            <img :src="clipboardPasteIcon" alt="" class="h-4 w-4 inline-block mr-2" />
+            <ThemeIcon name="edit-paste" type="symbol" :size="16" class="inline-block mr-2" />
             <span>{{ t('settings.addressBar.openCopiedPath') }}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -405,15 +400,14 @@ onUnmounted(() => {
                 <DropdownMenuTrigger as-child>
                   <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-tx-muted/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop="openSeparatorMenu(index)" :aria-label="t('settings.addressBar.showSiblingDirectories')">
-                    <img :src="chevronRightIcon" alt="" class="h-4 w-4 transition-transform duration-100 ease-in-out"
-                      :class="{ 'rotate-90': openSeparatorIndex === index }" />
+                    <ThemeIcon name="arrow-right" type="symbol" :size="16" class="transition-transform duration-100 ease-in-out" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[180px] max-w-[300px] p-0 [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-1.5 [&_[role=menuitem]]:text-xs [&_[role=menuitem]]:gap-2 [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex">
                   <ScrollArea class="max-h-[250px] py-1">
                     <DropdownMenuItem v-for="dirPath in separatorDropdowns[index]" :key="dirPath"
                       @select="handleSeparatorNavigate(dirPath)" class="flex items-center justify-start">
-                      <img :src="folderIcon" :alt="dirPath" class="h-4 w-4 inline-block shrink-0 mr-2" />
+                      <ThemeIcon name="folder" :size="16" :alt="dirPath" class="inline-block shrink-0 mr-2" />
                       <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ dirPath.split('/').pop() || dirPath }}</span>
                     </DropdownMenuItem>
                   </ScrollArea>
@@ -435,7 +429,7 @@ onUnmounted(() => {
             <TooltipTrigger>
               <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm"
                 :class="{ 'bg-primary/15 text-primary stroke-primary': isPinned }" @click="isPinned = !isPinned">
-                <img :src="pinIcon" class="h-4 w-4" />
+                <ThemeIcon name="pin" type="symbol" :size="16" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -450,7 +444,7 @@ onUnmounted(() => {
             <TooltipTrigger>
               <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm text-tx-main/70 hover:text-tx-main"
                 @click="isEditorOpen = false">
-                <img :src="xIcon" class="h-4 w-4" />
+                <ThemeIcon name="gtk-close" type="symbol" :size="16" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -464,7 +458,7 @@ onUnmounted(() => {
           <button v-for="(path, index) in autocompleteList" :key="path" tabindex="-1" class="flex no-wrap items-center w-full px-3 py-1.5 text-sm gap-2 text-left"
             :class="{ 'bg-secondary': index === selectedIndex }" @click="handlePathSelect(path)"
             @mouseenter="selectedIndex = index">
-            <img :src="folderIcon" :alt="path" class="h-4 w-4 inline-block mr-2" />
+            <ThemeIcon name="folder" :size="16" :alt="path" class="inline-block mr-2" />
             <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ path }}</span>
           </button>
         </ScrollArea>

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	ThemeIcon,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
@@ -15,7 +15,6 @@ import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { interpolar } from '@/tools/interpolar';
@@ -41,13 +40,6 @@ const shortcutsStore = useShortcutsStore();
 
 const clipboardItemsPopoverOpen = ref(false);
 const clipboardItemsFilterQuery = ref('');
-
-const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
-const eyeIcon = useReactiveIcon(() => getSymbolSource('redeyes-symbolic'));
-const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
-const copyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
-const folderInputIcon = useReactiveIcon(() => getSymbolSource('folder-open'));
-const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('overflow-menu'));
 
 const canPaste = computed(() => {
 	if (!clipboardStore.hasItems || !props.currentPath) {
@@ -147,8 +139,8 @@ function openCollapsedPopover() {
           }">
             <div class="clipboard-toolbar__info">
               <div class="clipboard-toolbar__icon">
-                <img :src="copyIcon" v-if="clipboardStore.isCopyOperation" class="h-[18px] w-[18px] inline-block" />
-                <img :src="folderInputIcon" v-else class="h-[18px] w-[18px] inline-block" />
+                <ThemeIcon name="edit-copy" type="symbol" :size="18" class="inline-block" />
+                <ThemeIcon name="folder-open" type="symbol" :size="18" class="inline-block" />
               </div>
               <div class="clipboard-toolbar__text">
                 <span class="clipboard-toolbar__title">
@@ -164,7 +156,7 @@ function openCollapsedPopover() {
             <div class="clipboard-toolbar__actions clipboard-toolbar__actions--expanded">
               <button class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
                 @click="clipboardItemsPopoverOpen = true">
-                <img :src="eyeIcon" :alt="t('fileBrowser.showItems')" class="h-4 w-4 inline-block" />
+                <ThemeIcon name="redeyes-symbolic" type="symbol" :size="16" :alt="t('fileBrowser.showItems')" class="inline-block" />
                 <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.showItems') }}</span>
               </button>
 
@@ -174,7 +166,7 @@ function openCollapsedPopover() {
                     <button class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane1 }" :disabled="!canPasteToPane1"
                       @click="emit('pasteToPane', 0)">
-                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane1')" class="h-4 w-4 inline-block" />
+                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane1')" class="inline-block" />
                       <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane1') }}</span>
                     </button>
                   </TooltipTrigger>
@@ -189,7 +181,7 @@ function openCollapsedPopover() {
                     <button class="clipboard-toolbar__button"
                       :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane2 }" :disabled="!canPasteToPane2"
                       @click="emit('pasteToPane', 1)">
-                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane2')" class="h-4 w-4 inline-block" />
+                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane2')" class="inline-block" />
                       <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane2') }}</span>
                     </button>
                   </TooltipTrigger>
@@ -205,7 +197,7 @@ function openCollapsedPopover() {
                   <button class="clipboard-toolbar__button"
                     :class="{ 'clipboard-toolbar__button--disabled': !canPaste }" :disabled="!canPaste"
                     @click="emit('paste')">
-                    <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.paste')" class="h-4 w-4 inline-block" />
+                    <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.paste')" class="inline-block" />
                     <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.paste') }}</span>
                   </button>
                 </TooltipTrigger>
@@ -217,7 +209,7 @@ function openCollapsedPopover() {
 
               <button class="clipboard-toolbar__button clipboard-toolbar__button--discard"
                 :title="t('fileBrowser.discardClipboard')" @click="clipboardStore.clearClipboard()">
-                <img :src="xIcon" :alt="t('fileBrowser.discardClipboard')" class="h-4 w-4 inline-block" />
+                <ThemeIcon name="gtk-close" type="symbol" :size="16" :alt="t('fileBrowser.discardClipboard')" class="inline-block" />
                 <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.discardClipboard') }}</span>
               </button>
             </div>
@@ -226,31 +218,31 @@ function openCollapsedPopover() {
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <button class="clipboard-toolbar__button" :title="t('actions')" :aria-label="t('actions')">
-                    <img :src="ellipsisVerticalIcon" class="h-4 w-4 inline-block" />
+                    <ThemeIcon name="overflow-menu" type="symbol" :size="16" class="inline-block" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="clipboard-toolbar__dropdown">
                   <DropdownMenuItem @click="openCollapsedPopover">
-                    <img :src="eyeIcon" :alt="t('fileBrowser.showItems')" class="h-4 w-4 inline-block" />
+                    <ThemeIcon name="redeyes-symbolic" type="symbol" :size="16" :alt="t('fileBrowser.showItems')" class="inline-block" />
                     {{ t('fileBrowser.showItems') }}
                   </DropdownMenuItem>
                   <template v-if="isSplitView">
                     <DropdownMenuItem :disabled="!canPasteToPane1" @click="emit('pasteToPane', 0)">
-                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane1')" class="h-4 w-4 inline-block" />
+                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane1')" class="inline-block" />
                       {{ t('fileBrowser.actions.pasteToPane1') }}
                     </DropdownMenuItem>
                     <DropdownMenuItem :disabled="!canPasteToPane2" @click="emit('pasteToPane', 1)">
-                      <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.pasteToPane2')" class="h-4 w-4 inline-block" />
+                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane2')" class="inline-block" />
                       {{ t('fileBrowser.actions.pasteToPane2') }}
                     </DropdownMenuItem>
                   </template>
                   <DropdownMenuItem v-else :disabled="!canPaste" @click="emit('paste')">
-                    <img :src="clipboardPasteIcon" :alt="t('fileBrowser.actions.paste')" class="h-4 w-4 inline-block" />
+                    <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.paste')" class="inline-block" />
                     {{ t('fileBrowser.actions.paste') }}
                   </DropdownMenuItem>
                   <DropdownMenuItem class="clipboard-toolbar__dropdown-item--discard"
                     @click="clipboardStore.clearClipboard()">
-                    <img :src="xIcon" :alt="t('fileBrowser.discardClipboard')" class="h-4 w-4 inline-block" />
+                    <ThemeIcon name="gtk-close" type="symbol" :size="16" :alt="t('fileBrowser.discardClipboard')" class="inline-block" />
                     {{ t('fileBrowser.discardClipboard') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -276,7 +268,7 @@ function openCollapsedPopover() {
                   </div>
                   <button class="clipboard-toolbar__item-remove"
                     :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)" :aria-label="t('fileBrowser.removeFromClipboard')">
-                    <img :src="xIcon" :alt="t('fileBrowser.removeFromClipboard')" class="h-4 w-4" />
+                    <ThemeIcon name="gtk-close" type="symbol" :size="16" :alt="t('fileBrowser.removeFromClipboard')" />
                   </button>
                 </div>
                 <div v-if="displayedClipboardItems.length === 0" class="clipboard-toolbar__no-items">

@@ -25,6 +25,7 @@
  */
 
 import { beforeEach, describe, expect, test } from 'bun:test';
+import { olvidarLosIconosDelTema } from '@vasakgroup/vue-libvasak';
 import { mount } from '@vue/test-utils';
 import { h, nextTick } from 'vue';
 import FileBrowserErrorComponent from '@/components/filebrowser/FileBrowserErrorComponent.vue';
@@ -35,6 +36,14 @@ import { emitir, olvidarTodo, ponerEnElTema } from './dobles';
 
 beforeEach(() => {
 	olvidarTodo();
+	// La librería memoriza lo resuelto por nombre y tipo, y esa memoria vive en
+	// el módulo: sin vaciarla, esta prueba ve el icono que dejó otra y
+	// `ponerEnElTema` no cambia nada. Es para esto que la librería lo exporta.
+	//
+	// No va en `dobles.ts`: ese archivo lo importa `preparar.ts` para registrar
+	// los mocks, así que importar la librería ahí la carga **antes** que ellos y
+	// se rompen nueve pruebas de otros archivos.
+	olvidarLosIconosDelTema();
 });
 
 /** Deja que terminen las promesas encadenadas del pedido del icono. */

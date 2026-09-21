@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, watch } from 'vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
@@ -17,10 +16,6 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const dirSizesStore = useDirSizesStore();
-
-const loaderCircleIcon = useReactiveIcon(() => getSymbolSource('sync'));
-const xIcon = useReactiveIcon(() => getSymbolSource('window-close'));
-const refreshCwIcon = useReactiveIcon(() => getSymbolSource('view-refresh'));
 
 const dirSizeInfo = computed(() => {
 	if (!props.selectedEntry?.is_dir) return null;
@@ -184,13 +179,13 @@ const properties = computed<PropertyItem[]>(() => {
         </div>
         <div class="break-all flex items-center gap-2 h-10">
           <template v-if="isDirSizeLoading">
-            <img :src="loaderCircleIcon" class="h-3.5 w-3.5 info-panel-properties__spinner" />
+            <ThemeIcon name="sync" type="symbol" :size="14" class="info-panel-properties__spinner" />
             <div class="info-panel-properties__size-content">
               <span v-if="dirSizeDisplay">{{ dirSizeDisplay }}</span>
               <span v-else>{{ t('calculating') }}...</span>
             </div>
             <button class="info-panel-properties__cancel-btn" @click="handleCancelSize">
-              <img :src="xIcon" class="h-3.5 w-3.5" />
+              <ThemeIcon name="window-close" type="symbol" :size="14" />
             </button>
           </template>
           <template v-else-if="dirSizeDisplay && !showGetSizeButton">
@@ -201,7 +196,7 @@ const properties = computed<PropertyItem[]>(() => {
             </div>
             <button v-if="showRecalculateButton"
               class="info-panel-properties__recalculate-btn" :title="t('recalculate')" @click="handleGetSize" :aria-label="t('recalculate')">
-              <img :src="refreshCwIcon" class="h-3 w-3" />
+              <ThemeIcon name="view-refresh" type="symbol" :size="12" />
             </button>
           </template>
           <button v-else-if="showGetSizeButton" @click="handleGetSize">

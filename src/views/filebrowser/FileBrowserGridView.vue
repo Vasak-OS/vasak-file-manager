@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { RecycleScroller } from 'vue-virtual-scroller';
@@ -35,11 +36,8 @@ const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
 
-const fileIcon = useReactiveIcon(() => getIconSource('text-x-generic'));
-const fileImageIcon = useReactiveIcon(() => getIconSource('image-x-generic'));
 const fileVideoIcon = useReactiveIcon(() => getIconSource('video-x-generic'));
 const loaderIcon = useReactiveIcon(() => getIconSource('process-working'));
-const folderIcon = useReactiveIcon(() => getIconSource('folder'));
 
 const clipboardPathsMap = computed(() => {
 	if (isToolbarSuppressed.value) {
@@ -297,7 +295,7 @@ watchEffect(() => {
          eso, la cuadrícula crece con sus filas y desplaza el de arriba. -->
     <template v-if="groupedEntries.dirs.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <img :src="folderIcon" class="w-4 h-4" />
+        <ThemeIcon name="folder" :size="16" />
         <span>{{ t('fileBrowser.folders') }}</span>
         <span class="py-0.5 px-2 rounded-corner bg-ui-bg/80 text-[11px]">{{ groupedEntries.dirs.length }}</span>
       </div>
@@ -350,7 +348,7 @@ watchEffect(() => {
 
     <template v-if="groupedEntries.images.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <img :src="fileImageIcon" class="w-4 h-4" />
+        <ThemeIcon name="image-x-generic" :size="16" />
         <span>{{ t('fileBrowser.images') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.images.length }}</span>
       </div>
@@ -395,7 +393,7 @@ watchEffect(() => {
 
     <template v-if="groupedEntries.videos.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <img :src="fileVideoIcon" class="w-4 h-4" />
+        <ThemeIcon name="video-x-generic" :size="16" />
         <span>{{ t('fileBrowser.videos') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.videos.length }}</span>
       </div>
@@ -449,7 +447,7 @@ watchEffect(() => {
 
     <template v-if="groupedEntries.others.length > 0">
       <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <img :src="fileIcon" class="w-4 h-4" />
+        <ThemeIcon name="text-x-generic" :size="16" />
         <span>{{ t('fileBrowser.otherFiles') }}</span>
         <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.others.length }}</span>
       </div>

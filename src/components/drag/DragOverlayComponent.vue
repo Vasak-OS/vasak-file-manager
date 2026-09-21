@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import { DirEntry } from '@/types/dir-entry';
 
@@ -19,9 +18,6 @@ const props = defineProps<{
 
 const { t } = useI18n();
 
-const copyIcon = useReactiveIcon(() => getIconSource('edit-copy'));
-const folderInputIcon = useReactiveIcon(() => getIconSource('folder-open'));
-
 const overlayStyle = computed(() => ({
 	left: `${props.cursorX + 16}px`,
 	top: `${props.cursorY + 16}px`,
@@ -32,8 +28,10 @@ const overlayIconStyle = computed(() => ({
 	top: `${props.cursorY - 18}px`,
 }));
 
+// Lo que se elige acá es el **nombre**: resolverlo es cosa de `ThemeIcon`, que
+// además memoriza y vuelve a resolver solo cuando cambia el tema.
 const operationIcon = computed(() =>
-	props.operationType === 'copy' ? copyIcon.value : folderInputIcon.value
+	props.operationType === 'copy' ? 'edit-copy' : 'folder-open'
 );
 
 const description = computed(() => {
@@ -48,7 +46,7 @@ const description = computed(() => {
       <div v-if="props.isActive" class="px-4 py-2 whitespace-nowrap fixed z-50 border border-ui-border bg-ui-bg/80 flex flex-col rounded-corner gap-1" :style="overlayStyle">
         <div class="flex items-center gap-2 text-primary font-medium">
           <span>{{ description }}</span>
-          <img :src="operationIcon" :alt="t('drag.dragging')" class="h-4 w-4" />
+          <ThemeIcon :name="operationIcon" :size="16" :alt="t('drag.dragging')" />
         </div>
         <div class="font-[11px] text-tx-muted">
           {{ t('drag.holdShiftToChangeMode') }}
