@@ -130,16 +130,30 @@ pub fn esquema() -> (Schema, Campos) {
 /// mismo criterio con el que `vasak-prism` guarda su catálogo de aplicaciones
 /// en caché y la frecuencia de uso en datos.
 ///
-/// Una `XDG_CACHE_HOME` vacía cuenta como ausente: `PathBuf::from("")` da una
-/// ruta relativa, y el índice terminaría colgando del directorio de trabajo de
-/// quien haya lanzado la aplicación.
+/// Una variable que no sea una ruta **absoluta** cuenta como ausente, y eso
+/// incluye la vacía. Es lo que pide el estándar XDG para las relativas, y el
+/// motivo es el mismo para las dos formas: una ruta que no arranca en la raíz
+/// se resuelve contra el directorio de trabajo de quien haya lanzado el
+/// programa, que en un servicio de systemd puede ser cualquiera. El índice
+/// terminaría escrito en un lugar impredecible, y peor, en uno distinto según
+/// desde dónde se lanzó.
 pub fn base_de_cache() -> Option<PathBuf> {
-    let base = match std::env::var_os("XDG_CACHE_HOME") {
-        Some(valor) if !valor.is_empty() => PathBuf::from(valor),
-        _ => PathBuf::from(std::env::var_os("HOME")?).join(".cache"),
+    let base = match ruta_absoluta_de("XDG_CACHE_HOME") {
+        Some(ruta) => ruta,
+        None => ruta_absoluta_de("HOME")?.join(".cache"),
     };
 
     Some(base.join(COMPARTIDO))
+}
+
+/// El valor de una variable de entorno, pero sólo si es una ruta absoluta.
+///
+/// Una sola regla para los dos casos. Tratarlos por separado —la vacía por un
+/// lado, la relativa por otro— es cómo se cubre uno y se deja el otro afuera
+/// habiendo descrito el peligro de los dos.
+fn ruta_absoluta_de(nombre: &str) -> Option<PathBuf> {
+    let ruta = PathBuf::from(std::env::var_os(nombre)?);
+    ruta.is_absolute().then_some(ruta)
 }
 
 /// Dónde vive el índice, a partir del directorio compartido.
@@ -281,18 +295,29 @@ mod pruebas {
         );
         assert_eq!(sin_xdg, Some(PathBuf::from("/casa/.cache/vasak")));
 
-        // Vacía cuenta como ausente. Si no, `PathBuf::from("")` da una ruta
-        // relativa y el índice cuelga del directorio de trabajo de quien haya
-        // lanzado la aplicación, que puede ser cualquiera.
-        let vacia = con_entorno(
-            &[("XDG_CACHE_HOME", Some("")), ("HOME", Some("/casa"))],
+        // Lo que no es una ruta absoluta cuenta como ausente, y son dos
+        // formas del mismo problema: una ruta que no arranca en la raíz se
+        // resuelve contra el directorio de trabajo de quien haya lanzado el
+        // programa, que en un servicio de systemd puede ser cualquiera.
+        for valor in ["", "cache", "./cache", "../cache"] {
+            let resultado = con_entorno(
+                &[("XDG_CACHE_HOME", Some(valor)), ("HOME", Some("/casa"))],
+                base_de_cache,
+            );
+            assert_eq!(
+                resultado,
+                Some(PathBuf::from("/casa/.cache/vasak")),
+                "«{valor}» no es una ruta absoluta y no puede usarse"
+            );
+        }
+
+        // Y la misma regla para `HOME`, que es el respaldo: si tampoco es
+        // absoluta no hay dónde, y eso se dice en vez de inventarlo.
+        let casa_relativa = con_entorno(
+            &[("XDG_CACHE_HOME", None), ("HOME", Some("casa"))],
             base_de_cache,
         );
-        assert_eq!(
-            vacia,
-            Some(PathBuf::from("/casa/.cache/vasak")),
-            "una variable vacía no es una ruta"
-        );
+        assert_eq!(casa_relativa, None, "un HOME relativo tampoco sirve");
 
         // Sin `HOME` no hay dónde, y eso se dice en vez de inventarlo.
         let sin_nada = con_entorno(&[("XDG_CACHE_HOME", None), ("HOME", None)], base_de_cache);
