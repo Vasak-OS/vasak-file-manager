@@ -1,29 +1,40 @@
 //! El contrato del índice: dónde está y cómo se llama cada campo.
 //!
 //! Esto no es un detalle interno de la búsqueda global. Es lo **único** que
-//! comparten dos programas que no comparten código: el gestor de archivos, que
-//! escribe el índice, y `vasak-prism`, que lo abre de sólo lectura para su
-//! proveedor de archivos. El lanzador tiene estas mismas constantes escritas a
-//! mano en su lado.
+//! comparten dos programas que no comparten código: `vasak-prism`, que escanea
+//! el disco y **escribe** el índice, y esta aplicación, que lo abre de sólo
+//! lectura para su búsqueda. El lanzador tiene estas mismas constantes escritas
+//! a mano en su lado.
+//!
+//! # El dueño cambió, y esta descripción con él
+//!
+//! Hasta la 0.21 era al revés: escribía el gestor y leía el lanzador. El cambio
+//! —Vasak-OS/vasak-prism#33 y #75— es que el escaneo vive donde vive el proceso
+//! que está prendido: el lanzador es un daemon de systemd y el gestor es una
+//! ventana que se abre y se cierra.
+//!
+//! **La ruta no cambió y el índice no se rehízo.** Ya estaba en la caché
+//! compartida, que no cuelga del nombre de ninguna de las dos aplicaciones, así
+//! que cambiar de dueño fue sólo eso: el que escribe.
 //!
 //! # Por qué importa tanto para algo tan chico
 //!
 //! Porque romperlo no falla. Si acá se renombra un campo o se mueve el
-//! directorio, el lanzador sigue compilando, sigue arrancando y simplemente
-//! deja de encontrar archivos: una lista vacía, que es indistinguible de «no
-//! hay nada que coincida». No hay error, no hay registro, no hay nada que
-//! mirar.
+//! directorio, los dos siguen compilando, siguen arrancando y simplemente dejan
+//! de encontrar archivos: una lista vacía, que es indistinguible de «no hay nada
+//! que coincida». No hay error, no hay registro, no hay nada que mirar.
 //!
 //! Por eso los nombres están en constantes y no sueltos en la llamada, y por
 //! eso hay una prueba que los fija: para que cambiarlos sea un acto deliberado
 //! que rompe algo visible acá, y no un renombre que alguien hace de paso.
 //!
-//! # Esto se va a mover
+//! # Y tantivy también es parte del contrato
 //!
-//! El dueño del índice pasa a ser el lanzador —Vasak-OS/vasak-file-manager#75 y
-//! Vasak-OS/vasak-prism#33—: él escanea y escribe, y el gestor pasa a leer. Lo
-//! que hoy está acá es lo que va a viajar; el resto de `global_search.rs` se
-//! parte en la mitad que escribe, que se va, y la que consulta, que se queda.
+//! Los dos programas tienen que usar la **misma versión de tantivy**: el formato
+//! en disco cambia entre versiones, así que subirla de un lado solo deja al otro
+//! sin poder abrir el índice. Hoy los dos están en 0.22 y la última publicada es
+//! la 0.26: subir es una tanda coordinada entre los dos repositorios, no una
+//! actualización de rutina.
 
 use std::path::{Path, PathBuf};
 use tantivy::schema::{
@@ -62,7 +73,7 @@ pub const ESTADO: &str = "status.json";
 /// Cómo terminó —o si terminó— el último escaneo.
 ///
 /// Van como cadena y no como un enum cerrado, y es deliberado: este archivo lo
-/// escribe el gestor y lo lee `vasak-prism`, y los dos se actualizan por
+/// escribe `vasak-prism` y lo lee esta aplicación, y los dos se actualizan por
 /// separado. Si el lector deserializara contra un enum cerrado, agregar un
 /// quinto estado acá le rompería el archivo **entero** —perdería también la
 /// versión y la fecha—, o sea que agregar un estado le rompería más que no
@@ -83,12 +94,12 @@ pub const ESTADO: &str = "status.json";
 ///
 /// No son lo mismo, y la regla es asimétrica a propósito:
 ///
-/// - **Falta** → lo escribió un gestor viejo, que no tenía cómo avisar. Se
+/// - **Falta** → lo escribió un lanzador viejo, que no tenía cómo avisar. Se
 ///   trata como `COMPLETO`, que es como se venía tratando. Si no, cada
 ///   instalación sin actualizar se llenaría de avisos por algo que siempre fue
 ///   así.
-/// - **No se conoce** → lo escribió un gestor **más nuevo**, que sabe algo que
-///   el lector no. Ahí se va al lado conservador: no se confía en que la
+/// - **No se conoce** → lo escribió un lanzador **más nuevo**, que sabe algo
+///   que el lector no. Ahí se va al lado conservador: no se confía en que la
 ///   ausencia sea ausencia, y se dice.
 ///
 /// Leído de golpe es contraintuitivo —la ausencia manda confiar y lo
@@ -97,7 +108,7 @@ pub const ESTADO: &str = "status.json";
 /// # La versión gana sobre el estado
 ///
 /// `status.json` vive **fuera** del directorio de la versión, así que describe
-/// a la versión actual del gestor y no necesariamente al índice que el lector
+/// a la versión actual del lanzador y no necesariamente al índice que el lector
 /// puede abrir. El día que esto pase a `v2`, un lector que sólo sabe leer `v1`
 /// ve dos señales ciertas y contradictorias: no encuentra `v1/index`, y el
 /// archivo le dice `schema_version: 2` con `scan_state: complete`.
