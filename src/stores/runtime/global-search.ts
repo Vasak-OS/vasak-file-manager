@@ -1,55 +1,50 @@
+/**
+ * La búsqueda global, que ahora sólo **lee** un índice que mantiene otro.
+ *
+ * Hasta la 0.21 esta aplicación escaneaba el disco y escribía el índice: tenía
+ * su propio recorrido, detección de inactividad para rehacerlo sola, barra de
+ * progreso, cancelación y una lista de unidades que recorrer. Todo eso se fue a
+ * `vasak-prism`, que es el que vive prendido —el gestor se abre y se cierra— y
+ * por lo tanto el único que puede mantener el índice al día sin que nadie pida
+ * nada. Ver Vasak-OS/vasak-file-manager#75 y Vasak-OS/vasak-prism#33.
+ *
+ * Lo que queda es consultar, y se hace **abriendo el mismo índice de sólo
+ * lectura** en vez de preguntarle al lanzador por D-Bus. Fue deliberado: así la
+ * búsqueda anda aunque el daemon no esté corriendo, y las dos aplicaciones no
+ * quedan atadas a que la otra esté viva.
+ */
 import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { homeDir } from '@tauri-apps/api/path';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { sharedDrives } from '@/composables/use-drives';
 import { SEARCH_CONSTANTS } from '@/constants/search';
 import { indiceEstaIncompleto } from '@/stores/runtime/global-search-estado';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
-//import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
 import { debeRetomarSondeo, debeSeguirSondeando, intervaloDeSondeo } from './global-search-polling';
-import {
-	debeEscanearAlArrancar,
-	debeReindexar,
-	type EstadoDeInactividadDelSistema,
-	leerSenal,
-	RED_DE_SEGURIDAD_MS,
-	type SenalDeInactividad,
-} from './idle-reindex';
-
-type GlobalSearchDriveScanError = {
-	drive_root: string;
-	message: string;
-};
 
 type GlobalSearchStatus = {
+	/**
+	 * Si hay un escaneo corriendo, **según el archivo de estado del lanzador**.
+	 *
+	 * No lo sabe este proceso: lo lee de un archivo que escribe otro. Por eso no
+	 * hay progreso ni unidad actual ni forma de cancelarlo — para eso habría que
+	 * preguntarle al lanzador, que es el acoplamiento que se decidió no tener.
+	 */
 	is_scan_in_progress: boolean;
-	is_committing: boolean;
-	is_parallel_scan: boolean;
 	last_scan_time: number | null;
 	indexed_item_count: number;
 	index_size_bytes: number;
-	current_drive_root: string | null;
-	drive_scan_errors: GlobalSearchDriveScanError[];
 	is_index_valid: boolean;
-	scanned_drives_count: number;
-	total_drives_count: number;
 	last_scan_state: string | null;
 	last_scan_is_live: boolean;
+	/** Que todavía no hay índice. Normal, no es un error. */
+	index_missing: boolean;
+	/** Por qué no se pudo abrir el índice **estando**. Eso sí es un problema. */
+	index_unavailable_reason: string | null;
 };
 
 const DEBOUNCE_DELAY_MS = 200;
-
-/**
- * Donde el backend avisa que la sesión quedó sin nadie, o que volvió a haberlo.
- *
- * El umbral —cuánto silencio hace falta— lo aplica el compositor y viaja en el
- * propio estado, así que no se repite acá. Ver `idle_monitor` en el backend.
- */
-const EVENTO_INACTIVIDAD = 'idle://changed';
 
 /**
  * Quién puede fallar en la búsqueda global.
@@ -57,17 +52,10 @@ const EVENTO_INACTIVIDAD = 'idle://changed';
  * Cada uno tiene su casillero de error: son operaciones distintas, fallan por
  * motivos distintos y se recuperan por separado.
  */
-type OrigenDeError = 'busqueda' | 'raices' | 'recorrido' | 'arranque' | 'estado' | 'inactividad';
+type OrigenDeError = 'busqueda' | 'arranque' | 'estado';
 
 /** En qué orden se muestran cuando hay más de uno puesto. */
-const ORDEN_DE_LOS_ERRORES: OrigenDeError[] = [
-	'busqueda',
-	'raices',
-	'recorrido',
-	'arranque',
-	'estado',
-	'inactividad',
-];
+const ORDEN_DE_LOS_ERRORES: OrigenDeError[] = ['busqueda', 'arranque', 'estado'];
 
 export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const isOpen = ref(false);
@@ -75,18 +63,28 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const results = ref<DirEntry[]>([]);
 	const isSearching = ref(false);
 	const isScanInProgress = ref(false);
-	const isCommitting = ref(false);
-	const isParallelScan = ref(false);
 	const lastScanTime = ref<number | null>(null);
 	const indexedItemCount = ref<number>(0);
 	const indexSizeBytes = ref<number>(0);
-	const currentDriveRoot = ref<string | null>(null);
-	const driveScanErrors = ref<GlobalSearchDriveScanError[]>([]);
 	const isIndexValid = ref(false);
 	const lastScanState = ref<string | null>(null);
 	const lastScanIsLive = ref(false);
-	const scannedDrivesCount = ref(0);
-	const totalDrivesCount = ref(0);
+	/**
+	 * Que todavía no hay índice.
+	 *
+	 * Es normal —`vasak-prism` no escaneó todavía, o no está instalado— y no es
+	 * un error de nadie. Va aparte de `indexUnavailableReason` justamente por
+	 * eso: mezclados, la primera búsqueda en una máquina recién instalada
+	 * aparece con un cartel rojo por algo que no está roto.
+	 */
+	const indexMissing = ref(false);
+	/**
+	 * Por qué no se pudo abrir el índice **estando**.
+	 *
+	 * Esto sí es un problema —un esquema de otra versión, un directorio
+	 * ilegible— y se muestra como tal, con el motivo que da el backend.
+	 */
+	const indexUnavailableReason = ref<string | null>(null);
 	const isInitialized = ref(false);
 	/**
 	 * Lo último que falló, **por origen**.
@@ -131,144 +129,27 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		}
 		return null;
 	});
-	/**
-	 * El recorrido no tiene ninguna raíz que mirar.
-	 *
-	 * Iba adentro de `lastError` como la cadena `'No drives available for
-	 * scanning'`, escrita a mano y en inglés en un campo que por lo demás trae
-	 * texto del backend. Dos problemas: no se podía traducir, y **pisaba el
-	 * error de verdad** —la lista queda vacía sobre todo cuando `get_system_drives`
-	 * falla, y ese `catch` ya había anotado el motivo—.
-	 *
-	 * Ahora es un estado aparte: quien lo dibuja elige el texto, y `lastError`
-	 * se queda con lo que de verdad falló.
-	 */
-	const sinRaices = ref(false);
-
 	const statusPollTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const debounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
 	const searchAbortController = ref<AbortController | null>(null);
-	const redDeSeguridadId = ref<ReturnType<typeof setInterval> | null>(null);
-	const driveChangeDebounceTimerId = ref<ReturnType<typeof setTimeout> | null>(null);
-	const senalDeInactividad = ref<SenalDeInactividad>('desconocida');
-	const dejarDeEscucharInactividad = ref<UnlistenFn | null>(null);
-	/**
-	 * Cuántas unidades había la última vez que se miró, o `null` si todavía no
-	 * se miró ninguna vez.
-	 *
-	 * La diferencia importa. Era un `0`, y al arrancar se le escribía el largo
-	 * de una lista que todavía no se había cargado —también `0`—, así que el
-	 * primer aviso de unidades de cada sesión se tomaba por «éste es el valor
-	 * de partida» y no disparaba nada. En una máquina que arranca **sin**
-	 * unidades eso se repetía con la primera que se enchufara: seguía valiendo
-	 * cero, así que seguía pareciendo el valor de partida.
-	 */
-	const lastKnownDriveCount = ref<number | null>(null);
-
 	//const userSettingsStore = useUserSettingsStore();
 	const userStatsStore = useUserStatsStore();
 	const userPathsStore = useUserPathsStore();
-
-	const scanProgress = computed(() => {
-		if (totalDrivesCount.value === 0) return 0;
-		return Math.round((scannedDrivesCount.value / totalDrivesCount.value) * 100);
-	});
 
 	const indiceIncompleto = computed(() =>
 		indiceEstaIncompleto(lastScanState.value, lastScanIsLive.value, isScanInProgress.value)
 	);
 
-	const needsScan = computed(() => {
-		if (isScanInProgress.value) return false;
-		if (!isIndexValid.value) return true;
-		if (indexedItemCount.value === 0) return true;
-		return false;
-	});
-
-	function getIsIndexStale() {
-		if (!lastScanTime.value) return true;
-		if (!isIndexValid.value) return true;
-		if (indexedItemCount.value === 0) return true;
-
-		// const settings = userSettingsStore.userSettings.globalSearch;
-		const staleThresholdMs = 30 * 60 * 1000;
-		const timeSinceLastScan = Date.now() - lastScanTime.value;
-
-		return timeSinceLastScan > staleThresholdMs;
-	}
-
-	/**
-	 * Si la sesión está inactiva según el sistema.
-	 *
-	 * «Según el sistema» es lo que cambió: antes se miraba la actividad sobre
-	 * esta ventana, que con la ventana tapada no existe.
-	 */
-	function getIsUserIdle() {
-		return senalDeInactividad.value === 'inactiva';
-	}
-
-	/**
-	 * Por dónde se recorre: la carpeta del usuario y las unidades que haya.
-	 *
-	 * Antes eran sólo las unidades, y `get_system_drives` está escrito para la
-	 * sección «Discos» de la barra lateral: descarta `/` de forma explícita y
-	 * sólo deja lo que cuelgue de `/media`, `/mnt`, `/run/media` o sea un
-	 * sistema de archivos de red. O sea que en una máquina sin un pendiente
-	 * enchufado ni un recurso de red montado devuelve **nada**, y la búsqueda
-	 * global no tenía dónde buscar: el índice quedaba vacío para siempre y el
-	 * campo apagado. Medido en una máquina de verdad: cero candidatos entre
-	 * todos sus montajes.
-	 *
-	 * La carpeta del usuario es donde está lo que alguien busca, y es lo que
-	 * indexan por omisión los buscadores del resto de los escritorios. Las
-	 * unidades se suman cuando están, que es para lo que servía esto.
-	 *
-	 * Los dos caminos tienen su propio `try`: que falle preguntar por las
-	 * unidades no tiene por qué dejar sin recorrer la carpeta del usuario.
-	 */
-	async function getDriveRoots(): Promise<string[]> {
-		// const selected = userSettingsStore.userSettings.globalSearch.selectedDriveRoots;
-		// if (selected.length > 0) return selected;
-
-		const raices: string[] = [];
-
-		try {
-			// Comprobada y no empujada a ciegas: si el complemento de rutas no
-			// contesta, `homeDir()` devuelve `undefined` en vez de lanzar, y un
-			// `undefined` adentro de la lista hacía reventar el filtro de abajo
-			// —o sea que fallar en preguntar por la carpeta del usuario se
-			// llevaba puesto también el recorrido de las unidades—.
-			const casa = await homeDir();
-			if (casa) raices.push(casa);
-			olvidarError('raices');
-		} catch (error) {
-			anotarError('raices', error);
-		}
-
-		try {
-			const systemDrives = await invoke<Array<{ path: string }>>('get_system_drives');
-			raices.push(...systemDrives.map((drive) => drive.path));
-		} catch (error) {
-			anotarError('raices', error);
-		}
-
-		return [...new Set(raices.filter((raiz) => raiz.length > 0))];
-	}
-
 	function updateStatusFromResponse(status: GlobalSearchStatus) {
 		isScanInProgress.value = status.is_scan_in_progress;
-		isCommitting.value = status.is_committing ?? false;
-		isParallelScan.value = status.is_parallel_scan ?? false;
 		lastScanTime.value = status.last_scan_time ?? null;
 		indexedItemCount.value = status.indexed_item_count ?? 0;
 		indexSizeBytes.value = status.index_size_bytes ?? 0;
-		currentDriveRoot.value = status.current_drive_root ?? null;
-		driveScanErrors.value = Array.isArray(status.drive_scan_errors) ? status.drive_scan_errors : [];
 		isIndexValid.value = status.is_index_valid ?? false;
 		lastScanState.value = status.last_scan_state ?? null;
 		lastScanIsLive.value = status.last_scan_is_live ?? false;
-		scannedDrivesCount.value = status.scanned_drives_count ?? 0;
-		totalDrivesCount.value = status.total_drives_count ?? 0;
+		indexMissing.value = status.index_missing ?? false;
+		indexUnavailableReason.value = status.index_unavailable_reason ?? null;
 	}
 
 	async function refreshStatus() {
@@ -281,26 +162,26 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		}
 	}
 
+	/**
+	 * Se entera de cómo está el índice. No lo arma.
+	 *
+	 * Acá se decidía si había que escanear y se arrancaba el recorrido. Ya no
+	 * hay nada que arrancar: el índice lo mantiene `vasak-prism`, que lo
+	 * refresca cuando alguien abre el lanzador. Esta aplicación mira y consulta.
+	 */
 	async function initOnLaunch() {
 		if (isInitialized.value) return;
 
 		try {
 			const status = await invoke<GlobalSearchStatus>('global_search_init');
 			updateStatusFromResponse(status);
-			isInitialized.value = true;
 			olvidarError('arranque');
-
-			await startIdleDetection();
-
-			// Sin índice se escanea ya; vencido, espera a que la sesión esté
-			// inactiva. Ver `debeEscanearAlArrancar`.
-			if (debeEscanearAlArrancar(needsScan.value)) {
-				await startScan();
-			}
 		} catch (error) {
 			anotarError('arranque', error);
+		} finally {
+			// Pase lo que pase: sin esto, un fallo al preguntar dejaba a la
+			// aplicación preguntando de nuevo en cada apertura del panel.
 			isInitialized.value = true;
-			await startIdleDetection();
 		}
 	}
 
@@ -312,7 +193,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			statusPollTimerId.value = null;
 		}
 
-		const isActive = isScanInProgress.value || isCommitting.value;
+		const isActive = isScanInProgress.value;
 
 		// Se reagenda sólo si queda algo que mirar. Antes se reagendaba siempre,
 		// y como el único que lo detenía era cerrar el panel, el caso normal
@@ -353,7 +234,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		// —con su IPC— antes de que la guarda de `pollStatus` dejara de
 		// reagendar. Con un escaneo en curso no se corta nada, porque ahí el
 		// sondeo tiene que seguir aunque nadie mire.
-		const activo = isScanInProgress.value || isCommitting.value;
+		const activo = isScanInProgress.value;
 		if (!debeSeguirSondeando(activo, isOpen.value, estaOculto())) {
 			stopStatusPolling();
 		}
@@ -368,64 +249,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		if (statusPollTimerId.value === null) return;
 		clearTimeout(statusPollTimerId.value);
 		statusPollTimerId.value = null;
-	}
-
-	async function startScan() {
-		if (isScanInProgress.value) return;
-
-		try {
-			// const settings = userSettingsStore.userSettings.globalSearch;
-			const driveRoots = await getDriveRoots();
-
-			if (driveRoots.length === 0) {
-				sinRaices.value = true;
-				return;
-			}
-
-			sinRaices.value = false;
-
-			startStatusPolling();
-
-			await invoke('global_search_start_scan', {
-				settings: {
-					scan_depth: Math.max(1, /*Math.floor(settings.scanDepth)*/ 5),
-					ignored_paths: /*settings.ignoredPaths*/ [],
-					drive_roots: driveRoots,
-					parallel_scan: /* settings.parallelScan ??*/ false,
-				},
-			});
-
-			await refreshStatus();
-			olvidarError('recorrido');
-		} catch (error) {
-			anotarError('recorrido', error);
-			isScanInProgress.value = false;
-		}
-	}
-
-	async function cancelScan() {
-		if (!isScanInProgress.value) return;
-
-		try {
-			await invoke('global_search_cancel_scan');
-
-			const maxWaitMs = 5000;
-			const pollIntervalMs = 100;
-			let waited = 0;
-
-			while (waited < maxWaitMs) {
-				await refreshStatus();
-
-				if (!isScanInProgress.value) {
-					break;
-				}
-
-				await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-				waited += pollIntervalMs;
-			}
-		} catch (error) {
-			anotarError('estado', error);
-		}
 	}
 
 	function cancelPendingSearch() {
@@ -575,7 +398,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		document.removeEventListener('visibilitychange', alCambiarVisibilidad);
 		cancelPendingSearch();
 
-		const isActive = isScanInProgress.value || isCommitting.value;
+		const isActive = isScanInProgress.value;
 
 		if (!isActive) {
 			stopStatusPolling();
@@ -598,22 +421,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		cancelPendingSearch();
 		query.value = '';
 		results.value = [];
-	}
-
-	function checkIdleReindex() {
-		//const settings = userSettingsStore.userSettings.globalSearch;
-
-		// if (!settings.autoReindexWhenIdle) return;
-		const corresponde = debeReindexar({
-			senal: senalDeInactividad.value,
-			escaneoEnCurso: isScanInProgress.value,
-			inicializado: isInitialized.value,
-			indiceVencido: getIsIndexStale(),
-		});
-
-		if (!corresponde) return;
-
-		startScan();
 	}
 
 	function getAllPriorityPaths(): string[] {
@@ -651,151 +458,9 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		return Array.from(paths);
 	}
 
-	/**
-	 * Aplica lo que informó el sistema.
-	 *
-	 * Al pasar a inactiva se revisa en el acto —ese es el momento exacto en que
-	 * se abrió la ventana de oportunidad— y se deja la red de seguridad
-	 * corriendo. Al salir de inactiva se apaga: un temporizador despertando para
-	 * siempre mientras alguien usa la máquina es lo contrario de lo que se
-	 * busca.
-	 */
-	function aplicarEstadoDeInactividad(estado: EstadoDeInactividadDelSistema | null) {
-		senalDeInactividad.value = leerSenal(estado);
-
-		if (senalDeInactividad.value === 'inactiva') {
-			iniciarRedDeSeguridad();
-			checkIdleReindex();
-			return;
-		}
-
-		detenerRedDeSeguridad();
-	}
-
-	function iniciarRedDeSeguridad() {
-		if (redDeSeguridadId.value !== null) return;
-		redDeSeguridadId.value = setInterval(checkIdleReindex, RED_DE_SEGURIDAD_MS);
-	}
-
-	function detenerRedDeSeguridad() {
-		if (redDeSeguridadId.value === null) return;
-		clearInterval(redDeSeguridadId.value);
-		redDeSeguridadId.value = null;
-	}
-
-	/**
-	 * Se pone a escuchar al sistema en vez de a la propia ventana.
-	 *
-	 * El backend avisa las transiciones, pero cuando esto arranca la sesión ya
-	 * puede llevar un rato inactiva —o el aviso de que hay señal ya puede haber
-	 * pasado—, así que además se pregunta una vez el estado actual.
-	 */
-	async function startIdleDetection() {
-		if (dejarDeEscucharInactividad.value !== null) return;
-
-		dejarDeEscucharInactividad.value = await listen<EstadoDeInactividadDelSistema>(
-			EVENTO_INACTIVIDAD,
-			(evento) => aplicarEstadoDeInactividad(evento.payload)
-		);
-
-		try {
-			aplicarEstadoDeInactividad(await invoke<EstadoDeInactividadDelSistema>('system_idle_state'));
-		} catch (error) {
-			// Sin backend que conteste no hay señal, y sin señal no se reindexa
-			// solo. Se anota el error pero no se cae nada: la búsqueda sigue
-			// funcionando, y el escaneo manual también.
-			anotarError('inactividad', error);
-			aplicarEstadoDeInactividad(null);
-		}
-	}
-
-	function stopIdleDetection() {
-		detenerRedDeSeguridad();
-
-		if (dejarDeEscucharInactividad.value !== null) {
-			dejarDeEscucharInactividad.value();
-			dejarDeEscucharInactividad.value = null;
-		}
-
-		senalDeInactividad.value = 'desconocida';
-	}
-
-	async function handleDriveListChange() {
-		if (!isInitialized.value) return;
-
-		const currentCount = sharedDrives.value.length;
-
-		// La primera vez sólo se anota: el recorrido del arranque ya preguntó
-		// por las unidades al backend, así que no hay nada que rehacer porque la
-		// lista del frontend termine de cargarse.
-		if (lastKnownDriveCount.value === null) {
-			lastKnownDriveCount.value = currentCount;
-			return;
-		}
-
-		if (currentCount !== lastKnownDriveCount.value) {
-			lastKnownDriveCount.value = currentCount;
-
-			if (driveChangeDebounceTimerId.value !== null) {
-				clearTimeout(driveChangeDebounceTimerId.value);
-			}
-
-			if (isScanInProgress.value) {
-				await cancelScan();
-			}
-
-			driveChangeDebounceTimerId.value = setTimeout(() => {
-				driveChangeDebounceTimerId.value = null;
-				startScanWithCurrentDrives();
-			}, 2000);
-		}
-	}
-
-	async function startScanWithCurrentDrives() {
-		if (!isInitialized.value) return;
-
-		// Las mismas raíces que el recorrido del arranque, y no la lista del
-		// frontend: dos listas distintas para lo mismo es cómo se llega a que un
-		// camino indexe la carpeta del usuario y el otro no.
-		const driveRoots = await getDriveRoots();
-
-		if (driveRoots.length === 0) {
-			// Éste no lo decía de ninguna manera: se volvía y ya. Es el mismo
-			// caso que el de arriba y se cuenta igual.
-			sinRaices.value = true;
-			return;
-		}
-
-		sinRaices.value = false;
-
-		try {
-			await invoke('global_search_start_scan', {
-				settings: {
-					scan_depth: Math.max(1, /*Math.floor(settings.scanDepth)*/ 5),
-					ignored_paths: /*settings.ignoredPaths*/ [],
-					drive_roots: driveRoots,
-					parallel_scan: /*settings.parallelScan ??*/ false,
-				},
-			});
-
-			startStatusPolling();
-			olvidarError('recorrido');
-		} catch (error) {
-			anotarError('recorrido', error);
-		}
-	}
-
 	watch(query, () => {
 		search();
 	});
-
-	watch(
-		sharedDrives,
-		() => {
-			handleDriveListChange();
-		},
-		{ deep: true }
-	);
 
 	return {
 		isOpen,
@@ -803,28 +468,18 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		results,
 		isSearching,
 		isScanInProgress,
-		isCommitting,
-		isParallelScan,
 		lastScanTime,
 		indexedItemCount,
 		indexSizeBytes,
-		currentDriveRoot,
-		driveScanErrors,
 		isIndexValid,
 		lastScanState,
 		lastScanIsLive,
 		indiceIncompleto,
-		scannedDrivesCount,
-		totalDrivesCount,
-		scanProgress,
-		needsScan,
-		getIsIndexStale,
+		indexMissing,
+		indexUnavailableReason,
 		isInitialized,
 		lastError,
 		errores,
-		sinRaices,
-		senalDeInactividad,
-		getIsUserIdle,
 		open,
 		close,
 		toggle,
@@ -834,10 +489,6 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		initOnLaunch,
 		startStatusPolling,
 		stopStatusPolling,
-		startScan,
-		cancelScan,
 		search,
-		startIdleDetection,
-		stopIdleDetection,
 	};
 });

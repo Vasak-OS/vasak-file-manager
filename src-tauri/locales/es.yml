@@ -23,10 +23,7 @@ filter:
   showHiddenItems: Mostrar Elementos Ocultos
   filter: Filtro
 globalSearch:
-  driveScanInProgress: Recorriendo las unidades…
-  scanningInParallel: Recorriendo varias unidades a la vez…
-  indexStatus:
-    committing: Guardando el índice…
+  launcherIsIndexing: El lanzador está actualizando el índice…
   indexMayBeIncomplete: El último recorrido no terminó, así que puede faltar algo.
   indexedItemsOne: "{0} elemento indexado"
   indexedItemsOther: "{0} elementos indexados"
@@ -41,16 +38,16 @@ globalSearch:
   exactMatch: Coincidencia Exacta
   globalSearch: Búsqueda Global
   somethingFailed: La búsqueda global tuvo un problema
-  nothingToScan: No hay nada que recorrer
-  nothingToScanDescription: >-
-    El índice se arma recorriendo la carpeta del usuario y las unidades que haya, y
-    no se pudo resolver ninguna de las dos. Hasta que vuelva alguna no hay nada que
-    buscar.
+  noIndexYet: Todavía no hay índice para buscar
+  noIndexYetDescription: >-
+    El índice lo arma y lo mantiene al día Prism, el lanzador, que lo refresca cada vez
+    que se abre. Si nunca lo abriste —o no está instalado— todavía no hay nada que
+    buscar acá.
   indexEmpty: Todavía no hay nada indexado
   indexEmptyDescription: >-
-    La búsqueda global mira un índice de las unidades, y ese índice todavía está vacío. Se
-    arma recorriéndolas: empieza solo la primera vez y sigue cuando la computadora está en
-    reposo. El campo de arriba queda apagado hasta que haya algo para buscar.
+    La búsqueda global mira un índice de la carpeta del usuario y las unidades que haya,
+    y ese índice todavía está vacío. Lo arma Prism, el lanzador, la primera vez que se
+    abre. El campo de arriba queda apagado hasta que haya algo para buscar.
   options: Opciones
   resultLimit: Límite de Resultados
   results: Resultados

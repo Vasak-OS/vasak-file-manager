@@ -204,3 +204,26 @@ describe('las dependencias pares obligatorias', () => {
 		}
 	});
 });
+
+describe('el rango de plugin-config-manager está sujeto a propósito', () => {
+	test('no puede alcanzar la 2.7.0, que pide pinia 4', async () => {
+		// El `~` de `~2.6.1` no es un descuido ni una manía: **la 2.7.0 del
+		// plugin declara `pinia: ^4.0.0`** y esta aplicación está en pinia 3.
+		// Con `^2.6.1` el rango la alcanza, así que cualquiera que reinstale sin
+		// el archivo de bloqueo —o que lo refresque— se trae una versión con un
+		// par incompatible.
+		//
+		// La prueba de más arriba lo caza **después** de instalarlo; ésta lo
+		// impide antes, y sobre todo explica el motivo: sin esto, el `~` parece
+		// un error de tipeo y el primero que pase lo «arregla» a `^`.
+		//
+		// Cuando esta aplicación suba a pinia 4, lo que corresponde es volver a
+		// `^` y borrar esta prueba, no relajarla.
+		const manifiesto = await Bun.file(new URL('../package.json', import.meta.url)).json();
+		const rango = manifiesto.dependencies['@vasakgroup/plugin-config-manager'];
+
+		expect(rango).toBe('~2.6.1');
+		expect(Bun.semver.satisfies('2.7.0', rango)).toBe(false);
+		expect(Bun.semver.satisfies('2.6.9', rango)).toBe(true);
+	});
+});

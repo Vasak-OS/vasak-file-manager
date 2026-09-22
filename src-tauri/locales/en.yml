@@ -23,10 +23,7 @@ filter:
   showHiddenItems: Show Hidden Items
   filter: Filter
 globalSearch:
-  driveScanInProgress: Scanning drives…
-  scanningInParallel: Scanning several drives at once…
-  indexStatus:
-    committing: Saving the index…
+  launcherIsIndexing: The launcher is updating the index…
   indexMayBeIncomplete: The last scan did not finish, so something may be missing.
   indexedItemsOne: "{0} item indexed"
   indexedItemsOther: "{0} items indexed"
@@ -41,16 +38,16 @@ globalSearch:
   exactMatch: Exact Match
   globalSearch: Global Search
   somethingFailed: Global search hit a problem
-  nothingToScan: Nothing to go through
-  nothingToScanDescription: >-
-    The index is built by going through your home folder and whatever drives are
-    attached, and neither could be resolved. Nothing can be searched until one of
-    them comes back.
+  noIndexYet: There is no index to search yet
+  noIndexYetDescription: >-
+    The index is built and kept up to date by Prism, the launcher, which refreshes it
+    every time it opens. If you have never opened it — or it is not installed — there
+    is nothing to search here yet.
   indexEmpty: Nothing indexed yet
   indexEmptyDescription: >-
-    Global search reads an index of your drives, and that index is still empty. It is built
-    by going through them: it starts on its own the first time, and picks up again while the
-    computer is idle. The field above stays off until there is something to search.
+    Global search reads an index of your home folder and whatever drives are attached, and
+    that index is still empty. Prism, the launcher, builds it the first time it opens. The
+    field above stays off until there is something to search.
   options: Options
   resultLimit: Result Limit
   results: Results

@@ -1,32 +1,17 @@
 mod contrato;
+pub mod huerfano;
 
 use crate::utils::normalize_path;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{Field, IndexRecordOption, Schema, Value};
-use tantivy::{doc, Index, IndexReader, IndexWriter, Term};
-use walkdir::WalkDir;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GlobalSearchSettings {
-    pub scan_depth: usize,
-    pub ignored_paths: Vec<String>,
-    pub drive_roots: Vec<String>,
-    pub parallel_scan: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GlobalSearchDriveScanError {
-    pub drive_root: String,
-    pub message: String,
-}
+use tantivy::{Index, IndexReader, Term};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalSearchQueryOptions {
@@ -56,19 +41,25 @@ pub struct GlobalSearchResultEntry {
     pub score: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Lo que esta aplicación sabe de un índice que **no** mantiene.
+///
+/// Todo lo que había acá sobre el escaneo en curso —en qué unidad va, cuántas
+/// lleva, si se está confirmando, qué unidades fallaron— se fue con el escaneo.
+/// No es que se deje de mostrar: es que este proceso ya no lo sabe, y fingir
+/// que sí obligaría a preguntárselo por D-Bus al lanzador, que es justamente el
+/// acoplamiento que la decisión de Vasak-OS/vasak-file-manager#75 evitó.
+///
+/// Lo que queda sale de dos lugares y los dos son archivos: el `status.json`
+/// que deja el lanzador y el índice abierto de sólo lectura.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GlobalSearchStatus {
+    /// Si hay un escaneo corriendo **según el archivo de estado**, no según
+    /// este proceso. Es lo único que se puede saber sin preguntarle a nadie.
     pub is_scan_in_progress: bool,
-    pub is_committing: bool,
-    pub is_parallel_scan: bool,
     pub last_scan_time: Option<u64>,
     pub indexed_item_count: u64,
     pub index_size_bytes: u64,
-    pub current_drive_root: Option<String>,
-    pub drive_scan_errors: Vec<GlobalSearchDriveScanError>,
     pub is_index_valid: bool,
-    pub scanned_drives_count: u32,
-    pub total_drives_count: u32,
     /// Cómo terminó el último escaneo, tal cual está escrito. Ver `contrato`.
     ///
     /// Va crudo a propósito: la ventana decide qué decir con cada valor, y un
@@ -78,8 +69,25 @@ pub struct GlobalSearchStatus {
     ///
     /// Un escaneo que se muere de golpe deja el «en curso» escrito para
     /// siempre. Sin esto, la ventana diría «indexando» después de un reinicio y
-    /// no habría forma de destrabarlo.
+    /// no habría forma de destrabarlo. El vencimiento lo declara el que
+    /// escribe, en el propio archivo.
     pub last_scan_is_live: bool,
+    /// Que **todavía no hay** índice: el lanzador no escaneó nunca, o no está
+    /// instalado.
+    ///
+    /// Es un estado normal y no un error, y por eso va aparte del campo de
+    /// abajo. Mezclados, la primera vez que alguien abre la búsqueda en una
+    /// máquina recién instalada le aparece un cartel rojo por algo que no está
+    /// roto — y, al revés, un índice que de verdad no se puede abrir le
+    /// aparece con el texto «abrí el lanzador», que no lo va a arreglar.
+    pub index_missing: bool,
+    /// Por qué no se pudo abrir el índice **estando**.
+    ///
+    /// Esto sí es un problema: hay un directorio y no se entiende. Pasa sobre
+    /// todo cuando el esquema es de otra versión del lanzador, y lo que
+    /// corresponde es decirlo tal cual —sirve para un informe de error— y no
+    /// tragárselo.
+    pub index_unavailable_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -93,35 +101,21 @@ struct GlobalSearchIndexFields {
     size: Field,
 }
 
+/// El índice abierto, para no reabrirlo en cada tecla.
+///
+/// Ya no hay estado del escaneo que guardar —lo que se sabe se lee del archivo
+/// cada vez que se pregunta—, así que esto es sólo la caché del lector.
 struct GlobalSearchState {
-    status: GlobalSearchStatus,
     index: Option<Index>,
     reader: Option<IndexReader>,
     fields: Option<GlobalSearchIndexFields>,
-    cancel_flag: Arc<AtomicBool>,
 }
 
 static GLOBAL_SEARCH_STATE: Lazy<Arc<RwLock<GlobalSearchState>>> = Lazy::new(|| {
     Arc::new(RwLock::new(GlobalSearchState {
-        status: GlobalSearchStatus {
-            is_scan_in_progress: false,
-            is_committing: false,
-            is_parallel_scan: false,
-            last_scan_time: None,
-            indexed_item_count: 0,
-            index_size_bytes: 0,
-            current_drive_root: None,
-            drive_scan_errors: vec![],
-            is_index_valid: false,
-            scanned_drives_count: 0,
-            total_drives_count: 0,
-            last_scan_state: None,
-            last_scan_is_live: false,
-        },
         index: None,
         reader: None,
         fields: None,
-        cancel_flag: Arc::new(AtomicBool::new(false)),
     }))
 });
 
@@ -134,47 +128,6 @@ fn now_millis() -> u64 {
 
 fn normalize_case(value: &str) -> String {
     value.trim().to_lowercase()
-}
-
-fn builtin_ignored_paths() -> &'static [&'static str] {
-    &[
-        "/$Recycle.Bin",
-        "/System Volume Information",
-        "/proc",
-        "/sys",
-        "/dev",
-        "/run",
-        "/tmp",
-        "/var/tmp",
-        "/lost+found",
-        "/.Trash",
-        "/.Trashes",
-        "/.Spotlight-V100",
-        "/.fseventsd",
-        "/Volumes/.Trashes",
-        "/node_modules",
-        "/.git",
-        "/target",
-        "/.cache",
-        "/Library/Caches",
-        "/AppData/Local/Temp",
-    ]
-}
-
-fn is_ignored_path(path: &str, ignored_paths: &[String]) -> bool {
-    ignored_paths.iter().any(|ignored| {
-        let normalized = ignored.trim().trim_end_matches('/');
-        if normalized.is_empty() {
-            return false;
-        }
-
-        if normalized.starts_with('/') {
-            let segment = normalized;
-            return path.contains(&format!("{}/", segment)) || path.ends_with(segment);
-        }
-
-        path.starts_with(normalized)
-    })
 }
 
 /// El esquema, del contrato que se comparte con el lanzador.
@@ -258,58 +211,12 @@ struct GlobalSearchMeta {
     scan_state_ttl_ms: Option<u64>,
 }
 
-/// Cuánto vale un «en curso» antes de considerarlo un escaneo que murió.
-///
-/// El estado se escribe una vez, al arrancar, así que este número tiene que
-/// cubrir un escaneo entero. Es un compromiso con dos lados y ninguno es grave:
-/// un escaneo que se muere de golpe se lee como «indexando» durante media hora
-/// más, y uno que tarda más que eso se lee como «incompleto», que es cierto
-/// mientras corre. Si los escaneos se vuelven largos, lo que corresponde es
-/// reescribir el estado en cada raíz recorrida —no subir este número—, y ahí el
-/// vencimiento pasa a cubrir una raíz en vez de todo.
-const SCAN_STATE_TTL_MS: u64 = 30 * 60 * 1000;
-
 const SCHEMA_VERSION: u32 = 1;
 
 fn read_meta(base_dir: &Path) -> Option<GlobalSearchMeta> {
     let path = meta_file(base_dir);
     let text = std::fs::read_to_string(path).ok()?;
     serde_json::from_str(&text).ok()
-}
-
-fn write_meta(base_dir: &Path, meta: &GlobalSearchMeta) -> Result<(), String> {
-    let path = meta_file(base_dir);
-    if let Some(parent) = path.parent() {
-        ensure_dir(parent)?;
-    }
-    let json = serde_json::to_string(meta).map_err(|error| error.to_string())?;
-    std::fs::write(path, json).map_err(|error| error.to_string())
-}
-
-fn ensure_dir(path: &Path) -> Result<(), String> {
-    std::fs::create_dir_all(path).map_err(|error| error.to_string())
-}
-
-/// Deja escrito en qué estado quedó el escaneo, sin pisar lo demás.
-///
-/// Lee lo que había para no perder la fecha ni el conteo cuando el escaneo
-/// falla antes de tener uno nuevo: un fallo no puede además borrar lo poco que
-/// se sabía.
-fn write_scan_state(base_dir: &Path, estado: &str, conteo: Option<u64>) {
-    let previo = read_meta(base_dir);
-
-    let meta = GlobalSearchMeta {
-        last_scan_time: previo.as_ref().and_then(|m| m.last_scan_time),
-        indexed_item_count: conteo
-            .or_else(|| previo.as_ref().map(|m| m.indexed_item_count))
-            .unwrap_or(0),
-        schema_version: SCHEMA_VERSION,
-        scan_state: Some(estado.to_string()),
-        scan_state_time: Some(now_millis()),
-        scan_state_ttl_ms: Some(SCAN_STATE_TTL_MS),
-    };
-
-    let _ = write_meta(base_dir, &meta);
 }
 
 /// Si lo escrito es un «en curso» que todavía vale.
@@ -331,171 +238,62 @@ fn estado_en_curso_vigente(meta: &GlobalSearchMeta) -> bool {
     }
 }
 
-fn validate_index(index_path: &Path, base_dir: &Path) -> bool {
-    let meta = match read_meta(base_dir) {
-        Some(meta) => meta,
-        None => return false,
-    };
-
-    if meta.schema_version != SCHEMA_VERSION {
-        return false;
-    }
-
-    if !index_path.exists() {
-        return false;
-    }
-
-    match Index::open_in_dir(index_path) {
-        Ok(index) => match index.reader_builder().try_into() {
-            Ok(reader) => {
-                let searcher = reader.searcher();
-                searcher.num_docs() > 0
-            }
-            Err(_) => false,
-        },
-        Err(_) => false,
-    }
-}
-
-/// Vacía el índice, en el lugar siempre que se pueda.
+/// Abre el índice para **leerlo**, y nada más.
 ///
-/// Que sea en el lugar no es una optimización. `vasak-prism` abre el índice una
-/// vez y se queda con el lector toda la sesión: los `commit` los sigue solo,
-/// pero borrar y recrear el directorio lo deja apuntando a segmentos que ya no
-/// existen, y a partir de ahí sirve una foto vieja o falla —las dos cosas en
-/// silencio, porque nadie vuelve a preguntar—.
+/// # Por qué no crea y sobre todo por qué no descarta
 ///
-/// Sólo se borra el directorio cuando el índice no se puede ni abrir, que es
-/// cuando no queda otra: ahí el lector del otro lado ya estaba roto igual.
-fn clear_index(index_path: &Path) -> Result<(), String> {
-    if !index_path.exists() {
-        return Ok(());
-    }
-
-    if let Ok(index) = Index::open_in_dir(index_path) {
-        if let Ok(mut writer) = index.writer::<tantivy::TantivyDocument>(15_000_000) {
-            if writer.delete_all_documents().is_ok() && writer.commit().is_ok() {
-                return Ok(());
-            }
-        }
-    }
-
-    discard_index(index_path)
-}
-
-/// Borra el índice del disco, esquema incluido.
+/// Lo que había antes era `open_or_create_index`, y hacía las dos cosas: si no
+/// existía lo creaba, y si el esquema guardado no era el suyo **borraba el
+/// directorio entero** y lo rehacía. Tenía sentido cuando el índice era de esta
+/// aplicación. Desde que lo mantiene `vasak-prism` es lo peor que podría hacer:
+/// la llamaba `global_search_query`, o sea que **escribir en el campo de
+/// búsqueda podía borrar el índice del lanzador**.
 ///
-/// Es lo que hay que hacer cuando el esquema guardado no es el que el código
-/// espera: vaciarlo en el lugar conservaría el esquema viejo y el índice nuevo
-/// no se podría crear encima. Rompe los lectores abiertos, así que se usa sólo
-/// acá; el rehacer de todos los días pasa por `clear_index`.
-fn discard_index(index_path: &Path) -> Result<(), String> {
-    if !index_path.exists() {
-        return Ok(());
-    }
-
-    std::fs::remove_dir_all(index_path).map_err(|error| error.to_string())
-}
-
-fn open_or_create_index(
+/// Y no fallaría de forma visible. El lanzador lo rehace en cuanto alguien lo
+/// abre, este lado lo vuelve a descartar en la siguiente búsqueda, y los dos se
+/// quedan recorriendo el disco entero para siempre. Nadie ve un error: se ve un
+/// escritorio que muele disco sin motivo.
+///
+/// Acá no hay ninguna decisión que tomar sobre el índice ajeno. O está y se
+/// puede abrir, o no hay resultados. Que no esté es normal —el lanzador todavía
+/// no escaneó, o no está instalado— y se dice en el estado, no acá.
+fn abrir_para_leer(
     index_path: &Path,
 ) -> Result<(Index, IndexReader, GlobalSearchIndexFields), String> {
-    ensure_dir(index_path)?;
-    let (schema, fields) = build_schema();
+    let (esquema, fields) = build_schema();
 
-    let index = match Index::open_in_dir(index_path) {
-        Ok(existing) => {
-            let existing_schema = existing.schema();
-            if existing_schema != schema {
-                drop(existing);
-                discard_index(index_path)?;
-                ensure_dir(index_path)?;
-                Index::create_in_dir(index_path, schema).map_err(|error| error.to_string())?
-            } else {
-                existing
-            }
-        }
-        Err(_) => Index::create_in_dir(index_path, schema).map_err(|error| error.to_string())?,
-    };
+    let index = Index::open_in_dir(index_path)
+        .map_err(|error| format!("no se pudo abrir el índice de búsqueda: {error}"))?;
+
+    // El esquema se comprueba y se **rechaza**, no se arregla. Si no coincide,
+    // lo escribió una versión del lanzador que no es ésta: consultarlo daría
+    // campos que no existen o, peor, campos con el mismo nombre y otro
+    // significado. Decirlo es lo único correcto; tocarlo es de quien escribe.
+    if index.schema() != esquema {
+        return Err(
+            "el índice de búsqueda es de otra versión del esquema; lo rehace vasak-prism"
+                .to_string(),
+        );
+    }
 
     let reader = index
         .reader_builder()
         .try_into()
-        .map_err(|error| error.to_string())?;
+        .map_err(|error: tantivy::TantivyError| error.to_string())?;
 
     Ok((index, reader, fields))
 }
 
+/// Lo que se sabe del índice, que lo mantiene otro.
+///
+/// Antes esto abría el índice, lo creaba si faltaba y lo vaciaba si no valía.
+/// Ahora sólo mira: lee el `status.json` que deja `vasak-prism` y abre el
+/// índice de sólo lectura si está. No escanear también significa no tener nada
+/// que arrancar — el nombre se queda porque es lo que la ventana llama al
+/// abrirse, y lo que hace ahora es enterarse.
 #[tauri::command]
 pub fn global_search_init() -> Result<GlobalSearchStatus, String> {
-    let base_dir = contrato::base_de_cache()
-        .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
-
-    let index_path = index_dir(&base_dir);
-    let is_valid = validate_index(&index_path, &base_dir);
-
-    if !is_valid {
-        let _ = clear_index(&index_path);
-    }
-
-    let (_index, reader, _fields) = open_or_create_index(&index_path)?;
-
-    let indexed_item_count = reader.searcher().num_docs();
-    let index_size = calculate_dir_size(&index_path);
-    let meta = read_meta(&base_dir);
-
-    let mut state = GLOBAL_SEARCH_STATE
-        .write()
-        .map_err(|error| error.to_string())?;
-
-    state.status.indexed_item_count = indexed_item_count;
-    state.status.index_size_bytes = index_size;
-    state.status.last_scan_time = meta.as_ref().and_then(|m| m.last_scan_time);
-    state.status.is_index_valid = is_valid && indexed_item_count > 0;
-    state.status.last_scan_state = meta.as_ref().and_then(|m| m.scan_state.clone());
-    state.status.last_scan_is_live = meta.as_ref().is_some_and(estado_en_curso_vigente);
-
-    Ok(state.status.clone())
-}
-
-fn add_path_doc(writer: &mut IndexWriter, fields: &GlobalSearchIndexFields, path: &Path) {
-    let metadata = match std::fs::metadata(path) {
-        Ok(meta) => meta,
-        Err(_) => return,
-    };
-
-    let is_dir = metadata.is_dir();
-    let is_file = metadata.is_file();
-
-    let name = match path.file_name().and_then(|n| n.to_str()) {
-        Some(n) => n.to_string(),
-        None => return,
-    };
-
-    let path_string = match path.to_str() {
-        Some(p) => normalize_path(p),
-        None => return,
-    };
-
-    let name_lower = normalize_case(&name);
-    let modified_time = metadata
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_millis() as u64)
-        .unwrap_or(0);
-
-    let size = if is_file { metadata.len() } else { 0 };
-
-    let _ = writer.add_document(doc!(
-        fields.path => path_string,
-        fields.name => name,
-        fields.name_lower => name_lower,
-        fields.is_file => if is_file { 1u64 } else { 0u64 },
-        fields.is_dir => if is_dir { 1u64 } else { 0u64 },
-        fields.modified_time => modified_time,
-        fields.size => size,
-    ));
+    global_search_get_status()
 }
 
 fn calculate_similarity_score(query: &str, name: &str) -> f32 {
@@ -676,447 +474,59 @@ fn matches_type(doc_is_file: u64, doc_is_dir: u64, options: &GlobalSearchQueryOp
     (options.include_files && is_file) || (options.include_directories && is_dir)
 }
 
+/// Lo que se sabe del índice, leído del disco cada vez.
+///
+/// Antes esto devolvía una copia de lo que el propio escaneo había ido dejando
+/// en memoria. Ahora el escaneo es de otro proceso, así que lo que hay en
+/// memoria no se entera de nada: si el lanzador escanea mientras esta ventana
+/// está abierta, la única forma de verlo es volver a mirar el archivo.
+///
+/// Son dos lecturas chicas —un JSON de cien bytes y el tamaño de un directorio
+/// plano—, y se hacen cuando la ventana pregunta, no por tecla.
 #[tauri::command]
 pub fn global_search_get_status() -> Result<GlobalSearchStatus, String> {
-    let state = GLOBAL_SEARCH_STATE
-        .read()
-        .map_err(|error| error.to_string())?;
-    Ok(state.status.clone())
-}
-
-#[tauri::command]
-pub fn global_search_cancel_scan() -> Result<(), String> {
-    let state = GLOBAL_SEARCH_STATE
-        .read()
-        .map_err(|error| error.to_string())?;
-    state.cancel_flag.store(true, Ordering::SeqCst);
-    Ok(())
-}
-
-const STATUS_UPDATE_INTERVAL: u64 = 500;
-
-fn scan_drive(
-    root: &str,
-    scan_depth: usize,
-    ignored_paths: &[String],
-    fields: &GlobalSearchIndexFields,
-    writer: &Mutex<IndexWriter>,
-    indexed_count: &AtomicU64,
-    cancel_flag: &AtomicBool,
-) -> Result<(), GlobalSearchDriveScanError> {
-    let root_path = PathBuf::from(root);
-    let root_string = normalize_path(root);
-
-    if let Err(error) = std::fs::read_dir(&root_path) {
-        return Err(GlobalSearchDriveScanError {
-            drive_root: root_string,
-            message: error.to_string(),
+    let Some(base_dir) = contrato::base_de_cache() else {
+        return Ok(GlobalSearchStatus {
+            index_unavailable_reason: Some("no se pudo determinar el directorio de caché".into()),
+            ..Default::default()
         });
-    }
-
-    let mut items_since_last_update: u64 = 0;
-
-    for entry_result in WalkDir::new(&root_path)
-        .follow_links(false)
-        .max_depth(scan_depth.max(1))
-        .into_iter()
-        .filter_entry(|entry| {
-            let path_string = entry.path().to_string_lossy().to_string();
-            let normalized = normalize_path(&path_string);
-            !is_ignored_path(&normalized, ignored_paths)
-        })
-    {
-        if cancel_flag.load(Ordering::SeqCst) {
-            break;
-        }
-
-        let entry = match entry_result {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-
-        let path = entry.path();
-        let path_string = match path.to_str() {
-            Some(p) => normalize_path(p),
-            None => continue,
-        };
-
-        if is_ignored_path(&path_string, ignored_paths) {
-            continue;
-        }
-
-        if entry.depth() == 0 {
-            continue;
-        }
-
-        if let Ok(mut w) = writer.lock() {
-            add_path_doc(&mut w, fields, path);
-        }
-
-        indexed_count.fetch_add(1, Ordering::Relaxed);
-        items_since_last_update += 1;
-
-        if items_since_last_update >= STATUS_UPDATE_INTERVAL {
-            if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                state.status.indexed_item_count = indexed_count.load(Ordering::Relaxed);
-            }
-            items_since_last_update = 0;
-        }
-    }
-
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn global_search_start_scan(settings: GlobalSearchSettings) -> Result<(), String> {
-    {
-        let mut state = GLOBAL_SEARCH_STATE
-            .write()
-            .map_err(|error| error.to_string())?;
-        if state.status.is_scan_in_progress {
-            return Ok(());
-        }
-        state.status.is_scan_in_progress = true;
-        state.status.is_parallel_scan = settings.parallel_scan && settings.drive_roots.len() > 1;
-        state.status.current_drive_root = None;
-        state.status.indexed_item_count = 0;
-        state.status.drive_scan_errors = vec![];
-        state.status.scanned_drives_count = 0;
-        state.status.total_drives_count = settings.drive_roots.len() as u32;
-        state.cancel_flag.store(false, Ordering::SeqCst);
-    }
-
-    let base_dir = contrato::base_de_cache()
-        .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
-    let index_path = index_dir(&base_dir);
-
-    // Queda escrito antes de empezar, no al terminar. Durante un primer escaneo
-    // largo el archivo no existía, y «no hay índice» es la peor lectura posible
-    // de «lo estoy construyendo ahora».
-    write_scan_state(&base_dir, contrato::ESTADO_EN_CURSO, None);
-
-    let cancel_flag = {
-        let state = GLOBAL_SEARCH_STATE
-            .read()
-            .map_err(|error| error.to_string())?;
-        state.cancel_flag.clone()
     };
-
-    tauri::async_runtime::spawn(async move {
-        let result = (|| -> Result<u64, String> {
-            let (index, reader, fields) = open_or_create_index(&index_path)?;
-
-            let writer = index
-                .writer(100_000_000)
-                .map_err(|error| error.to_string())?;
-
-            writer
-                .delete_all_documents()
-                .map_err(|error| error.to_string())?;
-
-            let writer = Mutex::new(writer);
-
-            let ignored_paths: Vec<String> = settings
-                .ignored_paths
-                .iter()
-                .map(|p| normalize_path(p))
-                .chain(builtin_ignored_paths().iter().map(|p| p.to_string()))
-                .collect();
-
-            let valid_drive_roots: Vec<String> = settings
-                .drive_roots
-                .iter()
-                .filter(|root| {
-                    let path = std::path::Path::new(root);
-                    path.exists() && path.is_dir()
-                })
-                .cloned()
-                .collect();
-
-            if valid_drive_roots.is_empty() {
-                if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                    state.status.is_scan_in_progress = false;
-                    state.status.total_drives_count = 0;
-                    state.status.current_drive_root = None;
-                }
-                return Err("No valid drives found to scan".to_string());
-            }
-
-            if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                state.status.total_drives_count = valid_drive_roots.len() as u32;
-            }
-
-            let indexed_count = AtomicU64::new(0);
-            let mut errors: Vec<GlobalSearchDriveScanError> = Vec::new();
-            let mut scanned_count: u32 = 0;
-
-            if settings.parallel_scan && valid_drive_roots.len() > 1 {
-                use std::thread;
-
-                thread::scope(|scope| {
-                    let results: Vec<_> = valid_drive_roots
-                        .iter()
-                        .map(|root| {
-                            let root = root.clone();
-                            let ignored_paths = ignored_paths.clone();
-                            let writer_ref = &writer;
-                            let indexed_count_ref = &indexed_count;
-                            let cancel_flag_ref = &cancel_flag;
-                            let scan_depth = settings.scan_depth;
-
-                            scope.spawn(move || {
-                                if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                                    state.status.current_drive_root = Some(normalize_path(&root));
-                                }
-
-                                let result = scan_drive(
-                                    &root,
-                                    scan_depth,
-                                    &ignored_paths,
-                                    &fields,
-                                    writer_ref,
-                                    indexed_count_ref,
-                                    cancel_flag_ref,
-                                );
-
-                                if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                                    state.status.scanned_drives_count += 1;
-                                    state.status.indexed_item_count =
-                                        indexed_count_ref.load(Ordering::Relaxed);
-                                }
-
-                                result
-                            })
-                        })
-                        .collect();
-
-                    for handle in results {
-                        if let Ok(Err(error)) = handle.join() {
-                            errors.push(error);
-                        }
-                    }
-                });
-            } else {
-                for root in valid_drive_roots.iter() {
-                    if cancel_flag.load(Ordering::SeqCst) {
-                        break;
-                    }
-
-                    let root_string = normalize_path(root);
-
-                    if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                        state.status.current_drive_root = Some(root_string.clone());
-                    }
-
-                    let result = scan_drive(
-                        root,
-                        settings.scan_depth,
-                        &ignored_paths,
-                        &fields,
-                        &writer,
-                        &indexed_count,
-                        &cancel_flag,
-                    );
-
-                    scanned_count += 1;
-                    if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                        state.status.scanned_drives_count = scanned_count;
-                        state.status.indexed_item_count = indexed_count.load(Ordering::Relaxed);
-                    }
-
-                    if let Err(error) = result {
-                        errors.push(error);
-                    }
-                }
-            }
-
-            if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                state.status.drive_scan_errors = errors;
-                state.status.current_drive_root = None;
-                state.status.is_committing = true;
-            }
-
-            let mut w = writer.lock().map_err(|error| error.to_string())?;
-            w.commit().map_err(|error| error.to_string())?;
-            drop(w);
-
-            reader.reload().map_err(|error| error.to_string())?;
-
-            if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-                state.status.is_committing = false;
-            }
-
-            let final_count = indexed_count.load(Ordering::Relaxed);
-            let index_size = calculate_dir_size(&index_path);
-
-            let mut state = GLOBAL_SEARCH_STATE
-                .write()
-                .map_err(|error| error.to_string())?;
-            state.index = Some(index);
-            state.reader = Some(reader);
-            state.fields = Some(fields);
-            state.status.is_index_valid = final_count > 0;
-            state.status.index_size_bytes = index_size;
-
-            Ok(final_count)
-        })();
-
-        if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-            state.status.is_scan_in_progress = false;
-            state.status.is_parallel_scan = false;
-            state.status.current_drive_root = None;
-
-            let was_cancelled = state.cancel_flag.load(Ordering::SeqCst);
-
-            match result {
-                Ok(count) => {
-                    if !was_cancelled {
-                        state.status.last_scan_time = Some(now_millis());
-                    }
-                    state.status.indexed_item_count = count;
-
-                    let estado = if was_cancelled {
-                        contrato::ESTADO_CANCELADO
-                    } else {
-                        contrato::ESTADO_COMPLETO
-                    };
-
-                    let _ = write_meta(
-                        &base_dir,
-                        &GlobalSearchMeta {
-                            last_scan_time: state.status.last_scan_time,
-                            indexed_item_count: count,
-                            schema_version: SCHEMA_VERSION,
-                            scan_state: Some(estado.to_string()),
-                            scan_state_time: Some(now_millis()),
-                            scan_state_ttl_ms: Some(SCAN_STATE_TTL_MS),
-                        },
-                    );
-                }
-                // Antes acá no se escribía nada, así que un escaneo que fallaba
-                // dejaba el estado del anterior y parecía que nada había
-                // pasado. Un cero por un error se veía igual que un cero de un
-                // disco vacío.
-                Err(_) => write_scan_state(&base_dir, contrato::ESTADO_FALLADO, None),
-            }
-        }
-    });
-
-    Ok(())
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IndexPathsSettings {
-    pub paths: Vec<String>,
-    pub scan_depth: usize,
-    pub ignored_paths: Vec<String>,
-}
-
-#[tauri::command]
-pub async fn global_search_index_paths(settings: IndexPathsSettings) -> Result<u64, String> {
-    if settings.paths.is_empty() {
-        return Ok(0);
-    }
-
-    {
-        let state = GLOBAL_SEARCH_STATE
-            .read()
-            .map_err(|error| error.to_string())?;
-        if state.status.is_scan_in_progress {
-            return Err("A full scan is already in progress".to_string());
-        }
-    }
-
-    let base_dir = contrato::base_de_cache()
-        .ok_or_else(|| "Could not determine the user cache directory".to_string())?;
     let index_path = index_dir(&base_dir);
+    let meta = read_meta(&base_dir);
 
-    let (index, reader, fields) = open_or_create_index(&index_path)?;
+    let mut estado = GlobalSearchStatus {
+        last_scan_time: meta.as_ref().and_then(|m| m.last_scan_time),
+        index_size_bytes: calculate_dir_size(&index_path),
+        last_scan_state: meta.as_ref().and_then(|m| m.scan_state.clone()),
+        last_scan_is_live: meta.as_ref().is_some_and(estado_en_curso_vigente),
+        ..Default::default()
+    };
+    estado.is_scan_in_progress = estado.last_scan_is_live;
 
-    let mut writer = index
-        .writer(50_000_000)
-        .map_err(|error| error.to_string())?;
-
-    let ignored_paths: Vec<String> = settings
-        .ignored_paths
-        .iter()
-        .map(|path| normalize_path(path))
-        .chain(builtin_ignored_paths().iter().map(|path| path.to_string()))
-        .collect();
-
-    let mut indexed_count: u64 = 0;
-    let scan_depth = settings.scan_depth.max(1);
-
-    for dir_path in &settings.paths {
-        let path = Path::new(dir_path);
-
-        if !path.exists() || !path.is_dir() {
-            continue;
-        }
-
-        let normalized_dir = normalize_path(dir_path);
-
-        if is_ignored_path(&normalized_dir, &ignored_paths) {
-            continue;
-        }
-
-        let prefix_term = Term::from_field_text(fields.path, &format!("{}/", normalized_dir));
-        writer.delete_term(prefix_term);
-
-        let exact_term = Term::from_field_text(fields.path, &normalized_dir);
-        writer.delete_term(exact_term);
-
-        for entry_result in WalkDir::new(path)
-            .follow_links(false)
-            .max_depth(scan_depth)
-            .into_iter()
-            .filter_entry(|entry| {
-                let path_string = entry.path().to_string_lossy().to_string();
-                let normalized = normalize_path(&path_string);
-                !is_ignored_path(&normalized, &ignored_paths)
-            })
-        {
-            let entry = match entry_result {
-                Ok(entry) => entry,
-                Err(_) => continue,
-            };
-
-            if entry.depth() == 0 {
-                continue;
-            }
-
-            let entry_path = entry.path();
-            let path_string = match entry_path.to_str() {
-                Some(path_str) => normalize_path(path_str),
-                None => continue,
-            };
-
-            if is_ignored_path(&path_string, &ignored_paths) {
-                continue;
-            }
-
-            add_path_doc(&mut writer, &fields, entry_path);
-            indexed_count += 1;
-        }
+    // El conteo sale del índice y no del archivo de estado. Los dos lo traen,
+    // y cuando no coinciden el que manda es el índice: el archivo dice cuántas
+    // entradas dejó el último escaneo y el índice dice cuántas hay para buscar,
+    // que es lo que la ventana está por decirle a alguien.
+    // Los dos casos se separan **acá**, mirando el disco, y no interpretando
+    // el texto del error más abajo: «no está» y «está y no se entiende» se
+    // arreglan de formas distintas y el que mira tiene que poder distinguirlos.
+    if !index_path.is_dir() {
+        estado.index_missing = true;
+        return Ok(estado);
     }
 
-    if indexed_count > 0 {
-        writer.commit().map_err(|error| error.to_string())?;
-        reader.reload().map_err(|error| error.to_string())?;
-
-        let new_total = reader.searcher().num_docs();
-        let index_size = calculate_dir_size(&index_path);
-
-        if let Ok(mut state) = GLOBAL_SEARCH_STATE.write() {
-            state.status.indexed_item_count = new_total;
-            state.status.index_size_bytes = index_size;
-            state.index = Some(index);
-            state.reader = Some(reader);
-            state.fields = Some(fields);
+    match abrir_para_leer(&index_path) {
+        Ok((_, reader, _)) => {
+            estado.indexed_item_count = reader.searcher().num_docs();
+            estado.is_index_valid = estado.indexed_item_count > 0
+                && meta
+                    .as_ref()
+                    .is_some_and(|m| m.schema_version == SCHEMA_VERSION);
         }
+        Err(motivo) => estado.index_unavailable_reason = Some(motivo),
     }
 
-    Ok(indexed_count)
+    Ok(estado)
 }
 
 #[tauri::command]
@@ -1141,7 +551,7 @@ pub async fn global_search_query(
         match (&state.index, &state.reader, &state.fields) {
             (Some(index), Some(reader), Some(fields)) => (index.clone(), reader.clone(), *fields),
             _ => {
-                let (index, reader, fields) = open_or_create_index(&index_path)?;
+                let (index, reader, fields) = abrir_para_leer(&index_path)?;
                 let listo = (index.clone(), reader.clone(), fields);
                 state.index = Some(index);
                 state.reader = Some(reader);
@@ -1159,11 +569,17 @@ pub async fn global_search_query(
         .search(&q, &TopDocs::with_limit(100_000))
         .map_err(|error| error.to_string())?;
 
-    let internal_ignored: Vec<String> = builtin_ignored_paths()
-        .iter()
-        .map(|path| path.to_string())
-        .collect();
-
+    // Acá se volvían a filtrar las rutas excluidas, con una copia de la lista
+    // que usaba el escaneo. Se va con el escaneo, y no sólo porque sobre: el
+    // índice sólo tiene lo que su dueño decidió indexar, así que filtrarlo otra
+    // vez es discutirle al dueño con una lista que ya no se actualiza junto con
+    // la suya.
+    //
+    // Y no es teórico. El lanzador arregló la lista —`/dev` y compañía valían
+    // como segmento en cualquier nivel, así que `~/proyectos/dev` quedaba
+    // afuera— y ahora la indexa. Con la copia vieja acá, esos archivos estarían
+    // en el índice y **esta ventana no los mostraría igual**: el arreglo se
+    // vería en el lanzador y no acá, por una lista que nadie recordaría mirar.
     let min_score = options
         .min_score_threshold
         .unwrap_or_else(|| get_min_score_for_query_length(normalized_query.len()));
@@ -1177,10 +593,6 @@ pub async fn global_search_query(
                 .get_first(fields.path)
                 .and_then(|value| value.as_str())?
                 .to_string();
-
-            if is_ignored_path(&path_value, &internal_ignored) {
-                return None;
-            }
 
             let name_value = retrieved
                 .get_first(fields.name)
@@ -1438,6 +850,15 @@ fn get_drive_root(path: &str) -> String {
 #[cfg(test)]
 mod pruebas {
     use super::*;
+    use tantivy::doc;
+
+    /// El vencimiento que declara `vasak-prism` al escribir un «en curso».
+    ///
+    /// Acá es sólo para armar los casos: este lado ya no lo declara, lo lee del
+    /// propio archivo. Tenerlo como constante propia sería volver a la
+    /// situación que el campo vino a evitar — dos programas diciendo cosas
+    /// distintas sobre el mismo estado.
+    const VENCIMIENTO_DE_EJEMPLO: u64 = 30 * 60 * 1000;
 
     /// Un directorio propio que se borra al salir del alcance.
     ///
@@ -1472,7 +893,7 @@ mod pruebas {
         let (esquema, campos) = build_schema();
         let index = Index::create_in_dir(ruta, esquema).unwrap();
 
-        let mut writer: IndexWriter = index.writer(15_000_000).unwrap();
+        let mut writer: tantivy::IndexWriter = index.writer(15_000_000).unwrap();
         writer
             .add_document(doc!(
                 campos.path => "/casa/informe.pdf",
@@ -1488,49 +909,6 @@ mod pruebas {
 
         let reader: IndexReader = index.reader_builder().try_into().unwrap();
         (index, reader)
-    }
-
-    #[test]
-    fn vaciar_el_indice_no_deja_colgado_al_que_ya_lo_tenia_abierto() {
-        // Esto es lo que le pasa a `vasak-prism`: abre el índice una vez y se
-        // queda con el lector toda la sesión. Los `commit` los sigue solo, pero
-        // si el directorio se borra y se recrea, el lector queda apuntando a
-        // segmentos que no existen y a partir de ahí sirve una foto vieja o
-        // falla, las dos cosas sin decir nada.
-        //
-        // Por eso `clear_index` vacía en el lugar. La prueba es que un lector
-        // abierto de antes siga siendo válido después.
-        let directorio = DirectorioDePrueba::nuevo("vaciar");
-        let (_index, lector) = indice_con_un_documento(&directorio.0);
-
-        assert_eq!(lector.searcher().num_docs(), 1);
-
-        clear_index(&directorio.0).unwrap();
-
-        lector
-            .reload()
-            .expect("el lector de antes tiene que seguir valiendo");
-        assert_eq!(
-            lector.searcher().num_docs(),
-            0,
-            "el índice quedó vacío, pero vivo"
-        );
-        assert!(directorio.0.exists(), "el directorio no se borra");
-    }
-
-    #[test]
-    fn descartar_el_indice_si_borra_el_directorio() {
-        // El otro camino, que es el que hay que usar cuando el esquema guardado
-        // no es el que el código espera: ahí vaciar no alcanza, porque el
-        // esquema viejo se queda y el índice nuevo no se puede crear encima.
-        let directorio = DirectorioDePrueba::nuevo("descartar");
-        let indice = directorio.0.join("index");
-        std::fs::create_dir_all(&indice).unwrap();
-        let (_index, _lector) = indice_con_un_documento(&indice);
-
-        discard_index(&indice).unwrap();
-
-        assert!(!indice.exists(), "acá sí se borra, a propósito");
     }
 
     #[test]
@@ -1564,55 +942,70 @@ mod pruebas {
         );
     }
 
-    #[test]
-    fn un_escaneo_fallado_no_se_lleva_puesto_lo_que_ya_se_sabia() {
-        // Un fallo tiene que poder decirse sin borrar la fecha ni el conteo del
-        // escaneo anterior: lo indexado hasta ayer sigue siendo cierto, y el
-        // lector necesita las tres cosas para distinguir «falló recién» de «no
-        // hay nada».
-        let directorio = DirectorioDePrueba::nuevo("fallado");
-        write_meta(
-            &directorio.0,
-            &GlobalSearchMeta {
-                last_scan_time: Some(1_700_000_000_000),
-                indexed_item_count: 99,
-                schema_version: SCHEMA_VERSION,
-                scan_state: Some(contrato::ESTADO_COMPLETO.to_string()),
-                scan_state_time: Some(1_700_000_000_000),
-                scan_state_ttl_ms: Some(SCAN_STATE_TTL_MS),
-            },
-        )
-        .unwrap();
-
-        write_scan_state(&directorio.0, contrato::ESTADO_FALLADO, None);
-
-        let leido = read_meta(&directorio.0).unwrap();
-        assert_eq!(leido.scan_state.as_deref(), Some(contrato::ESTADO_FALLADO));
-        assert_eq!(
-            leido.last_scan_time,
-            Some(1_700_000_000_000),
-            "la fecha del último escaneo bueno no se toca"
-        );
-        assert_eq!(leido.indexed_item_count, 99, "el conteo tampoco");
+    /// Deja un índice con un esquema que no es el nuestro.
+    fn indice_de_otro_esquema(ruta: &Path) {
+        let mut otro = Schema::builder();
+        otro.add_text_field("otra_cosa", tantivy::schema::STRING);
+        Index::create_in_dir(ruta, otro.build()).unwrap();
     }
 
     #[test]
-    fn el_en_curso_se_escribe_con_su_vencimiento() {
-        // Un «en curso» sin vencimiento deja al lector sin criterio, y ahí cada
-        // uno inventaría el suyo — que es justo lo que este campo evita.
-        let directorio = DirectorioDePrueba::nuevo("en-curso");
+    fn abrir_para_leer_no_borra_un_indice_que_no_entiende() {
+        // La prueba más importante de este archivo.
+        //
+        // Lo que había antes descartaba el directorio entero cuando el esquema
+        // no era el suyo, y lo llamaba `global_search_query`: escribir en el
+        // campo de búsqueda **borraba el índice del lanzador**. Y no se vería
+        // como un fallo — el lanzador lo rehace, esta ventana lo vuelve a
+        // borrar en la siguiente búsqueda, y los dos quedan recorriendo el
+        // disco para siempre sin que nada lo diga.
+        //
+        // El índice es de otro programa. Acá no hay nada que arreglar.
+        let directorio = DirectorioDePrueba::nuevo("otro-esquema");
+        indice_de_otro_esquema(&directorio.0);
 
-        write_scan_state(&directorio.0, contrato::ESTADO_EN_CURSO, None);
+        let antes: Vec<_> = std::fs::read_dir(&directorio.0)
+            .unwrap()
+            .filter_map(|e| e.ok().map(|e| e.file_name()))
+            .collect();
+        assert!(!antes.is_empty(), "el índice ajeno tiene archivos");
 
-        let leido = read_meta(&directorio.0).unwrap();
-        assert_eq!(leido.scan_state.as_deref(), Some(contrato::ESTADO_EN_CURSO));
-        assert_eq!(leido.scan_state_ttl_ms, Some(SCAN_STATE_TTL_MS));
-
-        let escrito_en = leido.scan_state_time.expect("sin fecha no hay criterio");
         assert!(
-            contrato::en_curso_sigue_vivo(escrito_en, SCAN_STATE_TTL_MS, now_millis()),
-            "recién escrito tiene que leerse como vivo"
+            abrir_para_leer(&directorio.0).is_err(),
+            "un esquema que no es el nuestro se rechaza"
         );
+
+        let despues: Vec<_> = std::fs::read_dir(&directorio.0)
+            .unwrap()
+            .filter_map(|e| e.ok().map(|e| e.file_name()))
+            .collect();
+        assert_eq!(
+            antes.len(),
+            despues.len(),
+            "y no se toca ni un archivo del índice ajeno"
+        );
+    }
+
+    #[test]
+    fn abrir_para_leer_no_crea_un_indice_donde_no_hay() {
+        // Crear uno vacío sería peor que no tener ninguno: el lanzador vería un
+        // índice donde no había nada, y quien busca vería cero resultados en
+        // lugar de «todavía no hay índice».
+        let directorio = DirectorioDePrueba::nuevo("sin-indice");
+        let vacio = directorio.0.join("no-esta");
+
+        assert!(abrir_para_leer(&vacio).is_err());
+        assert!(!vacio.exists(), "no se crea nada");
+    }
+
+    #[test]
+    fn un_indice_que_si_es_el_nuestro_se_abre_y_se_lee() {
+        // La otra mitad: rechazar todo también pasaría las dos de arriba.
+        let directorio = DirectorioDePrueba::nuevo("indice-bueno");
+        let _vivo = indice_con_un_documento(&directorio.0);
+
+        let (_, lector, _) = abrir_para_leer(&directorio.0).expect("tiene que abrirse");
+        assert_eq!(lector.searcher().num_docs(), 1);
     }
 
     /// Un estado con los tres campos puestos, para las pruebas de vigencia.
@@ -1634,7 +1027,7 @@ mod pruebas {
         assert!(estado_en_curso_vigente(&meta_con(
             contrato::ESTADO_EN_CURSO,
             ahora,
-            SCAN_STATE_TTL_MS
+            VENCIMIENTO_DE_EJEMPLO
         )));
 
         // Los tres terminales no, por recientes que sean: ya terminaron.
@@ -1644,7 +1037,7 @@ mod pruebas {
             contrato::ESTADO_FALLADO,
         ] {
             assert!(
-                !estado_en_curso_vigente(&meta_con(terminal, ahora, SCAN_STATE_TTL_MS)),
+                !estado_en_curso_vigente(&meta_con(terminal, ahora, VENCIMIENTO_DE_EJEMPLO)),
                 "«{terminal}» ya terminó, no puede estar en curso"
             );
         }
@@ -1657,11 +1050,12 @@ mod pruebas {
         // que darlo por vivo deja un «indexando» que nadie puede destrabar.
         let ahora = now_millis();
 
-        let mut sin_fecha = meta_con(contrato::ESTADO_EN_CURSO, ahora, SCAN_STATE_TTL_MS);
+        let mut sin_fecha = meta_con(contrato::ESTADO_EN_CURSO, ahora, VENCIMIENTO_DE_EJEMPLO);
         sin_fecha.scan_state_time = None;
         assert!(!estado_en_curso_vigente(&sin_fecha));
 
-        let mut sin_vencimiento = meta_con(contrato::ESTADO_EN_CURSO, ahora, SCAN_STATE_TTL_MS);
+        let mut sin_vencimiento =
+            meta_con(contrato::ESTADO_EN_CURSO, ahora, VENCIMIENTO_DE_EJEMPLO);
         sin_vencimiento.scan_state_ttl_ms = None;
         assert!(!estado_en_curso_vigente(&sin_vencimiento));
     }
@@ -1670,21 +1064,12 @@ mod pruebas {
     fn un_en_curso_de_un_escaneo_que_murio_deja_de_estar_vigente() {
         // El caso del reinicio: el proceso que lo escribió ya no está, pero el
         // archivo sigue diciendo «en curso».
-        let hace_mucho = now_millis() - SCAN_STATE_TTL_MS - 1;
+        let hace_mucho = now_millis() - VENCIMIENTO_DE_EJEMPLO - 1;
 
         assert!(!estado_en_curso_vigente(&meta_con(
             contrato::ESTADO_EN_CURSO,
             hace_mucho,
-            SCAN_STATE_TTL_MS
+            VENCIMIENTO_DE_EJEMPLO
         )));
-    }
-
-    #[test]
-    fn vaciar_lo_que_no_existe_no_es_un_error() {
-        let directorio = DirectorioDePrueba::nuevo("inexistente");
-        let nunca = directorio.0.join("no-esta");
-
-        assert!(clear_index(&nunca).is_ok());
-        assert!(discard_index(&nunca).is_ok());
     }
 }
