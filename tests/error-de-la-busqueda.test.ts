@@ -99,7 +99,7 @@ describe('cuando todavía no hay índice', () => {
 		responder('global_search_get_status', {
 			is_scan_in_progress: false,
 			indexed_item_count: 0,
-			index_unavailable_reason: 'no se pudo abrir el índice de búsqueda',
+			index_missing: true,
 		});
 		const panel = await abrirElPanel();
 
@@ -108,11 +108,44 @@ describe('cuando todavía no hay índice', () => {
 		expect(texto).toContain('globalSearch.noIndexYetDescription');
 	});
 
+	test('y no lo pinta como una falla, porque no lo es', async () => {
+		// El rojo es para lo que está roto. La primera búsqueda en una máquina
+		// recién instalada no lo está: el lanzador todavía no escaneó.
+		responder('global_search_get_status', {
+			is_scan_in_progress: false,
+			indexed_item_count: 0,
+			index_missing: true,
+		});
+		const panel = await abrirElPanel();
+
+		expect(panel.text()).not.toContain('globalSearch.somethingFailed');
+		expect(panel.html()).not.toContain('bg-status-error');
+	});
+
+	test('un índice que no se puede abrir sí es una falla, y dice por qué', async () => {
+		// El otro caso, que antes se veía igual que el de arriba: hay índice y
+		// no se entiende —el esquema es de otra versión del lanzador—. Decirle
+		// «abrí Prism» no lo arregla; el motivo técnico sí sirve.
+		responder('global_search_get_status', {
+			is_scan_in_progress: false,
+			indexed_item_count: 0,
+			index_missing: false,
+			index_unavailable_reason: 'el índice es de otra versión del esquema',
+		});
+		const panel = await abrirElPanel();
+
+		const texto = panel.text();
+		expect(texto).toContain('globalSearch.somethingFailed');
+		expect(texto).toContain('el índice es de otra versión del esquema');
+		expect(texto).not.toContain('globalSearch.noIndexYet');
+	});
+
 	test('y con índice no aparece ese cartel', async () => {
 		// La otra mitad: un cartel que sale siempre no informa nada.
 		responder('global_search_get_status', {
 			is_scan_in_progress: false,
 			indexed_item_count: 1234,
+			index_missing: false,
 			index_unavailable_reason: null,
 		});
 		const panel = await abrirElPanel();
@@ -128,6 +161,7 @@ describe('cuando todavía no hay índice', () => {
 		responder('global_search_get_status', {
 			is_scan_in_progress: true,
 			indexed_item_count: 10,
+			index_missing: false,
 			index_unavailable_reason: null,
 		});
 		const panel = await abrirElPanel();

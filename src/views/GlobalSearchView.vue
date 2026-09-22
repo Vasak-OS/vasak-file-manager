@@ -57,7 +57,18 @@ const hasIndexData = computed(() => globalSearchStore.indexedItemCount > 0);
  */
 const indizandoAhora = computed(() => globalSearchStore.isScanInProgress);
 
-/** Si el índice no se pudo abrir, y por qué. */
+/**
+ * Que todavía no hay índice, que **no es un error**.
+ *
+ * Va separado del fallo de abrirlo y se dibuja distinto. Con los dos juntos
+ * pasaban las dos cosas malas a la vez: la primera búsqueda en una máquina
+ * recién instalada salía en rojo por algo que no está roto, y un índice que de
+ * verdad no se puede abrir salía con el texto «abrí el lanzador», que no lo
+ * arregla.
+ */
+const faltaElIndice = computed(() => globalSearchStore.indexMissing);
+
+/** Y esto sí es un problema: hay índice y no se pudo abrir. */
 const sinIndice = computed(() => globalSearchStore.indexUnavailableReason);
 
 /**
@@ -304,29 +315,31 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Todavía no hay índice, que es un estado y no una falla.
+         En tono informativo a propósito: el rojo es para lo que está roto, y
+         acá no hay nada roto — el lanzador todavía no escaneó. Lo que sí hace
+         falta es nombrarlo, porque es la única acción posible y no se puede
+         adivinar desde esta aplicación. -->
+    <div v-if="faltaElIndice"
+      class="mx-2 mt-2 flex flex-col gap-0.5 rounded-corner bg-ui-surface/70 px-3 py-2 text-[13px] text-tx-main">
+      <span class="font-medium">{{ t('globalSearch.noIndexYet') }}</span>
+      <span class="text-tx-muted">{{ t('globalSearch.noIndexYetDescription') }}</span>
+    </div>
+
     <!-- Lo que falló, dicho.
-         `lastError` existía desde siempre, se escribía en trece lugares —el
-         estado del índice, el arranque, el recorrido, cada búsqueda— y **no lo
-         leía nadie**: cuando algo se rompía, el panel se quedaba con el mismo
+         `lastError` existía desde siempre, se escribía en trece lugares y **no
+         lo leía nadie**: cuando algo se rompía, el panel se quedaba con el
          cartel de «todavía no hay índice» y no había forma de enterarse.
          El título va traducido y el detalle no: es lo que contesta el backend,
          y es preferible mostrarlo tal cual —sirve para un informe de error— a
-         tragárselo. Se limpia solo: cada operación que sale bien pone
-         `lastError` en nulo. -->
+         tragárselo.
+         El motivo de no poder abrir el índice va acá y no con `lastError`: el
+         comando de estado **sale bien** aunque el índice no se pueda abrir, así
+         que su casillero de error se limpia y ahí no llegaría nunca. -->
     <div v-if="globalSearchStore.lastError || sinIndice"
       class="mx-2 mt-2 flex flex-col gap-0.5 rounded-corner bg-status-error/10 px-3 py-2 text-[13px] text-status-error">
-      <span class="font-medium">{{
-        sinIndice ? t('globalSearch.noIndexYet') : t('globalSearch.somethingFailed')
-      }}</span>
-      <!-- Quién mantiene el índice, dicho acá y no en la documentación: es la
-           única pantalla donde alguien se va a preguntar por qué no hay
-           resultados, y la respuesta —«lo arma el lanzador»— no se puede
-           adivinar desde esta aplicación. -->
-      <span v-if="sinIndice" class="text-status-error/80">{{
-        t('globalSearch.noIndexYetDescription') }}</span>
-      <!-- El detalle va **además** de lo de arriba y no en su lugar: el motivo
-           técnico sirve para un informe de error, y con un `v-else` quedaba
-           escondido justo cuando hace falta. -->
+      <span class="font-medium">{{ t('globalSearch.somethingFailed') }}</span>
+      <span v-if="sinIndice" class="break-words text-status-error/80">{{ sinIndice }}</span>
       <span v-if="globalSearchStore.lastError" class="break-words text-status-error/80">{{
         globalSearchStore.lastError }}</span>
     </div>

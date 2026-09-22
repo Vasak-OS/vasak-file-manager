@@ -38,7 +38,9 @@ type GlobalSearchStatus = {
 	is_index_valid: boolean;
 	last_scan_state: string | null;
 	last_scan_is_live: boolean;
-	/** Por qué no se pudo abrir el índice, si no se pudo. */
+	/** Que todavía no hay índice. Normal, no es un error. */
+	index_missing: boolean;
+	/** Por qué no se pudo abrir el índice **estando**. Eso sí es un problema. */
 	index_unavailable_reason: string | null;
 };
 
@@ -68,12 +70,19 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	const lastScanState = ref<string | null>(null);
 	const lastScanIsLive = ref(false);
 	/**
-	 * Por qué no hay índice, cuando no lo hay.
+	 * Que todavía no hay índice.
 	 *
-	 * Que no haya es normal —`vasak-prism` no escaneó todavía, o no está
-	 * instalado— y no es un error de esta aplicación. Pero sin esto la ventana
-	 * no tiene cómo distinguirlo de «hay índice y no hay resultados», que es lo
-	 * único que se veía antes: el campo apagado y ninguna explicación.
+	 * Es normal —`vasak-prism` no escaneó todavía, o no está instalado— y no es
+	 * un error de nadie. Va aparte de `indexUnavailableReason` justamente por
+	 * eso: mezclados, la primera búsqueda en una máquina recién instalada
+	 * aparece con un cartel rojo por algo que no está roto.
+	 */
+	const indexMissing = ref(false);
+	/**
+	 * Por qué no se pudo abrir el índice **estando**.
+	 *
+	 * Esto sí es un problema —un esquema de otra versión, un directorio
+	 * ilegible— y se muestra como tal, con el motivo que da el backend.
 	 */
 	const indexUnavailableReason = ref<string | null>(null);
 	const isInitialized = ref(false);
@@ -139,6 +148,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		isIndexValid.value = status.is_index_valid ?? false;
 		lastScanState.value = status.last_scan_state ?? null;
 		lastScanIsLive.value = status.last_scan_is_live ?? false;
+		indexMissing.value = status.index_missing ?? false;
 		indexUnavailableReason.value = status.index_unavailable_reason ?? null;
 	}
 
@@ -465,6 +475,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		lastScanState,
 		lastScanIsLive,
 		indiceIncompleto,
+		indexMissing,
 		indexUnavailableReason,
 		isInitialized,
 		lastError,

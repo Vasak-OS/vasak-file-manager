@@ -72,12 +72,21 @@ pub struct GlobalSearchStatus {
     /// no habría forma de destrabarlo. El vencimiento lo declara el que
     /// escribe, en el propio archivo.
     pub last_scan_is_live: bool,
-    /// Por qué no se pudo abrir el índice, si no se pudo.
+    /// Que **todavía no hay** índice: el lanzador no escaneó nunca, o no está
+    /// instalado.
     ///
-    /// Que no haya índice es normal y no es un error: el lanzador todavía no
-    /// escaneó, o no está instalado. Lo que no puede pasar es que la ventana
-    /// no tenga cómo distinguir eso de «hay índice y no hay resultados», que
-    /// es lo que pasaba antes de que esto existiera.
+    /// Es un estado normal y no un error, y por eso va aparte del campo de
+    /// abajo. Mezclados, la primera vez que alguien abre la búsqueda en una
+    /// máquina recién instalada le aparece un cartel rojo por algo que no está
+    /// roto — y, al revés, un índice que de verdad no se puede abrir le
+    /// aparece con el texto «abrí el lanzador», que no lo va a arreglar.
+    pub index_missing: bool,
+    /// Por qué no se pudo abrir el índice **estando**.
+    ///
+    /// Esto sí es un problema: hay un directorio y no se entiende. Pasa sobre
+    /// todo cuando el esquema es de otra versión del lanzador, y lo que
+    /// corresponde es decirlo tal cual —sirve para un informe de error— y no
+    /// tragárselo.
     pub index_unavailable_reason: Option<String>,
 }
 
@@ -498,6 +507,14 @@ pub fn global_search_get_status() -> Result<GlobalSearchStatus, String> {
     // y cuando no coinciden el que manda es el índice: el archivo dice cuántas
     // entradas dejó el último escaneo y el índice dice cuántas hay para buscar,
     // que es lo que la ventana está por decirle a alguien.
+    // Los dos casos se separan **acá**, mirando el disco, y no interpretando
+    // el texto del error más abajo: «no está» y «está y no se entiende» se
+    // arreglan de formas distintas y el que mira tiene que poder distinguirlos.
+    if !index_path.is_dir() {
+        estado.index_missing = true;
+        return Ok(estado);
+    }
+
     match abrir_para_leer(&index_path) {
         Ok((_, reader, _)) => {
             estado.indexed_item_count = reader.searcher().num_docs();
