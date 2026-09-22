@@ -54,6 +54,20 @@ async function asentar(vueltas = 8) {
 	}
 }
 
+/**
+ * Lo mismo, pero esperando además a que el planificador recargue.
+ *
+ * Desde la 1.3.0 de la librería el cambio de tema no vuelve a pedir los iconos
+ * en el acto: vacía la memoria y **agenda** la recarga, para que una ráfaga de
+ * anuncios —el tema de iconos y el de GTK llegan juntos— no dispare dos
+ * barridos. Esperar sólo microtareas, como hacía esto, deja la prueba mirando
+ * el icono viejo aunque el mecanismo funcione.
+ */
+async function asentarConLaRecarga() {
+	await new Promise((sigue) => setTimeout(sigue, 150));
+	await asentar();
+}
+
 describe('la pantalla de error', () => {
 	/**
 	 * La pantalla montada, y desmontada pase lo que pase.
@@ -120,7 +134,7 @@ describe('la pantalla de error', () => {
 
 			ponerEnElTema('dialog-error', 'data:image/svg+xml,nuevo');
 			await emitir('vicons:theme-changed', null);
-			await asentar();
+			await asentarConLaRecarga();
 
 			expect(pantalla.get('img').attributes('src')).toBe('data:image/svg+xml,nuevo');
 		});

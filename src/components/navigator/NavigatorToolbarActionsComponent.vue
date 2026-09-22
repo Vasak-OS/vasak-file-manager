@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import StatusCenterButton from '@/components/statuscenter/StatusCenterButton.vue';
 import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import type { Layout } from '@/types/navigator';
 
@@ -41,15 +39,6 @@ const isLayoutPopoverOpen = ref(false);
 const currentLayout = computed(() => {
 	return userLayoutStore.layout;
 });
-const layoutGridIcon = useReactiveIcon(() => getSymbolSource('view-grid'));
-const layoutListIcon = useReactiveIcon(() => getSymbolSource('view-list-text'));
-const splitViewIcon = useReactiveIcon(() => getSymbolSource('view-split-left-right'));
-// `search` y no `system-search`: ése es el de la búsqueda rápida de cada panel,
-// que es otra cosa. Éste es el mismo que la propia vista de búsqueda global
-// dibuja en su campo.
-const globalSearchIcon = useReactiveIcon(() => getSymbolSource('search'));
-const infoPanelIcon = useReactiveIcon(() => getSymbolSource('swap-panels'));
-
 async function setLayout(layoutName: LayoutType) {
 	await userLayoutStore.setLayout(layoutName);
 	isLayoutPopoverOpen.value = false;
@@ -63,8 +52,8 @@ async function setLayout(layoutName: LayoutType) {
           <Tooltip>
             <TooltipTrigger>
               <button class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border">
-                <img :src="layoutGridIcon" :alt="t('gridLayout')" v-if="currentLayout === 'grid'" height="24" width="24" class="fill-primary" />
-                <img :src="layoutListIcon" :alt="t('listLayout')" v-else height="24" width="24" class="fill-primary" />
+                <ThemeIcon v-if="currentLayout === 'grid'" name="view-grid" type="symbol" :size="24" :alt="t('gridLayout')" />
+                <ThemeIcon v-else name="view-list-text" type="symbol" :size="24" :alt="t('listLayout')" />
               </button>
             </TooltipTrigger>
             <TooltipContent>{{ t('settings.navigator.navigatorViewLayout') }}</TooltipContent>
@@ -73,12 +62,12 @@ async function setLayout(layoutName: LayoutType) {
         <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
           <button class="flex items-center gap-2 px-2 w-full py-1 rounded-corner hover:bg-primary"
             :class="{ 'bg-secondary hover:bg-primary': currentLayout === 'list' }" @click="setLayout('list')">
-            <img :src="layoutListIcon" :alt="t('listLayout')" height="24" width="24" class="fill-primary" />
+            <ThemeIcon name="view-list-text" type="symbol" :size="24" :alt="t('listLayout')" />
             <span>{{ t('listLayout') }}</span>
           </button>
           <button class="flex items-center gap-2 px-2 py-1 rounded-corner hover:bg-primary"
             :class="{ 'bg-secondary hover:bg-primary': currentLayout === 'grid' }" @click="setLayout('grid')">
-            <img :src="layoutGridIcon" :alt="t('gridLayout')" height="24" width="24" class="fill-primary" />
+            <ThemeIcon name="view-grid" type="symbol" :size="24" :alt="t('gridLayout')" />
             <span>{{ t('gridLayout') }}</span>
           </button>
         </PopoverContent>
@@ -89,7 +78,10 @@ async function setLayout(layoutName: LayoutType) {
             class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary hover:bg-secondary': props.isGlobalSearchOpen }"
             @click="emit('toggle-global-search')" :aria-label="t('globalSearch.globalSearch')">
-            <img :src="globalSearchIcon" :alt="t('globalSearch.globalSearch')" height="24" width="24" class="fill-primary" />
+            <!-- `search` y no `system-search`: ése es el de la búsqueda rápida
+                 de cada panel, que es otra cosa. Éste es el mismo que la propia
+                 vista de búsqueda global dibuja en su campo. -->
+            <ThemeIcon name="search" type="symbol" :size="24" :alt="t('globalSearch.globalSearch')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('globalSearch.globalSearch') }}</TooltipContent>
@@ -101,7 +93,7 @@ async function setLayout(layoutName: LayoutType) {
             :class="{ 'bg-primary hover:bg-secondary': props.isSplitView }"
             :disabled="props.isGlobalSearchOpen"
             @click="emit('toggle-split-view')" :aria-label="t('splitView')">
-            <img :src="splitViewIcon" :alt="t('splitView')" height="24" width="24" class="fill-primary" />
+            <ThemeIcon name="view-split-left-right" type="symbol" :size="24" :alt="t('splitView')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('splitView') }}</TooltipContent>
@@ -112,7 +104,7 @@ async function setLayout(layoutName: LayoutType) {
             class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
             :class="{ 'bg-primary hover:bg-secondary': props.showInfoPanel }"
             @click="emit('toggle-info-panel')" :aria-label="t('toolbar.infoPanel')">
-            <img :src="infoPanelIcon" :alt="t('toolbar.infoPanel')" height="24" width="24" class="fill-primary" />
+            <ThemeIcon name="swap-panels" type="symbol" :size="24" :alt="t('toolbar.infoPanel')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('settings.infoPanel.title') }}</TooltipContent>

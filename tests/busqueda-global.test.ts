@@ -77,8 +77,11 @@ describe('el botón de la barra', () => {
 		);
 
 		return fuente.text().then((texto) => {
-			expect(texto).toContain("getSymbolSource('search')");
-			expect(texto).not.toContain("getSymbolSource('system-search')");
+			expect(texto).toContain('name="search"');
+			// El nombre puesto, no el nombre nombrado: el comentario de al lado
+			// explica por qué no es `system-search` y lo dice con todas las
+			// letras, así que buscar la cadena suelta da rojo con el código bien.
+			expect(texto).not.toContain('name="system-search"');
 		});
 	});
 

@@ -60,7 +60,7 @@ export interface ResolutorDeIconos {
 	 *
 	 * No falla nunca: si el backend no contesta, cae en el genérico. Quien
 	 * llama dibuja lo que reciba, y un rechazo acá termina en una fila **sin
-	 * icono** —`useReactiveIcon` convierte el error en una cadena vacía—.
+	 * icono** —quien llama cae en el genérico—.
 	 *
 	 * Que no falle hacia afuera no quiere decir que se olvide el error: adentro
 	 * las cachés sí lo ven y tiran el pedido que falló, para que el siguiente
@@ -252,4 +252,34 @@ export function nombreDeIcono(entry: DirEntry): Promise<string> {
 /** Tira lo resuelto. Va cuando cambia el tema de iconos. */
 export function olvidarNombres(): void {
 	resolutor.olvidar();
+}
+
+/** La versión del tema con la que ya se tiró lo resuelto. */
+let versionOlvidada = -1;
+
+/**
+ * Tira lo resuelto una sola vez por cambio de tema.
+ *
+ * Quien pide el nombre es cada fila, y con las vistas virtualizadas hay unas
+ * sesenta a la vez. Las sesenta se enteran del cambio de tema en el mismo tic,
+ * así que si cada una llamara a `olvidarNombres()` la primera resolvería, la
+ * segunda le tiraría lo que acababa de guardar, y así: sesenta viajes para
+ * contestar lo mismo que uno. Con la versión de por medio, la primera vacía y
+ * las otras cincuenta y nueve ya encuentran la caché limpia y la comparten.
+ *
+ * No alcanza con vaciar en un oyente aparte del evento del tema: el orden entre
+ * dos oyentes del mismo evento no está garantizado, y si el nuestro corriera
+ * segundo las filas ya habrían pedido con los nombres viejos. Acá el vaciado
+ * pasa **en el mismo lugar** que dispara el pedido, que es la única forma de
+ * que no pueda quedar en el orden equivocado.
+ */
+export function olvidarNombresUnaVezPor(version: number): void {
+	if (version === versionOlvidada) return;
+	versionOlvidada = version;
+	olvidarNombres();
+}
+
+/** Vuelve a dejarlo como recién cargado. Para las pruebas. */
+export function olvidarQueSeOlvido(): void {
+	versionOlvidada = -1;
 }

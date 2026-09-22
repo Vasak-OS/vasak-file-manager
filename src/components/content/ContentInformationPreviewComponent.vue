@@ -131,7 +131,7 @@ watch(
     </div>
 
     <div v-else class="flex items-center justify-center">
-       <EntryIconComponent :entry="selectedEntry" class="h-12 w-12" />
+       <EntryIconComponent :entry="selectedEntry" :size="48" />
     </div>
   </div>
 </template>
