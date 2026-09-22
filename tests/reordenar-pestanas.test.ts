@@ -18,6 +18,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { mount } from '@vue/test-utils';
+import { toRaw } from 'vue';
 import { Container, type DropResult } from 'vue3-smooth-dnd';
 import TabDraggableComponent from '../src/components/tab/TabDraggableComponent.vue';
 
@@ -85,10 +86,22 @@ describe('al soltar una pestaña arrastrada', () => {
 		expect(soltar({ removedIndex: 2, addedIndex: null })).toEqual(['a', 'b', 'd']);
 	});
 
-	test('y un arrastre que no llegó a ninguna parte deja la lista igual', () => {
+	test('y un arrastre que no llegó a ninguna parte devuelve la lista, no una copia', () => {
 		// Los dos en nulo: se empezó a arrastrar y se soltó afuera. Devolver una
 		// lista nueva acá tampoco rompería nada visible, pero haría que la
 		// tienda se guarde una copia en cada arrastre fallido.
-		expect(soltar({})).toEqual(LETRAS);
+		//
+		// Por eso va `toBe` y no `toEqual`: comparar los elementos deja pasar
+		// justamente el `[...props.items]` que se quiere evitar. Lo marcó la
+		// revisión.
+		//
+		// Y va con `toRaw` porque la comparación directa contra la lista que se
+		// pasó falla igual: lo que el componente recibe en `props.items` es el
+		// envoltorio reactivo que arma el montaje, no el arreglo de acá. `toRaw`
+		// lo desenvuelve y deja la identidad comparable; una copia sigue siendo
+		// ella misma y no pasa. Se comprobó devolviendo una.
+		const items = [...LETRAS];
+
+		expect(toRaw(soltar({}, items) as unknown[])).toBe(items);
 	});
 });
