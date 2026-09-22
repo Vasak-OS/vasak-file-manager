@@ -16,8 +16,13 @@ const props = withDefaults(defineProps<Props<unknown>>(), {});
 
 const emit = defineEmits<Emits<unknown>>();
 
-function getItemGhostParent() {
-	return document.querySelector(props.parentSelector);
+function getItemGhostParent(): HTMLElement {
+	// El fantasma se cuelga de la barra para que no lo recorte el contenedor de
+	// las pestañas. El `?? document.body` lo pide el tipo publicado —espera un
+	// elemento, no un `Element | null`—, y es adonde la propia librería cae
+	// cuando esto no devuelve nada. Sin la barra no hay pestañas que arrastrar,
+	// así que en la práctica no se llega.
+	return document.querySelector<HTMLElement>(props.parentSelector) ?? document.body;
 }
 
 function onDrop(dropResult: DropResult) {
@@ -52,8 +57,7 @@ function getUpdatedList(dropResult: DropResult) {
       drag-class="draggable-list__item--drag-active" :animation-duration="250" :get-ghost-parent="getItemGhostParent"
       drag-handle-selector=".item-drag-handle" lock-axis="x" orientation="horizontal" @drop="onDrop"
       @drag-start="emit('drag-start')" @drag-end="emit('drag-end')">
-      <Draggable v-for="(item, index) in props.items" :key="'draggable-item-' + index" class="draggable-list__item"
-        border>
+      <Draggable v-for="(item, index) in props.items" :key="'draggable-item-' + index" class="draggable-list__item">
         <div class="item-drag-handle">
           <slot name="item" :item="item" />
         </div>
