@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
@@ -46,10 +46,6 @@ const cutIcon = useReactiveIcon(() => getSymbolSource('edit-cut'));
 const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
 const shredderIcon = useReactiveIcon(() => getSymbolSource('edit-delete-shred'));
 const trash2Icon = useReactiveIcon(() => getSymbolSource('user-trash'));
-const starIcon = useReactiveIcon(() => getSymbolSource('emblem-favorite'));
-const plusIcon = useReactiveIcon(() => getSymbolSource('gtk-add'));
-const share2Icon = useReactiveIcon(() => getSymbolSource('emblem-shared'));
-const extractIcon = useReactiveIcon(() => getIconSource('application-x-archive'));
 
 const { isActionVisible } = useContextMenuItems(toRef(props, 'selectedEntries'));
 
@@ -236,29 +232,29 @@ function handleDeleteClick() {
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('open-in-new-tab')"
     class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('open-in-new-tab')">
-    <img :src="plusIcon" class="h-4 w-4" />
+    <ThemeIcon name="gtk-add" type="symbol" :size="16" />
     <span>{{ t('fileBrowser.actions.openInNewTab') }}</span>
     <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('share')" @select="emitAction('share')"
     class="flex items-center gap-2">
-    <img :src="share2Icon" class="h-4 w-4" />
+    <ThemeIcon name="emblem-shared" type="symbol" :size="16" />
     <span>{{ t('fileBrowser.actions.share') }}</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('extract-here')"
     @select="emitAction('extract-here')" class="flex items-center gap-2">
-    <img :src="extractIcon" class="h-4 w-4" />
+    <ThemeIcon name="application-x-archive" :size="16" />
     <span>{{ t('fileBrowser.actions.extractHere') }}</span>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('compress')"
     @select="emitAction('compress')" class="flex items-center gap-2">
-    <img :src="extractIcon" class="h-4 w-4" />
+    <ThemeIcon name="application-x-archive" :size="16" />
     <span>{{ t('fileBrowser.actions.compress') }}</span>
   </component>
   <component :is="menuSeparatorComponent" />
   <component :is="menuItemComponent" v-if="isActionVisible('toggle-favorite')" @select="emitAction('toggle-favorite')"
     class="flex items-center gap-2">
-    <img :src="starIcon" class="h-4 w-4" />
+    <ThemeIcon name="emblem-favorite" type="symbol" :size="16" />
     <span>{{ t(allSelectedAreFavorites ? 'fileBrowser.actions.removeFromFavorites' : 'fileBrowser.actions.addToFavorites') }}</span>
   </component>
   <div v-if="isActionVisible('edit-tags')" class="py-1.5">

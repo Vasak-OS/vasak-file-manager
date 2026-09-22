@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	DropdownMenu,
@@ -7,6 +6,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
+	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
 import ActionMenuComponent from '@/components/menu/ActionMenuComponent.vue';
@@ -14,7 +14,6 @@ import Popover from '@/components/ui/popover/Popover.vue';
 import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { interpolar } from '@/tools/interpolar';
 import type { ContextMenuAction } from '@/types/contextMenu';
@@ -39,12 +38,6 @@ const emit = defineEmits<{
 
 const dirSizesStore = useDirSizesStore();
 const { t } = useI18n();
-
-const eyeIcon = useReactiveIcon(() => getSymbolSource('visibility'));
-const checkCheckIcon = useReactiveIcon(() => getSymbolSource('emblem-default'));
-const xIcon = useReactiveIcon(() => getSymbolSource('window-close'));
-const menuIcon = useReactiveIcon(() => getSymbolSource('open-menu-symbolic'));
-const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('overflow-menu'));
 
 const showItemsPopoverOpen = ref(false);
 const itemsFilterQuery = ref('');
@@ -201,26 +194,26 @@ function openCollapsedPopover() {
             <div class="hidden @[400px]:flex items-center gap-1">
               <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('showItems')"
                 @click="showItemsPopoverOpen = true">
-                <img :src="eyeIcon" class="w-3.5 h-3.5" />
+                <ThemeIcon name="visibility" type="symbol" :size="14" />
                 <span class="hidden @[600px]:inline">{{ t('showItems') }}</span>
               </button>
 
               <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50"
                 :title="t('fileBrowser.selectAll')" @click="emit('selectAll')">
-                <img :src="checkCheckIcon" class="w-3.5 h-3.5" />
+                <ThemeIcon name="emblem-default" type="symbol" :size="14" />
                 <span class="hidden @[600px]:inline">{{ t('fileBrowser.selectAll') }}</span>
               </button>
 
               <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50"
                 :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
-                <img :src="xIcon" class="w-3.5 h-3.5" />
+                <ThemeIcon name="window-close" type="symbol" :size="14" />
                 <span class="hidden @[600px]:inline">{{ t('fileBrowser.deselectAll') }}</span>
               </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('menu')">
-                    <img :src="menuIcon" class="w-3.5 h-3.5" />
+                    <ThemeIcon name="open-menu-symbolic" type="symbol" :size="14" />
                     <span class="hidden @[600px]:inline">{{ t('menu') }}</span>
                   </button>
                 </DropdownMenuTrigger>
@@ -236,20 +229,20 @@ function openCollapsedPopover() {
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('actions')" :aria-label="t('actions')">
-                    <img :src="ellipsisVerticalIcon" class="w-4 h-4" />
+                    <ThemeIcon name="overflow-menu" type="symbol" :size="16" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" class="min-w-[180px]">
                   <DropdownMenuItem @click="openCollapsedPopover">
-                    <img :src="eyeIcon" class="w-3.5 h-3.5" />
+                    <ThemeIcon name="visibility" type="symbol" :size="14" />
                     {{ t('showItems') }}
                   </DropdownMenuItem>
                   <DropdownMenuItem @click="emit('selectAll')">
-                    <img :src="checkCheckIcon" class="w-3.5 h-3.5" />
+                    <ThemeIcon name="emblem-default" type="symbol" :size="14" />
                     {{ t('fileBrowser.selectAll') }}
                   </DropdownMenuItem>
                   <DropdownMenuItem @click="emit('deselectAll')">
-                    <img :src="xIcon" class="w-3.5 h-3.5" />
+                    <ThemeIcon name="window-close" type="symbol" :size="14" />
                     {{ t('fileBrowser.deselectAll') }}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -279,7 +272,7 @@ function openCollapsedPopover() {
                   </div>
                   <button type="button" class="shrink-0 self-stretch w-9 flex items-center justify-center rounded-r hover:bg-status-error hover:text-destructive-foreground transition-colors"
                     :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)" :aria-label="t('fileBrowser.removeFromSelection')">
-                    <img :src="xIcon" class="w-4 h-4" />
+                    <ThemeIcon name="window-close" type="symbol" :size="16" />
                   </button>
                 </div>
                 <div v-if="displayedEntries.length === 0" class="p-4 text-tx-muted text-xs text-center">

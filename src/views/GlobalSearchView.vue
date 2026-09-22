@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { EmptyState } from '@vasakgroup/vue-libvasak';
+import { EmptyState, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import NumberField from '@/components/ui/number-field/NumberField.vue';
@@ -38,10 +38,6 @@ const typoTolerance = ref(true);
 const scanDepth = ref(6);
 
 const searchIcon = useReactiveIcon(() => getSymbolSource('search'));
-const chevronDownIcon = useReactiveIcon(() => getSymbolSource('arrow-down'));
-const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
-const loaderIcon = useReactiveIcon(() => getSymbolSource('content-loading-symbolic'));
-const slidersHorizontalIcon = useReactiveIcon(() => getSymbolSource('dialog-filters'));
 
 function toggleOptions() {
 	showOptions.value = !showOptions.value;
@@ -265,9 +261,18 @@ onMounted(async () => {
   <div class="flex h-full flex-col border border-dashed border-ui-border [--results-header-height:36px] [--search-scroll-gutter:18px]">
     <div class="flex items-center gap-3 p-2 pb-0">
       <div class="relative flex flex-1 items-center">
-        <img :src="searchIcon" v-if="!globalSearchStore.isSearching" class="h-4 w-4 pointer-events-none absolute left-3 text-tx-muted" />
-        <img :src="loaderIcon" v-else 
-          class="pointer-events-none absolute left-3 text-tx-muted animate-spin h-4 w-4" />
+        <ThemeIcon
+          v-if="!globalSearchStore.isSearching"
+          name="search"
+          type="symbol"
+          :size="16"
+          class="pointer-events-none absolute left-3 text-tx-muted" />
+        <ThemeIcon
+          v-else
+          name="content-loading-symbolic"
+          type="symbol"
+          :size="16"
+          class="pointer-events-none absolute left-3 text-tx-muted animate-spin" />
         <input
           ref="inputRef"
           :value="globalSearchStore.query"
@@ -278,16 +283,16 @@ onMounted(async () => {
         />
         <button v-if="globalSearchStore.query" class="absolute right-1 h-8 w-8"
           @click="clearQuery">
-          <img :src="xIcon" class="h-4 w-4" />
+          <ThemeIcon name="gtk-close" type="symbol" :size="16" />
         </button>
       </div>
       <div class="flex items-center gap-1">
         <button class="text-tx-muted data-[active]:bg-primary/10 data-[active]:text-primary"
           :data-active="showOptions || undefined" @click="toggleOptions">
-          <img :src="slidersHorizontalIcon" class="h-4 w-4" />
+          <ThemeIcon name="dialog-filters" type="symbol" :size="16" />
         </button>
         <button @click="handleClose">
-          <img :src="xIcon" class="h-4 w-4" />
+          <ThemeIcon name="gtk-close" type="symbol" :size="16" />
         </button>
       </div>
     </div>
@@ -478,7 +483,11 @@ onMounted(async () => {
                     group.entries.length
                   ) }}
                 </span>
-                <img :src="chevronDownIcon" class="h-4 w-4 shrink-0 text-tx-muted transition-transform duration-150 ease-out"
+                <ThemeIcon
+                  name="arrow-down"
+                  type="symbol"
+                  :size="16"
+                  class="shrink-0 text-tx-muted transition-transform duration-150 ease-out"
                   :class="{ '-rotate-90': isDriveCollapsed(group.driveRoot) }" />
               </button>
 

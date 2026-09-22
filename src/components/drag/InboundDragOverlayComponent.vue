@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 
 const props = defineProps<{
@@ -15,16 +14,15 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const CopyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
-const FolderInputIcon = useReactiveIcon(() => getSymbolSource('folder-open'));
 
 const description = computed(() => {
 	const base = props.operationType === 'copy' ? 'drag.dropToCopyItems' : 'drag.dropToMoveItems';
 	return interpolar(t(claveSegunCantidad(base, props.itemCount)), props.itemCount);
 });
 
+// El nombre, no la fuente: ver el comentario del otro velo de arrastre.
 const operationIcon = computed(() =>
-	props.operationType === 'copy' ? CopyIcon.value : FolderInputIcon.value
+	props.operationType === 'copy' ? 'edit-copy' : 'folder-open'
 );
 </script>
 
@@ -35,7 +33,12 @@ const operationIcon = computed(() =>
       <div class="inbound-drag-overlay__card">
         <div class="inbound-drag-overlay__content">
           <span class="inbound-drag-overlay__description">{{ description }}</span>
-          <img :src="operationIcon" :alt="t('drag.dropping')" class="inbound-drag-overlay__icon" />
+          <ThemeIcon
+            :name="operationIcon"
+            type="symbol"
+            :size="32"
+            :alt="t('drag.dropping')"
+            class="inbound-drag-overlay__icon" />
         </div>
         <div class="inbound-drag-overlay__hint">
           {{ t('drag.holdShiftToChangeMode') }}

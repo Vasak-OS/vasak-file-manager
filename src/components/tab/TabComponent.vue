@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { Tab } from '@/types/workspaces';
 import { useEventListener } from '@/utils/event-listener';
@@ -25,7 +23,6 @@ const { t } = useI18n();
 
 const workspacesStore = useWorkspacesStore();
 const { show: showTabMenu } = useContextMenu();
-const xIcon = useReactiveIcon(() => getSymbolSource('gtk-close'));
 const showTabPreview = true;
 const LONG_PRESS_DELAY = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
@@ -187,7 +184,7 @@ async function closeAllTabs() {
 
             <button v-if="showCloseButton"
               @click.stop="emit('close-tab', props.tabGroup)" :aria-label="t('tabs.close')">
-              <img :src="xIcon" :alt="t('tabs.close')" class="h-6 w-6" />
+              <ThemeIcon name="gtk-close" type="symbol" :size="24" :alt="t('tabs.close')" />
             </button>
           </div>
       </TooltipTrigger>

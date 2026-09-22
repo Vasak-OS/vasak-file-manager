@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, ref, watch } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirEntry } from '@/types/dir-entry';
 import {
 	isAudioFile as checkIsAudio,
@@ -18,7 +17,6 @@ const props = defineProps<{
 	isCurrentDir?: boolean;
 }>();
 
-const fileIcon = useReactiveIcon(() => getIconSource('folder'));
 const textContent = ref<string | null>(null);
 const isTextLoading = ref(false);
 const textError = ref<string | null>(null);
@@ -97,7 +95,7 @@ watch(
 <template>
   <div class="flex overflow-hidden h-44 items-center justify-center rounded-corner bg-ui-surface/80">
     <div v-if="!selectedEntry" class="flex items-center justify-center">
-      <img :src="fileIcon" class="h-12 w-12" />
+      <ThemeIcon name="folder" :size="48" />
     </div>
 
     <div v-else-if="isImageFile" class="flex overflow-hidden w-full h-full items-center justify-center">
