@@ -161,7 +161,12 @@ function handleFilterInteractOutside(event?: Event) {
         <TooltipTrigger>
           <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" :disabled="isLoading"
             @click="emit('refresh')" :aria-label="t('fileBrowser.refresh')">
-            <ThemeIcon name="refreshstructure" type="symbol" :size="18" :alt="t('fileBrowser.refresh')" />
+            <ThemeIcon
+              name="refreshstructure"
+              type="symbol"
+              :size="18"
+              :alt="t('fileBrowser.refresh')"
+              :class="{ 'animate-spin': isLoading }" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.refresh') }}</TooltipContent>

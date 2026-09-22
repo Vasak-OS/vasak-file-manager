@@ -261,8 +261,18 @@ onMounted(async () => {
   <div class="flex h-full flex-col border border-dashed border-ui-border [--results-header-height:36px] [--search-scroll-gutter:18px]">
     <div class="flex items-center gap-3 p-2 pb-0">
       <div class="relative flex flex-1 items-center">
-        <ThemeIcon name="search" type="symbol" :size="16" class="pointer-events-none absolute left-3 text-tx-muted" />
-        <ThemeIcon name="content-loading-symbolic" type="symbol" :size="16" class="pointer-events-none absolute left-3 text-tx-muted animate-spin" />
+        <ThemeIcon
+          v-if="!globalSearchStore.isSearching"
+          name="search"
+          type="symbol"
+          :size="16"
+          class="pointer-events-none absolute left-3 text-tx-muted" />
+        <ThemeIcon
+          v-else
+          name="content-loading-symbolic"
+          type="symbol"
+          :size="16"
+          class="pointer-events-none absolute left-3 text-tx-muted animate-spin" />
         <input
           ref="inputRef"
           :value="globalSearchStore.query"
@@ -473,7 +483,12 @@ onMounted(async () => {
                     group.entries.length
                   ) }}
                 </span>
-                <ThemeIcon name="arrow-down" type="symbol" :size="16" class="shrink-0 text-tx-muted transition-transform duration-150 ease-out" />
+                <ThemeIcon
+                  name="arrow-down"
+                  type="symbol"
+                  :size="16"
+                  class="shrink-0 text-tx-muted transition-transform duration-150 ease-out"
+                  :class="{ '-rotate-90': isDriveCollapsed(group.driveRoot) }" />
               </button>
 
               <div v-if="!isDriveCollapsed(group.driveRoot)"

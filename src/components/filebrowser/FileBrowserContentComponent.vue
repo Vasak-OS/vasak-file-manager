@@ -131,15 +131,35 @@ const sortedEntries = computed(() => {
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
-          <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
-          <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
+          <ThemeIcon
+            v-if="listSortColumn === 'name' && listSortDirection === 'asc'"
+            name="arrow-up"
+            type="symbol"
+            :size="16"
+            :alt="t('fileBrowser.sortAscending')" />
+          <ThemeIcon
+            v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'"
+            name="arrow-down"
+            type="symbol"
+            :size="16"
+            :alt="t('fileBrowser.sortDescending')" />
         </button>
         <button v-if="showItemsColumn" type="button"
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('items')">
           {{ t('fileBrowser.items') }}
-          <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
-          <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
+          <ThemeIcon
+            v-if="listSortColumn === 'items' && listSortDirection === 'asc'"
+            name="arrow-up"
+            type="symbol"
+            :size="16"
+            :alt="t('fileBrowser.sortAscending')" />
+          <ThemeIcon
+            v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'"
+            name="arrow-down"
+            type="symbol"
+            :size="16"
+            :alt="t('fileBrowser.sortDescending')" />
         </button>
         <Tooltip v-if="columnVisibility.size" :delay-duration="200">
           <TooltipTrigger>
@@ -148,8 +168,18 @@ const sortedEntries = computed(() => {
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
               <img :src="infoIcon" alt="" />
-              <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
-              <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
+              <ThemeIcon
+                v-if="listSortColumn === 'size' && listSortDirection === 'asc'"
+                name="arrow-up"
+                type="symbol"
+                :size="16"
+                :alt="t('fileBrowser.sortAscending')" />
+              <ThemeIcon
+                v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'"
+                name="arrow-down"
+                type="symbol"
+                :size="16"
+                :alt="t('fileBrowser.sortDescending')" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" :side-offset="8" class="max-w-[300px]">
@@ -185,8 +215,18 @@ const sortedEntries = computed(() => {
           class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
-          <ThemeIcon name="arrow-up" type="symbol" :size="16" :alt="t('fileBrowser.sortAscending')" />
-          <ThemeIcon name="arrow-down" type="symbol" :size="16" :alt="t('fileBrowser.sortDescending')" />
+          <ThemeIcon
+            v-if="listSortColumn === 'modified' && listSortDirection === 'asc'"
+            name="arrow-up"
+            type="symbol"
+            :size="16"
+            :alt="t('fileBrowser.sortAscending')" />
+          <ThemeIcon
+            v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'"
+            name="arrow-down"
+            type="symbol"
+            :size="16"
+            :alt="t('fileBrowser.sortDescending')" />
         </button>
       </div>
       <Popover :open="isColumnsPopoverOpen" @update:open="isColumnsPopoverOpen = $event">

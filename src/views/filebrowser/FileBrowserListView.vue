@@ -208,7 +208,12 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           <div class="absolute inset-0 pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
         </div>
         <div class="relative z-10 flex overflow-hidden items-center pr-4 gap-2.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
-          <ThemeIcon name="object-select-symbolic" type="symbol" :size="16" :alt="t('fileBrowser.selected')" />
+          <ThemeIcon
+            v-if="ctx.isEntrySelected(entry)"
+            name="object-select-symbolic"
+            type="symbol"
+            :size="16"
+            :alt="t('fileBrowser.selected')" />
           <EntryIconComponent :entry="entry" class="h-4 w-4 shrink-0 text-tx-muted" :class="{'text-primary': entry.is_dir}" />
           <div class="flex overflow-hidden min-w-0 flex-1 flex-col gap-0.5">
             <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ entry.name }}</span>

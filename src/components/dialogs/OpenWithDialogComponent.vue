@@ -375,7 +375,7 @@ const canSaveCommand = computed(() => {
           {{ t('cancel') }}
         </button>
         <button type="button" :disabled="!canRun || isOpening" @click="handleRunSelected">
-          <ThemeIcon name="process-working" type="symbol" :size="16" class="animate-spin" />
+          <ThemeIcon v-if="isOpening" name="process-working" type="symbol" :size="16" class="animate-spin" />
           {{ t('openWith.open') }}
         </button>
       </DialogFooter>

@@ -139,8 +139,13 @@ function openCollapsedPopover() {
           }">
             <div class="clipboard-toolbar__info">
               <div class="clipboard-toolbar__icon">
-                <ThemeIcon name="edit-copy" type="symbol" :size="18" class="inline-block" />
-                <ThemeIcon name="folder-open" type="symbol" :size="18" class="inline-block" />
+                <ThemeIcon
+                  v-if="clipboardStore.isCopyOperation"
+                  name="edit-copy"
+                  type="symbol"
+                  :size="18"
+                  class="inline-block" />
+                <ThemeIcon v-else name="folder-open" type="symbol" :size="18" class="inline-block" />
               </div>
               <div class="clipboard-toolbar__text">
                 <span class="clipboard-toolbar__title">

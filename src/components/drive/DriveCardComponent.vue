@@ -121,7 +121,12 @@ async function handleUnmount(clickEvent?: Event) {
         <ThemeIcon :name="driveIcon" :size="20" class="text-tx-muted" />
         <!-- El candado dice que ese clic va a pedir una frase de paso. Sin él,
              el diálogo aparece sin que nada lo anunciara. -->
-        <ThemeIcon name="object-locked" :size="12" :alt="t('drive.encrypted')" class="absolute bottom-1 right-1" />
+        <ThemeIcon
+          v-if="drive.is_encrypted"
+          name="object-locked"
+          :size="12"
+          :alt="t('drive.encrypted')"
+          class="absolute bottom-1 right-1" />
         <span v-if="drive.is_mounted" class="text-tx-muted text-[11px] font-medium">
           {{ drive.percent_used }}%
         </span>

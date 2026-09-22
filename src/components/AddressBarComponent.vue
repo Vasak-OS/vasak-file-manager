@@ -400,7 +400,12 @@ onUnmounted(() => {
                 <DropdownMenuTrigger as-child>
                   <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-tx-muted/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop="openSeparatorMenu(index)" :aria-label="t('settings.addressBar.showSiblingDirectories')">
-                    <ThemeIcon name="arrow-right" type="symbol" :size="16" class="transition-transform duration-100 ease-in-out" />
+                    <ThemeIcon
+                      name="arrow-right"
+                      type="symbol"
+                      :size="16"
+                      class="transition-transform duration-100 ease-in-out"
+                      :class="{ 'rotate-90': openSeparatorIndex === index }" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[180px] max-w-[300px] p-0 [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-1.5 [&_[role=menuitem]]:text-xs [&_[role=menuitem]]:gap-2 [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex">
