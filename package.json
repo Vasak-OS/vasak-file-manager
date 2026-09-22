@@ -13,6 +13,11 @@
     "lint:fix": "bunx --bun biome check --write . && bunx --bun biome format --write .",
     "format": "bunx --bun biome format --write ."
   },
+  "vasak": {
+    "bibliotecasAtrasadas": {
+      "@vasakgroup/plugin-config-manager": "La 2.7.0 declara pinia ^4 y esta aplicación está en pinia 3: subir el rango arrastra un salto mayor ajeno. Por eso el rango es ~2.6.1 y no ^2.6.1, que alcanzaría una versión que no se puede instalar. Se saca al subir a pinia 4."
+    }
+  },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/api": "^2.11.1",
