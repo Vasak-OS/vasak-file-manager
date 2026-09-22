@@ -8,11 +8,11 @@
  * cierto, pero no dice por qué— y no había forma de enterarse de que había
  * habido un error.
  *
- * Y adentro de ese mismo campo vivía una frase escrita a mano y en inglés,
- * `'No drives available for scanning'`, que además **pisaba el error de
- * verdad**: la lista de unidades queda vacía sobre todo cuando
- * `get_system_drives` falla, y ese `catch` ya había anotado el motivo. Eso pasa
- * a ser un estado aparte, con su texto traducido.
+ * Desde la 0.22 el índice lo mantiene `vasak-prism` y esta aplicación sólo lo
+ * lee, así que los errores del recorrido —unidades que no se pueden enumerar,
+ * raíces que no resuelven— dejaron de existir acá. El que ocupó su lugar es el
+ * que importa ahora: **que no haya índice**, que no es un fallo de nadie y que
+ * hay que saber distinguir de «hay índice y no hay resultados».
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -20,7 +20,7 @@ import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import GlobalSearchView from '@/views/GlobalSearchView.vue';
-import { olvidarTodo, pedidos, responder } from './dobles';
+import { olvidarTodo, responder } from './dobles';
 
 /** Deja que terminen las promesas del montaje. */
 async function asentar(vueltas = 6) {
@@ -90,128 +90,96 @@ describe('un error del backend', () => {
 	});
 });
 
-describe('quedarse sin unidades que recorrer', () => {
-	test('tiene su propio texto, traducido', async () => {
+describe('cuando todavía no hay índice', () => {
+	test('lo dice, y dice quién lo mantiene', async () => {
+		// Es lo único que alguien puede hacer al respecto: esta aplicación ya no
+		// arma el índice, así que un cartel de «no hay nada indexado» a secas
+		// deja a quien lo lee sin ninguna acción posible. Tiene que nombrar al
+		// lanzador.
+		responder('global_search_get_status', {
+			is_scan_in_progress: false,
+			indexed_item_count: 0,
+			index_unavailable_reason: 'no se pudo abrir el índice de búsqueda',
+		});
 		const panel = await abrirElPanel();
-		const store = useGlobalSearchStore();
-
-		store.sinRaices = true;
-		await panel.vm.$nextTick();
 
 		const texto = panel.text();
-		expect(texto).toContain('globalSearch.nothingToScan');
-		expect(texto).not.toContain('No drives available for scanning');
+		expect(texto).toContain('globalSearch.noIndexYet');
+		expect(texto).toContain('globalSearch.noIndexYetDescription');
 	});
 
-	test('y ya no vive adentro del campo del error', async () => {
-		// La frase en inglés se escribía en `lastError`, que es el campo donde
-		// va lo que contesta el backend. Mezclados, no había forma de traducir
-		// uno sin traducir el otro.
+	test('y con índice no aparece ese cartel', async () => {
+		// La otra mitad: un cartel que sale siempre no informa nada.
+		responder('global_search_get_status', {
+			is_scan_in_progress: false,
+			indexed_item_count: 1234,
+			index_unavailable_reason: null,
+		});
+		const panel = await abrirElPanel();
+
+		expect(panel.text()).not.toContain('globalSearch.noIndexYet');
+	});
+
+	test('mientras el lanzador indexa se avisa, sin inventar un progreso', async () => {
+		// Acá había una barra con la unidad en curso y un «3 de 5». El escaneo
+		// es de otro proceso y lo que llega es un archivo de estado: cuánto
+		// falta **no se sabe**. Avisar que está pasando es cierto; dibujar una
+		// barra que avanza, no.
+		responder('global_search_get_status', {
+			is_scan_in_progress: true,
+			indexed_item_count: 10,
+			index_unavailable_reason: null,
+		});
+		const panel = await abrirElPanel();
+
+		expect(panel.text()).toContain('globalSearch.launcherIsIndexing');
+		expect(panel.text()).not.toContain('globalSearch.driveScanInProgress');
+	});
+
+	test('el recorrido propio ya no existe en el código', async () => {
+		// Se fue entero a `vasak-prism`. Si alguien lo trae de vuelta acá, hay
+		// dos escritores sobre un índice que admite uno solo.
 		const fuente = await Bun.file(
 			new URL('../src/stores/runtime/global-search.ts', import.meta.url)
 		).text();
 
-		expect(fuente).not.toContain('No drives available for scanning');
-	});
-
-	test('la carpeta del usuario alcanza, aunque fallen las unidades', async () => {
-		// Es el caso de verdad, recorrido entero: `get_system_drives` falla y su
-		// `catch` anota el motivo. Antes el recorrido se cortaba ahí, porque las
-		// unidades eran lo único que se miraba. Ahora la carpeta del usuario es
-		// una raíz por su cuenta y el recorrido sigue con ella.
-		responder('plugin:path|resolve_directory', '/home/quien');
-		responder('get_system_drives', () => {
-			throw new Error('permission denied');
-		});
-		const panel = await abrirElPanel();
-		const store = useGlobalSearchStore();
-
-		await store.startScan();
-		await panel.vm.$nextTick();
-
-		expect(store.sinRaices).toBe(false);
-		const pedido = pedidos('global_search_start_scan').at(-1);
-		const ajustes = pedido?.argumentos.settings as { drive_roots: string[] } | undefined;
-		expect(ajustes?.drive_roots).toEqual(['/home/quien']);
-	});
-
-	test('y sin carpeta ni unidades, lo dice', async () => {
-		// Las dos puntas caídas: el complemento de rutas no contesta y las
-		// unidades fallan. Ahí sí no hay nada que recorrer, y es lo único que
-		// el cartel puede decir.
-		responder('get_system_drives', () => {
-			throw new Error('permission denied');
-		});
-		const panel = await abrirElPanel();
-		const store = useGlobalSearchStore();
-
-		await store.startScan();
-		await panel.vm.$nextTick();
-
-		expect(store.sinRaices).toBe(true);
-		expect(pedidos('global_search_start_scan')).toHaveLength(0);
-		expect(panel.text()).toContain('globalSearch.nothingToScan');
+		expect(fuente).not.toContain('global_search_start_scan');
+		expect(fuente).not.toContain('global_search_cancel_scan');
+		expect(fuente).not.toContain('global_search_index_paths');
 	});
 });
 
 describe('un error no lo borra el éxito de otra cosa', () => {
-	test('el sondeo de estado que sale bien deja en pie el de las raíces', async () => {
-		// Es el caso que lo destapó y la razón de tener un casillero por
-		// origen: enumerar las raíces falla y lo anota; medio segundo después
-		// el sondeo contesta bien y —con una sola ranura— ponía el motivo en
-		// nulo. El cartel se quedaba con «todavía no hay nada indexado», que no
-		// explica por qué.
-		responder('global_search_get_status', { is_scan_in_progress: false, indexed_item_count: 0 });
-		responder('get_system_drives', () => {
-			throw new Error('permission denied');
-		});
+	test('cada origen limpia el suyo, y sólo el suyo', async () => {
+		// Es la razón de tener un casillero por origen: con una sola ranura, una
+		// operación que sale bien pone en nulo el motivo de otra que sigue rota,
+		// y el cartel se queda diciendo algo que no explica nada.
 		const panel = await abrirElPanel();
 		const store = useGlobalSearchStore();
 
-		await store.startScan();
-		expect(store.lastError).toContain('permission denied');
+		store.errores = { busqueda: 'la consulta falló', estado: 'no se pudo leer el estado' };
+		await panel.vm.$nextTick();
 
-		// El sondeo, que sale bien.
+		// El sondeo, que sale bien, limpia el suyo y deja el otro.
 		await store.refreshStatus();
 		await panel.vm.$nextTick();
 
-		expect(store.lastError).toContain('permission denied');
-		expect(panel.text()).toContain('permission denied');
-	});
-
-	test('y cada origen limpia el suyo cuando vuelve a salir bien', async () => {
-		// La otra mitad: si nadie limpiara, el cartel diría para siempre algo
-		// que ya se arregló.
-		responder('global_search_get_status', { is_scan_in_progress: false, indexed_item_count: 0 });
-		responder('get_system_drives', () => {
-			throw new Error('permission denied');
-		});
-		const panel = await abrirElPanel();
-		const store = useGlobalSearchStore();
-
-		await store.startScan();
-		expect(store.lastError).toContain('permission denied');
-
-		// Las unidades vuelven.
-		responder('get_system_drives', [{ path: '/mnt/red' }]);
-		await store.startScan();
-		await panel.vm.$nextTick();
-
-		expect(store.lastError).toBeNull();
-		expect(panel.text()).not.toContain('permission denied');
+		expect(store.errores.estado).toBeUndefined();
+		expect(store.lastError).toBe('la consulta falló');
+		expect(panel.text()).toContain('la consulta falló');
 	});
 
 	test('y con dos puestos se muestra el que más explica', async () => {
 		// El orden no es casual: primero lo que rompió la búsqueda que alguien
-		// acaba de escribir, después lo que explica que no haya índice.
+		// acaba de escribir, y después lo de fondo.
 		const panel = await abrirElPanel();
 		const store = useGlobalSearchStore();
 
-		store.errores = { estado: 'no se pudo leer el estado', raices: 'permission denied' };
+		store.errores = { estado: 'no se pudo leer el estado', busqueda: 'la consulta falló' };
 		await panel.vm.$nextTick();
 
-		expect(store.lastError).toBe('permission denied');
-		expect(panel.text()).toContain('permission denied');
+		expect(store.lastError).toBe('la consulta falló');
+		expect(panel.text()).toContain('la consulta falló');
 		expect(panel.text()).not.toContain('no se pudo leer el estado');
 	});
 });

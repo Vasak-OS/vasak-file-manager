@@ -42,12 +42,23 @@ function toggleOptions() {
 const collapsedDrives = ref<Set<string>>(new Set());
 
 const hasIndexData = computed(() => globalSearchStore.indexedItemCount > 0);
-const showScanProgress = computed(
-	() =>
-		(globalSearchStore.isScanInProgress || globalSearchStore.isCommitting) &&
-		globalSearchStore.totalDrivesCount > 0
-);
-const isCommitting = computed(() => globalSearchStore.isCommitting);
+
+/**
+ * Si hay que avisar que el índice se está armando ahora mismo.
+ *
+ * Acá había una barra de progreso con la unidad en curso y un «3 de 5». Se fue
+ * con el recorrido: quien indexa es `vasak-prism` y esta aplicación se entera
+ * por un archivo, así que **el progreso no se sabe**. Dibujar una barra que
+ * avanza sin saber cuánto falta sería inventarlo.
+ *
+ * Lo que sí es cierto y sirve: que hay uno corriendo, para que quien busque
+ * entienda por qué aparecen resultados nuevos entre una búsqueda y la
+ * siguiente.
+ */
+const indizandoAhora = computed(() => globalSearchStore.isScanInProgress);
+
+/** Si el índice no se pudo abrir, y por qué. */
+const sinIndice = computed(() => globalSearchStore.indexUnavailableReason);
 
 /**
  * Cuánto hace que se indexó, en palabras.
@@ -274,7 +285,7 @@ onMounted(async () => {
           :value="globalSearchStore.query"
           :placeholder="t('globalSearch.globalSearch')"
           class="flex-1 pl-10 pr-10"
-          :disabled="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
+          :disabled="!hasIndexData && !indizandoAhora"
           @input="globalSearchStore.setQuery(String(($event.target as HTMLInputElement).value ?? ''))"
         />
         <button v-if="globalSearchStore.query" class="absolute right-1 h-8 w-8"
@@ -302,19 +313,20 @@ onMounted(async () => {
          y es preferible mostrarlo tal cual —sirve para un informe de error— a
          tragárselo. Se limpia solo: cada operación que sale bien pone
          `lastError` en nulo. -->
-    <div v-if="globalSearchStore.lastError || globalSearchStore.sinRaices"
+    <div v-if="globalSearchStore.lastError || sinIndice"
       class="mx-2 mt-2 flex flex-col gap-0.5 rounded-corner bg-status-error/10 px-3 py-2 text-[13px] text-status-error">
       <span class="font-medium">{{
-        globalSearchStore.sinRaices
-          ? t('globalSearch.nothingToScan')
-          : t('globalSearch.somethingFailed')
+        sinIndice ? t('globalSearch.noIndexYet') : t('globalSearch.somethingFailed')
       }}</span>
-      <span v-if="globalSearchStore.sinRaices" class="text-status-error/80">{{
-        t('globalSearch.nothingToScanDescription') }}</span>
-      <!-- El detalle va **además** de lo de arriba y no en su lugar: quedarse
-           sin unidades pasa sobre todo porque preguntar por ellas falló, y con
-           un `v-else` el motivo volvía a quedar escondido. Lo destapó la
-           prueba que recorre ese caso entero. -->
+      <!-- Quién mantiene el índice, dicho acá y no en la documentación: es la
+           única pantalla donde alguien se va a preguntar por qué no hay
+           resultados, y la respuesta —«lo arma el lanzador»— no se puede
+           adivinar desde esta aplicación. -->
+      <span v-if="sinIndice" class="text-status-error/80">{{
+        t('globalSearch.noIndexYetDescription') }}</span>
+      <!-- El detalle va **además** de lo de arriba y no en su lugar: el motivo
+           técnico sirve para un informe de error, y con un `v-else` quedaba
+           escondido justo cuando hace falta. -->
       <span v-if="globalSearchStore.lastError" class="break-words text-status-error/80">{{
         globalSearchStore.lastError }}</span>
     </div>
@@ -382,23 +394,10 @@ onMounted(async () => {
     </div>
 
     <div class="flex min-h-0 flex-1 flex-col px-2 pr-0">
-      <div v-if="showScanProgress" class="flex flex-col gap-2 bg-primary/5 px-4 py-3">
+      <!-- Un aviso, no una barra. Ver `indizandoAhora`. -->
+      <div v-if="indizandoAhora" class="flex flex-col gap-2 bg-primary/5 px-4 py-3">
         <div class="flex flex-wrap items-center gap-2 text-[13px]">
-          <span class="text-tx-muted">
-            {{ isCommitting ? t('globalSearch.indexStatus.committing') : (globalSearchStore.isParallelScan ?
-              t('globalSearch.scanningInParallel') : t('globalSearch.driveScanInProgress')) }}
-          </span>
-          <span v-if="globalSearchStore.currentDriveRoot && !isCommitting && !globalSearchStore.isParallelScan"
-            class="rounded-corner-sm bg-primary/15 px-2 py-0.5 font-mono text-xs font-medium text-primary">
-            {{ globalSearchStore.currentDriveRoot }}
-          </span>
-          <span v-if="!isCommitting" class="ml-auto text-xs text-tx-muted">
-            {{ globalSearchStore.scannedDrivesCount }} / {{ globalSearchStore.totalDrivesCount }}
-          </span>
-        </div>
-        <div class="relative h-1 overflow-hidden rounded-full bg-secondary">
-          <div class="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
-            :style="{ width: isCommitting ? '100%' : `${globalSearchStore.scanProgress}%` }" />
+          <span class="text-tx-muted">{{ t('globalSearch.launcherIsIndexing') }}</span>
         </div>
         <div class="text-xs text-tx-muted">
           {{ interpolar(
@@ -429,7 +428,7 @@ onMounted(async () => {
                todas—. O sea que nombraba una causa que no existe y dejaba sin
                nombrar la que sí: todavía no hay índice. De paso lo dice el
                campo de arriba, que está apagado con esta misma condición. -->
-          <EmptyState v-if="!hasIndexData && !globalSearchStore.isScanInProgress && !globalSearchStore.isCommitting"
+          <EmptyState v-if="!hasIndexData && !indizandoAhora"
             icon="search" icon-type="symbol" :title="t('globalSearch.indexEmpty')"
             :note="t('globalSearch.indexEmptyDescription')" />
 

@@ -107,12 +107,22 @@ pub const ESTADO: &str = "status.json";
 /// es de otra versión», que es un caso propio y no «todo bien». Sin esto, la
 /// situación que este archivo vino a explicar se leería como la sana, que es
 /// exactamente al revés de para lo que está.
+//
+// Estas cuatro no las usa el código de Rust: quien decide qué decir con cada
+// valor es la ventana, y del lado de TypeScript hay otra copia. Están acá
+// porque son **vocabulario del contrato** y porque la prueba de más abajo las
+// fija: sin ellas, renombrar un estado en `vasak-prism` no rompería nada de
+// este lado y la ventana pasaría a tratar el valor nuevo como desconocido.
+#[allow(dead_code)]
 pub const ESTADO_EN_CURSO: &str = "in_progress";
 /// Terminó y recorrió todo. Ver [`ESTADO_EN_CURSO`].
+#[allow(dead_code)]
 pub const ESTADO_COMPLETO: &str = "complete";
 /// Alguien lo paró antes de terminar. Ver [`ESTADO_EN_CURSO`].
+#[allow(dead_code)]
 pub const ESTADO_CANCELADO: &str = "cancelled";
 /// Se cortó por un error. Ver [`ESTADO_EN_CURSO`].
+#[allow(dead_code)]
 pub const ESTADO_FALLADO: &str = "failed";
 
 /// Si un `EN_CURSO` todavía vale, o quedó de un escaneo que murió de golpe.

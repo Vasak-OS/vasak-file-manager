@@ -11,7 +11,6 @@ mod compress;
 mod extract;
 mod file_operations;
 mod global_search;
-mod idle_monitor;
 mod mount_watcher;
 mod open_with;
 mod polkit;
@@ -88,10 +87,11 @@ pub fn run() {
             // segundos. Ver `mount_watcher`.
             mount_watcher::start(app.handle().clone());
 
-            // Y el compositor avisa cuando la sesión queda sin nadie, que es lo
-            // único que autoriza a reindexar el disco entero. Desde adentro de
-            // la ventana eso no se puede saber. Ver `idle_monitor`.
-            idle_monitor::start(app.handle().clone());
+            // El índice de la búsqueda global vivió un tiempo en el directorio
+            // de datos de esta aplicación y hoy lo mantiene `vasak-prism` en la
+            // caché compartida. Lo de allá quedó tirado y no se va solo: son
+            // nueve megas en un directorio que nadie mira. Ver `huerfano`.
+            global_search::huerfano::limpiar_el_de_siempre();
 
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(debug_assertions)]
@@ -173,12 +173,8 @@ pub fn run() {
             file_operations::create_item,
             global_search::global_search_init,
             global_search::global_search_get_status,
-            global_search::global_search_start_scan,
-            global_search::global_search_cancel_scan,
-            global_search::global_search_index_paths,
             global_search::global_search_query,
             global_search::global_search_query_paths,
-            idle_monitor::system_idle_state,
             open_with::get_associated_programs,
             open_with::open_with_program,
             open_with::open_with_default,
