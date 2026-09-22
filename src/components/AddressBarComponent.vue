@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { dirname } from '@tauri-apps/api/path';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	DropdownMenu,
@@ -20,7 +19,6 @@ import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
 import { toast } from '@/components/ui/toast/toaster';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { DirContents } from '@/types/dir-entry';
 
 const props = defineProps<{
@@ -45,8 +43,6 @@ const popoverWidth = ref(0);
 const separatorDropdowns = ref<{ [key: number]: string[] }>({});
 const openSeparatorIndex = ref<number | null>(null);
 const isActionsMenuOpen = ref(false);
-const ellipsisVerticalIcon = useReactiveIcon(() => getSymbolSource('view-more-symbolic'));
-const textCursorIcon = useReactiveIcon(() => getSymbolSource('edit-select-text'));
 const ignoreNextEditorClose = ref(false);
 
 function updatePopoverWidth() {
@@ -363,7 +359,7 @@ onUnmounted(() => {
         <TooltipTrigger>
           <DropdownMenuTrigger as-child :disabled="true">
             <button type="button" class="shrink-0 h-7 w-7 p-1" @click.stop="isActionsMenuOpen = true" :aria-label="t('settings.addressBar.addressBarActions')">
-              <img :src="ellipsisVerticalIcon" :alt="t('settings.addressBar.addressBarActions')" />
+              <ThemeIcon name="view-more-symbolic" type="symbol" :size="16" :alt="t('settings.addressBar.addressBarActions')" />
             </button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
@@ -488,7 +484,7 @@ onUnmounted(() => {
     <Tooltip>
       <TooltipTrigger>
         <button type="button" class="shrink-0 h-7 w-7 p-1" @click="openEditor" :aria-label="t('settings.addressBar.editAddress')">
-          <img :src="textCursorIcon" :alt="t('settings.addressBar.editAddress')" />
+          <ThemeIcon name="edit-select-text" type="symbol" :size="16" :alt="t('settings.addressBar.editAddress')" />
         </button>
       </TooltipTrigger>
       <TooltipContent>

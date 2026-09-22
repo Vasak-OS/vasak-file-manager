@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
@@ -39,13 +37,6 @@ function handleCutClick() {
 const clipboardStore = useClipboardStore();
 const userStatsStore = useUserStatsStore();
 const shortcutsStore = useShortcutsStore();
-
-const pencilIcon = useReactiveIcon(() => getSymbolSource('edit-rename'));
-const copyIcon = useReactiveIcon(() => getSymbolSource('edit-copy'));
-const cutIcon = useReactiveIcon(() => getSymbolSource('edit-cut'));
-const clipboardPasteIcon = useReactiveIcon(() => getSymbolSource('edit-paste'));
-const shredderIcon = useReactiveIcon(() => getSymbolSource('edit-delete-shred'));
-const trash2Icon = useReactiveIcon(() => getSymbolSource('user-trash'));
 
 const { isActionVisible } = useContextMenuItems(toRef(props, 'selectedEntries'));
 
@@ -158,7 +149,7 @@ function handleDeleteClick() {
     <Tooltip :delay-duration="300" v-if="isActionVisible('rename')">
       <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
-          <img :src="pencilIcon" />
+          <ThemeIcon name="edit-rename" type="symbol" :size="16" :alt="t('fileBrowser.actions.rename')" />
         </button>
       </TooltipTrigger>
       <TooltipContent>
@@ -169,7 +160,7 @@ function handleDeleteClick() {
     <Tooltip :delay-duration="300" v-if="isActionVisible('copy')">
       <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
-          <img :src="copyIcon" />
+          <ThemeIcon name="edit-copy" type="symbol" :size="16" :alt="t('fileBrowser.actions.copy')" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
@@ -182,7 +173,7 @@ function handleDeleteClick() {
     <Tooltip :delay-duration="300" v-if="isActionVisible('cut')">
       <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
-          <img :src="cutIcon" />
+          <ThemeIcon name="edit-cut" type="symbol" :size="16" :alt="t('fileBrowser.actions.cut')" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
@@ -195,7 +186,7 @@ function handleDeleteClick() {
     <Tooltip :delay-duration="300" v-if="canPasteToSelectedDirectory">
       <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
-          <img :src="clipboardPasteIcon" />
+          <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('shortcuts.transferPreparedForCopying')" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
@@ -209,8 +200,8 @@ function handleDeleteClick() {
       <TooltipTrigger>
         <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 hover:text-status-error disabled:cursor-not-allowed disabled:opacity-60"
           @click="handleDeleteClick">
-          <img :src="shredderIcon" v-if="isShiftHeld" />
-          <img :src="trash2Icon" v-else />
+          <ThemeIcon v-if="isShiftHeld" name="edit-delete-shred" type="symbol" :size="16" :alt="t('shortcuts.deleteSelectedItemsFromDrive')" />
+          <ThemeIcon v-else name="user-trash" type="symbol" :size="16" :alt="t('shortcuts.moveSelectedItemsToTrash')" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">

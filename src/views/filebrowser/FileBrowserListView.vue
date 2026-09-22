@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { storeToRefs } from 'pinia';
@@ -9,7 +8,6 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
@@ -25,7 +23,6 @@ interface Props {
 const props = defineProps<Props>();
 
 const ctx = useFileBrowserContext();
-const loaderCircleIcon = useReactiveIcon(() => getSymbolSource('content-loading-symbolic'));
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
@@ -214,7 +211,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
             type="symbol"
             :size="16"
             :alt="t('fileBrowser.selected')" />
-          <EntryIconComponent :entry="entry" class="h-4 w-4 shrink-0 text-tx-muted" :class="{'text-primary': entry.is_dir}" />
+          <EntryIconComponent :entry="entry" :size="16" class="shrink-0 text-tx-muted" :class="{'text-primary': entry.is_dir}" />
           <div class="flex overflow-hidden min-w-0 flex-1 flex-col gap-0.5">
             <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
             <span v-if="ctx.entryDescription?.(entry)" class="overflow-hidden text-tx-muted text-[11px] text-ellipsis whitespace-nowrap">{{
@@ -225,7 +222,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           {{ getItemsDisplay(entry) }}
         </span>
         <span v-if="showSizeColumn" class="relative z-10 flex items-center gap-1.5 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-tx-muted text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
-          <img :src="loaderCircleIcon" :alt="t('operations.calculatingSize')" v-if="isDirLoadingWithProgress(entry)" class="shrink-0 animate-spin text-tx-muted" />
+          <ThemeIcon v-if="isDirLoadingWithProgress(entry)" name="content-loading-symbolic" type="symbol" :size="16" :alt="t('operations.calculatingSize')" class="animate-spin text-tx-muted" />
           <Skeleton v-if="getSizeDisplay(entry) === null" class="w-[50px] h-3" />
           <template v-else>{{ getSizeDisplay(entry) }}</template>
         </span>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { EmptyState, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
@@ -10,7 +9,6 @@ import NumberFieldDecrement from '@/components/ui/number-field/NumberFieldDecrem
 import NumberFieldIncrement from '@/components/ui/number-field/NumberFieldIncrement.vue';
 import NumberFieldInput from '@/components/ui/number-field/NumberFieldInput.vue';
 import { getDriveByPath } from '@/composables/use-drives';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
@@ -36,8 +34,6 @@ const resultLimit = ref(500);
 const exactMatch = ref(false);
 const typoTolerance = ref(true);
 const scanDepth = ref(6);
-
-const searchIcon = useReactiveIcon(() => getSymbolSource('search'));
 
 function toggleOptions() {
 	showOptions.value = !showOptions.value;
@@ -438,7 +434,7 @@ onMounted(async () => {
             :note="t('globalSearch.indexEmptyDescription')" />
 
           <div v-else-if="!globalSearchStore.query.trim()" class="flex flex-col items-center justify-center gap-3 px-6 py-16">
-            <img :src="searchIcon" class="text-tx-muted/30" />
+            <ThemeIcon name="search" type="symbol" :size="48" class="text-tx-muted/30" />
             <span class="text-base font-medium text-tx-main">
               {{ t('globalSearch.globalSearch') }}
             </span>

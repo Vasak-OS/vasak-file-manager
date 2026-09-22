@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	EmptyState,
@@ -17,7 +16,6 @@ import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import ScrollArea from '@/components/ui/ScrollArea.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
-import { useReactiveIcon } from '@/composables/useReactiveIcon';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
@@ -31,7 +29,6 @@ const { t } = useI18n();
 const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
 const isColumnsPopoverOpen = ref(false);
-const infoIcon = useReactiveIcon(() => getSymbolSource('showinfo'));
 
 const columnVisibility = ref({
 	items: true,
@@ -167,7 +164,7 @@ const sortedEntries = computed(() => {
               class="flex items-center pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
               @click="handleColumnHeaderClick('size')">
               {{ t('fileBrowser.size') }}
-              <img :src="infoIcon" alt="" />
+              <ThemeIcon name="showinfo" type="symbol" :size="16" alt="" />
               <ThemeIcon
                 v-if="listSortColumn === 'size' && listSortDirection === 'asc'"
                 name="arrow-up"

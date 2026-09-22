@@ -1,32 +1,15 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import type { DirEntry } from '@/types/dir-entry';
-import { crearCacheDeIconos } from '@/utils/cache-de-iconos';
-import { nombreDeIcono, olvidarNombres } from '@/utils/iconos-de-entrada';
-
-const cacheDeIconos = crearCacheDeIconos(getIconSource);
 
 /**
- * Tira los iconos guardados.
+ * La ruta de la imagen de una entrada, para verla de verdad.
  *
- * Va cuando cambia el tema, y **antes** de que se vuelvan a pedir: si se
- * vaciara después, el redibujado tomaría los del tema viejo de la caché y el
- * cambio de tema no se vería hasta el siguiente directorio.
- *
- * Son dos cosas las que se olvidan: la imagen de cada nombre, y **qué nombre le
- * toca a cada tipo**. Lo segundo también depende del tema —la cadena se recorre
- * hasta el primero que el tema tenga— así que dejarlo guardado haría que un tema
- * con más iconos siguiera dibujando los genéricos del anterior.
+ * Es lo único que queda acá: lo de resolver **iconos** se fue entero. La caché
+ * por nombre, la de la imagen de cada nombre y el descartar la respuesta que
+ * llega tarde los hace `ThemeIcon`, y encima memoriza entre componentes y
+ * comparte el pedido en vuelo, que la copia de acá no hacía: diez filas con el
+ * mismo icono lo pedían diez veces.
  */
-export function olvidarIconos(): void {
-	cacheDeIconos.olvidar();
-	olvidarNombres();
-}
-
-export async function getFileIcon(entry: DirEntry): Promise<string> {
-	return await cacheDeIconos.pedir(await nombreDeIcono(entry));
-}
-
 export function getImageSrc(entry: DirEntry): string {
 	return convertFileSrc(entry.path);
 }
