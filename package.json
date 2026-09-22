@@ -1,7 +1,7 @@
 {
   "name": "vasak-file-manager",
   "private": true,
-  "version": "0.20.0",
+  "version": "0.21.0",
   "type": "module",
   "scripts": {
     "dev": "bunx --bun vite",
@@ -42,8 +42,8 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@tauri-apps/cli": "^2.11.5",
     "@types/lodash.clonedeep": "^4.5.9",
-    "@types/node": "^25.9.5",
-    "@vitejs/plugin-vue": "^6.0.8",
+    "@types/node": "^25.9.8",
+    "@vitejs/plugin-vue": "^6.0.9",
     "@vue/compiler-sfc": "^3.5.43",
     "@vue/test-utils": "^2.5.1",
     "postcss": "^8.5.28",
