@@ -3,7 +3,11 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { storeToRefs } from 'pinia';
 import { computed, type Ref, ref, watchEffect } from 'vue';
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import {
+	DynamicScroller,
+	type DynamicScrollerExposed,
+	DynamicScrollerItem,
+} from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
@@ -96,34 +100,15 @@ function isDirLoadingWithProgress(entry: DirEntry): boolean {
  * y se lo puede enfocar.
  */
 /**
- * Se tipa por lo que se usa y no con `InstanceType`: el componente está
- * declarado como una función genérica y `InstanceType` no aplica sobre eso.
+ * Se tipa con lo que publica la librería, recortado a lo que se usa.
+ *
+ * `InstanceType` no aplica: el componente está declarado como una función
+ * genérica. Y la interfaz entera tampoco entra tal cual, porque lo que queda en
+ * la referencia son sus campos ya desenvueltos y varios son `Ref`. El `Pick`
+ * evita las dos cosas y sigue saliendo de la librería, así que el día que
+ * `scrollToItem` cambie de forma lo dice el chequeo y no la ventana.
  */
-const desplazador = ref<{ scrollToItem: (indice: number) => void } | null>(null);
-
-/**
- * El modo página, que `DynamicScroller` reenvía pero no declara.
- *
- * Quien desplaza la lista es el `ScrollArea` que la envuelve, no el
- * desplazador: es lo mismo que hace la cuadrícula, y es lo que deja una sola
- * barra —la del tema, con el hueco que le reserva
- * `--file-browser-list-right-gutter`— en vez de dos, una adentro de la otra.
- *
- * Va por `v-bind` y no como atributo suelto por un agujero de los tipos que
- * publica la librería. `DynamicScroller` declara sus propiedades a mano y deja
- * afuera las que sólo reenvía, pero su plantilla hace `v-bind="$attrs"` sobre
- * el `RecycleScroller` de adentro, que sí declara `pageMode`. O sea que el
- * atributo **sí** llega; lo que no llega es al tipo, y con `strictTemplates`
- * `vue-tsc` lo mide contra las propiedades declaradas y lo rechaza. Escrito
- * así llega igual y no hay que apagarle el chequeo a nada más.
- *
- * Esto se sacó una vez, leyendo esas propiedades declaradas y dando por hecho
- * que el atributo no hacía nada. Sí lo hacía: la lista quedó con su propia
- * barra adentro de la del tema. Por eso la prueba que lo vigila monta la vista
- * y mira la clase `page-mode` del elemento, que es lo único que distingue un
- * caso del otro sin abrir la ventana.
- */
-const modoPagina = { pageMode: true };
+const desplazador = ref<Pick<DynamicScrollerExposed<DirEntry>, 'scrollToItem'> | null>(null);
 
 watchEffect(() => {
 	ctx.registrarDesplazamiento((path: string) => {
@@ -168,15 +153,25 @@ function handleEntryKeydown(event: KeyboardEvent): void {
          embebido sin barra de estado—, y entonces la lista pide un alto que no
          tiene nada que ver con el lugar donde está. Ahora crece con sus filas y
          el `ScrollArea` de arriba, que sí sabe cuánto lugar hay, la desplaza. -->
-    <!-- `v-bind="modoPagina"`: quien desplaza es el `ScrollArea` que envuelve
-         a la vista, no el desplazador. El porqué de la forma está arriba. -->
+    <!-- `page-mode`: quien desplaza la lista es el `ScrollArea` que envuelve a
+         la vista, no el desplazador. Es lo mismo que hace la cuadrícula, y es
+         lo que deja una sola barra —la del tema, con el hueco que le reserva
+         `--file-browser-list-right-gutter`— en vez de dos, una adentro de la
+         otra.
+
+         Esto se sacó una vez, leyendo las propiedades que la librería
+         declaraba y dando por hecho que el atributo no hacía nada. Sí lo
+         hacía: la lista quedó con su propia barra adentro de la del tema. Por
+         eso la prueba que lo vigila monta la vista y mira la clase `page-mode`
+         del elemento, que es lo único que distingue un caso del otro sin abrir
+         la ventana. -->
     <DynamicScroller
       :key="ctx.currentPath.value"
       ref="desplazador"
       :items="props.entries"
       :min-item-size="44"
       key-field="path"
-      v-bind="modoPagina"
+      page-mode
       class="flex flex-col"
       v-slot="{ item: entry, active }"
     >
