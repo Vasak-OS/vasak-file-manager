@@ -49,11 +49,11 @@ const triggerClass = computed(() => {
 
 	switch (props.triggerVariant) {
 		case 'ghost':
-			return `${base} hover:bg-secondary text-ui-text`;
+			return `${base} hover:bg-secondary text-tx-on-secondary`;
 		case 'default':
 			return `${base} bg-ui-surface text-tx-main hover:bg-primary`;
 		default:
-			return `${base} border border-ui-border text-tx-primary hover:bg-primary`;
+			return `${base} border border-ui-border text-tx-main hover:bg-primary`;
 	}
 });
 
@@ -137,7 +137,7 @@ onUnmounted(() => {
 					</button>
 					<button
 						type="button"
-						class="rounded px-1 text-[10px] text-tx-muted hover:text-tx-primary"
+						class="rounded px-1 text-[10px] text-tx-muted hover:text-tx-main"
 						@click="handleDeleteTag(tag.id)"
 					>
 						Delete
@@ -150,12 +150,12 @@ onUnmounted(() => {
 					v-model="newTagName"
 					type="text"
 					:placeholder="t('tags.newTag')"
-					class="w-full rounded-corner border border-ui-border px-2 py-1 text-xs focus:border-ui-secondary"
+					class="w-full rounded-corner border border-ui-border px-2 py-1 text-xs focus:border-primary"
 					@keydown.enter.prevent="handleCreateTag"
 				/>
 				<button
 					type="button"
-					class="rounded-corner border border-ui-border px-2 py-1 text-xs text-tx-primary hover:bg-primary"
+					class="rounded-corner border border-ui-border px-2 py-1 text-xs text-tx-main hover:bg-primary"
 					@click="handleCreateTag"
 				>
 					Add

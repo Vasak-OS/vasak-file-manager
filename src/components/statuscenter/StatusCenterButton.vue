@@ -73,7 +73,7 @@ async function cancel(op: Operation) {
             </svg>
             <span
               v-if="activeCount > 0"
-              class="absolute -top-1 -right-1 min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-semibold rounded-full bg-primary text-tx-inverted"
+              class="absolute -top-1 -right-1 min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-semibold rounded-full bg-primary text-tx-on-primary"
             >{{ activeCount }}</span>
           </button>
         </TooltipTrigger>

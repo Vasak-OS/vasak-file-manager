@@ -1,60 +1,60 @@
 {
-  "name": "vasak-file-manager",
-  "private": true,
-  "version": "0.22.1",
-  "type": "module",
-  "scripts": {
-    "dev": "bunx --bun vite",
-    "build": "bunx vue-tsc --noEmit && bunx --bun vite build",
-    "preview": "bunx --bun vite preview",
-    "test": "bun test",
-    "tauri": "tauri",
-    "lint": "bunx --bun biome check .",
-    "lint:fix": "bunx --bun biome check --write . && bunx --bun biome format --write .",
-    "format": "bunx --bun biome format --write ."
-  },
-  "vasak": {
-    "bibliotecasAtrasadas": {
-      "@vasakgroup/plugin-config-manager": "La 2.7.0 declara pinia ^4 y esta aplicación está en pinia 3: subir el rango arrastra un salto mayor ajeno. Por eso el rango es ~2.6.1 y no ^2.6.1, que alcanzaría una versión que no se puede instalar. Se saca al subir a pinia 4."
-    }
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/plugin-dialog": "~2.7.3",
-    "@tauri-apps/plugin-log": "^2.9.2",
-    "@tauri-apps/plugin-opener": "~2.5.5",
-    "@tauri-apps/plugin-shell": "^2.3.6",
-    "@tauri-apps/plugin-store": "^2.4.5",
-    "@vasakgroup/plugin-config-manager": "~2.6.1",
-    "@vasakgroup/plugin-drag-and-drop-wayland": "^2.1.0",
-    "@vasakgroup/plugin-vicons": "^2.2.1",
-    "@vasakgroup/plugin-vsk-contextual-menu": "^2.0.2",
-    "@vasakgroup/plugin-vsk-journal": "^2.0.0",
-    "@vasakgroup/tauri-plugin-i18n": "^2.3.0",
-    "@vasakgroup/vue-libvasak": "^1.4.0",
-    "lodash.clonedeep": "^4.5.0",
-    "path": "^0.12.7",
-    "pinia": "^3.0.4",
-    "url": "^0.11.4",
-    "vue": "^3.5.43",
-    "vue-virtual-scroller": "^3.0.5",
-    "vue3-smooth-dnd": "^1.0.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.14",
-    "@happy-dom/global-registrator": "^20.14.5",
-    "@tailwindcss/postcss": "^4.3.3",
-    "@tauri-apps/cli": "^2.11.5",
-    "@types/lodash.clonedeep": "^4.5.9",
-    "@types/node": "^25.9.8",
-    "@vitejs/plugin-vue": "^6.0.9",
-    "@vue/compiler-sfc": "^3.5.43",
-    "@vue/test-utils": "^2.5.1",
-    "postcss": "^8.5.28",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.6",
-    "vue-tsc": "^3.3.11"
-  }
+	"name": "vasak-file-manager",
+	"private": true,
+	"version": "0.23.0",
+	"type": "module",
+	"scripts": {
+		"dev": "bunx --bun vite",
+		"build": "bunx vue-tsc --noEmit && bunx --bun vite build",
+		"preview": "bunx --bun vite preview",
+		"test": "bun test",
+		"tauri": "tauri",
+		"lint": "bunx --bun biome check .",
+		"lint:fix": "bunx --bun biome check --write . && bunx --bun biome format --write .",
+		"format": "bunx --bun biome format --write ."
+	},
+	"vasak": {
+		"bibliotecasAtrasadas": {
+			"@vasakgroup/plugin-config-manager": "La 2.7.0 declara pinia ^4 y esta aplicación está en pinia 3: subir el rango arrastra un salto mayor ajeno. Por eso el rango es ~2.6.1 y no ^2.6.1, que alcanzaría una versión que no se puede instalar. Se saca al subir a pinia 4."
+		}
+	},
+	"dependencies": {
+		"@tailwindcss/vite": "^4.3.3",
+		"@tauri-apps/api": "^2.11.1",
+		"@tauri-apps/plugin-dialog": "~2.7.3",
+		"@tauri-apps/plugin-log": "^2.9.2",
+		"@tauri-apps/plugin-opener": "~2.5.5",
+		"@tauri-apps/plugin-shell": "^2.3.6",
+		"@tauri-apps/plugin-store": "^2.4.5",
+		"@vasakgroup/plugin-config-manager": "~2.6.1",
+		"@vasakgroup/plugin-drag-and-drop-wayland": "^2.1.0",
+		"@vasakgroup/plugin-vicons": "^2.2.1",
+		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.2",
+		"@vasakgroup/plugin-vsk-journal": "^2.0.0",
+		"@vasakgroup/tauri-plugin-i18n": "^2.3.0",
+		"@vasakgroup/vue-libvasak": "^1.8.0",
+		"lodash.clonedeep": "^4.5.0",
+		"path": "^0.12.7",
+		"pinia": "^3.0.4",
+		"url": "^0.11.4",
+		"vue": "^3.5.43",
+		"vue-virtual-scroller": "^3.0.5",
+		"vue3-smooth-dnd": "^1.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.14",
+		"@happy-dom/global-registrator": "^20.14.5",
+		"@tailwindcss/postcss": "^4.3.3",
+		"@tauri-apps/cli": "^2.11.5",
+		"@types/lodash.clonedeep": "^4.5.9",
+		"@types/node": "^25.9.8",
+		"@vitejs/plugin-vue": "^6.0.9",
+		"@vue/compiler-sfc": "^3.5.43",
+		"@vue/test-utils": "^2.5.1",
+		"postcss": "^8.5.28",
+		"tailwindcss": "^4.3.3",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.6",
+		"vue-tsc": "^3.3.11"
+	}
 }
