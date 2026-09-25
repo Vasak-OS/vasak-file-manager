@@ -687,19 +687,17 @@ pub async fn global_search_query(
     Ok(final_results)
 }
 
-#[tauri::command]
-pub async fn global_search_query_paths(
+/// Expande las rutas dadas y puntúa cada entrada contra la consulta.
+///
+/// Bloquea a propósito: recorre directorios y consulta metadatos con la API
+/// síncrona de `std::fs`, así que solo debe correr en un hilo de
+/// `spawn_blocking`, nunca en el runtime asíncrono.
+fn buscar_en_rutas(
     paths: Vec<String>,
-    query: String,
+    normalized_query: String,
+    min_score: f32,
     options: GlobalSearchQueryOptions,
 ) -> Result<Vec<GlobalSearchResultEntry>, String> {
-    if paths.is_empty() || query.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let normalized_query = normalize_case(&query);
-    let min_score = get_min_score_for_query_length(normalized_query.len());
-
     let all_searchable_paths: Vec<PathBuf> = paths
         .par_iter()
         .flat_map(|path_string| {
@@ -809,6 +807,30 @@ pub async fn global_search_query_paths(
     }
 
     Ok(sorted_results)
+}
+
+#[tauri::command]
+pub async fn global_search_query_paths(
+    paths: Vec<String>,
+    query: String,
+    options: GlobalSearchQueryOptions,
+) -> Result<Vec<GlobalSearchResultEntry>, String> {
+    if paths.is_empty() || query.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let normalized_query = normalize_case(&query);
+    let min_score = get_min_score_for_query_length(normalized_query.len());
+
+    // El recorrido del árbol y la lectura de metadatos son bloqueantes y
+    // pueden tardar varios segundos sobre directorios grandes. Va a un hilo
+    // dedicado para no aparcar un worker del runtime mientras tanto
+    // (Sonar rust:S7493).
+    tauri::async_runtime::spawn_blocking(move || {
+        buscar_en_rutas(paths, normalized_query, min_score, options)
+    })
+    .await
+    .map_err(|error| format!("No se pudo recorrer las rutas pedidas: {}", error))?
 }
 
 fn is_hidden_path(path: &Path) -> bool {

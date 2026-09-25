@@ -50,7 +50,7 @@ const description = computed(() => {
         </div>
         <div class="font-[11px] text-tx-muted">
           {{ t('drag.holdShiftToChangeMode') }}
-          <EntryIconComponent v-for="item in props.dragItems" :entry="item" :size="32" class="fixed z-50" :style="overlayIconStyle" />
+          <EntryIconComponent v-for="item in props.dragItems" :key="item.path" :entry="item" :size="32" class="fixed z-50" :style="overlayIconStyle" />
           <ThemeIcon
             :name="operationIcon"
             :size="32"
