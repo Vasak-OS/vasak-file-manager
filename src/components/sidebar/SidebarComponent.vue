@@ -39,12 +39,13 @@ import { useDrives } from '@/composables/use-drives';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
+import { labelOf } from '@/utils/cloud-drive-label';
 
 const { drives, refresh } = useDrives();
 const {
 	drives: cloudDrives,
 	error: cloudError,
-	montando,
+	mounting,
 	refresh: refreshCloud,
 	mount: mountCloud,
 } = useCloudDrives();
@@ -57,16 +58,14 @@ async function openDrive(path: string) {
 }
 
 /** El ícono del tema que le corresponde a una unidad. */
-function iconoDe(drive: DriveInfo): string {
+function iconOf(drive: DriveInfo): string {
 	if (drive.drive_type === 'Network') return 'preferences-system-network-iscsi';
 	return drive.is_removable ? 'drive-removable-media-usb' : 'drive-harddisk';
 }
 
 /** El nombre que oye un lector de pantalla, y lo que dice el tooltip. */
-function etiquetaDe(nube: CloudDrive): string {
-	return nube.necesita_reconectarse
-		? t('cloudNeedsReconnect').replace('{0}', nube.nombre)
-		: nube.nombre;
+function cloudLabelOf(drive: CloudDrive): string {
+	return labelOf(drive, t);
 }
 
 /**
@@ -76,15 +75,18 @@ function etiquetaDe(nube: CloudDrive): string {
  * sobre rutas —leer, previsualizar, buscar, arrastrar—. Con el montaje, lo que
  * se abre es una ruta de verdad y el resto del programa funciona sin enterarse.
  */
-async function openCloudDrive(nube: CloudDrive) {
-	// Una cuenta que hay que reconectar no se monta, pero el botón sigue
-	// alcanzable: apretarlo dice qué falta en vez de no hacer nada.
-	if (nube.necesita_reconectarse) {
-		cloudError.value = etiquetaDe(nube);
+async function openCloudDrive(drive: CloudDrive) {
+	// Una cuenta que hay que reconectar, o cuyos archivos todavía no están
+	// disponibles, no se monta —no hay nada que montar—, pero el botón sigue
+	// alcanzable: apretarlo dice qué pasa en vez de no hacer nada. Y no llega
+	// al backend, así el diálogo de permiso no aparece por algo que no puede
+	// andar.
+	if (drive.unavailable || drive.needsReconnect) {
+		cloudError.value = cloudLabelOf(drive);
 		return;
 	}
-	const ruta = await mountCloud(nube.id);
-	if (ruta) await openDrive(ruta);
+	const path = await mountCloud(drive);
+	if (path) await openDrive(path);
 }
 
 onMounted(async () => {
@@ -118,14 +120,14 @@ onMounted(async () => {
         <!-- Sólo `drive`: el correo es de la aplicación de correo y el
              calendario de la suya. -->
         <SideButton
-          v-for="nube in cloudDrives"
-          :key="nube.id"
-          :label="etiquetaDe(nube)"
+          v-for="drive in cloudDrives"
+          :key="drive.id"
+          :label="cloudLabelOf(drive)"
           icon="folder-cloud"
           :collapsed="collapsed"
-          :disabled="montando === nube.id"
-          :class="nube.necesita_reconectarse ? 'opacity-60' : ''"
-          @click="openCloudDrive(nube)" />
+          :disabled="mounting === drive.id"
+          :class="drive.unavailable || drive.needsReconnect ? 'opacity-60' : ''"
+          @click="openCloudDrive(drive)" />
       </SideGroup>
 
       <SideGroup
@@ -136,7 +138,7 @@ onMounted(async () => {
           <TooltipTrigger>
             <SideButton
               :label="drive.name"
-              :icon="iconoDe(drive)"
+              :icon="iconOf(drive)"
               :collapsed="collapsed"
               @click="openDrive(drive.path)" />
           </TooltipTrigger>

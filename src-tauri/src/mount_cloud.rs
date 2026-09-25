@@ -30,40 +30,47 @@ use std::sync::mpsc;
 use gio::glib;
 use gio::prelude::*;
 
-use crate::cuentas_en_la_nube::Credencial;
+use crate::cloud_accounts::{CloudMountError, Credential};
 
 /// Cuánto se espera a que el montaje termine.
 ///
 /// Un servidor que no contesta no puede dejar la ventana esperando para
 /// siempre. Un minuto es de sobra para un montaje que anda y corto para uno que
 /// no va a andar.
-const ESPERA: std::time::Duration = std::time::Duration::from_secs(60);
+const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// Monta la cuenta y devuelve la ruta local donde quedó.
 ///
 /// Si ya estaba montada no la vuelve a montar: devuelve la ruta que tiene.
+///
+/// Una cuenta cuyos archivos todavía no están disponibles no llega a gvfs: la
+/// credencial se corta antes de pedir el token, con el motivo.
+///
+/// Si falla contesta un código y no un texto (ver [`CloudMountError`]): la
+/// ventana es la que sabe en qué idioma decirlo.
 #[tauri::command]
-pub async fn montar_disco_en_la_nube(
+pub async fn mount_cloud_drive(
     app: tauri::AppHandle,
     account_id: String,
-) -> Result<String, String> {
-    let credencial = crate::cuentas_en_la_nube::credencial_de(&account_id).await?;
+) -> Result<String, CloudMountError> {
+    let credential = crate::cloud_accounts::credential_of(&account_id).await?;
 
     // Si ya está montado no hay nada que hacer, y preguntarlo primero evita un
     // diálogo de gvfs por algo que ya funciona.
-    if let Some(ruta) = ruta_de(&app, &credencial.uri).await? {
-        return Ok(ruta);
+    if let Some(path) = path_of(&app, &credential.uri).await? {
+        return Ok(path);
     }
 
-    montar(&app, credencial.clone()).await?;
+    mount(&app, credential.clone()).await?;
 
-    ruta_de(&app, &credencial.uri).await?.ok_or_else(|| {
+    path_of(&app, &credential.uri).await?.ok_or_else(|| {
         // Pasa si gvfsd-fuse no está corriendo: el montaje existe para las
         // aplicaciones que hablan gio, pero no hay ninguna ruta que este
         // gestor pueda abrir.
-        "se montó, pero el sistema no expuso una ruta para abrirlo. \
-             ¿Está gvfs instalado por completo?"
-            .to_string()
+        CloudMountError::failed(
+            "se montó, pero el sistema no expuso una ruta para abrirlo. \
+             ¿Está gvfs instalado por completo?",
+        )
     })
 }
 
@@ -79,67 +86,67 @@ pub async fn montar_disco_en_la_nube(
 /// sesión anterior, o de antes de que fuse se cayera, da una ruta que existe en
 /// los metadatos y no en el disco — y el gestor abriría una pestaña vacía sin
 /// decir por qué. Así que se comprueba antes de darla por buena.
-async fn ruta_de(app: &tauri::AppHandle, uri: &str) -> Result<Option<String>, String> {
+async fn path_of(app: &tauri::AppHandle, uri: &str) -> Result<Option<String>, CloudMountError> {
     let uri = uri.to_string();
-    en_el_hilo_principal(app, move |terminado| {
-        let archivo = gio::File::for_uri(&uri);
-        let ruta = archivo
+    on_main_thread(app, move |done| {
+        let file = gio::File::for_uri(&uri);
+        let path = file
             .path()
-            .filter(|ruta| ruta.is_dir())
+            .filter(|path| path.is_dir())
             .map(|p| p.to_string_lossy().into_owned());
-        let _ = terminado.send(Ok(ruta));
+        let _ = done.send(Ok(path));
     })
     .await
 }
 
 /// Hace el montaje, contestando la pregunta de la contraseña.
-async fn montar(app: &tauri::AppHandle, credencial: Credencial) -> Result<(), String> {
+async fn mount(app: &tauri::AppHandle, credential: Credential) -> Result<(), CloudMountError> {
     // Un cancelador de verdad y no `Cancellable::NONE`.
     //
     // Sin él, cuando se cumple el tope de espera la operación **sigue corriendo**
     // en el bucle principal: nadie la para, y queda un montaje a medias
     // intentando contra un servidor que no contesta. Con esto, agotarse el
     // tiempo también la cancela.
-    let cancelador = gio::Cancellable::new();
-    let para_el_tope = cancelador.clone();
+    let cancellable = gio::Cancellable::new();
+    let for_timeout = cancellable.clone();
 
-    let resultado = en_el_hilo_principal(app, move |terminado| {
-        let archivo = gio::File::for_uri(&credencial.uri);
-        let operacion = gio::MountOperation::new();
-        let cancelador = cancelador.clone();
+    let result = on_main_thread(app, move |done| {
+        let file = gio::File::for_uri(&credential.uri);
+        let operation = gio::MountOperation::new();
+        let cancellable = cancellable.clone();
 
-        let usuario = credencial.usuario.clone();
-        let secreto = credencial.secreto.clone();
+        let username = credential.username.clone();
+        let secret = credential.secret.clone();
         // Una sola vez.
         //
         // gvfs vuelve a preguntar cuando el servidor rechaza lo que se le dio, y
         // contestar lo mismo otra vez es un bucle: el rechazo de verdad no
         // llegaría nunca y lo que vería la persona sería el tope de tiempo, que
         // no dice nada sobre su contraseña. A la segunda se corta.
-        let ya_contesto = std::cell::Cell::new(false);
-        operacion.connect_ask_password(
-            move |operacion, _mensaje, _usuario_previo, _dominio, flags| {
-                if ya_contesto.replace(true) {
-                    operacion.reply(gio::MountOperationResult::Aborted);
+        let already_answered = std::cell::Cell::new(false);
+        operation.connect_ask_password(
+            move |operation, _message, _previous_username, _domain, flags| {
+                if already_answered.replace(true) {
+                    operation.reply(gio::MountOperationResult::Aborted);
                     return;
                 }
 
                 // Sólo lo que pidió. Poner una contraseña donde no se pidió ninguna
                 // —un montaje anónimo, por ejemplo— es mandarla sin motivo.
                 if flags.contains(gio::AskPasswordFlags::NEED_USERNAME) {
-                    operacion.set_username(Some(&usuario));
+                    operation.set_username(Some(&username));
                 }
                 if flags.contains(gio::AskPasswordFlags::NEED_PASSWORD) {
-                    operacion.set_password(Some(&secreto));
+                    operation.set_password(Some(&secret));
                 }
                 // Que gvfs **no** la guarde. La credencial ya vive en el servicio de
                 // cuentas; una copia en otro llavero es otro lugar del que puede
                 // filtrarse y otro que hay que acordarse de limpiar al borrar la
                 // cuenta.
                 if flags.contains(gio::AskPasswordFlags::SAVING_SUPPORTED) {
-                    operacion.set_password_save(gio::PasswordSave::Never);
+                    operation.set_password_save(gio::PasswordSave::Never);
                 }
-                operacion.reply(gio::MountOperationResult::Handled);
+                operation.reply(gio::MountOperationResult::Handled);
             },
         );
 
@@ -152,20 +159,20 @@ async fn montar(app: &tauri::AppHandle, credencial: Credencial) -> Result<(), St
         // colgada y el mensaje dice que el montaje no terminó. No es tan bueno
         // como poder explicar qué preguntó, pero es correcto.
 
-        archivo.mount_enclosing_volume(
+        file.mount_enclosing_volume(
             gio::MountMountFlags::NONE,
-            Some(&operacion),
-            Some(&cancelador),
-            move |resultado| {
-                let respuesta = match resultado {
+            Some(&operation),
+            Some(&cancellable),
+            move |result| {
+                let answer = match result {
                     Ok(()) => Ok(()),
                     // Que ya estuviera montado no es un fallo: es el resultado
                     // que se buscaba. Pasa cuando otra aplicación lo montó
                     // antes.
                     Err(e) if e.matches(gio::IOErrorEnum::AlreadyMounted) => Ok(()),
-                    Err(e) => Err(traducir(&e)),
+                    Err(e) => Err(translate_error(&e)),
                 };
-                let _ = terminado.send(respuesta);
+                let _ = done.send(answer);
             },
         );
     })
@@ -173,28 +180,37 @@ async fn montar(app: &tauri::AppHandle, credencial: Credencial) -> Result<(), St
 
     // Si se agotó la espera, cancelar: la operación sigue viva en el bucle
     // principal hasta que alguien la pare.
-    if resultado.is_err() {
-        para_el_tope.cancel();
+    if result.is_err() {
+        for_timeout.cancel();
     }
-    resultado
+    result
 }
 
 /// Dice qué pasó en términos de lo que la persona puede hacer.
-fn traducir(error: &glib::Error) -> String {
+///
+/// Un rechazo de credenciales es `needsReconnect`: la contraseña no se escribe
+/// acá, y reconectar la cuenta es lo único que la arregla. El resto es
+/// `failed`, con un detalle que diga algo más que el código de gio.
+fn translate_error(error: &glib::Error) -> CloudMountError {
     if error.matches(gio::IOErrorEnum::PermissionDenied) {
-        return "el servidor rechazó el usuario o la contraseña. \
-                Volvé a conectar la cuenta desde Configuración"
-            .into();
+        return CloudMountError::needs_reconnect(format!(
+            "el servidor rechazó el usuario o la contraseña: {}",
+            error.message()
+        ));
     }
     if error.matches(gio::IOErrorEnum::NotSupported) {
-        return "este equipo no sabe montar archivos en la nube. \
-                Falta el paquete gvfs-dnssd, que trae el soporte de WebDAV"
-            .into();
+        return CloudMountError::failed(
+            "este equipo no sabe montar archivos en la nube. \
+             Falta el paquete gvfs-dnssd, que trae el soporte de WebDAV",
+        );
     }
     if error.matches(gio::IOErrorEnum::HostNotFound) || error.matches(gio::IOErrorEnum::TimedOut) {
-        return format!("no se pudo llegar al servidor: {}", error.message());
+        return CloudMountError::failed(format!(
+            "no se pudo llegar al servidor: {}",
+            error.message()
+        ));
     }
-    error.message().to_string()
+    CloudMountError::failed(error.message())
 }
 
 /// Corre algo en el hilo del bucle principal y espera su respuesta.
@@ -202,25 +218,28 @@ fn traducir(error: &glib::Error) -> String {
 /// Lo que se agenda recibe el extremo por el que contestar: las operaciones de
 /// gio son asíncronas y terminan más tarde, en el propio bucle, así que la
 /// respuesta no puede ser el valor de retorno del cierre.
-async fn en_el_hilo_principal<T, F>(app: &tauri::AppHandle, trabajo: F) -> Result<T, String>
+async fn on_main_thread<T, F>(app: &tauri::AppHandle, work: F) -> Result<T, CloudMountError>
 where
     T: Send + 'static,
-    F: FnOnce(mpsc::Sender<Result<T, String>>) + Send + 'static,
+    F: FnOnce(mpsc::Sender<Result<T, CloudMountError>>) + Send + 'static,
 {
-    let (emisor, receptor) = mpsc::channel();
+    let (sender, receiver) = mpsc::channel();
 
-    app.run_on_main_thread(move || trabajo(emisor))
-        .map_err(|e| format!("no se pudo agendar el trabajo: {e}"))?;
+    app.run_on_main_thread(move || work(sender))
+        .map_err(|e| CloudMountError::failed(format!("no se pudo agendar el trabajo: {e}")))?;
 
     // En un hilo aparte: `recv_timeout` bloquea, y bloquear el hilo de tokio
     // que atiende el comando frenaría todo lo demás.
     tokio::task::spawn_blocking(move || {
-        receptor
-            .recv_timeout(ESPERA)
-            .map_err(|_| format!("el montaje no terminó en {} segundos", ESPERA.as_secs()))?
+        receiver.recv_timeout(TIMEOUT).map_err(|_| {
+            CloudMountError::failed(format!(
+                "el montaje no terminó en {} segundos",
+                TIMEOUT.as_secs()
+            ))
+        })?
     })
     .await
-    .map_err(|e| format!("se perdió la espera del montaje: {e}"))?
+    .map_err(|e| CloudMountError::failed(format!("se perdió la espera del montaje: {e}")))?
 }
 
 #[cfg(test)]
@@ -232,8 +251,8 @@ mod tests {
     /// un programa trabado.
     #[test]
     fn el_montaje_tiene_tope() {
-        assert!(ESPERA <= std::time::Duration::from_secs(120));
-        assert!(ESPERA >= std::time::Duration::from_secs(30));
+        assert!(TIMEOUT <= std::time::Duration::from_secs(120));
+        assert!(TIMEOUT >= std::time::Duration::from_secs(30));
     }
 
     /// Los mensajes tienen que decir qué hacer, no qué código dio gio.
@@ -242,22 +261,34 @@ mod tests {
     /// que es lo único que la arregla — la contraseña no se escribe acá.
     #[test]
     fn los_errores_dicen_que_hacer() {
-        let rechazado = glib::Error::new(gio::IOErrorEnum::PermissionDenied, "denied");
-        let mensaje = traducir(&rechazado);
-        assert!(mensaje.contains("Configuración"), "{mensaje}");
+        // Un rechazo de credenciales manda a reconectar: la ventana lo dice
+        // con `cloudNeedsReconnect`, que nombra Configuración.
+        let denied = glib::Error::new(gio::IOErrorEnum::PermissionDenied, "denied");
+        let error = translate_error(&denied);
+        assert_eq!(error.code, CloudMountError::NEEDS_RECONNECT, "{error:?}");
+        assert!(error.detail.contains("denied"), "{error:?}");
 
-        let sin_soporte = glib::Error::new(gio::IOErrorEnum::NotSupported, "nope");
-        let mensaje = traducir(&sin_soporte);
+        let unsupported = glib::Error::new(gio::IOErrorEnum::NotSupported, "nope");
+        let error = translate_error(&unsupported);
+        assert_eq!(error.code, CloudMountError::FAILED);
         // Nombra el paquete: es un fallo de instalación y la persona —o quien
         // administre— puede resolverlo.
-        assert!(mensaje.contains("gvfs-dnssd"), "{mensaje}");
+        assert!(error.detail.contains("gvfs-dnssd"), "{error:?}");
+
+        let unreachable = glib::Error::new(gio::IOErrorEnum::HostNotFound, "nube.ejemplo.com");
+        let error = translate_error(&unreachable);
+        assert_eq!(error.code, CloudMountError::FAILED);
+        assert!(error.detail.contains("nube.ejemplo.com"), "{error:?}");
     }
 
     /// Un error que no está previsto no se traga: se muestra lo que dijo gio,
     /// que es más útil que un «no se pudo montar» sin detalle.
     #[test]
     fn un_error_desconocido_muestra_lo_que_dijo_gio() {
-        let raro = glib::Error::new(gio::IOErrorEnum::InvalidData, "algo muy específico");
-        assert_eq!(traducir(&raro), "algo muy específico");
+        let odd = glib::Error::new(gio::IOErrorEnum::InvalidData, "algo muy específico");
+        assert_eq!(
+            translate_error(&odd),
+            CloudMountError::failed("algo muy específico")
+        );
     }
 }

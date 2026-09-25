@@ -314,6 +314,8 @@ actions: Actions
 home: Home
 root: Root
 cloudNeedsReconnect: "{0}: it has to be connected again from Settings"
+cloudNotAvailableYet: "{0}: not available yet"
+cloudMountFailed: "Could not open {0}: {1}"
 search: Search
 driveNotMounted: Drive not mounted
 freeOf: free of

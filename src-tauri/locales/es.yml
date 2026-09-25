@@ -314,6 +314,8 @@ actions: Acciones
 home: Inicio
 root: Raíz
 cloudNeedsReconnect: "{0}: hay que volver a conectarla desde Configuración"
+cloudNotAvailableYet: "{0}: todavía no disponible"
+cloudMountFailed: "No se pudo abrir {0}: {1}"
 search: Buscar
 driveNotMounted: Unidad no montada
 freeOf: libres de

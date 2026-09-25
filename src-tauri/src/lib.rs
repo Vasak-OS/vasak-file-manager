@@ -1,9 +1,9 @@
-mod cuentas_en_la_nube;
+mod cloud_accounts;
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;
 mod montaje;
-mod montar_nube;
+mod mount_cloud;
 mod startup_path;
 
 mod clipboard;
@@ -140,8 +140,8 @@ pub fn run() {
         .plugin(tauri_plugin_vsk_journal::init())
         .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
-            cuentas_en_la_nube::listar_discos_en_la_nube,
-            montar_nube::montar_disco_en_la_nube,
+            cloud_accounts::list_cloud_drives,
+            mount_cloud::mount_cloud_drive,
             video_thumbnail,
             clipboard::clipboard_read_text,
             clipboard::clipboard_write_text,

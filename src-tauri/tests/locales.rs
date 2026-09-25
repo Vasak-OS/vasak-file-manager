@@ -219,3 +219,43 @@ fn las_etiquetas_con_cantidad_llevan_su_marcador() {
         }
     }
 }
+
+/// Las etiquetas de una cuenta en la nube que no se puede abrir.
+///
+/// Van en la raíz y con el nombre de la cuenta adentro: una que pierda el
+/// marcador diría «todavía no disponible» sin decir cuál, y con tres cuentas
+/// atenuadas eso no le dice nada a nadie.
+#[test]
+fn las_etiquetas_de_la_nube_llevan_el_nombre_de_la_cuenta() {
+    for idioma in ["es", "en"] {
+        let raiz = catalogo(idioma);
+        for clave in ["cloudNeedsReconnect", "cloudNotAvailableYet"] {
+            let texto = raiz[clave].as_str().unwrap_or("");
+            assert!(!texto.is_empty(), "falta {clave} en {idioma}.yml");
+            assert!(
+                texto.contains("{0}"),
+                "{clave} de {idioma}.yml no lleva {{0}}: «{texto}»"
+            );
+        }
+    }
+}
+
+/// El fallo al abrir un disco en la nube dice cuál y por qué.
+///
+/// `{0}` es el nombre del disco y `{1}` lo que contestó gvfs o el servicio de
+/// cuentas. Sin el primero no se sabe cuál falló; sin el segundo, el mensaje
+/// se traga el motivo y la persona no tiene nada que buscar.
+#[test]
+fn el_fallo_de_la_nube_lleva_el_disco_y_el_motivo() {
+    for idioma in ["es", "en"] {
+        let raiz = catalogo(idioma);
+        let texto = raiz["cloudMountFailed"].as_str().unwrap_or("");
+        assert!(!texto.is_empty(), "falta cloudMountFailed en {idioma}.yml");
+        for marcador in ["{0}", "{1}"] {
+            assert!(
+                texto.contains(marcador),
+                "cloudMountFailed de {idioma}.yml no lleva {marcador}: «{texto}»"
+            );
+        }
+    }
+}
