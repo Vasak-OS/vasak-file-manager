@@ -22,9 +22,7 @@ export const useUserLayoutStore = defineStore('userLayout', () => {
 	async function initStorage() {
 		try {
 			if (!userLayoutStorage.value) {
-				userLayoutStorage.value = new LazyStore(
-					userPathsStore.customPaths.appUserDataLayoutPath
-				);
+				userLayoutStorage.value = new LazyStore(userPathsStore.customPaths.appUserDataLayoutPath);
 				await userLayoutStorage.value.save();
 			}
 		} catch (error) {
