@@ -41,7 +41,7 @@ export const useUserStatsStore = defineStore('userStats', () => {
 	async function initStorage() {
 		try {
 			if (!userStatsStorage.value) {
-				userStatsStorage.value = await new LazyStore(
+				userStatsStorage.value = new LazyStore(
 					userPathsStore.customPaths.appUserDataStatsPath
 				);
 				await userStatsStorage.value.save();
