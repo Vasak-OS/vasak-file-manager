@@ -20,9 +20,10 @@ import { nextTick } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
+import type { CloudDrive } from '@/composables/use-cloud-drives';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
-import { olvidarTodo, responder } from './dobles';
+import { olvidarTodo, pedidos, responder } from './dobles';
 
 const css = await Bun.file(new URL('../src/assets/main.css', import.meta.url)).text();
 const layout = await Bun.file(
@@ -57,17 +58,9 @@ function unDisco(cambios: Partial<DriveInfo> = {}): DriveInfo {
 	};
 }
 
-async function abrirLaBarra({
-	discos = [unDisco()],
-	nubes = [] as Array<{
-		id: string;
-		nombre: string;
-		proveedor: string;
-		necesita_reconectarse: boolean;
-	}>,
-} = {}) {
+async function abrirLaBarra({ discos = [unDisco()], nubes = [] as CloudDrive[] } = {}) {
 	responder('get_system_drives', discos);
-	responder('listar_discos_en_la_nube', nubes);
+	responder('list_cloud_drives', nubes);
 	const pinia = createPinia();
 	setActivePinia(pinia);
 	// El store se pide **acá**, contra la pinia que va a recibir el montaje. Una
@@ -215,11 +208,12 @@ describe('los discos', () => {
 });
 
 describe('las cuentas en la nube', () => {
-	const unaNube = (cambios = {}) => ({
+	const unaNube = (cambios: Partial<CloudDrive> = {}): CloudDrive => ({
 		id: 'cuenta-1',
-		nombre: 'Drive de Pato',
-		proveedor: 'google',
-		necesita_reconectarse: false,
+		name: 'Drive de Pato',
+		provider: 'nextcloud',
+		needsReconnect: false,
+		unavailable: false,
 		...cambios,
 	});
 
@@ -232,7 +226,7 @@ describe('las cuentas en la nube', () => {
 	test('una que hay que reconectar sigue alcanzable y dice qué falta', async () => {
 		// Un botón deshabilitado no recibe foco, y entonces quien usa teclado o
 		// lector de pantalla no puede llegar nunca a la instrucción.
-		const { vista } = await abrirLaBarra({ nubes: [unaNube({ necesita_reconectarse: true })] });
+		const { vista } = await abrirLaBarra({ nubes: [unaNube({ needsReconnect: true })] });
 
 		const boton = botonDe(vista, 'cloudNeedsReconnect');
 		expect(boton).toBeDefined();
@@ -246,12 +240,54 @@ describe('las cuentas en la nube', () => {
 		expect(vista.find('[role="status"]').text()).toContain('cloudNeedsReconnect');
 	});
 
+	test('una cuyos archivos todavía no están disponibles se ve, atenuada, y no se monta', async () => {
+		// Google Drive se ofrece como capacidad `drive` pero no habla WebDAV, y
+		// la API propia no está implementada. Sacarla de la lista parecería que
+		// se borró; montarla dispararía el diálogo de permiso por algo que no
+		// puede andar. Se lista, dice que todavía no está, y el clic no llega
+		// al backend.
+		const { vista } = await abrirLaBarra({
+			nubes: [unaNube({ provider: 'google', unavailable: true })],
+		});
+
+		const boton = botonDe(vista, 'cloudNotAvailableYet');
+		expect(boton).toBeDefined();
+		expect(boton?.props('disabled')).toBe(false);
+		expect(boton?.classes()).toContain('opacity-60');
+
+		await boton?.trigger('click');
+		await asentar();
+
+		expect(pedidos('mount_cloud_drive')).toHaveLength(0);
+		expect(vista.find('[role="status"]').text()).toContain('cloudNotAvailableYet');
+	});
+
+	test('si el montaje falla, lo dice con la clave traducida y no con el objeto crudo', async () => {
+		// El backend contesta un código: el texto lo arma la ventana en su
+		// idioma. Antes llegaba un texto en español fijo y se mostraba tal cual,
+		// y un objeto con `String(e)` habría salido «[object Object]».
+		responder('mount_cloud_drive', () =>
+			Promise.reject({ code: 'failed', detail: 'no se pudo llegar al servidor' })
+		);
+		const { vista } = await abrirLaBarra({ nubes: [unaNube()] });
+
+		await botonDe(vista, 'Drive de Pato')?.trigger('click');
+		await asentar();
+
+		expect(pedidos('mount_cloud_drive')).toHaveLength(1);
+		expect(pedidos('mount_cloud_drive')[0]?.argumentos).toEqual({ accountId: 'cuenta-1' });
+		// El `t()` de las pruebas devuelve la clave, que no tiene marcadores.
+		const estado = vista.find('[role="status"]').text();
+		expect(estado).toContain('cloudMountFailed');
+		expect(estado).not.toContain('[object Object]');
+	});
+
 	test('montarla no dispara dos montajes seguidos', async () => {
 		// Mientras el montaje está en curso el botón queda apagado: dos
 		// montajes del mismo disco se pisan y el segundo falla.
 		let resolver: (ruta: string) => void = () => {};
 		responder(
-			'montar_disco_en_la_nube',
+			'mount_cloud_drive',
 			() =>
 				new Promise<string>((sigue) => {
 					resolver = sigue;
