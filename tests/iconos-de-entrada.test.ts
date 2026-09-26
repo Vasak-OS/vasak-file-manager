@@ -155,7 +155,7 @@ describe('crearResolutorDeIconos', () => {
 
 		await Promise.all(muchos.map((una) => resolutor.nombreDeIcono(una)));
 
-		expect(backend.pedidos.length).toBe(2);
+		expect(backend.pedidos).toHaveLength(2);
 		expect(resolutor.guardados).toBe(2);
 	});
 
@@ -173,7 +173,7 @@ describe('crearResolutorDeIconos', () => {
 		);
 
 		expect(new Set(await Promise.all(todas)).size).toBe(1);
-		expect(backend.pedidos.length).toBe(1);
+		expect(backend.pedidos).toHaveLength(1);
 	});
 
 	test('olvidar vacía lo resuelto, porque depende del tema', async () => {
@@ -251,8 +251,8 @@ describe('crearPreguntonDeTipos', () => {
 		const rutas = Array.from({ length: 60 }, (_, indice) => `/usr/bin/p${indice}`);
 		const tipos = await Promise.all(rutas.map((ruta) => pregunton.tipoDelArchivo(ruta)));
 
-		expect(viajes.length).toBe(1);
-		expect(viajes[0].length).toBe(60);
+		expect(viajes).toHaveLength(1);
+		expect(viajes[0]).toHaveLength(60);
 		// Y cada una recibió lo suyo: el orden de la respuesta es lo único que
 		// ata la ruta con su tipo.
 		expect(tipos[0]).toBe('tipo/p0');
@@ -269,7 +269,7 @@ describe('crearPreguntonDeTipos', () => {
 		expect(await pregunton.tipoDelArchivo('/usr/bin/ls')).toBe('application/x-executable');
 		expect(await pregunton.tipoDelArchivo('/usr/bin/ls')).toBe('application/x-executable');
 
-		expect(viajes.length).toBe(1);
+		expect(viajes).toHaveLength(1);
 		expect(pregunton.guardados).toBe(1);
 	});
 

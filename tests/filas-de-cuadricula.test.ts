@@ -83,11 +83,11 @@ describe('cortar en filas', () => {
 		// este piso, el bucle no avanza nunca.
 		const filas = enFilas(entradas(3), 0);
 
-		expect(filas.length).toBe(3);
+		expect(filas).toHaveLength(3);
 		expect(filas.every((f) => f.entradas.length === 1)).toBe(true);
 	});
 
 	test('más columnas que entradas es una sola fila', () => {
-		expect(enFilas(entradas(2), 8).length).toBe(1);
+		expect(enFilas(entradas(2), 8)).toHaveLength(1);
 	});
 });

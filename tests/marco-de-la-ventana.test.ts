@@ -80,7 +80,7 @@ describe('la ventana', () => {
 	test('y no queda un segundo borde dibujado a mano', () => {
 		// `rounded-corner-window` es la esquina de la ventana y sale del marco.
 		// Con dos, el borde y el fondo se dibujan dos veces y se ven los dos.
-		expect(abrir().findAll('.rounded-corner-window').length).toBe(1);
+		expect(abrir().findAll('.rounded-corner-window')).toHaveLength(1);
 	});
 
 	test('con los tres botones y su nombre traducido', () => {
