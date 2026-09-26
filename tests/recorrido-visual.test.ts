@@ -101,7 +101,7 @@ describe('la cuadrícula: varias secciones con distintas columnas', () => {
 	test('el orden visual son todas, una sola vez', () => {
 		const todas = ordenVisual(rejilla);
 
-		expect(todas.length).toBe(7 + 5 + 2);
+		expect(todas).toHaveLength(7 + 5 + 2);
 		expect(new Set(todas.map((e) => e.path)).size).toBe(todas.length);
 		expect(todas[0].name).toBe('carpeta0');
 		expect(todas[todas.length - 1].name).toBe('otro1');
