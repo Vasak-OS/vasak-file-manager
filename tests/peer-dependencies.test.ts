@@ -9,8 +9,9 @@
  * al importar.
  *
  * Esto se escribió probando `pinia` 4, que mueve `@vue/devtools-api` a par
- * obligatoria en vez de traerla adentro. Ese salto quedó afuera por otro motivo
- * —ver `una-sola-copia.test.ts`—, pero el guardia se queda, porque la forma del
+ * obligatoria (`^8`) en vez de traerla adentro, y la importa en la primera línea
+ * de su `dist`. Con `pinia` 4 ya adentro, `@vue/devtools-api` está declarada en
+ * el manifiesto justamente por eso; el guardia se queda porque la forma del
  * problema no es de `pinia`: es de cualquier paquete que empiece a pedir algo al
  * lado.
  *
@@ -33,9 +34,9 @@ import { describe, expect, test } from 'bun:test';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-const raiz = fileURLToPath(new URL('..', import.meta.url));
+const root = fileURLToPath(new URL('..', import.meta.url));
 
-interface Manifiesto {
+interface Manifest {
 	version?: string;
 	dependencies?: Record<string, string>;
 	devDependencies?: Record<string, string>;
@@ -44,22 +45,22 @@ interface Manifiesto {
 }
 
 /** Un manifiesto, o `null` si no está instalado. */
-async function leer(ruta: string): Promise<Manifiesto | null> {
-	const archivo = Bun.file(ruta);
-	return (await archivo.exists()) ? ((await archivo.json()) as Manifiesto) : null;
+async function read(path: string): Promise<Manifest | null> {
+	const file = Bun.file(path);
+	return (await file.exists()) ? ((await file.json()) as Manifest) : null;
 }
 
-interface Par {
+interface Peer {
 	/** Quién la pide. */
-	paquete: string;
+	pkg: string;
 	/** Qué pide. */
 	peer: string;
 	/** En qué rango. */
-	rango: string;
+	range: string;
 	/** Qué versión hay instalada, si hay alguna. */
-	instalado: string | null;
+	installed: string | null;
 	/** Con qué rango la declara este repositorio, si la declara. */
-	declarado: string | null;
+	declared: string | null;
 }
 
 /**
@@ -69,83 +70,86 @@ interface Par {
  * si hace falta, y no son de este manifiesto. Las marcadas como opcionales
  * quedan afuera a propósito —`typescript` en `pinia`, sin ir más lejos—.
  */
-async function paresObligatorias(base: string): Promise<Par[]> {
-	const manifiesto = await leer(`${base}package.json`);
-	if (!manifiesto) return [];
+async function requiredPeers(base: string): Promise<Peer[]> {
+	const manifest = await read(`${base}package.json`);
+	if (!manifest) return [];
 
-	const declaradas = { ...manifiesto.devDependencies, ...manifiesto.dependencies };
-	const pares: Par[] = [];
+	const declared = { ...manifest.devDependencies, ...manifest.dependencies };
+	const peers: Peer[] = [];
 
-	for (const paquete of Object.keys(manifiesto.dependencies ?? {}).sort()) {
-		const suyo = await leer(`${base}node_modules/${paquete}/package.json`);
-		if (!suyo) continue;
+	for (const pkg of Object.keys(manifest.dependencies ?? {}).sort()) {
+		const own = await read(`${base}node_modules/${pkg}/package.json`);
+		if (!own) continue;
 
-		const meta = suyo.peerDependenciesMeta ?? {};
-		for (const [peer, rango] of Object.entries(suyo.peerDependencies ?? {})) {
+		const meta = own.peerDependenciesMeta ?? {};
+		for (const [peer, range] of Object.entries(own.peerDependencies ?? {})) {
 			if (meta[peer]?.optional) continue;
 
-			pares.push({
-				paquete,
+			peers.push({
+				pkg,
 				peer,
-				rango,
-				instalado: (await leer(`${base}node_modules/${peer}/package.json`))?.version ?? null,
-				declarado: declaradas[peer] ?? null,
+				range,
+				installed: (await read(`${base}node_modules/${peer}/package.json`))?.version ?? null,
+				declared: declared[peer] ?? null,
 			});
 		}
 	}
 
-	return pares;
+	return peers;
 }
 
 /** Las que este repositorio no declara. */
-function sinDeclarar(pares: Par[]): Par[] {
-	return pares.filter((par) => par.declarado === null);
+function undeclared(peers: Peer[]): Peer[] {
+	return peers.filter((peer) => peer.declared === null);
 }
 
 /** Las que están instaladas en una versión que quien las pide no acepta. */
-function fueraDeRango(pares: Par[]): Par[] {
-	return pares.filter(
-		(par) => par.instalado === null || !Bun.semver.satisfies(par.instalado, par.rango)
+function outOfRange(peers: Peer[]): Peer[] {
+	return peers.filter(
+		(peer) => peer.installed === null || !Bun.semver.satisfies(peer.installed, peer.range)
 	);
 }
 
-const pares = await paresObligatorias(raiz);
+const peers = await requiredPeers(root);
 
 describe('las dependencias pares obligatorias', () => {
 	test('y las dos pruebas que siguen miran un árbol de verdad', () => {
-		// Las dos recorren `pares`: con la lista vacía —un `node_modules` sin
+		// Las dos recorren `peers`: con la lista vacía —un `node_modules` sin
 		// instalar, una raíz mal armada— pasan solas sin haber mirado nada.
-		expect(pares.length).toBeGreaterThan(3);
-		// Y dos pares nombradas, una del ecosistema y una de afuera: si el
-		// recorrido dejara de entrar a `node_modules` —o de leer los manifiestos
-		// de adentro— la lista quedaría corta sin quedar vacía.
-		expect(pares).toContainEqual(
+		expect(peers.length).toBeGreaterThan(3);
+		// Y pares nombradas, del ecosistema y de afuera: si el recorrido dejara
+		// de entrar a `node_modules` —o de leer los manifiestos de adentro— la
+		// lista quedaría corta sin quedar vacía.
+		expect(peers).toContainEqual(
 			expect.objectContaining({
-				paquete: '@vasakgroup/vue-libvasak',
+				pkg: '@vasakgroup/vue-libvasak',
 				peer: '@vasakgroup/plugin-config-manager',
 			})
 		);
-		expect(pares).toContainEqual(expect.objectContaining({ paquete: 'pinia', peer: 'vue' }));
+		expect(peers).toContainEqual(expect.objectContaining({ pkg: 'pinia', peer: 'vue' }));
+		expect(peers).toContainEqual(
+			expect.objectContaining({ pkg: 'pinia', peer: '@vue/devtools-api' })
+		);
 	});
 
 	test('están todas declaradas en el manifiesto', () => {
-		expect(sinDeclarar(pares)).toEqual([]);
+		expect(undeclared(peers)).toEqual([]);
 	});
 
 	test('y la versión instalada entra en el rango que piden', () => {
-		expect(fueraDeRango(pares)).toEqual([]);
+		expect(outOfRange(peers)).toEqual([]);
 	});
 
 	test('y se comprueba: las dos pruebas de arriba fallan sobre un árbol roto', async () => {
 		// El control positivo, sobre un árbol de mentira armado aparte. Sin esto,
-		// un `paresObligatorias` que devuelva siempre `[]` —o que se coma las
+		// un `requiredPeers` que devuelva siempre `[]` —o que se coma las
 		// obligatorias junto con las opcionales— deja las dos pruebas de arriba
 		// en verde para siempre. La de rango no se puede sabotear de otra forma:
 		// haría falta instalar a propósito una versión que nadie acepta.
-		const falso = `${tmpdir()}/vsk-pares-${Bun.randomUUIDv7()}/`;
+		const fake = `${tmpdir()}/vsk-pares-${Bun.randomUUIDv7()}/`;
 		try {
 			await Bun.write(
-				`${falso}package.json`,
+				`${fake}package.json`,
 				JSON.stringify({
 					dependencies: { pide: '^1.0.0', 'pide-viejo': '^1.0.0', 'pide-opcional': '^1.0.0' },
 					// Declarada, así que sale por rango y no por falta de declaración:
@@ -154,18 +158,18 @@ describe('las dependencias pares obligatorias', () => {
 				})
 			);
 			await Bun.write(
-				`${falso}node_modules/pide/package.json`,
+				`${fake}node_modules/pide/package.json`,
 				JSON.stringify({
 					version: '1.0.0',
 					peerDependencies: { ausente: '^2.0.0', presente: '^3.0.0' },
 				})
 			);
 			await Bun.write(
-				`${falso}node_modules/pide-viejo/package.json`,
+				`${fake}node_modules/pide-viejo/package.json`,
 				JSON.stringify({ version: '1.0.0', peerDependencies: { presente: '^4.0.0' } })
 			);
 			await Bun.write(
-				`${falso}node_modules/pide-opcional/package.json`,
+				`${fake}node_modules/pide-opcional/package.json`,
 				JSON.stringify({
 					version: '1.0.0',
 					peerDependencies: { tampoco: '^1.0.0' },
@@ -173,57 +177,68 @@ describe('las dependencias pares obligatorias', () => {
 				})
 			);
 			await Bun.write(
-				`${falso}node_modules/presente/package.json`,
+				`${fake}node_modules/presente/package.json`,
 				JSON.stringify({ version: '3.1.0' })
 			);
 
-			const hallados = await paresObligatorias(falso);
+			const found = await requiredPeers(fake);
 
 			// La opcional no está, y las obligatorias sí —incluida la que dos
 			// paquetes piden en rangos que no se cruzan—.
-			expect(hallados.map((par) => par.peer).sort()).toEqual(['ausente', 'presente', 'presente']);
-			expect(hallados.find((par) => par.peer === 'ausente')).toEqual({
-				paquete: 'pide',
+			expect(found.map((peer) => peer.peer).sort()).toEqual(['ausente', 'presente', 'presente']);
+			expect(found.find((peer) => peer.peer === 'ausente')).toEqual({
+				pkg: 'pide',
 				peer: 'ausente',
-				rango: '^2.0.0',
-				instalado: null,
-				declarado: null,
+				range: '^2.0.0',
+				installed: null,
+				declared: null,
 			});
 
 			// Y los dos filtros marcan lo suyo: la que falta, sin declarar; la
 			// que está instalada en 3.1.0 y `pide-viejo` quiere en `^4.0.0`,
 			// fuera de rango. La 3.1.0 que sí sirve para `pide` no aparece en
 			// ninguno de los dos.
-			expect(sinDeclarar(hallados).map((par) => par.peer)).toEqual(['ausente']);
-			expect(fueraDeRango(hallados).map((par) => `${par.paquete}→${par.peer}`)).toEqual([
+			expect(undeclared(found).map((peer) => peer.peer)).toEqual(['ausente']);
+			expect(outOfRange(found).map((peer) => `${peer.pkg}→${peer.peer}`)).toEqual([
 				'pide→ausente',
 				'pide-viejo→presente',
 			]);
 		} finally {
-			await Bun.$`rm -rf ${falso}`.quiet();
+			await Bun.$`rm -rf ${fake}`.quiet();
 		}
 	});
 });
 
-describe('el rango de plugin-config-manager está sujeto a propósito', () => {
-	test('no puede alcanzar la 2.7.0, que pide pinia 4', async () => {
-		// El `~` de `~2.6.1` no es un descuido ni una manía: **la 2.7.0 del
-		// plugin declara `pinia: ^4.0.0`** y esta aplicación está en pinia 3.
-		// Con `^2.6.1` el rango la alcanza, así que cualquiera que reinstale sin
-		// el archivo de bloqueo —o que lo refresque— se trae una versión con un
-		// par incompatible.
-		//
-		// La prueba de más arriba lo caza **después** de instalarlo; ésta lo
-		// impide antes, y sobre todo explica el motivo: sin esto, el `~` parece
-		// un error de tipeo y el primero que pase lo «arregla» a `^`.
-		//
-		// Cuando esta aplicación suba a pinia 4, lo que corresponde es volver a
-		// `^` y borrar esta prueba, no relajarla.
-		const manifiesto = await Bun.file(new URL('../package.json', import.meta.url)).json();
-		const rango = manifiesto.dependencies['@vasakgroup/plugin-config-manager'];
+describe('pinia 4 y el complemento de configuración', () => {
+	test('el complemento la pide como par, así que usa la de la aplicación', async () => {
+		// La condición de salida de la nota que había en `bibliotecasAtrasadas`:
+		// hasta la 2.6 el complemento traía `pinia` como dependencia normal, y
+		// con la aplicación en 4 se anidaba una 3 abajo suyo. Si una versión
+		// futura vuelve a declararla así, esto lo dice antes que la pantalla.
+		const plugin = await read(`${root}node_modules/@vasakgroup/plugin-config-manager/package.json`);
 
-		expect(rango).toBe('~2.6.1');
-		expect(Bun.semver.satisfies('2.7.0', rango)).toBe(false);
-		expect(Bun.semver.satisfies('2.6.9', rango)).toBe(true);
+		expect(plugin?.dependencies?.pinia).toBeUndefined();
+		expect(plugin?.peerDependencies?.pinia).toBeDefined();
+	});
+
+	test('y la pinia instalada es la 4, dentro del rango que el complemento acepta', async () => {
+		const pinia = await read(`${root}node_modules/pinia/package.json`);
+		const plugin = await read(`${root}node_modules/@vasakgroup/plugin-config-manager/package.json`);
+		const version = pinia?.version ?? '';
+
+		expect(Bun.semver.satisfies(version, '^4.0.0')).toBe(true);
+		expect(Bun.semver.satisfies(version, plugin?.peerDependencies?.pinia ?? '')).toBe(true);
+	});
+
+	test('y la nota de pinia ya no está en bibliotecasAtrasadas', async () => {
+		// Una nota que sobrevive a su condición de salida es peor que ninguna:
+		// dice que algo está frenado a propósito cuando ya no lo está.
+		const manifest = (await Bun.file(`${root}package.json`).json()) as {
+			vasak?: { bibliotecasAtrasadas?: Record<string, string> };
+		};
+		const notes = Object.keys(manifest.vasak?.bibliotecasAtrasadas ?? {});
+
+		expect(notes).not.toContain('pinia');
+		expect(notes).not.toContain('@vasakgroup/plugin-config-manager');
 	});
 });
