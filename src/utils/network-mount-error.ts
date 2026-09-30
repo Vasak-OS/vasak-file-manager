@@ -39,6 +39,19 @@ export function networkMountErrorMessage(error: unknown, t: (key: string) => str
 		}
 		return interpolar(t('networkMountFailed'), error.detail ?? '');
 	}
-	const detail = typeof error === 'string' ? error : String(error ?? '');
-	return interpolar(t('networkMountFailed'), detail);
+	return interpolar(t('networkMountFailed'), detailOf(error));
+}
+
+/** El detalle de algo que no tiene la forma esperada, sin perderlo. */
+function detailOf(error: unknown): string {
+	if (typeof error === 'string') return error;
+	if (error instanceof Error) return error.message;
+	if (typeof error === 'object' && error !== null) {
+		try {
+			return JSON.stringify(error);
+		} catch {
+			return String(error);
+		}
+	}
+	return String(error ?? '');
 }

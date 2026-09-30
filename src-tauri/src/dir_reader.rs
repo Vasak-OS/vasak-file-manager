@@ -83,15 +83,15 @@ pub struct NetworkShareParams {
 
 fn is_hidden(path: &Path) -> bool {
     path.file_name()
-        .and_then(|name| name.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .map(|name| name.starts_with('.'))
         .unwrap_or(false)
 }
 
 fn get_extension(path: &Path) -> Option<String> {
     path.extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_lowercase())
+        .and_then(std::ffi::OsStr::to_str)
+        .map(str::to_lowercase)
 }
 
 fn read_entry(path: &Path) -> Option<DirEntry> {
@@ -1021,7 +1021,7 @@ fn mount_smb(params: &NetworkShareParams, mount_point: &str) -> Result<(), Strin
 pub fn get_parent_dir(path: String) -> Option<String> {
     Path::new(&path)
         .parent()
-        .and_then(|parent| parent.to_str())
+        .and_then(Path::to_str)
         .map(normalize_path)
 }
 

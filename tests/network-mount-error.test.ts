@@ -40,6 +40,15 @@ describe('el mensaje de una carpeta de red que no se pudo montar', () => {
 		);
 	});
 
+	test('un objeto sin código se muestra entero y no como [object Object]', () => {
+		expect(networkMountErrorMessage({ message: 'x' }, t)).toBe(
+			'No se pudo montar la carpeta de red: {"message":"x"}'
+		);
+		expect(networkMountErrorMessage(new Error('se cortó'), t)).toBe(
+			'No se pudo montar la carpeta de red: se cortó'
+		);
+	});
+
 	test('un detalle con $& sale tal cual', () => {
 		// El detalle lo escribe el servidor remoto: `replace` con cadena lo
 		// cambiaría.
