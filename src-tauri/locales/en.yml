@@ -316,6 +316,8 @@ root: Root
 cloudNeedsReconnect: "{0}: it has to be connected again from Settings"
 cloudNotAvailableYet: "{0}: not available yet"
 cloudMountFailed: "Could not open {0}: {1}"
+networkMountMissingPackage: "The {0} package must be installed to mount this folder"
+networkMountFailed: "Could not mount the network folder: {0}"
 search: Search
 driveNotMounted: Drive not mounted
 freeOf: free of
