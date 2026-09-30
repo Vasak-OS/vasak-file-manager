@@ -11,8 +11,9 @@
 //! entrar lo que ya se sacó y que no falte lo que se sabe que se enlaza.
 //!
 //! Además de lo que se enlaza están los programas que se lanzan: los
-//! compresores de `compress.rs` y `extract.rs`. Ésos no aparecen en `readelf`,
-//! así que se sacan del código mismo y se cruzan con `ARCHIVE_TOOLS`.
+//! compresores de `compress.rs` y `extract.rs`, y los de las miniaturas, el
+//! montaje y «abrir con» (#105). Ésos no aparecen en `readelf`, así que se sacan
+//! del código mismo y se cruzan con `ARCHIVE_TOOLS` y `SPAWNED_TOOLS`.
 
 use std::path::PathBuf;
 
@@ -165,20 +166,142 @@ enum Declared {
     Depends,
     Recommends,
     Essential,
+    /// Sólo se lanza si falló el programa nombrado, que sí va en `depends`: no
+    /// se declara, porque sin él no se pierde nada.
+    Fallback(&'static str),
 }
 
 /// Los programas que `compress.rs` y `extract.rs` lanzan: los de
 /// `Command::new("…")` y los de `program: "…"` de la tabla de formatos.
 fn archive_programs() -> std::collections::BTreeSet<String> {
-    let src = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
-    let mut programs = std::collections::BTreeSet::new();
-    for file in ["compress.rs", "extract.rs"] {
-        let path = src.join(file);
-        let text = std::fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("no se pudo leer {}: {e}", path.display()));
-        programs.extend(programs_in(&text));
-    }
+    programs_in_files(&["compress.rs", "extract.rs"])
+}
+
+fn source_of(file: &str) -> String {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src")
+        .join(file);
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("no se pudo leer {}: {e}", path.display()))
+}
+
+fn programs_in_files(files: &[&str]) -> std::collections::BTreeSet<String> {
+    files
+        .iter()
+        .flat_map(|file| programs_in(&source_of(file)))
+        .collect()
+}
+
+/// Los archivos que lanzan los programas de `SPAWNED_TOOLS`.
+const SPAWNING_FILES: &[&str] = &[
+    "video_thumbnail.rs",
+    "read_file.rs",
+    "dir_reader.rs",
+    "open_with/linux.rs",
+    "open_with/mod.rs",
+];
+
+/// Los programas externos de las miniaturas, el montaje y «abrir con», con el
+/// paquete de Debian que los trae y cómo se declara.
+///
+/// Los cuatro opcionales —ffmpeg, poppler-utils, sshfs y fuse3— son decisión de
+/// #105: `ffmpeg` y `poppler` son pesados y sólo dan miniaturas, y `sshfs` y
+/// `fuse3` sólo le sirven a quien monta por SSH. Sin las miniaturas la vista se
+/// queda con el icono del tipo, callada a propósito; sin `sshfs`, montar por
+/// SSH contesta `missingPackage` con el nombre del paquete. `gio`, en cambio,
+/// es el primer camino de «abrir con» y del montaje por SMB, así que va en
+/// `depends`.
+///
+/// `util-linux` es `Essential: yes` en Debian. `mount` no lo es —es `Priority:
+/// required` desde que se separó—, así que se declara aunque esté en toda
+/// instalación.
+const SPAWNED_TOOLS: &[(&str, &str, Declared)] = &[
+    ("ffmpeg", "ffmpeg", Declared::Recommends),
+    ("ffprobe", "ffmpeg", Declared::Recommends),
+    ("pdftoppm", "poppler-utils", Declared::Recommends),
+    ("sshfs", "sshfs", Declared::Recommends),
+    // En trixie `fuse3` trae `fusermount3` y `fusermount` como enlace; en Arch
+    // sólo el primero, por eso el código prueba ése antes.
+    ("fusermount3", "fuse3", Declared::Recommends),
+    ("fusermount", "fuse3", Declared::Recommends),
+    ("gio", "libglib2.0-bin", Declared::Depends),
+    ("udisksctl", "udisks2", Declared::Depends),
+    ("lsblk", "util-linux", Declared::Essential),
+    ("mount", "mount", Declared::Depends),
+    ("umount", "mount", Declared::Depends),
+    ("xdg-open", "xdg-utils", Declared::Depends),
+    ("xdg-mime", "xdg-utils", Declared::Depends),
+    ("gtk-launch", "libgtk-3-bin", Declared::Fallback("gio")),
+    ("file", "file", Declared::Fallback("gio")),
+];
+
+/// Lo que lanzan los archivos de `SPAWNING_FILES`, más los desmontadores de
+/// FUSE, que se lanzan desde una lista (`FUSE_UNMOUNTERS`) y no con un literal.
+fn spawned_programs() -> std::collections::BTreeSet<String> {
+    let mut programs = programs_in_files(SPAWNING_FILES);
+    programs.extend(list_after(
+        &source_of("dir_reader.rs"),
+        "const FUSE_UNMOUNTERS",
+    ));
     programs
+}
+
+/// Los literales de la lista `[…]` que sigue a `marker` en `text`.
+fn list_after(text: &str, marker: &str) -> Vec<String> {
+    let Some(start) = text.find(marker) else {
+        return Vec::new();
+    };
+    let rest = &text[start..];
+    let Some(open) = rest.find("= [") else {
+        return Vec::new();
+    };
+    let rest = &rest[open + 3..];
+    let end = rest.find(']').unwrap_or(rest.len());
+    rest[..end]
+        .split(',')
+        .filter_map(|item| {
+            let item = item.trim();
+            item.strip_prefix('"')
+                .and_then(|item| item.strip_suffix('"'))
+                .map(str::to_string)
+        })
+        .collect()
+}
+
+/// Que cada programa de `tools` esté en la lista del `.deb` que le toca.
+fn assert_declared(tools: &[(&str, &str, Declared)]) {
+    let depends = deb_depends();
+    let recommends = deb_recommends();
+    for (program, package, declared) in tools {
+        let in_depends = depends.iter().any(|n| n == package);
+        let in_recommends = recommends.iter().any(|n| n == package);
+        match declared {
+            Declared::Depends => assert!(
+                in_depends && !in_recommends,
+                "{package} (para «{program}») va en depends"
+            ),
+            Declared::Recommends => assert!(
+                in_recommends && !in_depends,
+                "{package} (para «{program}») va en recommends y no en depends"
+            ),
+            Declared::Essential => assert!(
+                !in_depends && !in_recommends,
+                "{package} es Essential en Debian: no se declara"
+            ),
+            Declared::Fallback(primary) => {
+                assert!(
+                    !in_depends && !in_recommends,
+                    "«{program}» es respaldo de «{primary}»: {package} no se declara"
+                );
+                assert!(
+                    tools
+                        .iter()
+                        .any(|(p, _, d)| p == primary && *d == Declared::Depends),
+                    "«{program}» es respaldo de «{primary}», que tiene que ir en depends"
+                );
+            }
+        }
+    }
 }
 
 /// Los literales que siguen a `Command::new("` o a `program: "` en `text`.
@@ -224,26 +347,83 @@ fn cada_compresor_que_se_lanza_tiene_su_paquete() {
 
 #[test]
 fn los_compresores_estan_declarados_donde_corresponde() {
+    assert_declared(ARCHIVE_TOOLS);
+}
+
+#[test]
+fn la_lista_de_desmontadores_se_lee_del_codigo() {
+    // El control de las pruebas de abajo: sin él, un cambio de forma de
+    // `FUSE_UNMOUNTERS` las dejaría pasando sin mirar esa lista.
+    let text = r#"const FUSE_UNMOUNTERS: [&str; 2] = ["fusermount3", "fusermount"];"#;
+    assert_eq!(
+        list_after(text, "const FUSE_UNMOUNTERS"),
+        vec!["fusermount3", "fusermount"]
+    );
+    let programs = spawned_programs();
+    for program in [
+        "ffmpeg",
+        "ffprobe",
+        "pdftoppm",
+        "sshfs",
+        "fusermount3",
+        "gio",
+    ] {
+        assert!(
+            programs.contains(program),
+            "el código ya no lanza «{program}»: sacarlo de SPAWNED_TOOLS y de las recetas"
+        );
+    }
+}
+
+#[test]
+fn cada_programa_que_se_lanza_tiene_su_paquete() {
+    // Un programa nuevo en las miniaturas, el montaje o «abrir con» tiene que
+    // pasar por la tabla: si no, el .deb se instala sin él y nadie se entera.
+    for program in spawned_programs() {
+        assert!(
+            SPAWNED_TOOLS.iter().any(|(p, _, _)| *p == program),
+            "se lanza «{program}» y SPAWNED_TOOLS no dice de qué paquete sale"
+        );
+    }
+}
+
+#[test]
+fn cada_programa_de_la_tabla_se_sigue_lanzando() {
+    // La otra dirección: una fila que el código ya no usa deja declarado un
+    // paquete que no hace falta.
+    let programs = spawned_programs();
+    for (program, _, _) in SPAWNED_TOOLS {
+        assert!(
+            programs.contains(*program),
+            "SPAWNED_TOOLS nombra «{program}» y el código ya no lo lanza"
+        );
+    }
+}
+
+#[test]
+fn los_programas_que_se_lanzan_estan_declarados_donde_corresponde() {
+    assert_declared(SPAWNED_TOOLS);
+}
+
+#[test]
+fn las_miniaturas_y_el_montaje_por_ssh_son_opcionales() {
+    // Decisión de #105: son pesados o de nicho, y sin ellos el gestor anda.
     let depends = deb_depends();
     let recommends = deb_recommends();
-    for (program, package, declared) in ARCHIVE_TOOLS {
-        let in_depends = depends.iter().any(|n| n == package);
-        let in_recommends = recommends.iter().any(|n| n == package);
-        match declared {
-            Declared::Depends => assert!(
-                in_depends && !in_recommends,
-                "{package} (para «{program}») va en depends"
-            ),
-            Declared::Recommends => assert!(
-                in_recommends && !in_depends,
-                "{package} (para «{program}») va en recommends y no en depends"
-            ),
-            Declared::Essential => assert!(
-                !in_depends && !in_recommends,
-                "{package} es Essential en Debian: no se declara"
-            ),
-        }
+    for package in ["ffmpeg", "poppler-utils", "sshfs", "fuse3"] {
+        assert!(
+            recommends.iter().any(|n| n == package),
+            "{package} va en recommends"
+        );
+        assert!(
+            !depends.iter().any(|n| n == package),
+            "{package} no va en depends"
+        );
     }
+    assert!(
+        depends.iter().any(|n| n == "libglib2.0-bin"),
+        "gio va en depends"
+    );
 }
 
 #[test]

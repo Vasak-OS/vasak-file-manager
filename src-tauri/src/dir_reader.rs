@@ -731,13 +731,10 @@ fn linux_unmount(device_path: &str, mount_point: &str) -> Result<(), String> {
     }
 
     if !mount_point.is_empty() {
-        if let Ok(output) = std::process::Command::new("fusermount")
-            .args(["-u", mount_point])
-            .output()
-        {
-            if output.status.success() {
-                return Ok(());
-            }
+        if unmount_fuse(mount_point, |program, args| {
+            std::process::Command::new(program).args(args).output()
+        }) {
+            return Ok(());
         }
 
         if let Ok(output) = std::process::Command::new("umount")
@@ -758,24 +755,96 @@ fn linux_unmount(device_path: &str, mount_point: &str) -> Result<(), String> {
     ))
 }
 
+/// Los programas con los que se desmonta lo que montó `sshfs`, en orden.
+///
+/// `sshfs` 3 depende de FUSE 3, y en FUSE 3 el programa se llama `fusermount3`.
+/// En Arch `fuse3` no trae `fusermount` —ése es de `fuse2`—, así que llamar sólo
+/// a `fusermount` dejaba sin desmontar una carpeta montada por SSH y caía a
+/// `umount`, que sin ser root no puede. En Debian trixie `fuse3` instala los
+/// dos, el viejo como enlace al nuevo. `fusermount` queda de respaldo para un
+/// sistema que sólo tenga FUSE 2.
+const FUSE_UNMOUNTERS: [&str; 2] = ["fusermount3", "fusermount"];
+
+/// Desmonta `mount_point` con el primer programa de `FUSE_UNMOUNTERS` que
+/// funcione. `run` lanza el programa; es un parámetro para poder probar el orden
+/// sin FUSE instalado.
+fn unmount_fuse<F>(mount_point: &str, mut run: F) -> bool
+where
+    F: FnMut(&str, &[&str]) -> std::io::Result<std::process::Output>,
+{
+    FUSE_UNMOUNTERS.iter().any(|program| {
+        run(program, &["-u", mount_point]).is_ok_and(|output| output.status.success())
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Network share mounting
 // ---------------------------------------------------------------------------
 
+/// Por qué no se pudo montar una carpeta de red, en términos que la ventana
+/// pueda traducir. Mismo criterio que `montaje::FalloDeMontaje`: el código y no
+/// el texto, porque el backend no sabe en qué idioma está la ventana.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct NetworkMountError {
+    pub code: String,
+    pub detail: String,
+}
+
+/// Falta el programa con el que se monta. El detalle es el **paquete** que hay
+/// que instalar, que es lo que la persona puede hacer al respecto.
+pub const MISSING_PACKAGE: &str = "missingPackage";
+/// Cualquier otro fallo; el detalle es lo que dijo el programa.
+pub const NETWORK_MOUNT_FAILED: &str = "failed";
+
+impl NetworkMountError {
+    fn missing_package(package: &str) -> Self {
+        Self {
+            code: MISSING_PACKAGE.to_string(),
+            detail: package.to_string(),
+        }
+    }
+
+    fn failed(detail: impl Into<String>) -> Self {
+        Self {
+            code: NETWORK_MOUNT_FAILED.to_string(),
+            detail: detail.into(),
+        }
+    }
+}
+
+/// El error de no haber podido lanzar `sshfs`.
+///
+/// Que no esté instalado es el caso que importa: `sshfs` es opcional en las dos
+/// recetas (`recommends` en el `.deb`, `optdepends` en Arch), así que falta en
+/// cualquier sistema donde nadie lo pidió, y la persona sí pidió montar. Antes
+/// eso volvía como «Failed to run sshfs: No such file or directory (os error
+/// 2). Is sshfs installed?», en inglés y sin decir qué instalar.
+fn sshfs_spawn_error(error: &std::io::Error) -> NetworkMountError {
+    if error.kind() == std::io::ErrorKind::NotFound {
+        NetworkMountError::missing_package("sshfs")
+    } else {
+        NetworkMountError::failed(format!("sshfs: {error}"))
+    }
+}
+
 #[tauri::command]
-pub fn mount_network_share(params: NetworkShareParams) -> Result<String, String> {
+pub fn mount_network_share(params: NetworkShareParams) -> Result<String, NetworkMountError> {
     let mount_base = { "/mnt" };
 
     let mount_point = format!("{}/{}", mount_base, params.mount_name);
 
-    fs::create_dir_all(&mount_point)
-        .map_err(|dir_error| format!("Failed to create mount point: {}", dir_error))?;
+    fs::create_dir_all(&mount_point).map_err(|dir_error| {
+        NetworkMountError::failed(format!("Failed to create mount point: {}", dir_error))
+    })?;
 
     let result = match params.protocol.as_str() {
         "sshfs" => mount_sshfs(&params, &mount_point),
-        "nfs" => mount_nfs(&params, &mount_point),
-        "smb" => mount_smb(&params, &mount_point),
-        unknown => Err(format!("Unknown protocol: {}", unknown)),
+        "nfs" => mount_nfs(&params, &mount_point).map_err(NetworkMountError::failed),
+        "smb" => mount_smb(&params, &mount_point).map_err(NetworkMountError::failed),
+        unknown => Err(NetworkMountError::failed(format!(
+            "Unknown protocol: {}",
+            unknown
+        ))),
     };
 
     if result.is_err() {
@@ -785,7 +854,7 @@ pub fn mount_network_share(params: NetworkShareParams) -> Result<String, String>
     result.map(|_| mount_point)
 }
 
-fn mount_sshfs(params: &NetworkShareParams, mount_point: &str) -> Result<(), String> {
+fn mount_sshfs(params: &NetworkShareParams, mount_point: &str) -> Result<(), NetworkMountError> {
     let username = params.username.as_deref().unwrap_or("root");
     let port = params.port.unwrap_or(22);
     let source = format!("{}@{}:{}", username, params.host, params.remote_path);
@@ -817,28 +886,29 @@ fn mount_sshfs(params: &NetworkShareParams, mount_point: &str) -> Result<(), Str
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|spawn_error| {
-                format!("Failed to run sshfs: {}. Is sshfs installed?", spawn_error)
-            })?;
+            .map_err(|spawn_error| sshfs_spawn_error(&spawn_error))?;
 
         if let Some(ref mut stdin) = child.stdin {
             let _ = stdin.write_all(password.as_bytes());
         }
 
-        child
-            .wait_with_output()
-            .map_err(|wait_error| format!("sshfs process error: {}", wait_error))?
-    } else {
-        command.output().map_err(|run_error| {
-            format!("Failed to run sshfs: {}. Is sshfs installed?", run_error)
+        child.wait_with_output().map_err(|wait_error| {
+            NetworkMountError::failed(format!("sshfs process error: {}", wait_error))
         })?
+    } else {
+        command
+            .output()
+            .map_err(|run_error| sshfs_spawn_error(&run_error))?
     };
 
     if output.status.success() {
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        Err(format!("sshfs failed: {}", stderr.trim()))
+        Err(NetworkMountError::failed(format!(
+            "sshfs failed: {}",
+            stderr.trim()
+        )))
     }
 }
 
@@ -958,4 +1028,100 @@ pub fn get_parent_dir(path: String) -> Option<String> {
 #[tauri::command]
 pub fn path_exists(path: String) -> bool {
     Path::new(&path).exists()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Error, ErrorKind};
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::{ExitStatus, Output};
+
+    fn exited(code: i32) -> std::io::Result<Output> {
+        Ok(Output {
+            // `from_raw` recibe el estado de `wait`: el código de salida va en
+            // el segundo byte.
+            status: ExitStatus::from_raw(code << 8),
+            stdout: Vec::new(),
+            stderr: Vec::new(),
+        })
+    }
+
+    #[test]
+    fn desmontar_prueba_fusermount3_primero() {
+        let mut calls = Vec::new();
+        let unmounted = unmount_fuse("/mnt/ssh", |program, args| {
+            calls.push((program.to_string(), args.join(" ")));
+            exited(0)
+        });
+        assert!(unmounted);
+        // Si `fusermount3` desmontó, `fusermount` no se llega a lanzar.
+        assert_eq!(
+            calls,
+            vec![("fusermount3".to_string(), "-u /mnt/ssh".to_string())]
+        );
+    }
+
+    #[test]
+    fn sin_fusermount3_cae_a_fusermount() {
+        // Un sistema con sólo FUSE 2: `fusermount3` no existe.
+        let mut calls = Vec::new();
+        let unmounted = unmount_fuse("/mnt/ssh", |program, _| {
+            calls.push(program.to_string());
+            if program == "fusermount3" {
+                Err(Error::from(ErrorKind::NotFound))
+            } else {
+                exited(0)
+            }
+        });
+        assert!(unmounted);
+        assert_eq!(calls, vec!["fusermount3", "fusermount"]);
+    }
+
+    #[test]
+    fn si_fusermount3_falla_tambien_se_prueba_fusermount() {
+        let mut calls = Vec::new();
+        let unmounted = unmount_fuse("/mnt/ssh", |program, _| {
+            calls.push(program.to_string());
+            exited(if program == "fusermount3" { 1 } else { 0 })
+        });
+        assert!(unmounted);
+        assert_eq!(calls, vec!["fusermount3", "fusermount"]);
+    }
+
+    #[test]
+    fn sin_ningun_fusermount_no_se_da_por_desmontado() {
+        // Y ahí `linux_unmount` sigue con `umount`.
+        let unmounted = unmount_fuse("/mnt/ssh", |_, _| Err(Error::from(ErrorKind::NotFound)));
+        assert!(!unmounted);
+    }
+
+    #[test]
+    fn sin_sshfs_se_dice_que_paquete_falta() {
+        let error = sshfs_spawn_error(&Error::from(ErrorKind::NotFound));
+        assert_eq!(
+            error,
+            NetworkMountError {
+                code: MISSING_PACKAGE.to_string(),
+                detail: "sshfs".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn otro_fallo_al_lanzar_sshfs_no_se_confunde_con_que_falte() {
+        let error = sshfs_spawn_error(&Error::from(ErrorKind::PermissionDenied));
+        assert_eq!(error.code, NETWORK_MOUNT_FAILED);
+        assert!(error.detail.starts_with("sshfs: "), "{}", error.detail);
+    }
+
+    #[test]
+    fn el_error_de_montaje_de_red_viaja_con_codigo_y_detalle() {
+        // La ventana lo lee por estos dos nombres (`network-mount-error.ts`).
+        let json = serde_json::to_value(NetworkMountError::missing_package("sshfs")).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({ "code": "missingPackage", "detail": "sshfs" })
+        );
+    }
 }
