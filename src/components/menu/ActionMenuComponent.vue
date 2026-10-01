@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import { Kbd, ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import TagSelector from '@/components/ui/TagSelector.vue';
 import { useContextMenuItems } from '@/composables/file-browser/use-context-menu-items';
+import { randomTagColor } from '@/data/tag-colors';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
@@ -81,17 +82,7 @@ async function handleToggleTag(tagId: string) {
 }
 
 async function handleCreateTag(name: string) {
-	const colors = [
-		'#ef4444',
-		'#f97316',
-		'#eab308',
-		'#22c55e',
-		'#14b8a6',
-		'#3b82f6',
-		'#8b5cf6',
-		'#ec4899',
-	];
-	const randomColor = colors[Math.floor(Math.random() * colors.length)];
+	const randomColor = randomTagColor();
 	const newTag = await userStatsStore.createTag(name, randomColor);
 
 	for (const entry of props.selectedEntries) {
@@ -148,57 +139,57 @@ function handleDeleteClick() {
   <div class="flex justify-center gap-1">
     <Tooltip :delay-duration="300" v-if="isActionVisible('rename')">
       <TooltipTrigger>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner-m bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('rename')">
           <ThemeIcon name="edit-rename" type="symbol" :size="16" :alt="t('fileBrowser.actions.rename')" />
         </button>
       </TooltipTrigger>
       <TooltipContent>
         {{ t('fileBrowser.actions.rename') }}
-        <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('rename') }}</kbd>
+        <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('rename') }}</Kbd>
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('copy')">
       <TooltipTrigger>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner-m bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCopyClick">
           <ThemeIcon name="edit-copy" type="symbol" :size="16" :alt="t('fileBrowser.actions.copy')" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
         <div class="flex items-center justify-between gap-3">
           {{ t('fileBrowser.actions.copy') }}
-          <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('copy') }}</kbd>
+          <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('copy') }}</Kbd>
         </div>
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('cut')">
       <TooltipTrigger>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner-m bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="handleCutClick">
           <ThemeIcon name="edit-cut" type="symbol" :size="16" :alt="t('fileBrowser.actions.cut')" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
         <div class="flex items-center justify-between gap-3">
           {{ t('fileBrowser.actions.cut') }}
-          <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('cut') }}</kbd>
+          <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('cut') }}</Kbd>
         </div>
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="canPasteToSelectedDirectory">
       <TooltipTrigger>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner-m bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 disabled:cursor-not-allowed disabled:opacity-60" @click="emitAction('paste')">
           <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('shortcuts.transferPreparedForCopying')" />
         </button>
       </TooltipTrigger>
       <TooltipContent class="flex flex-col gap-1">
         <div class="flex items-center justify-between gap-3">
           {{ t('shortcuts.transferPreparedForCopying') }}
-          <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
+          <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</Kbd>
         </div>
       </TooltipContent>
     </Tooltip>
     <Tooltip :delay-duration="300" v-if="isActionVisible('delete')">
       <TooltipTrigger>
-        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 hover:text-status-error disabled:cursor-not-allowed disabled:opacity-60"
+        <button type="button" class="inline-flex w-8 h-8 items-center justify-center border-none rounded-corner-m bg-transparent text-inherit cursor-pointer hover:bg-ui-surface/60 hover:text-status-error disabled:cursor-not-allowed disabled:opacity-60"
           @click="handleDeleteClick">
           <ThemeIcon v-if="isShiftHeld" name="edit-delete-shred" type="symbol" :size="16" :alt="t('shortcuts.deleteSelectedItemsFromDrive')" />
           <ThemeIcon v-else name="user-trash" type="symbol" :size="16" :alt="t('shortcuts.moveSelectedItemsToTrash')" />
@@ -207,11 +198,11 @@ function handleDeleteClick() {
       <TooltipContent class="flex flex-col gap-1">
         <div class="flex items-center justify-between gap-3">
           {{ t('shortcuts.moveSelectedItemsToTrash') }}
-          <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('delete') }}</kbd>
+          <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('delete') }}</Kbd>
         </div>
         <div class="flex items-center justify-between gap-3">
           {{ t('shortcuts.deleteSelectedItemsFromDrive') }}
-          <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('deletePermanently') }}</kbd>
+          <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('deletePermanently') }}</Kbd>
         </div>
       </TooltipContent>
     </Tooltip>
@@ -225,7 +216,7 @@ function handleDeleteClick() {
     class="flex items-center gap-2 [&_.shortcut]:ml-auto [&_.shortcut]:opacity-60" @select="emitAction('open-in-new-tab')">
     <ThemeIcon name="gtk-add" type="symbol" :size="16" />
     <span>{{ t('fileBrowser.actions.openInNewTab') }}</span>
-    <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
+    <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</Kbd>
   </component>
   <component :is="menuItemComponent" v-if="isActionVisible('share')" @select="emitAction('share')"
     class="flex items-center gap-2">

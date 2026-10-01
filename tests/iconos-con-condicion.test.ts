@@ -13,7 +13,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { olvidarLosIconosDelTema } from '@vasakgroup/vue-libvasak';
+import { forgetThemeIcons } from '@vasakgroup/vue-libvasak';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import DriveCardComponent from '@/components/drive/DriveCardComponent.vue';
@@ -41,7 +41,7 @@ let vista: VueWrapper | null = null;
 
 beforeEach(() => {
 	olvidarTodo();
-	olvidarLosIconosDelTema();
+	forgetThemeIcons();
 	setActivePinia(createPinia());
 	ponerEnElTema('object-locked', 'data:image/svg+xml,candado');
 	ponerEnElTema('drive-harddisk', 'data:image/svg+xml,disco');

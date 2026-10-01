@@ -4,6 +4,20 @@
    donde no hay ninguno: ninguna de las dos declaraciones puede pisar a la otra. */
 @import "tailwindcss";
 
+/* La forma de los componentes, con el criterio de Once UI: radios derivados
+   del que eligió la persona, bordes finos, velos de estado, la superficie de lo
+   que flota, sombras, roles de texto y curvas. Va después de Tailwind, como
+   pide la librería, y trae también el piso del anillo de foco con `ui-focus`
+   (vue-libvasak#74, `docs/once-ui.md`). Los colores no están ahí: los deriva de
+   las `--use-*` de abajo, que pisa el config-manager con el esquema. */
+@import "@vasakgroup/vue-libvasak/tokens.css";
+
+/* La barra de desplazamiento con los tokens: la misma de 8 px que había acá,
+   con el radio de la persona en vez de los 4 px fijos. Reemplaza también la
+   del `ScrollArea` propio, que dibujaba otra con `bg-ui-bg/80`, invisible
+   sobre la ventana. */
+@import "@vasakgroup/vue-libvasak/scrollbar.css";
+
 /* Tailwind v4 no mira dentro de `node_modules`, así que las clases que sólo
    existen en los componentes de la librería compartida —la barra lateral, por
    ejemplo— no llegan nunca a la hoja de estilos: la ventana abre con el
@@ -160,15 +174,11 @@
   --font-title: var(--vsk-font-title);
   --font-mono: var(--vsk-font-terminal);
 
-  /* radius */
-  --radius-corner: var(--corner-radius);
-  /* El radio chico, para lo que no es una tarjeta: chips, insignias, el pulgar de
-     una barra. Derivado del que la persona configuró y no fijo, así que un
-     escritorio con esquinas rectas o muy redondeadas se ve coherente hasta en los
-     detalles — con `rounded-sm` a 2px, subir el radio general dejaba las tarjetas
-     redondas y los chips cuadrados. */
-  --radius-corner-sm: calc(var(--corner-radius) / 2.5);
-  --radius-corner-window: calc(var(--corner-radius) + 2px);
+  /* Los radios —`rounded-corner-xs…xl`, `-full` y `-window`— los declara
+     `tokens.css`, derivados todos de `--corner-radius` con `calc()`. Acá
+     había una copia (`corner`, `corner-sm` y `corner-window`) con los mismos
+     valores; dos lugares que dicen lo mismo terminan diciendo cosas
+     distintas. */
 
   /* Colores de Marca - responsive a dark mode */
   --color-primary: var(--use-primary);
@@ -200,9 +210,11 @@
   animation: circle-in 500ms;
 }
 
+/* El color del texto se hereda del cuerpo y va en la capa `base`, así lo que
+   no pide color sigue en `tx-main` y lo que lo pide, lo recibe. */
 @layer base {
   body {
-    @apply text-tx-main;
+    color: var(--color-tx-main);
   }
 
   *,
@@ -210,28 +222,10 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
+    /* El canto fino del esquema y no `gray-200`, que es un gris de la paleta
+       de Tailwind: un `border` sin color queda como los de la librería. */
+    border-color: var(--color-ui-line-weak, currentColor);
   }
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  /* Con `rgba(255,255,255,.2)` la barra era blanca sobre fondo claro, o sea
-     invisible. El token sigue al tema. */
-  background: color-mix(in srgb, var(--color-tx-muted) 45%, transparent);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-tx-muted) 70%, transparent);
 }
 
 @keyframes wave-ripple {
@@ -246,26 +240,11 @@
 /*
  * El foco del teclado tiene que verse (WCAG 2.4.7).
  *
- * Medido antes de escribir esto: 259 botones en el escritorio, 56 lugares con
- * `outline-none` y sólo 21 con `focus-visible:`. Seis de las ocho aplicaciones no
- * tenían ni uno, así que recorrer con Tab era hacerlo a ciegas.
- *
- * Va con `:where()` para que tenga especificidad cero: cualquier componente que
- * quiera su propio indicador lo pisa sin peleas, y esto queda como piso.
+ * El piso del anillo lo trae ahora `tokens.css`, con especificidad cero como
+ * tenía acá, pero en `ui-focus` en vez de `primary`: el primario por omisión da
+ * 2,64:1 contra el fondo claro y un indicador de foco necesita 3:1. La copia de
+ * acá, por venir después en el archivo, le ganaba.
  */
-:where(
-  a,
-  button,
-  input,
-  select,
-  textarea,
-  summary,
-  [role="button"],
-  [tabindex]:not([tabindex="-1"])
-):focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
 
 /*
  * Menos movimiento para quien lo pidió (WCAG 2.3.3, y 2.2.2 para lo que no para).

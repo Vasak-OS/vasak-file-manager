@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-	ThemeIcon,
+	ListRow,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+	SearchField,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
 import ActionMenuComponent from '@/components/menu/ActionMenuComponent.vue';
-import Popover from '@/components/ui/popover/Popover.vue';
-import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
-import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
+import { useElementWidth } from '@/composables/use-element-width';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { interpolar } from '@/tools/interpolar';
 import type { ContextMenuAction } from '@/types/contextMenu';
@@ -21,6 +23,20 @@ import type { DirContents, DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
 
 const MAX_VISIBLE_ITEMS = 100;
+
+/**
+ * La barra mide su lugar: por debajo de 400 píxeles los cuatro botones van a
+ * un menú, y por debajo de 600 quedan con el icono solo (el nombre sigue en el
+ * `aria-label` y en el globo nativo).
+ */
+const bar = ref<HTMLElement | null>(null);
+const barWidth = useElementWidth(bar);
+const isCollapsed = computed(() => barWidth.value < 400);
+const showsButtonText = computed(() => barWidth.value >= 600);
+
+function buttonLabel(text: string): string {
+	return showsButtonText.value ? text : '';
+}
 
 const props = defineProps<{
 	dirContents: DirContents | null;
@@ -170,9 +186,9 @@ function openCollapsedPopover() {
 </script>
 
 <template>
-  <div class="@container flex h-8 shrink-0 items-center justify-between px-2 py-1 rounded-[var(--radius-sm)] border-t border-ui-border bg-ui-bg/80-2 text-tx-muted text-xs gap-2">
+  <div ref="bar" class="flex h-8 min-w-0 shrink-0 items-center justify-between gap-2 border-t border-ui-line px-2 py-1 text-label-xs text-tx-muted">
     <template v-if="hasSelection">
-      <span class="flex shrink-0 flex-wrap items-center gap-1">
+      <span class="flex min-w-0 flex-wrap items-center gap-1">
         {{ t('fileBrowser.selectedItems').replace('{0}', String(selectedCount)) }}
         <template v-if="selectionSizeDisplay">
           <span class="text-tx-muted/50">·</span>
@@ -191,33 +207,22 @@ function openCollapsedPopover() {
       <Popover v-model:open="showItemsPopoverOpen">
         <PopoverAnchor as-child>
           <div class="flex shrink-0 items-center gap-1">
-            <div class="hidden @[400px]:flex items-center gap-1">
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('showItems')"
-                @click="showItemsPopoverOpen = true">
-                <ThemeIcon name="visibility" type="symbol" :size="14" />
-                <span class="hidden @[600px]:inline">{{ t('showItems') }}</span>
-              </button>
-
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50"
-                :title="t('fileBrowser.selectAll')" @click="emit('selectAll')">
-                <ThemeIcon name="emblem-default" type="symbol" :size="14" />
-                <span class="hidden @[600px]:inline">{{ t('fileBrowser.selectAll') }}</span>
-              </button>
-
-              <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50"
-                :title="t('fileBrowser.deselectAll')" @click="emit('deselectAll')">
-                <ThemeIcon name="window-close" type="symbol" :size="14" />
-                <span class="hidden @[600px]:inline">{{ t('fileBrowser.deselectAll') }}</span>
-              </button>
+            <div v-if="!isCollapsed" class="flex items-center gap-1">
+              <ActionButton :label="buttonLabel(t('showItems'))" :icon-alt="t('showItems')" :title="t('showItems')"
+                icon="view-reveal" variant="ghost" size="sm" @click="showItemsPopoverOpen = true" />
+              <ActionButton :label="buttonLabel(t('fileBrowser.selectAll'))" :icon-alt="t('fileBrowser.selectAll')"
+                :title="t('fileBrowser.selectAll')" icon="edit-select-all" variant="ghost" size="sm"
+                @click="emit('selectAll')" />
+              <ActionButton :label="buttonLabel(t('fileBrowser.deselectAll'))" :icon-alt="t('fileBrowser.deselectAll')"
+                :title="t('fileBrowser.deselectAll')" icon="edit-select-none" variant="ghost" size="sm"
+                @click="emit('deselectAll')" />
 
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('menu')">
-                    <ThemeIcon name="open-menu-symbolic" type="symbol" :size="14" />
-                    <span class="hidden @[600px]:inline">{{ t('menu') }}</span>
-                  </button>
+                  <ActionButton :label="buttonLabel(t('menu'))" :icon-alt="t('menu')" :title="t('menu')"
+                    icon="open-menu" variant="ghost" size="sm" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" class="min-w-[200px] p-2">
+                <DropdownMenuContent align="end" side="top" class="min-w-50">
                   <ActionMenuComponent :selected-entries="selectedEntriesArray"
                     :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
                     @action="emit('contextMenuAction', $event)" />
@@ -225,70 +230,64 @@ function openCollapsedPopover() {
               </DropdownMenu>
             </div>
 
-            <div class="flex @[400px]:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                  <button type="button" class="inline-flex items-center h-[26px] px-2 text-[11px] gap-1 rounded hover:bg-ui-surface/50" :title="t('actions')" :aria-label="t('actions')">
-                    <ThemeIcon name="overflow-menu" type="symbol" :size="16" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" class="min-w-[180px]">
-                  <DropdownMenuItem @click="openCollapsedPopover">
-                    <ThemeIcon name="visibility" type="symbol" :size="14" />
-                    {{ t('showItems') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click="emit('selectAll')">
-                    <ThemeIcon name="emblem-default" type="symbol" :size="14" />
-                    {{ t('fileBrowser.selectAll') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click="emit('deselectAll')">
-                    <ThemeIcon name="window-close" type="symbol" :size="14" />
-                    {{ t('fileBrowser.deselectAll') }}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <ActionMenuComponent :selected-entries="selectedEntriesArray"
-                    :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
-                    @action="emit('contextMenuAction', $event)" />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <DropdownMenu v-else>
+              <DropdownMenuTrigger as-child>
+                <ActionButton label="" :icon-alt="t('actions')" :title="t('actions')" icon="view-more"
+                  variant="ghost" size="sm" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top" class="min-w-45">
+                <DropdownMenuItem icon="view-reveal" @click="openCollapsedPopover">
+                  {{ t('showItems') }}
+                </DropdownMenuItem>
+                <DropdownMenuItem icon="edit-select-all" @click="emit('selectAll')">
+                  {{ t('fileBrowser.selectAll') }}
+                </DropdownMenuItem>
+                <DropdownMenuItem icon="edit-select-none" @click="emit('deselectAll')">
+                  {{ t('fileBrowser.deselectAll') }}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <ActionMenuComponent :selected-entries="selectedEntriesArray"
+                  :menu-item-component="DropdownMenuItem" :menu-separator-component="DropdownMenuSeparator"
+                  @action="emit('contextMenuAction', $event)" />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </PopoverAnchor>
-        <PopoverContent align="start" side="top" class="w-[320px] p-0">
+        <PopoverContent align="start" side="top" padding="sm" class="w-80" :label="t('showItems')">
           <div class="flex flex-col gap-2">
-            <div class="px-2 pt-2">
-              <input v-model="itemsFilterQuery" type="text" :placeholder="t('filter.filter')"
-                class="w-full flex h-8 w-full rounded-corner border border-ui-border bg-ui-bg/80 px-3 py-1.5 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-tx-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50" />
-            </div>
-            <div v-if="showItemsHeader" class="px-3 py-1 text-tx-muted text-[11px]">
+            <SearchField v-model="itemsFilterQuery" :placeholder="t('filter.filter')" :label="t('filter.filter')" />
+            <div v-if="showItemsHeader" class="px-3 py-1 text-label-xs text-tx-muted">
               {{ showItemsHeader }}
             </div>
-            <ScrollArea class="h-[200px] [&_.sigma-ui-scroll-area-scrollbar]:-right-1.5">
-              <div class="flex flex-col m-2 gap-0.5">
-                <div v-for="entry in displayedEntries" :key="entry.path" class="flex items-stretch rounded gap-2 hover:bg-secondary group/item">
-                  <div class="flex overflow-hidden min-w-0 flex-1 flex-col justify-center py-1.5 pl-2 gap-0.5">
-                    <span class="overflow-hidden text-[13px] font-medium text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
-                    <span class="overflow-hidden text-tx-muted text-[11px] text-ellipsis whitespace-nowrap">{{ entry.path }}</span>
-                  </div>
-                  <button type="button" class="shrink-0 self-stretch w-9 flex items-center justify-center rounded-r hover:bg-status-error hover:text-destructive-foreground transition-colors"
-                    :title="t('fileBrowser.removeFromSelection')" @click="removeItem(entry)" :aria-label="t('fileBrowser.removeFromSelection')">
-                    <ThemeIcon name="window-close" type="symbol" :size="16" />
-                  </button>
-                </div>
-                <div v-if="displayedEntries.length === 0" class="p-4 text-tx-muted text-xs text-center">
+            <!-- La barra de desplazamiento la pone `scrollbar.css`. -->
+            <div class="h-50 overflow-y-auto">
+              <div class="flex flex-col gap-0.5">
+                <ListRow
+                  v-for="entry in displayedEntries"
+                  :key="entry.path"
+                  :title="entry.name"
+                  :description="entry.path"
+                  truncate>
+                  <template #trailing>
+                    <ActionButton label="" :icon-alt="t('fileBrowser.removeFromSelection')"
+                      :title="t('fileBrowser.removeFromSelection')" icon="window-close" variant="ghost" size="sm"
+                      @click="removeItem(entry)" />
+                  </template>
+                </ListRow>
+                <p v-if="displayedEntries.length === 0" class="m-0 p-4 text-center text-body-xs text-tx-muted">
                   {{ t('fileBrowser.noMatchingItems') }}
-                </div>
+                </p>
               </div>
-            </ScrollArea>
+            </div>
           </div>
         </PopoverContent>
       </Popover>
     </template>
     <template v-else>
-      <span v-if="isFiltered">
+      <span v-if="isFiltered" class="truncate">
         {{ t('fileBrowser.showingFiltered').replace('{0}', String(hiddenCount)).replace('{1}', String(totalCount)) }}
       </span>
-      <span v-else>
+      <span v-else class="truncate">
         {{ t('fileBrowser.itemsTotal').replace('{0}', String(totalCount)) }}
       </span>
     </template>

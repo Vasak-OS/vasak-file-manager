@@ -9,11 +9,17 @@ import ContentInformationContentProperies from './ContentInformationContentPrope
 interface Props {
 	selectedEntries?: DirEntry[];
 	currentDirEntry?: DirEntry | null;
+	/**
+	 * Que ocupe el ancho que le den en vez de sus 272 píxeles: en una columna
+	 * por vez la información va en lugar de los archivos.
+	 */
+	fill?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	selectedEntries: () => [],
 	currentDirEntry: null,
+	fill: false,
 });
 
 const navigatorStore = useNavigatorStore();
@@ -34,7 +40,9 @@ const infoPanelEntry = computed(() => {
 </script>
 
 <template>
-	<div class="bg-ui-surface/70 rounded-corner h-full min-h-0 w-68 overflow-hidden p-2 border border-ui-border">
+	<div
+		class="flex h-full min-h-0 flex-col overflow-hidden rounded-corner-l border border-ui-line bg-ui-surface/70 p-2"
+		:class="props.fill ? 'w-full min-w-0' : 'w-68'">
 		<ContentInformationPreviewComponent :selectedEntry="infoPanelEntry" />
 		<ContentInformationHeadComponent :selectedEntry="infoPanelEntry" />
 		<ContentInformationContentProperies :selectedEntry="infoPanelEntry" />

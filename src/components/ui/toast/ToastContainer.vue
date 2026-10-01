@@ -1,29 +1,24 @@
 <script lang="ts" setup>
+/**
+ * Los avisos de la cola (`toaster.ts`), dibujados con `ToastArea`. Cómo se arma
+ * cada uno está en `toast-notice.ts`.
+ */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ToastArea, type ToastNotice } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
+import { toNotice } from './toast-notice';
 import { useToast } from './toaster';
 
+const { t } = useI18n();
 const { toasts } = useToast();
 
-const toastList = computed(() => Array.from(toasts.value.values()));
+const notices = computed(() => [...toasts.value.values()].map((queued) => toNotice(queued, t)));
+
+function handleAction(notice: ToastNotice) {
+	toasts.value.get(notice.id)?.onAction?.();
+}
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-      <TransitionGroup
-        tag="div"
-        enter-active-class="transition-all duration-300 ease"
-        leave-active-class="transition-all duration-300 ease"
-        enter-from-class="opacity-0 translate-x-[30px]"
-        leave-to-class="opacity-0 translate-x-[30px]"
-        move-class="transition-transform duration-300 ease"
-      >
-        <div v-for="toast in toastList" :key="toast.id" class="pointer-events-auto">
-          <component :is="toast.component" v-bind="toast.componentProps" />
-        </div>
-      </TransitionGroup>
-    </div>
-  </Teleport>
+  <ToastArea :toasts="notices" @action="handleAction" />
 </template>
-
-

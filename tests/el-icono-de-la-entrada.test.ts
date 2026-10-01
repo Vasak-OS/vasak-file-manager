@@ -14,7 +14,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { olvidarLosIconosDelTema } from '@vasakgroup/vue-libvasak';
+import { forgetThemeIcons } from '@vasakgroup/vue-libvasak';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
@@ -71,7 +71,7 @@ beforeEach(() => {
 	olvidarQueSeOlvido();
 	// La memoria de la librería vive en su módulo y sobrevive entre archivos de
 	// prueba: sin vaciarla, esto ve el icono que dejó otra.
-	olvidarLosIconosDelTema();
+	forgetThemeIcons();
 });
 
 afterEach(() => {
@@ -79,7 +79,7 @@ afterEach(() => {
 	// suscrita al tema; la siguiente prueba arranca con basura de ésta.
 	for (const una of montadas) una.unmount();
 	montadas = [];
-	olvidarLosIconosDelTema();
+	forgetThemeIcons();
 });
 
 describe('el nombre del icono sale del tipo, no de la extensión', () => {

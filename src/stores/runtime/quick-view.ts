@@ -2,8 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { getAllWindows, getCurrentWindow, type Window } from '@tauri-apps/api/window';
 import { defineStore } from 'pinia';
-import { computed, markRaw, ref } from 'vue';
-import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
+import { computed, ref } from 'vue';
 import { toast } from '@/components/ui/toast/toaster';
 import { FILE_EXTENSIONS } from '@/constants/file-extensions';
 
@@ -74,11 +73,9 @@ export const useQuickViewStore = defineStore('quickView', () => {
 	}
 
 	function showUnsupportedFileToast(fileName: string): void {
-		toast.custom(markRaw(CustomSimple), {
-			componentProps: {
-				title: 'notifications.quickViewFileIsNotSupported',
-				description: fileName,
-			},
+		toast.error({
+			title: 'notifications.quickViewFileIsNotSupported',
+			description: fileName,
 			duration: 3000,
 		});
 	}

@@ -3,18 +3,24 @@ import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
+	AlertMessage,
 	Dialog,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	EmptyState,
+	FormGroup,
+	ListRow,
+	SectionHeading,
+	TextInput,
 	ThemeIcon,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
 import { computed, ref, watch } from 'vue';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
 import type { DirEntry } from '@/types/dir-entry';
 
 interface CustomCommand {
@@ -256,128 +262,115 @@ const canSaveCommand = computed(() => {
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="w-[480px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
+    <DialogContent size="md" class="overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{{ t('openWith.customCommands') }}</DialogTitle>
       </DialogHeader>
 
       <div class="flex w-full min-w-0 flex-col gap-4">
-        <div v-if="loadError" class="p-3 rounded-corner bg-status-error/10 text-status-error text-[13px]">
-          {{ loadError }}
-        </div>
+        <AlertMessage v-if="loadError" tone="error">{{ loadError }}</AlertMessage>
 
         <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span class="text-tx-muted text-xs font-medium tracking-wide uppercase">{{ t('openWith.customCommands') }}</span>
-            <button type="button" @click="startAddingCommand">
-              <ThemeIcon name="list-add" type="symbol" :size="16" />
-              {{ t('openWith.addCustomCommand') }}
-            </button>
-          </div>
+          <SectionHeading :title="t('openWith.customCommands')" variant="eyebrow" as="h3">
+            <template #actions>
+              <ActionButton :label="t('openWith.addCustomCommand')" icon="list-add" variant="ghost" size="sm"
+                @click="startAddingCommand" />
+            </template>
+          </SectionHeading>
 
-          <ScrollArea v-if="customCommands.length > 0" class="max-h-[200px]">
-            <div v-for="command in customCommands" :key="command.id" class="group flex items-center justify-between px-3 py-2 rounded-corner bg-transparent cursor-pointer gap-2 transition-colors duration-150 hover:bg-ui-surface/50"
-              :class="{ '!bg-primary/15 hover:!bg-primary/20': selectedCommandId === command.id }"
-              @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
-              <div class="flex overflow-hidden flex-1 items-center gap-2.5">
-                <ThemeIcon name="application-x-executable" type="symbol" :size="16" class="shrink-0 text-tx-muted" />
-                <div class="flex overflow-hidden flex-col gap-0.5">
-                  <span class="text-tx-main text-sm font-medium">{{ command.name }}</span>
-                  <span class="overflow-hidden text-tx-muted text-xs text-ellipsis whitespace-nowrap">{{ command.programPath }}</span>
+          <!-- La barra de desplazamiento la pone `scrollbar.css`. -->
+          <div v-if="customCommands.length > 0" class="flex max-h-50 flex-col gap-0.5 overflow-y-auto" role="listbox"
+            :aria-label="t('openWith.customCommands')">
+            <!-- El doble clic lo atiende el envoltorio: `ListRow` declara sólo
+                 `click`. -->
+            <div v-for="command in customCommands" :key="command.id" role="none" class="group" @dblclick="runCommand(command)">
+            <ListRow
+              role="option"
+              :title="command.name"
+              :description="command.programPath"
+              icon="application-x-executable"
+              icon-type="symbol"
+              :selected="selectedCommandId === command.id"
+              truncate
+              @click="selectedCommandId = command.id">
+              <template #trailing>
+                <div class="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-150 ease-ui group-hover:opacity-100 group-focus-within:opacity-100">
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <ActionButton label="" :icon-alt="t('run')" icon="media-playback-start" variant="ghost" size="sm"
+                        stop-propagation @click="runCommand(command)" />
+                    </TooltipTrigger>
+                    <TooltipContent>{{ t('run') }}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <ActionButton label="" :icon-alt="t('edit')" icon="document-edit" variant="ghost" size="sm"
+                        stop-propagation @click="startEditingCommand(command)" />
+                    </TooltipTrigger>
+                    <TooltipContent>{{ t('edit') }}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <ActionButton label="" :icon-alt="t('fileBrowser.actions.delete')" icon="edit-delete" variant="ghost"
+                        size="sm" stop-propagation @click="deleteCommand(command.id)" />
+                    </TooltipTrigger>
+                    <TooltipContent>{{ t('fileBrowser.actions.delete') }}</TooltipContent>
+                  </Tooltip>
                 </div>
-              </div>
-              <div class="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                <Tooltip>
-                  <TooltipTrigger>
-                    <button type="button" @click.stop="runCommand(command)">
-                      <ThemeIcon name="media-playback-start" type="symbol" :size="14" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ t('run') }}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <button type="button" @click.stop="startEditingCommand(command)">
-                      <ThemeIcon name="dialog-information" type="symbol" :size="14" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ t('edit') }}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <button type="button" class="hover:text-status-error"
-                      @click.stop="deleteCommand(command.id)">
-                      <ThemeIcon name="edit-delete" type="symbol" :size="14" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ t('fileBrowser.actions.delete') }}</TooltipContent>
-                </Tooltip>
-              </div>
+              </template>
+            </ListRow>
             </div>
-          </ScrollArea>
-
-          <div v-else-if="!isAddingCommand" class="p-6 border border-dashed border-ui-border rounded-corner text-tx-muted text-[13px] text-center">
-            {{ t('openWith.noCustomCommands') }}
           </div>
+
+          <EmptyState v-else-if="!isAddingCommand" :title="t('openWith.noCustomCommands')" icon="" size="sm" bordered />
         </div>
 
-        <div v-if="isAddingCommand || editingCommandId" class="flex flex-col p-4 border border-ui-border rounded-corner bg-ui-surface/30 gap-3">
-          <div class="mb-1">
-            <span class="text-tx-muted text-xs font-medium tracking-wide uppercase">
-              {{ t(editingCommandId ? 'openWith.editCustomCommand' : 'openWith.addCustomCommand') }}
-            </span>
-          </div>
+        <div v-if="isAddingCommand || editingCommandId" class="flex flex-col gap-3 rounded-corner-l border border-ui-line bg-ui-surface/30 p-4">
+          <SectionHeading
+            :title="t(editingCommandId ? 'openWith.editCustomCommand' : 'openWith.addCustomCommand')"
+            variant="eyebrow"
+            as="h3" />
 
-          <div class="flex flex-col gap-1.5">
-            <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.commandName') }}</label>
-            <input v-model="newCommandName" type="text" :placeholder="t('openWith.commandNamePlaceholder')" />
-          </div>
+          <FormGroup :label="t('openWith.commandName')" html-for="open-with-name">
+            <TextInput id="open-with-name" v-model="newCommandName" :placeholder="t('openWith.commandNamePlaceholder')" />
+          </FormGroup>
 
-          <div class="flex flex-col gap-1.5">
-            <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.programPath') }}</label>
-            <div class="flex gap-2">
-              <input v-model="newCommandPath" type="text" :placeholder="t('openWith.enterProgramPath')"
-                class="flex-1" />
-              <button type="button" :title="t('browse')" @click="handleSelectProgram" :aria-label="t('browse')">
-                <ThemeIcon name="folder-open" type="symbol" :size="16" />
-              </button>
+          <FormGroup :label="t('openWith.programPath')" html-for="open-with-path">
+            <div class="flex min-w-0 gap-2">
+              <TextInput id="open-with-path" v-model="newCommandPath" :placeholder="t('openWith.enterProgramPath')"
+                class="min-w-0 flex-1" />
+              <ActionButton label="" :icon-alt="t('browse')" :title="t('browse')" icon="folder-open" variant="secondary"
+                @click="handleSelectProgram" />
             </div>
-          </div>
+          </FormGroup>
 
-          <div class="flex flex-col gap-1.5">
+          <!-- La pista de los argumentos sigue en su globo, al lado de la
+               etiqueta: escrita abajo del campo sumaba un párrafo al diálogo. -->
+          <div class="flex min-w-0 flex-col gap-1">
             <div class="flex items-center gap-1.5">
-              <label class="text-tx-main text-[13px] font-medium">{{ t('openWith.arguments') }}</label>
+              <label for="open-with-args" class="text-label-s text-tx-muted">{{ t('openWith.arguments') }}</label>
               <Tooltip>
                 <TooltipTrigger>
-                  <ThemeIcon name="dialog-information" type="symbol" :size="14" class="text-tx-muted cursor-help" />
+                  <ThemeIcon name="dialog-information" type="symbol" :size="14" class="cursor-help text-tx-muted" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{{ t('openWith.argumentsHint') }}</p>
+                  <p class="m-0">{{ t('openWith.argumentsHint') }}</p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <input v-model="newCommandArgs" type="text" :placeholder="t('openWith.argumentsPlaceholder')" />
+            <TextInput id="open-with-args" v-model="newCommandArgs" :placeholder="t('openWith.argumentsPlaceholder')" />
           </div>
 
-          <div class="flex justify-end mt-2 gap-2">
-            <button type="button" @click="cancelEditing">
-              {{ t('cancel') }}
-            </button>
-            <button type="button" :disabled="!canSaveCommand" @click="saveCommand">
-              {{ t('save') }}
-            </button>
+          <div class="mt-2 flex justify-end gap-2">
+            <ActionButton :label="t('cancel')" variant="secondary" @click="cancelEditing" />
+            <ActionButton :label="t('save')" :disabled="!canSaveCommand" @click="saveCommand" />
           </div>
         </div>
       </div>
 
       <DialogFooter class="flex justify-end gap-2">
-        <button type="button" :disabled="isOpening" @click="handleClose">
-          {{ t('cancel') }}
-        </button>
-        <button type="button" :disabled="!canRun || isOpening" @click="handleRunSelected">
-          <ThemeIcon v-if="isOpening" name="process-working" type="symbol" :size="16" class="animate-spin" />
-          {{ t('openWith.open') }}
-        </button>
+        <ActionButton :label="t('cancel')" variant="secondary" :disabled="isOpening" @click="handleClose" />
+        <ActionButton :label="t('openWith.open')" :disabled="!canRun" :loading="isOpening" @click="handleRunSelected" />
       </DialogFooter>
     </DialogContent>
   </Dialog>

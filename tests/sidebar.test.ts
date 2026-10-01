@@ -127,12 +127,15 @@ describe('la barra', () => {
 	test('la ventana le deja aire alrededor', async () => {
 		// La barra es una tarjeta con borde y esquina redondeada: pegada al
 		// borde de la ventana se le come el redondeo.
+		// La fila es la primera caja después del marco; adentro va el envoltorio
+		// que la vuelve cajón en compacto, que no lleva relleno propio.
 		const fila = layout.slice(
-			layout.lastIndexOf('<div', layout.indexOf('<SidebarComponent')),
+			layout.indexOf('<div', layout.indexOf('</template>', layout.indexOf('#acciones'))),
 			layout.indexOf('<SidebarComponent')
 		);
-		expect(fila).toContain('p-1');
-		expect(fila).toContain('gap-1');
+		const caja = fila.slice(0, fila.indexOf('>'));
+		expect(caja).toContain('p-1');
+		expect(caja).toContain('gap-1');
 	});
 
 	test('no se come el ancho de la barra superior', async () => {
@@ -420,7 +423,7 @@ describe('la división de la pantalla', () => {
 
 		for (const [, resto = ''] of apariciones) {
 			expect(resto).toContain('rounded-corner');
-			expect(resto).toContain('border-ui-border');
+			expect(resto).toContain('border-ui-line');
 			expect(resto).toContain('bg-ui-surface/70');
 		}
 	});

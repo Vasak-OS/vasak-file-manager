@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	type PropertyItem as ListedProperty,
+	PropertyList,
+	ThemeIcon,
+} from '@vasakgroup/vue-libvasak';
 import { computed, watch } from 'vue';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
@@ -165,123 +169,50 @@ const properties = computed<PropertyItem[]>(() => {
 
 	return items;
 });
+
+/** Las propiedades, como las pide `PropertyList`. */
+const propertyItems = computed<ListedProperty[]>(() =>
+	properties.value.map((item) => ({ label: item.title, value: item.value }))
+);
 </script>
 
 <template>
-  <ScrollArea>
-    <div v-if="!selectedEntry" class="flex h-full items-center justify-center text-sm text-tx-muted">
+  <!-- Desplaza el espacio que le deja el panel (es la última pieza de una
+       columna), en vez de calcularlo contra el alto de la pantalla. -->
+  <div class="min-h-0 flex-1 overflow-y-auto">
+    <div v-if="!selectedEntry" class="flex h-full items-center justify-center text-body-s text-tx-muted">
       {{ t('noData') }}
     </div>
-    <div v-else class="flex flex-col gap-3 max-h-[calc(100vh-300px)] overflow-auto px-2">
+    <div v-else class="flex flex-col gap-3 px-2">
       <div v-if="selectedEntry?.is_dir" class="flex flex-col gap-1">
-        <div class="text-sm uppercase text-tx-muted">
+        <div class="text-label-s text-tx-muted">
           {{ t('size') }}
         </div>
-        <div class="break-all flex items-center gap-2 h-10">
+        <div class="flex h-10 min-w-0 items-center gap-2 break-all">
           <template v-if="isDirSizeLoading">
-            <ThemeIcon name="sync" type="symbol" :size="14" class="info-panel-properties__spinner" />
-            <div class="info-panel-properties__size-content">
+            <ThemeIcon name="process-working" type="symbol" :size="14" class="animate-spin text-tx-muted" />
+            <div class="flex min-w-0 flex-col gap-0.5 text-label-m">
               <span v-if="dirSizeDisplay">{{ dirSizeDisplay }}</span>
               <span v-else>{{ t('calculating') }}...</span>
             </div>
-            <button class="info-panel-properties__cancel-btn" @click="handleCancelSize">
-              <ThemeIcon name="window-close" type="symbol" :size="14" />
-            </button>
+            <ActionButton label="" :icon-alt="t('cancel')" :title="t('cancel')" icon="window-close" variant="ghost"
+              size="sm" class="ml-auto" @click="handleCancelSize" />
           </template>
           <template v-else-if="dirSizeDisplay && !showGetSizeButton">
-            <div class="info-panel-properties__size-content">
+            <div class="flex min-w-0 flex-col gap-0.5 text-label-m">
               <span>{{ dirSizeDisplay }}</span>
-              <span v-if="calculatedAgo" class="info-panel-properties__calculated-ago">{{ t('calculatedAgo').replace('{0}',
+              <span v-if="calculatedAgo" class="text-label-xs text-tx-muted">{{ t('calculatedAgo').replace('{0}',
                 calculatedAgo) }}</span>
             </div>
-            <button v-if="showRecalculateButton"
-              class="info-panel-properties__recalculate-btn" :title="t('recalculate')" @click="handleGetSize" :aria-label="t('recalculate')">
-              <ThemeIcon name="view-refresh" type="symbol" :size="12" />
-            </button>
+            <ActionButton v-if="showRecalculateButton" label="" :icon-alt="t('recalculate')" :title="t('recalculate')"
+              icon="view-refresh" variant="ghost" size="sm" class="ml-auto" @click="handleGetSize" />
           </template>
-          <button v-else-if="showGetSizeButton" @click="handleGetSize">
-            {{ t('getSize') }}
-          </button>
+          <ActionButton v-else-if="showGetSizeButton" :label="t('getSize')" variant="secondary" size="sm"
+            @click="handleGetSize" />
         </div>
       </div>
 
-      <div v-for="(item, index) in properties" :key="index" class="flex flex-col gap-1">
-        <div class="text-sm uppercase text-tx-muted">
-          {{ item.title }}
-        </div>
-        <div class="break-all">
-          {{ item.value }}
-        </div>
-      </div>
+      <PropertyList :items="propertyItems" layout="grid" class="[&_dd]:break-all" />
     </div>
-  </ScrollArea>
+  </div>
 </template>
-
-<style scoped>
-.info-panel-properties--compact {
-  overflow: hidden;
-  min-width: 0;
-  padding: 0;
-}
-
-.info-panel-properties__compact-text {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.info-panel-properties__size-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.info-panel-properties__calculated-ago {
-  color: hsl(var(--muted-foreground) / 70%);
-  font-size: 11px;
-}
-
-.info-panel-properties__spinner {
-  animation: spin 1s linear infinite;
-  color: hsl(var(--muted-foreground));
-}
-
-.info-panel-properties__cancel-btn {
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  margin-left: auto;
-  color: hsl(var(--muted-foreground));
-}
-
-.info-panel-properties__cancel-btn:hover {
-  color: hsl(var(--destructive));
-}
-
-.info-panel-properties__recalculate-btn {
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  margin-left: auto;
-  color: hsl(var(--muted-foreground));
-  opacity: 0.5;
-  transition: opacity 0.15s ease;
-}
-
-.info-panel-properties__recalculate-btn:hover {
-  color: hsl(var(--primary));
-  opacity: 1;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>

@@ -166,7 +166,7 @@ defineExpose({
       leave-active-class="transition-opacity duration-100 ease-in"
       enter-from-class="opacity-0"
       leave-to-class="opacity-0">
-      <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary rounded-corner inset-0 pointer-events-none" />
+      <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary rounded-corner-m inset-0 pointer-events-none" />
     </Transition>
 
     <InboundDragOverlayComponent v-if="!fb.isExternalMode" :is-active="fb.isExternalDragActive.value"

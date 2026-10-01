@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, markRaw, ref } from 'vue';
-import CustomError from '@/components/ui/toast/CustomError.vue';
+import { ProgressBar, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { computed, ref } from 'vue';
 import { toast } from '@/components/ui/toast/toaster';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { avisoDeFallo } from '@/tools/aviso-de-montaje';
@@ -82,11 +81,9 @@ function mostrarFallo(mountError: unknown) {
 		return;
 	}
 
-	toast.custom(markRaw(CustomError), {
-		componentProps: {
-			title: t(aviso.claveDelTitulo),
-			description: aviso.detalle,
-		},
+	toast.error({
+		title: t(aviso.claveDelTitulo),
+		description: aviso.detalle,
 		duration: 6000,
 	});
 }
@@ -114,7 +111,7 @@ async function handleUnmount(clickEvent?: Event) {
 </script>
 
 <template>
-  <button type="button" class="relative grid overflow-hidden w-full h-full items-center gap-0 pr-2 cursor-pointer [grid-template-columns:56px_1fr_auto] text-left hover:bg-primary focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 transition-all" :class="{
+  <button type="button" class="relative grid overflow-hidden w-full h-full items-center gap-0 pr-2 cursor-pointer rounded-corner-m [grid-template-columns:56px_1fr_auto] text-left text-tx-main transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed focus-visible:outline-2 focus-visible:outline-ui-focus focus-visible:outline-offset-2" :class="{
     'opacity-60 hover:opacity-100': !drive.is_mounted,
   }" @click="handleClick">
     <div class="relative flex w-14 h-14 flex-col shrink-0 items-center justify-center gap-0.5">
@@ -127,30 +124,29 @@ async function handleUnmount(clickEvent?: Event) {
           :size="12"
           :alt="t('drive.encrypted')"
           class="absolute bottom-1 right-1" />
-        <span v-if="drive.is_mounted" class="text-tx-muted text-[11px] font-medium">
+        <span v-if="drive.is_mounted" class="text-tx-muted text-label-xs font-medium">
           {{ drive.percent_used }}%
         </span>
     </div>
 
     <div class="flex min-w-0 flex-1 flex-col py-2 gap-1">
-      <div class="overflow-hidden text-seccondary text-[13px] font-medium text-ellipsis whitespace-nowrap">
+      <div class="overflow-hidden text-tx-main text-label-s font-medium text-ellipsis whitespace-nowrap">
         {{ drive.name }}
       </div>
 
 			<div class="flex items-center gap-2">
-				<div class="h-1.5 w-full overflow-hidden rounded-full bg-ui-surface/40">
-					<div
-						class="h-full rounded-full transition-all"
-						:class="isLowSpace ? 'bg-status-error' : 'bg-primary'"
-						:style="{ width: `${Math.min(100, Math.max(0, drive.percent_used))}%` }"
-					/>
-				</div>
-				<span class="text-[11px] font-medium tabular-nums" :class="isLowSpace ? 'text-status-error' : 'text-tx-muted'">
+				<ProgressBar
+					:value="Math.min(100, Math.max(0, drive.percent_used))"
+					:label="drive.name"
+					:tone="isLowSpace ? 'critical' : 'normal'"
+					size="sm"
+					class="min-w-0 flex-1" />
+				<span class="text-label-xs font-medium tabular-nums" :class="isLowSpace ? 'text-status-error' : 'text-tx-muted'">
 					{{ drive.percent_used }}%
 				</span>
 			</div>
 
-      <div class="text-tx-muted text-xs">
+      <div class="text-tx-muted text-body-xs">
         <template v-if="isMounting">
           {{ t('mounting') }}...
         </template>
@@ -164,7 +160,7 @@ async function handleUnmount(clickEvent?: Event) {
       v-if="drive.is_mounted && drive.is_removable"
       role="button"
       tabindex="0"
-      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-corner hover:bg-ui-surface/80 focus-visible:outline-2 focus-visible:outline-primary"
+      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-corner-m transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed focus-visible:outline-2 focus-visible:outline-ui-focus"
       :title="t('drive.unmount')"
       @click.stop.prevent="handleUnmount"
       @keydown.enter.stop.prevent="handleUnmount"

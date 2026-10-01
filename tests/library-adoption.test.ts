@@ -17,7 +17,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { olvidarLosIconosDelTema } from '@vasakgroup/vue-libvasak';
+import { forgetThemeIcons } from '@vasakgroup/vue-libvasak';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
@@ -52,7 +52,7 @@ const elPanel = () => document.body.querySelector<HTMLElement>('[role="dialog"]'
 
 beforeEach(() => {
 	olvidarTodo();
-	olvidarLosIconosDelTema();
+	forgetThemeIcons();
 	setActivePinia(createPinia());
 });
 

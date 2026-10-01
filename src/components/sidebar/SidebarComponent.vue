@@ -36,6 +36,7 @@ import { onMounted } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import { type CloudDrive, useCloudDrives } from '@/composables/use-cloud-drives';
 import { useDrives } from '@/composables/use-drives';
+import { useWindowColumns } from '@/composables/use-window-columns';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
@@ -53,7 +54,11 @@ const workspacesStore = useWorkspacesStore();
 const userPathsStore = useUserPathsStore();
 const { t } = useI18n();
 
+/** En una ventana compacta la barra es un cajón: elegir un lugar lo cierra. */
+const { isSidebarOpen } = useWindowColumns();
+
 async function openDrive(path: string) {
+	isSidebarOpen.value = false;
 	await workspacesStore.openNewTabGroup(path);
 }
 
@@ -151,16 +156,18 @@ onMounted(async () => {
         </Tooltip>
       </SideGroup>
 
-      <!-- Si un montaje falló hay que decirlo. Antes el error se guardaba y no
-           se mostraba: apretar el disco no hacía nada y no había forma de saber
-           por qué. Va al final y no arriba para no correr de lugar todo lo
-           demás cada vez que aparece. -->
+    </template>
+
+    <!-- Si un montaje falló hay que decirlo. Antes el error se guardaba y no
+         se mostraba: apretar el disco no hacía nada y no había forma de saber
+         por qué. Va en el pie de la barra (2.2.0), quieto mientras la lista
+         desplaza, para no correr de lugar todo lo demás cada vez que aparece. -->
+    <template v-if="cloudError" #footer="{ collapsed }">
       <p
-        v-if="cloudError"
         role="status"
-        class="mt-auto rounded-corner bg-status-error/20 p-2 text-status-error text-xs leading-relaxed">
-        <span v-if="collapsed" aria-hidden="true">!</span>
-        <span v-else>{{ cloudError }}</span>
+        class="m-0 rounded-corner-m border border-status-error/30 bg-status-error/8 p-2 text-body-xs text-tx-main">
+        <span v-if="collapsed" aria-hidden="true" class="font-semibold text-status-error">!</span>
+        <span v-else class="break-words">{{ cloudError }}</span>
         <span v-if="collapsed" class="sr-only">{{ cloudError }}</span>
       </p>
     </template>

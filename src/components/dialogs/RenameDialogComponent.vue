@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
 	Dialog,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	FormGroup,
+	TextInput,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
@@ -23,7 +26,12 @@ const { t } = useI18n();
 
 const isOpen = defineModel<boolean>('open', { required: true });
 
-const inputRef = ref<HTMLInputElement | null>(null);
+/**
+ * El campo es el `TextInput` de la librería, cuya raíz es el `<input>`: se
+ * toma de ahí para seleccionar el nombre al abrir, que la librería no expone.
+ */
+const field = ref<InstanceType<typeof TextInput> | null>(null);
+const inputRef = computed(() => (field.value?.$el as HTMLInputElement | undefined) ?? null);
 const newName = ref('');
 const isSubmitting = ref(false);
 
@@ -126,25 +134,20 @@ function handleKeydown(event: KeyboardEvent) {
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="w-[420px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
+    <DialogContent size="sm" class="overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{{ t('dialogs.renameDirItemDialog.renameItem') }}</DialogTitle>
       </DialogHeader>
 
       <div class="flex w-full min-w-0 flex-col gap-4">
-        <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="rename-input" class="text-tx-main text-sm font-medium">
-            {{ t('dialogs.renameDirItemDialog.newName') }}
-          </label>
+        <FormGroup :label="t('dialogs.renameDirItemDialog.newName')" html-for="rename-input">
           <div class="flex w-full min-w-0 items-center gap-2">
-            <input id="rename-input" ref="inputRef" v-model="newName" type="text"
-              class="w-full min-w-0 max-w-full box-border"
-              :class="{ '!border-status-error': newName && !isValid }" @keydown="handleKeydown" />
-            <button type="button" :disabled="!isValid || !hasChanges || isSubmitting" @click="handleSubmit">
-              {{ t('save') }}
-            </button>
+            <TextInput id="rename-input" ref="field" v-model="newName" class="min-w-0 flex-1"
+              :invalid="Boolean(newName) && !isValid" @keydown="handleKeydown" />
+            <ActionButton :label="t('save')" :disabled="!isValid || !hasChanges" :loading="isSubmitting"
+              @click="handleSubmit" />
           </div>
-        </div>
+        </FormGroup>
       </div>
 
       <DialogFooter />
