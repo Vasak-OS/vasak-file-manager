@@ -242,7 +242,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 	function startStatusPolling() {
 		if (statusPollTimerId.value !== null) return;
-		pollStatus();
+		void pollStatus();
 	}
 
 	function stopStatusPolling() {
@@ -398,7 +398,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		cancelPendingSearch();
 
 		debounceTimerId.value = setTimeout(() => {
-			executeSearch(query.value);
+			void executeSearch(query.value);
 		}, DEBOUNCE_DELAY_MS);
 	}
 
@@ -427,7 +427,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		if (isOpen.value) {
 			close();
 		} else {
-			open();
+			void open();
 		}
 	}
 

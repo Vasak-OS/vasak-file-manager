@@ -281,15 +281,17 @@ const canSaveCommand = computed(() => {
           <!-- La barra de desplazamiento la pone `scrollbar.css`. -->
           <!-- Una lista común y no un `listbox`: cada fila lleva sus botones
                (ejecutar, editar, borrar), y una opción de `listbox` no puede
-               tener controles adentro. Elegir con el ratón sigue marcando la
-               fila para «Abrir»; con el teclado, «Ejecutar» hace lo mismo. -->
+               tener controles adentro. La fila se enfoca y se marca para «Abrir»
+               con el clic, Enter o Espacio; «Ejecutar» corre ése sin marcarlo. -->
           <ul v-if="customCommands.length > 0" class="m-0 flex max-h-50 list-none flex-col gap-0.5 overflow-y-auto p-0"
             :aria-label="t('openWith.customCommands')">
             <!-- El clic y el doble clic los atiende el elemento de la lista: una
                  `ListRow` sin rol no emite `click`. -->
-            <li v-for="command in customCommands" :key="command.id" class="group cursor-pointer"
-              :aria-current="selectedCommandId === command.id ? 'true' : undefined"
-              @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
+            <li v-for="command in customCommands" :key="command.id" class="group cursor-pointer rounded-corner-m"
+              tabindex="0" :aria-current="selectedCommandId === command.id ? 'true' : undefined"
+              @click="selectedCommandId = command.id" @dblclick="runCommand(command)"
+              @keydown.enter.self.prevent="selectedCommandId = command.id"
+              @keydown.space.self.prevent="selectedCommandId = command.id">
             <ListRow
               role="none"
               :title="command.name"
