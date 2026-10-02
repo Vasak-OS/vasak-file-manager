@@ -7,14 +7,19 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { nextTick, ref } from 'vue';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
 import { WINDOW_COLUMNS_KEY } from '@/composables/use-window-columns';
 import { olvidarTodo } from './dobles';
 
-enableAutoUnmount(afterEach);
+// A mano y no con `enableAutoUnmount`: ése se puede llamar una sola vez por
+// proceso, y otro archivo ya lo usa (en CI corren todos juntos).
+const mounted: VueWrapper[] = [];
+afterEach(() => {
+	for (const view of mounted.splice(0)) view.unmount();
+});
 
 beforeEach(() => {
 	olvidarTodo();
@@ -34,6 +39,7 @@ function mountBar(width: number) {
 		props: { isSplitView: false, showInfoPanel: false, isGlobalSearchOpen: false },
 		global: { provide: { [WINDOW_COLUMNS_KEY as symbol]: columns } },
 	});
+	mounted.push(view);
 	return view;
 }
 
