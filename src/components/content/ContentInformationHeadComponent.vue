@@ -11,9 +11,9 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div class="flex items-center gap-3 px-4 py-2 border-b border-ui-border mb-4">
+  <div class="flex items-center gap-3 px-4 py-2 border-b border-ui-line-weak mb-4 shrink-0">
     <EntryIconComponent v-if="selectedEntry" :entry="selectedEntry" :size="24" class="shrink-0" />
-    <span class="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-sm" :title="selectedEntry?.name">
+    <span class="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-label-m" :title="selectedEntry?.name">
       {{ selectedEntry?.name || t('noData') }}
     </span>
   </div>

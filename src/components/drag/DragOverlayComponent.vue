@@ -43,12 +43,12 @@ const description = computed(() => {
 <template>
   <Teleport to="body">
     <Transition name="file-browser-drag-overlay">
-      <div v-if="props.isActive" class="px-4 py-2 whitespace-nowrap fixed z-50 border border-ui-border bg-ui-bg/80 flex flex-col rounded-corner gap-1" :style="overlayStyle">
+      <div v-if="props.isActive" class="px-4 py-2 whitespace-nowrap fixed z-50 border border-ui-line bg-ui-float shadow-surface-m flex flex-col rounded-corner-l gap-1" :style="overlayStyle">
         <div class="flex items-center gap-2 text-primary font-medium">
           <span>{{ description }}</span>
           <ThemeIcon :name="operationIcon" :size="16" :alt="t('drag.dragging')" />
         </div>
-        <div class="font-[11px] text-tx-muted">
+        <div class="text-label-xs text-tx-muted">
           {{ t('drag.holdShiftToChangeMode') }}
           <EntryIconComponent v-for="item in props.dragItems" :key="item.path" :entry="item" :size="32" class="fixed z-50" :style="overlayIconStyle" />
           <ThemeIcon

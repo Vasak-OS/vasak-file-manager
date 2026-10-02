@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { EmptyState, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	AlertMessage,
+	Badge,
+	Checkbox,
+	Disclosure,
+	EmptyState,
+	NumberField,
+	SearchField,
+	SectionHeading,
+	StatusDot,
+	ThemeIcon,
+} from '@vasakgroup/vue-libvasak';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
-import NumberField from '@/components/ui/number-field/NumberField.vue';
-import NumberFieldContent from '@/components/ui/number-field/NumberFieldContent.vue';
-import NumberFieldDecrement from '@/components/ui/number-field/NumberFieldDecrement.vue';
-import NumberFieldIncrement from '@/components/ui/number-field/NumberFieldIncrement.vue';
-import NumberFieldInput from '@/components/ui/number-field/NumberFieldInput.vue';
 import { getDriveByPath } from '@/composables/use-drives';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
@@ -25,14 +32,16 @@ const emit = defineEmits<{
 const { t, locale } = useI18n();
 
 const globalSearchStore = useGlobalSearchStore();
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<InstanceType<typeof SearchField> | null>(null);
 const showOptions = ref(false);
 
 const includeFiles = ref(true);
 const includeDirectories = ref(true);
-const resultLimit = ref(500);
-const exactMatch = ref(false);
-const typoTolerance = ref(true);
+// Arrancan con las que usa la consulta: el campo decía 500 y la consulta
+// salía con 50.
+const resultLimit = ref(globalSearchStore.searchOptions.resultLimit);
+const exactMatch = ref(globalSearchStore.searchOptions.exactMatch);
+const typoTolerance = ref(globalSearchStore.searchOptions.typoTolerance);
 const scanDepth = ref(6);
 
 function toggleOptions() {
@@ -163,6 +172,11 @@ const groupedResults = computed<GroupedResults[]>(() => {
 const totalResultsCount = computed(() => filteredResults.value.length);
 
 watch([exactMatch, typoTolerance, resultLimit], () => {
+	globalSearchStore.setSearchOptions({
+		resultLimit: resultLimit.value,
+		exactMatch: exactMatch.value,
+		typoTolerance: typoTolerance.value,
+	});
 	if (globalSearchStore.query.trim()) {
 		globalSearchStore.search();
 	}
@@ -276,42 +290,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col border border-dashed border-ui-border [--results-header-height:36px] [--search-scroll-gutter:18px]">
-    <div class="flex items-center gap-3 p-2 pb-0">
-      <div class="relative flex flex-1 items-center">
-        <ThemeIcon
-          v-if="!globalSearchStore.isSearching"
-          name="search"
-          type="symbol"
-          :size="16"
-          class="pointer-events-none absolute left-3 text-tx-muted" />
-        <ThemeIcon
-          v-else
-          name="content-loading-symbolic"
-          type="symbol"
-          :size="16"
-          class="pointer-events-none absolute left-3 text-tx-muted animate-spin" />
-        <input
-          ref="inputRef"
-          :value="globalSearchStore.query"
-          :placeholder="t('globalSearch.globalSearch')"
-          class="flex-1 pl-10 pr-10"
-          :disabled="!hasIndexData && !indizandoAhora"
-          @input="globalSearchStore.setQuery(String(($event.target as HTMLInputElement).value ?? ''))"
-        />
-        <button v-if="globalSearchStore.query" class="absolute right-1 h-8 w-8"
-          @click="clearQuery">
-          <ThemeIcon name="gtk-close" type="symbol" :size="16" />
-        </button>
-      </div>
-      <div class="flex items-center gap-1">
-        <button class="text-tx-muted data-[active]:bg-primary/10 data-[active]:text-primary"
-          :data-active="showOptions || undefined" @click="toggleOptions">
-          <ThemeIcon name="dialog-filters" type="symbol" :size="16" />
-        </button>
-        <button @click="handleClose">
-          <ThemeIcon name="gtk-close" type="symbol" :size="16" />
-        </button>
+  <div class="flex h-full flex-col rounded-corner-l border border-ui-line [--results-header-height:36px] [--search-scroll-gutter:18px]">
+    <div class="flex min-w-0 items-center gap-2 p-2 pb-0">
+      <SearchField
+        ref="inputRef"
+        class="min-w-0 flex-1"
+        :model-value="globalSearchStore.query"
+        :placeholder="t('globalSearch.globalSearch')"
+        :label="t('globalSearch.globalSearch')"
+        :busy="globalSearchStore.isSearching"
+        :disabled="!hasIndexData && !indizandoAhora"
+        @update:model-value="globalSearchStore.setQuery($event)"
+        @clear="clearQuery" />
+      <div class="flex shrink-0 items-center gap-1">
+        <ActionButton label="" :icon-alt="t('globalSearch.options')" :title="t('globalSearch.options')"
+          icon="dialog-filters" variant="ghost" :pressed="showOptions" @click="toggleOptions" />
+        <ActionButton label="" :icon-alt="t('globalSearch.close')" :title="t('globalSearch.close')" icon="window-close" variant="ghost"
+          @click="handleClose" />
       </div>
     </div>
 
@@ -320,11 +315,9 @@ onMounted(async () => {
          acá no hay nada roto — el lanzador todavía no escaneó. Lo que sí hace
          falta es nombrarlo, porque es la única acción posible y no se puede
          adivinar desde esta aplicación. -->
-    <div v-if="faltaElIndice"
-      class="mx-2 mt-2 flex flex-col gap-0.5 rounded-corner bg-ui-surface/70 px-3 py-2 text-[13px] text-tx-main">
-      <span class="font-medium">{{ t('globalSearch.noIndexYet') }}</span>
-      <span class="text-tx-muted">{{ t('globalSearch.noIndexYetDescription') }}</span>
-    </div>
+    <AlertMessage v-if="faltaElIndice" tone="info" class="mx-2 mt-2" :title="t('globalSearch.noIndexYet')">
+      {{ t('globalSearch.noIndexYetDescription') }}
+    </AlertMessage>
 
     <!-- Lo que falló, dicho.
          `lastError` existía desde siempre, se escribía en trece lugares y **no
@@ -336,83 +329,42 @@ onMounted(async () => {
          El motivo de no poder abrir el índice va acá y no con `lastError`: el
          comando de estado **sale bien** aunque el índice no se pueda abrir, así
          que su casillero de error se limpia y ahí no llegaría nunca. -->
-    <div v-if="globalSearchStore.lastError || sinIndice"
-      class="mx-2 mt-2 flex flex-col gap-0.5 rounded-corner bg-status-error/10 px-3 py-2 text-[13px] text-status-error">
-      <span class="font-medium">{{ t('globalSearch.somethingFailed') }}</span>
-      <span v-if="sinIndice" class="break-words text-status-error/80">{{ sinIndice }}</span>
-      <span v-if="globalSearchStore.lastError" class="break-words text-status-error/80">{{
-        globalSearchStore.lastError }}</span>
-    </div>
+    <AlertMessage v-if="globalSearchStore.lastError || sinIndice" tone="error" class="mx-2 mt-2"
+      :title="t('globalSearch.somethingFailed')">
+      <span v-if="sinIndice" class="block break-words">{{ sinIndice }}</span>
+      <span v-if="globalSearchStore.lastError" class="block break-words">{{ globalSearchStore.lastError }}</span>
+    </AlertMessage>
 
-    <div v-if="showOptions" class="mx-1 mb-4 flex gap-6 rounded-corner-sm border-b border-ui-border bg-ui-surface/30 px-4 py-3">
+    <!-- Las tres columnas de opciones se envuelven cuando no entran. -->
+    <div v-if="showOptions" class="mx-1 mb-4 flex flex-wrap gap-x-6 gap-y-3 rounded-corner-xs border-b border-ui-line bg-ui-surface/30 px-4 py-3">
       <div class="flex flex-col gap-2">
-        <span class="text-[11px] font-medium uppercase text-tx-muted">{{ t('globalSearch.results') }}</span>
-        <div class="flex items-center gap-2">
-          <input
-            id="include-files"
-            v-model="includeFiles"
-            type="checkbox"
-          />
-          <label for="include-files" class="cursor-pointer text-[13px] font-normal">
-            {{ t('globalSearch.showFiles') }}
-          </label>
-        </div>
-        <div class="flex items-center gap-2">
-          <input
-            id="include-directories"
-            v-model="includeDirectories"
-            type="checkbox"
-          />
-          <label for="include-directories" class="cursor-pointer text-[13px] font-normal">
-            {{ t('globalSearch.showDirectories') }}
-          </label>
-        </div>
+        <SectionHeading :title="t('globalSearch.results')" variant="eyebrow" as="h3" />
+        <Checkbox v-model="includeFiles" :label="t('globalSearch.showFiles')" />
+        <Checkbox v-model="includeDirectories" :label="t('globalSearch.showDirectories')" />
       </div>
 
       <div class="flex flex-col gap-2">
-        <span class="text-[11px] font-medium uppercase text-tx-muted">{{ t('globalSearch.options') }}</span>
-        <div class="flex items-center gap-2">
-          <input
-            id="exact-match"
-            v-model="exactMatch"
-            type="checkbox"
-          />
-          <label for="exact-match" class="cursor-pointer text-[13px] font-normal">
-            {{ t('globalSearch.exactMatch') }}
-          </label>
-        </div>
-        <div class="flex items-center gap-2">
-          <input
-            id="typo-tolerance"
-            v-model="typoTolerance"
-            type="checkbox"
-          />
-          <label for="typo-tolerance" class="cursor-pointer text-[13px] font-normal">
-            {{ t('globalSearch.typoTolerance') }}
-          </label>
-        </div>
+        <SectionHeading :title="t('globalSearch.options')" variant="eyebrow" as="h3" />
+        <Checkbox v-model="exactMatch" :label="t('globalSearch.exactMatch')" />
+        <Checkbox v-model="typoTolerance" :label="t('globalSearch.typoTolerance')" />
       </div>
 
       <div class="flex flex-col gap-2">
-        <span class="text-[11px] font-medium uppercase text-tx-muted">{{ t('globalSearch.resultLimit') }}</span>
-        <NumberField :model-value="resultLimit" class="w-[120px]" :min="10" :max="500"
-          :step="10">
-          <NumberFieldContent>
-            <NumberFieldDecrement />
-            <NumberFieldInput />
-            <NumberFieldIncrement />
-          </NumberFieldContent>
-        </NumberField>
+        <SectionHeading :title="t('globalSearch.resultLimit')" variant="eyebrow" as="h3" />
+        <!-- Antes el número se mostraba y no se aplicaba: el campo no avisaba
+             del cambio y el límite seguía en 500. -->
+        <NumberField v-model="resultLimit" class="w-30" :min="10" :max="500" :step="10" stepper
+          :ariaLabel="t('globalSearch.resultLimit')" />
       </div>
     </div>
 
     <div class="flex min-h-0 flex-1 flex-col px-2 pr-0">
       <!-- Un aviso, no una barra. Ver `indizandoAhora`. -->
-      <div v-if="indizandoAhora" class="flex flex-col gap-2 bg-primary/5 px-4 py-3">
-        <div class="flex flex-wrap items-center gap-2 text-[13px]">
+      <div v-if="indizandoAhora" class="flex flex-col gap-2 bg-ui-selected-accent px-4 py-3">
+        <div class="flex flex-wrap items-center gap-2 text-body-s">
           <span class="text-tx-muted">{{ t('globalSearch.launcherIsIndexing') }}</span>
         </div>
-        <div class="text-xs text-tx-muted">
+        <div class="text-body-xs text-tx-muted">
           {{ interpolar(
             t(claveSegunCantidad('globalSearch.indexedItems', globalSearchStore.indexedItemCount)),
             globalSearchStore.indexedItemCount.toLocaleString(locale)
@@ -423,12 +375,12 @@ onMounted(async () => {
       <!-- Sin esto, «0 elementos indexados» se lee como un hecho cuando puede
            ser un síntoma: el escaneo se canceló, falló, o murió a mitad. -->
       <div v-if="globalSearchStore.indiceIncompleto"
-        class="bg-ui-surface/70 px-4 py-2 text-xs text-tx-muted">
+        class="bg-ui-surface/70 px-4 py-2 text-body-xs text-tx-muted">
         {{ t('globalSearch.indexMayBeIncomplete') }}
       </div>
 
       <div v-if="globalSearchStore.results.length > 0"
-        class="h-[var(--results-header-height)] bg-transparent px-0.5 text-xs font-medium leading-[var(--results-header-height)] text-tx-muted">
+        class="h-[var(--results-header-height)] bg-transparent px-0.5 text-label-xs font-medium leading-[var(--results-header-height)] text-tx-muted">
         {{ interpolar(t('globalSearch.searchStats.foundOnDrives'), totalResultsCount, groupedResults.length) }}
       </div>
 
@@ -446,11 +398,11 @@ onMounted(async () => {
             :note="t('globalSearch.indexEmptyDescription')" />
 
           <div v-else-if="!globalSearchStore.query.trim()" class="flex flex-col items-center justify-center gap-3 px-6 py-16">
-            <ThemeIcon name="search" type="symbol" :size="48" class="text-tx-muted/30" />
-            <span class="text-base font-medium text-tx-main">
+            <ThemeIcon name="search" type="symbol" :size="48" class="opacity-30" />
+            <span class="text-body-m font-medium text-tx-main">
               {{ t('globalSearch.globalSearch') }}
             </span>
-            <span class="text-[13px] text-tx-muted">
+            <span class="text-center text-body-s text-tx-muted">
               {{ interpolar(
                 t(claveSegunCantidad('globalSearch.searchStats.searched', globalSearchStore.indexedItemCount)),
                 globalSearchStore.indexedItemCount.toLocaleString(locale)
@@ -477,29 +429,31 @@ onMounted(async () => {
             icon="search" icon-type="symbol" :title="t('globalSearch.searchStats.nothingFound')" />
 
           <template v-else-if="globalSearchStore.results.length > 0">
-            <div v-for="group in groupedResults" :key="group.driveRoot">
-              <button
-                class="sticky top-0 z-5 flex w-full items-center gap-2.5 rounded-corner-sm bg-background-2 px-4 py-3 text-left text-[13px] font-medium text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2"
-                @click="toggleDriveCollapse(group.driveRoot)">
-                <div class="h-4 w-4 shrink-0 rounded-full bg-primary/40" />
-                <span class="flex-1 font-mono">
-                  {{ group.driveInfo?.name || group.driveRoot }}
+            <!-- Cada unidad es un plegable de la librería; su cabecera queda
+                 pegada arriba mientras se desplazan los resultados. -->
+            <Disclosure
+              v-for="group in groupedResults"
+              :key="group.driveRoot"
+              :title="group.driveInfo?.name || group.driveRoot"
+              :open="!isDriveCollapsed(group.driveRoot)"
+              class="[&>button]:sticky [&>button]:top-0 [&>button]:z-5 [&>button]:bg-ui-bg [&>button]:bg-linear-to-r [&>button]:from-ui-surface/70 [&>button]:to-ui-surface/70 [&>div]:px-0"
+              @update:open="toggleDriveCollapse(group.driveRoot)">
+              <template #title>
+                <span class="flex min-w-0 items-center gap-2.5">
+                  <StatusDot tone="accent" />
+                  <span class="min-w-0 truncate font-mono">{{ group.driveInfo?.name || group.driveRoot }}</span>
                 </span>
-                <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-tx-muted">
+              </template>
+              <template #meta>
+                <Badge size="sm">
                   {{ interpolar(
                     t(claveSegunCantidad('fileBrowser.itemCount', group.entries.length)),
                     group.entries.length
                   ) }}
-                </span>
-                <ThemeIcon
-                  name="arrow-down"
-                  type="symbol"
-                  :size="16"
-                  class="shrink-0 text-tx-muted transition-transform duration-150 ease-out"
-                  :class="{ '-rotate-90': isDriveCollapsed(group.driveRoot) }" />
-              </button>
+                </Badge>
+              </template>
 
-              <div v-if="!isDriveCollapsed(group.driveRoot)"
+              <div
                 class="flex flex-col [--file-browser-list-columns:minmax(120px,_1fr)_minmax(50px,_100px)_minmax(60px,_140px)] [&_.file-browser__content]:[--file-browser-list-right-gutter:0]">
                 <FileBrowserComponent
                   :ref="(element: any) => setSearchFileBrowserRef(element as FileBrowserInstance, group.driveRoot)"
@@ -507,7 +461,7 @@ onMounted(async () => {
                   :hide-status-bar="true" :entry-description="getEntryDescription" @open-entry="handleSearchEntryOpen"
                   @update:selected-entries="(entries: DirEntry[]) => handleSearchSelectionChange(entries, group.driveRoot)" />
               </div>
-            </div>
+            </Disclosure>
           </template>
         </div>
       </div>

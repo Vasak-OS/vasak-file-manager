@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	ThemeIcon,
+	Kbd,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+	SearchField,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
-import type { ComponentPublicInstance } from 'vue';
 import { ref } from 'vue';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
-import Popover from '@/components/ui/popover/Popover.vue';
-import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
-import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 
 const props = defineProps<{
@@ -55,18 +56,7 @@ const emit = defineEmits<{
 const shortcutsStore = useShortcutsStore();
 const { t } = useI18n();
 
-const filterInputRef = ref<HTMLInputElement | null>(null);
-const filterTriggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null);
 const isCreateMenuOpen = ref(false);
-
-function handleFilterAutoFocus(event?: Event) {
-	event?.preventDefault();
-	filterInputRef.value?.focus();
-}
-
-function clearFilter() {
-	emit('update:filterQuery', '');
-}
 
 function handleFilterQueryUpdate(value: string | number | undefined) {
 	emit('update:filterQuery', String(value ?? ''));
@@ -77,103 +67,85 @@ function handleAddressBarNavigate(path: string) {
 	emit('navigateTo', path);
 }
 
-function handleCreateMenuButtonClick(event: MouseEvent) {
-	event.preventDefault();
-	event.stopPropagation();
-	isCreateMenuOpen.value = !isCreateMenuOpen.value;
-}
-
 function handleCreateMenuOpenChange(value: boolean) {
 	isCreateMenuOpen.value = value;
-}
-
-function getFilterTriggerElement(): HTMLElement | null {
-	const refValue = filterTriggerRef.value;
-	if (!refValue) return null;
-	if (refValue instanceof HTMLElement) return refValue;
-	return (refValue as ComponentPublicInstance).$el as HTMLElement;
-}
-
-function handleFilterInteractOutside(event?: Event) {
-	if (!event) return;
-	const customEvent = event as CustomEvent<{ originalEvent: PointerEvent | FocusEvent }>;
-	const target = customEvent.detail?.originalEvent?.target as Node | undefined;
-	const triggerEl = getFilterTriggerElement();
-	const isTriggerClick = triggerEl && target && triggerEl.contains(target);
-
-	if (isTriggerClick) {
-		event.preventDefault();
-
-		return;
-	}
-
-	if (!props.filterQuery) {
-		emit('update:isFilterOpen', false);
-	} else {
-		event.preventDefault();
-	}
 }
 </script>
 
 <template>
   <div
-    class="@container flex h-12 items-center p-2 gap-3"
+    class="@container flex h-12 min-w-0 items-center gap-2 p-2"
     :class="props.standalone
-      ? 'rounded-corner border border-ui-border bg-ui-surface/70'
-      : 'border-b border-ui-border'">
-    <div class="hidden @[400px]:flex shrink-0 gap-1">
+      ? 'rounded-corner-l border border-ui-line bg-ui-surface/70'
+      : 'border-b border-ui-line'">
+    <!-- Con lugar, los cinco botones de recorrido. Angosta, atrás queda a la
+         vista y los otros cuatro van a un menú: antes, por debajo de 400
+         píxeles, desaparecían los cinco y sólo quedaban los atajos. -->
+    <div class="hidden shrink-0 gap-1 @[400px]:flex">
       <Tooltip>
         <TooltipTrigger>
-          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoBack"
-            @click="emit('goBack')" :aria-label="t('fileBrowser.goBack')">
-            <ThemeIcon name="arrow-left" type="symbol" :size="18" :alt="t('fileBrowser.goBack')" />
-          </button>
+          <ActionButton label="" :icon-alt="t('fileBrowser.goBack')" icon="go-previous" variant="ghost"
+            :disabled="!canGoBack" @click="emit('goBack')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goBack') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger>
-          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoForward"
-            @click="emit('goForward')" :aria-label="t('fileBrowser.goForward')">
-            <ThemeIcon name="arrow-right" type="symbol" :size="18" :alt="t('fileBrowser.goForward')" />
-          </button>
+          <ActionButton label="" :icon-alt="t('fileBrowser.goForward')" icon="go-next" variant="ghost"
+            :disabled="!canGoForward" @click="emit('goForward')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goForward') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger>
-          <button type="button" class="bg-ui-bg/80 h-9 w-9 rounded-corner hover:bg-primary flex items-center justify-center border border-ui-border" :disabled="!canGoUp"
-            @click="emit('goUp')" :aria-label="t('fileBrowser.goUp')">
-            <ThemeIcon name="arrow-up" type="symbol" :size="18" :alt="t('fileBrowser.goUp')" />
-          </button>
+          <ActionButton label="" :icon-alt="t('fileBrowser.goUp')" icon="go-up" variant="ghost"
+            :disabled="!canGoUp" @click="emit('goUp')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goUp') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger>
-          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" @click="emit('goHome')" :aria-label="t('fileBrowser.goHome')">
-            <ThemeIcon name="user-home" type="symbol" :size="18" :alt="t('fileBrowser.goHome')" />
-          </button>
+          <ActionButton label="" :icon-alt="t('fileBrowser.goHome')" icon="go-home" variant="ghost"
+            @click="emit('goHome')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.goHome') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger>
-          <button type="button" class="bg-primary h-9 w-9 rounded-corner hover:bg-secondary flex items-center justify-center border border-ui-border" :disabled="isLoading"
-            @click="emit('refresh')" :aria-label="t('fileBrowser.refresh')">
-            <ThemeIcon
-              name="refreshstructure"
-              type="symbol"
-              :size="18"
-              :alt="t('fileBrowser.refresh')"
-              :class="{ 'animate-spin': isLoading }" />
-          </button>
+          <!-- `view-refresh`, el nombre de freedesktop; `refreshstructure` no
+               lo es y dependía de que el tema lo trajera. -->
+          <ActionButton label="" :icon-alt="t('fileBrowser.refresh')" icon="view-refresh" variant="ghost"
+            :loading="isLoading" @click="emit('refresh')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('fileBrowser.refresh') }}</TooltipContent>
       </Tooltip>
     </div>
+    <div class="flex shrink-0 gap-1 @[400px]:hidden">
+      <ActionButton label="" :icon-alt="t('fileBrowser.goBack')" :title="t('fileBrowser.goBack')" icon="go-previous"
+        variant="ghost" :disabled="!canGoBack" @click="emit('goBack')" />
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <ActionButton label="" :icon-alt="t('fileBrowser.navigation')" :title="t('fileBrowser.navigation')"
+            icon="view-more" variant="ghost" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="bottom" class="min-w-45">
+          <DropdownMenuItem icon="go-next" :disabled="!canGoForward" @click="emit('goForward')">
+            {{ t('fileBrowser.goForward') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem icon="go-up" :disabled="!canGoUp" @click="emit('goUp')">
+            {{ t('fileBrowser.goUp') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem icon="go-home" @click="emit('goHome')">
+            {{ t('fileBrowser.goHome') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem icon="view-refresh" :disabled="isLoading" @click="emit('refresh')">
+            {{ t('fileBrowser.refresh') }}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
 
-    <div class="flex min-w-0 flex-1 items-center gap-2">
+    <div class="flex min-w-0 flex-1 items-center gap-1">
       <AddressBarComponent :current-path="pathInput" class="min-w-0 flex-1"
         @navigate="handleAddressBarNavigate" />
       <DropdownMenu :open="isCreateMenuOpen" @update:open="handleCreateMenuOpenChange">
@@ -186,56 +158,43 @@ function handleFilterInteractOutside(event?: Event) {
                al del disparador y el menú se abriría y cerraría de un clic. -->
           <TooltipTrigger>
             <DropdownMenuTrigger as-child :disabled="true">
-              <button type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
-                @click="handleCreateMenuButtonClick" :aria-label="t('fileBrowser.createNew')">
-                <ThemeIcon name="gtk-add" type="symbol" :size="24" :alt="t('fileBrowser.createNew')" />
-              </button>
+              <ActionButton label="" :icon-alt="t('fileBrowser.createNew')" icon="list-add" variant="ghost"
+                stop-propagation prevent-default @click="isCreateMenuOpen = !isCreateMenuOpen" />
             </DropdownMenuTrigger>
           </TooltipTrigger>
           <TooltipContent>{{ t('fileBrowser.newDirectoryFile') }}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end" side="bottom" class="min-w-30">
-          <DropdownMenuItem @click="emit('createNewDirectory')">
-            <ThemeIcon name="folder-new" type="symbol" :size="16" :alt="t('fileBrowser.newDirectory')" class="inline-block" />
+          <DropdownMenuItem icon="folder-new" @click="emit('createNewDirectory')">
             {{ t('fileBrowser.newDirectory') }}
           </DropdownMenuItem>
-          <DropdownMenuItem @click="emit('createNewFile')">
-            <ThemeIcon name="document-new" type="symbol" :size="16" :alt="t('fileBrowser.newFile')" class="inline-block" />
+          <DropdownMenuItem icon="document-new" @click="emit('createNewFile')">
             {{ t('fileBrowser.newFile') }}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Tooltip>
-        <Popover :open="isFilterOpen" @update:open="emit('update:isFilterOpen', $event)">
+      <Popover :open="isFilterOpen" @update:open="emit('update:isFilterOpen', $event)">
+        <Tooltip>
           <TooltipTrigger>
             <PopoverTrigger as-child>
-              <button ref="filterTriggerRef" type="button" class="h-10 w-10 flex justify-center items-center rounded-corner bg-ui-bg/80 hover:bg-primary border border-ui-border"
-                :class="{ 'bg-primary': filterQuery }">
-                <ThemeIcon name="system-search" type="symbol" :size="24" :alt="t('fileBrowser.filter')" />
-              </button>
+              <ActionButton label="" :icon-alt="t('fileBrowser.filter')" icon="system-search" variant="ghost"
+                :pressed="Boolean(filterQuery)" />
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent>
             {{ t('fileBrowser.quickSearch') }}
-            <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('toggleFilter') }}</kbd>
+            <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('toggleFilter') }}</Kbd>
           </TooltipContent>
-          <PopoverContent :side="'bottom'" :align="'end'" class="w-70 p-2"
-            @open-auto-focus="handleFilterAutoFocus" @close-auto-focus.prevent
-            @interact-outside="handleFilterInteractOutside">
-            <div class="flex relative">
-              <input ref="filterInputRef" type="text" :value="filterQuery" :placeholder="t('fileBrowser.searchThisDirectory')"
-                class="h-8 w-full pr-8 rounded-corner" @input="handleFilterQueryUpdate(($event.target as HTMLInputElement).value)" />
-              <button v-if="filterQuery" type="button" class="absolute right-1 flex h-7 w-7 items-center justify-center"
-                @click="clearFilter" :aria-label="t('fileBrowser.clearFilter')">
-                <ThemeIcon name="dialog-close" type="symbol" :size="18" :alt="t('fileBrowser.clearFilter')" />
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </Tooltip>
+        </Tooltip>
+        <PopoverContent side="bottom" align="end" padding="sm" class="w-70" :label="t('fileBrowser.quickSearch')">
+          <SearchField
+            :model-value="filterQuery"
+            :placeholder="t('fileBrowser.searchThisDirectory')"
+            :label="t('fileBrowser.searchThisDirectory')"
+            :clear-label="t('fileBrowser.clearFilter')"
+            @update:model-value="handleFilterQueryUpdate" />
+        </PopoverContent>
+      </Popover>
     </div>
   </div>
 </template>
-
-
-

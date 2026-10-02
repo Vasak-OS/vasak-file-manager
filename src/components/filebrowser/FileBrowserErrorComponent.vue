@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton, ThemeIcon } from '@vasakgroup/vue-libvasak';
 
 const { t } = useI18n();
 
@@ -24,11 +24,9 @@ defineEmits<{
 </script>
 
 <template>
-  <div class="flex h-full flex-col items-center justify-center text-status-error gap-4">
-    <ThemeIcon name="dialog-error" type="symbol" :size="32" />
-    <span>{{ error }}</span>
-    <button type="button" class="rounded border border-ui-border bg-secondary text-tx-on-secondary px-3 py-1.5 text-xs leading-[1.2] cursor-pointer hover:bg-secondary/90" @click="$emit('goHome')">
-      {{ t('fileBrowser.goHome') }}
-    </button>
+  <div class="flex h-full min-w-0 flex-col items-center justify-center gap-4 p-4 text-center">
+    <ThemeIcon name="dialog-error" type="symbol" :size="32" class="text-status-error" />
+    <span class="break-words text-body-s text-status-error">{{ error }}</span>
+    <ActionButton :label="t('fileBrowser.goHome')" icon="go-home" variant="secondary" @click="$emit('goHome')" />
   </div>
 </template>

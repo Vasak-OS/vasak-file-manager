@@ -93,31 +93,31 @@ watch(
 </script>
 
 <template>
-  <div class="flex overflow-hidden h-44 items-center justify-center rounded-corner bg-ui-surface/80">
+  <div class="flex shrink-0 overflow-hidden h-44 items-center justify-center rounded-corner-m bg-ui-surface/80">
     <div v-if="!selectedEntry" class="flex items-center justify-center">
       <ThemeIcon name="folder" :size="48" />
     </div>
 
     <div v-else-if="isImageFile" class="flex overflow-hidden w-full h-full items-center justify-center">
-      <img :src="mediaSrc" :alt="selectedEntry.name" class="h-full w-full object-cover rounded-corner" />
+      <img :src="mediaSrc" :alt="selectedEntry.name" class="h-full w-full object-cover rounded-corner-m" />
     </div>
 
     <div v-else-if="isVideoFile" class="flex overflow-hidden w-full h-full items-center justify-center">
-      <video :src="mediaSrc" class="h-full w-full object-cover rounded-corner" controls preload="metadata" />
+      <video :src="mediaSrc" class="h-full w-full object-cover rounded-corner-m" controls preload="metadata" />
     </div>
 
     <div v-else-if="isAudioFile" class="flex w-full h-full items-center justify-center p-4">
       <audio :src="mediaSrc" class="w-full max-w-xs" controls preload="metadata" />
     </div>
 
-    <div v-else-if="isPdfFile" class="flex overflow-hidden w-full h-full items-center justify-center bg-white">
+    <div v-else-if="isPdfFile" class="flex overflow-hidden w-full h-full items-center justify-center bg-ui-surface">
       <div v-if="isPdfLoading" class="flex items-center justify-center w-full h-full text-tx-muted text-sm">
         Loading...
       </div>
       <div v-else-if="pdfError" class="flex items-center justify-center w-full h-full text-status-error text-sm p-3 text-center">
         {{ pdfError }}
       </div>
-      <img v-else-if="pdfPreviewSrc" :src="pdfPreviewSrc" class="h-full w-full object-contain rounded-corner" />
+      <img v-else-if="pdfPreviewSrc" :src="pdfPreviewSrc" class="h-full w-full object-contain rounded-corner-m" />
     </div>
 
     <div v-else-if="isTextFile" class="flex overflow-auto w-full h-full p-3">
@@ -127,7 +127,7 @@ watch(
       <div v-else-if="textError" class="flex items-center justify-center w-full h-full text-status-error text-sm">
         {{ textError }}
       </div>
-      <pre v-else-if="textContent" class="m-0 w-full h-full text-tx-main text-[11px] leading-relaxed whitespace-pre-wrap break-all font-mono">{{ textContent }}</pre>
+      <pre v-else-if="textContent" class="m-0 w-full h-full text-tx-main text-label-xs leading-relaxed whitespace-pre-wrap break-all font-mono">{{ textContent }}</pre>
     </div>
 
     <div v-else class="flex items-center justify-center">

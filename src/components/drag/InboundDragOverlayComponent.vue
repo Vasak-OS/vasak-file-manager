@@ -58,42 +58,41 @@ const operationIcon = computed(() =>
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px dashed hsl(var(--primary) / 40%);
-  border-radius: var(--radius-md);
+  border: 2px dashed color-mix(in srgb, var(--color-primary) 40%, transparent);
+  border-radius: var(--radius-corner-l);
   inset: 0;
   pointer-events: none;
 }
 
 .inbound-drag-overlay--locked {
-  background-color: hsl(var(--primary) / 8%);
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .inbound-drag-overlay__card {
   display: flex;
   flex-direction: column;
   padding: 8px 16px;
-  border: 1px solid hsl(var(--primary) / 30%);
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(12px);
-  background-color: hsl(var(--background) / 80%);
-  box-shadow:
-    0 8px 32px hsl(0deg 0% 0% / 25%),
-    0 2px 8px hsl(0deg 0% 0% / 10%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  border-radius: var(--radius-corner-l);
+  /* Opaca y sin desenfoque: lo que flota es `ui-float`, y la sombra lleva la
+     tinta del esquema (`shadow-surface-l`) en vez de un negro fijo. */
+  background-color: var(--color-ui-float);
+  box-shadow: var(--shadow-surface-l);
   gap: 4px;
 }
 
 .inbound-drag-overlay__content {
   display: flex;
   align-items: center;
-  color: hsl(var(--foreground));
-  font-size: 13px;
+  color: var(--color-tx-main);
+  font-size: var(--text-label-s);
   font-weight: 500;
   gap: 10px;
 }
 
 .inbound-drag-overlay__icon {
   flex-shrink: 0;
-  color: hsl(var(--primary));
+  color: var(--color-primary);
 }
 
 .inbound-drag-overlay__description {
@@ -101,20 +100,20 @@ const operationIcon = computed(() =>
 }
 
 .inbound-drag-overlay__hint {
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
+  color: var(--color-tx-muted);
+  font-size: var(--text-label-xs);
 }
 
 .inbound-drag-overlay-enter-active {
   transition:
-    opacity 0.15s ease-out,
-    transform 0.15s ease-out;
+    opacity 0.2s var(--ease-ui-out),
+    transform 0.2s var(--ease-ui-out);
 }
 
 .inbound-drag-overlay-leave-active {
   transition:
-    opacity 0.2s ease-in,
-    transform 0.2s ease-in;
+    opacity 0.15s var(--ease-ui),
+    transform 0.15s var(--ease-ui);
 }
 
 .inbound-drag-overlay-enter-from {

@@ -50,8 +50,8 @@ const handleClass = computed(() => {
 const barClass = computed(() => {
 	const isHorizontal = resizableGroup?.isHorizontal.value;
 	return isHorizontal
-		? 'absolute left-1/2 top-1/2 w-1 h-8 -translate-x-1/2 -translate-y-1/2 bg-tx-muted/50 rounded-corner-sm'
-		: 'absolute left-1/2 top-1/2 w-8 h-1 -translate-x-1/2 -translate-y-1/2 bg-tx-muted/50 rounded-corner-sm';
+		? 'absolute left-1/2 top-1/2 w-1 h-8 -translate-x-1/2 -translate-y-1/2 bg-tx-muted/50 rounded-corner-xs'
+		: 'absolute left-1/2 top-1/2 w-8 h-1 -translate-x-1/2 -translate-y-1/2 bg-tx-muted/50 rounded-corner-xs';
 });
 
 function handleMouseDown(e: MouseEvent) {

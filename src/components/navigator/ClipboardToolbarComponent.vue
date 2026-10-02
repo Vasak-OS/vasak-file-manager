@@ -1,20 +1,25 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
+	Badge,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	Kbd,
+	ListRow,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+	SearchField,
 	ThemeIcon,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
-import Popover from '@/components/ui/popover/Popover.vue';
-import PopoverAnchor from '@/components/ui/popover/PopoverAnchor.vue';
-import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
+import { useElementWidth } from '@/composables/use-element-width';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { interpolar } from '@/tools/interpolar';
@@ -119,6 +124,26 @@ function removeClipboardItem(entry: DirEntry) {
 	clipboardStore.removeFromClipboard(entry);
 }
 
+/**
+ * Cuánto mide la barra, para saber qué entra.
+ *
+ * Por debajo de 400 píxeles los botones pasan a un menú, y por debajo de 600
+ * pierden el texto y quedan sólo con el icono (el nombre sigue en el
+ * `aria-label` y en el globo). Antes eran dos consultas de contenedor sobre
+ * clases propias; con `ActionButton` el texto es una propiedad, así que el
+ * ancho se mide (`useElementWidth`).
+ */
+const container = ref<HTMLElement | null>(null);
+const width = useElementWidth(container);
+
+const isCollapsed = computed(() => width.value < 400);
+const showsButtonText = computed(() => width.value >= 600);
+
+/** El texto del botón sólo si entra; si no, queda de nombre accesible. */
+function buttonLabel(text: string): string {
+	return showsButtonText.value ? text : '';
+}
+
 function openCollapsedPopover() {
 	nextTick(() => {
 		setTimeout(() => {
@@ -130,124 +155,130 @@ function openCollapsedPopover() {
 
 <template>
   <Transition name="clipboard-slide">
-    <div v-if="clipboardStore.showToolbar" class="clipboard-toolbar-container absolute bottom-1 left-0 right-0 z-40 flex justify-center px-4 pb-4 pointer-events-none">
+    <div v-if="clipboardStore.showToolbar" ref="container" class="absolute bottom-1 left-0 right-0 z-40 flex justify-center px-4 pb-4 pointer-events-none">
       <Popover :open="clipboardItemsPopoverOpen" @update:open="(open) => clipboardItemsPopoverOpen = open">
         <PopoverAnchor as-child>
-          <div class=" flex min-h-10 items-center justify-between px-4 rounded-corner gap-4 text-sm" :class="{
+          <div class="pointer-events-auto flex min-h-10 min-w-0 max-w-full items-center justify-between gap-4 rounded-corner-l border border-ui-line px-4 text-body-s text-tx-main shadow-surface-m" :class="{
             'bg-status-success/70': clipboardStore.isCopyOperation,
             'bg-status-warning/70': clipboardStore.isMoveOperation,
           }">
-            <div class="clipboard-toolbar__info">
-              <div class="clipboard-toolbar__icon">
-                <ThemeIcon
-                  v-if="clipboardStore.isCopyOperation"
-                  name="edit-copy"
-                  type="symbol"
-                  :size="18"
-                  class="inline-block" />
-                <ThemeIcon v-else name="folder-open" type="symbol" :size="18" class="inline-block" />
-              </div>
-              <div class="clipboard-toolbar__text">
-                <span class="clipboard-toolbar__title">
+            <div class="flex min-w-0 items-center gap-3 overflow-hidden">
+              <ThemeIcon
+                :name="clipboardStore.isCopyOperation ? 'edit-copy' : 'folder-open'"
+                type="symbol"
+                :size="18"
+                class="shrink-0" />
+              <div class="flex min-w-0 flex-wrap items-center gap-1.5 overflow-hidden">
+                <span class="truncate font-medium text-label-s">
                   {{ clipboardStore.isCopyOperation ? t('fileBrowser.preparedForCopying') :
                     t('fileBrowser.preparedForMoving') }}
                 </span>
-                <span class="clipboard-toolbar__count-tag">
-                  {{ clipboardStore.isCopyOperation ? t('fileBrowser.itemsPrepared') : t('fileBrowser.itemsPrepared') }} {{ clipboardStore.itemCount }}
-                </span>
+                <Badge variant="overlay" size="sm">
+                  {{ t('fileBrowser.itemsPrepared') }} {{ clipboardStore.itemCount }}
+                </Badge>
               </div>
             </div>
 
-            <div class="clipboard-toolbar__actions clipboard-toolbar__actions--expanded">
-              <button class="clipboard-toolbar__button" :title="t('fileBrowser.showItems')"
-                @click="clipboardItemsPopoverOpen = true">
-                <ThemeIcon name="redeyes-symbolic" type="symbol" :size="16" :alt="t('fileBrowser.showItems')" class="inline-block" />
-                <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.showItems') }}</span>
-              </button>
+            <div v-if="!isCollapsed" class="flex shrink-0 items-center gap-1.5">
+              <ActionButton
+                :label="buttonLabel(t('fileBrowser.showItems'))"
+                :icon-alt="t('fileBrowser.showItems')"
+                :title="t('fileBrowser.showItems')"
+                icon="redeyes-symbolic"
+                variant="ghost"
+                size="sm"
+                @click="clipboardItemsPopoverOpen = true" />
 
               <template v-if="isSplitView">
                 <Tooltip :delay-duration="300">
                   <TooltipTrigger>
-                    <button class="clipboard-toolbar__button"
-                      :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane1 }" :disabled="!canPasteToPane1"
-                      @click="emit('pasteToPane', 0)">
-                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane1')" class="inline-block" />
-                      <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane1') }}</span>
-                    </button>
+                    <ActionButton
+                      :label="buttonLabel(t('fileBrowser.actions.pasteToPane1'))"
+                      :icon-alt="t('fileBrowser.actions.pasteToPane1')"
+                      icon="edit-paste"
+                      variant="ghost"
+                      size="sm"
+                      :disabled="!canPasteToPane1"
+                      @click="emit('pasteToPane', 0)" />
                   </TooltipTrigger>
                   <TooltipContent>
                     {{ t('shortcuts.transferPreparedToPane1') }}
-                    <kbd class="clipboard-toolbar__shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
+                    <Kbd class="ml-2">{{ shortcutsStore.getShortcutLabel('paste') }}</Kbd>
                   </TooltipContent>
                 </Tooltip>
 
                 <Tooltip :delay-duration="300">
                   <TooltipTrigger>
-                    <button class="clipboard-toolbar__button"
-                      :class="{ 'clipboard-toolbar__button--disabled': !canPasteToPane2 }" :disabled="!canPasteToPane2"
-                      @click="emit('pasteToPane', 1)">
-                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane2')" class="inline-block" />
-                      <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.pasteToPane2') }}</span>
-                    </button>
+                    <ActionButton
+                      :label="buttonLabel(t('fileBrowser.actions.pasteToPane2'))"
+                      :icon-alt="t('fileBrowser.actions.pasteToPane2')"
+                      icon="edit-paste"
+                      variant="ghost"
+                      size="sm"
+                      :disabled="!canPasteToPane2"
+                      @click="emit('pasteToPane', 1)" />
                   </TooltipTrigger>
                   <TooltipContent>
                     {{ t('shortcuts.transferPreparedToPane2') }}
-                    <kbd class="clipboard-toolbar__shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
+                    <Kbd class="ml-2">{{ shortcutsStore.getShortcutLabel('paste') }}</Kbd>
                   </TooltipContent>
                 </Tooltip>
               </template>
 
               <Tooltip v-else :delay-duration="300">
                 <TooltipTrigger>
-                  <button class="clipboard-toolbar__button"
-                    :class="{ 'clipboard-toolbar__button--disabled': !canPaste }" :disabled="!canPaste"
-                    @click="emit('paste')">
-                    <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.paste')" class="inline-block" />
-                    <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.actions.paste') }}</span>
-                  </button>
+                  <ActionButton
+                    :label="buttonLabel(t('fileBrowser.actions.paste'))"
+                    :icon-alt="t('fileBrowser.actions.paste')"
+                    icon="edit-paste"
+                    variant="ghost"
+                    size="sm"
+                    :disabled="!canPaste"
+                    @click="emit('paste')" />
                 </TooltipTrigger>
                 <TooltipContent>
                   {{ t('shortcuts.transferPreparedForCopying') }}
-                  <kbd class="clipboard-toolbar__shortcut">{{ shortcutsStore.getShortcutLabel('paste') }}</kbd>
+                  <Kbd class="ml-2">{{ shortcutsStore.getShortcutLabel('paste') }}</Kbd>
                 </TooltipContent>
               </Tooltip>
 
-              <button class="clipboard-toolbar__button clipboard-toolbar__button--discard"
-                :title="t('fileBrowser.discardClipboard')" @click="clipboardStore.clearClipboard()">
-                <ThemeIcon name="gtk-close" type="symbol" :size="16" :alt="t('fileBrowser.discardClipboard')" class="inline-block" />
-                <span class="clipboard-toolbar__button-text">{{ t('fileBrowser.discardClipboard') }}</span>
-              </button>
+              <ActionButton
+                :label="buttonLabel(t('fileBrowser.discardClipboard'))"
+                :icon-alt="t('fileBrowser.discardClipboard')"
+                :title="t('fileBrowser.discardClipboard')"
+                icon="window-close"
+                variant="ghost"
+                size="sm"
+                @click="clipboardStore.clearClipboard()" />
             </div>
 
-            <div class="clipboard-toolbar__actions clipboard-toolbar__actions--collapsed">
+            <div v-else class="flex shrink-0 items-center">
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button class="clipboard-toolbar__button" :title="t('actions')" :aria-label="t('actions')">
-                    <ThemeIcon name="overflow-menu" type="symbol" :size="16" class="inline-block" />
-                  </button>
+                  <ActionButton
+                    label=""
+                    :icon-alt="t('actions')"
+                    :title="t('actions')"
+                    icon="view-more"
+                    variant="ghost"
+                    size="sm" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" class="clipboard-toolbar__dropdown">
-                  <DropdownMenuItem @click="openCollapsedPopover">
-                    <ThemeIcon name="redeyes-symbolic" type="symbol" :size="16" :alt="t('fileBrowser.showItems')" class="inline-block" />
+                <DropdownMenuContent align="end" side="top" class="min-w-45">
+                  <DropdownMenuItem icon="redeyes-symbolic" @click="openCollapsedPopover">
                     {{ t('fileBrowser.showItems') }}
                   </DropdownMenuItem>
                   <template v-if="isSplitView">
-                    <DropdownMenuItem :disabled="!canPasteToPane1" @click="emit('pasteToPane', 0)">
-                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane1')" class="inline-block" />
+                    <DropdownMenuItem icon="edit-paste" :disabled="!canPasteToPane1" @click="emit('pasteToPane', 0)">
                       {{ t('fileBrowser.actions.pasteToPane1') }}
                     </DropdownMenuItem>
-                    <DropdownMenuItem :disabled="!canPasteToPane2" @click="emit('pasteToPane', 1)">
-                      <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.pasteToPane2')" class="inline-block" />
+                    <DropdownMenuItem icon="edit-paste" :disabled="!canPasteToPane2" @click="emit('pasteToPane', 1)">
                       {{ t('fileBrowser.actions.pasteToPane2') }}
                     </DropdownMenuItem>
                   </template>
-                  <DropdownMenuItem v-else :disabled="!canPaste" @click="emit('paste')">
-                    <ThemeIcon name="edit-paste" type="symbol" :size="16" :alt="t('fileBrowser.actions.paste')" class="inline-block" />
+                  <DropdownMenuItem v-else icon="edit-paste" :disabled="!canPaste" @click="emit('paste')">
                     {{ t('fileBrowser.actions.paste') }}
                   </DropdownMenuItem>
-                  <DropdownMenuItem class="clipboard-toolbar__dropdown-item--discard"
-                    @click="clipboardStore.clearClipboard()">
-                    <ThemeIcon name="gtk-close" type="symbol" :size="16" :alt="t('fileBrowser.discardClipboard')" class="inline-block" />
+                  <DropdownMenuItem icon="window-close" danger @click="clipboardStore.clearClipboard()">
                     {{ t('fileBrowser.discardClipboard') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -255,32 +286,38 @@ function openCollapsedPopover() {
             </div>
           </div>
         </PopoverAnchor>
-        <PopoverContent align="center" side="top" :side-offset="8" class="clipboard-toolbar__popover">
-          <div class="clipboard-toolbar__popover-content">
-            <div class="clipboard-toolbar__filter-wrapper">
-              <input v-model="clipboardItemsFilterQuery" :placeholder="t('filter.filter')"
-                class="clipboard-toolbar__filter-input" />
-            </div>
-            <div v-if="clipboardItemsHeader" class="clipboard-toolbar__items-header">
+        <PopoverContent align="center" side="top" :side-offset="8" padding="sm" class="w-80" :label="t('fileBrowser.showItems')">
+          <div class="flex flex-col gap-2">
+            <SearchField v-model="clipboardItemsFilterQuery" :placeholder="t('filter.filter')" :label="t('filter.filter')" />
+            <div v-if="clipboardItemsHeader" class="px-3 py-1 text-label-xs text-tx-muted">
               {{ clipboardItemsHeader }}
             </div>
-            <ScrollArea class="clipboard-toolbar__scroll-area">
-              <div class="clipboard-toolbar__items-list">
-                <div v-for="entry in displayedClipboardItems" :key="entry.path" class="clipboard-toolbar__item">
-                  <div class="clipboard-toolbar__item-info">
-                    <span class="clipboard-toolbar__item-name">{{ entry.name }}</span>
-                    <span class="clipboard-toolbar__item-path">{{ entry.path }}</span>
-                  </div>
-                  <button class="clipboard-toolbar__item-remove"
-                    :title="t('fileBrowser.removeFromClipboard')" @click="removeClipboardItem(entry)" :aria-label="t('fileBrowser.removeFromClipboard')">
-                    <ThemeIcon name="gtk-close" type="symbol" :size="16" :alt="t('fileBrowser.removeFromClipboard')" />
-                  </button>
-                </div>
-                <div v-if="displayedClipboardItems.length === 0" class="clipboard-toolbar__no-items">
+            <!-- La lista desplaza sola: la barra de desplazamiento la pone
+                 `scrollbar.css`, la de todas las ventanas. -->
+            <div class="h-50 overflow-y-auto">
+              <div class="flex flex-col gap-0.5">
+                <ListRow
+                  v-for="entry in displayedClipboardItems"
+                  :key="entry.path"
+                  :title="entry.name"
+                  :description="entry.path"
+                  truncate>
+                  <template #trailing>
+                    <ActionButton
+                      label=""
+                      :icon-alt="t('fileBrowser.removeFromClipboard')"
+                      :title="t('fileBrowser.removeFromClipboard')"
+                      icon="window-close"
+                      variant="ghost"
+                      size="sm"
+                      @click="removeClipboardItem(entry)" />
+                  </template>
+                </ListRow>
+                <p v-if="displayedClipboardItems.length === 0" class="m-0 p-4 text-center text-body-xs text-tx-muted">
                   {{ t('fileBrowser.noMatchingItems') }}
-                </div>
+                </p>
               </div>
-            </ScrollArea>
+            </div>
           </div>
         </PopoverContent>
       </Popover>
@@ -289,245 +326,21 @@ function openCollapsedPopover() {
 </template>
 
 <style scoped>
-.clipboard-toolbar-container {
-  container-type: inline-size;
-}
-
 .clipboard-slide-enter-active {
   transition:
-    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.2s ease-out;
+    transform 0.2s var(--ease-ui-out),
+    opacity 0.2s var(--ease-ui-out);
 }
 
 .clipboard-slide-leave-active {
   transition:
-    transform 0.2s cubic-bezier(0.4, 0, 1, 1),
-    opacity 0.15s ease-in;
+    transform 0.15s var(--ease-ui),
+    opacity 0.15s var(--ease-ui);
 }
 
-.clipboard-slide-enter-from {
-  opacity: 0;
-  transform: translateY(100%);
-}
-
+.clipboard-slide-enter-from,
 .clipboard-slide-leave-to {
   opacity: 0;
   transform: translateY(100%);
-}
-
-.clipboard-toolbar__info {
-  display: flex;
-  overflow: hidden;
-  min-width: 0;
-  align-items: center;
-  gap: 12px;
-}
-
-.clipboard-toolbar__icon {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-}
-
-.clipboard-toolbar__text {
-  display: flex;
-  overflow: hidden;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.clipboard-toolbar__title {
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.clipboard-toolbar__count-tag {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background-color: hsl(var(--background-3) / 80%);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.clipboard-toolbar__actions {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 6px;
-}
-
-.clipboard-toolbar__actions--expanded {
-  display: flex;
-}
-
-.clipboard-toolbar__actions--collapsed {
-  display: none;
-}
-
-@container (width < 400px) {
-  .clipboard-toolbar__actions--expanded {
-    display: none;
-  }
-
-  .clipboard-toolbar__actions--collapsed {
-    display: flex;
-  }
-}
-
-.clipboard-toolbar__button {
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 6px;
-  background-color: transparent;
-  font-size: 12px;
-  font-weight: 500;
-  gap: 6px;
-  transition:
-    background-color 0.15s ease,
-    transform 0.1s ease;
-}
-
-.clipboard-toolbar__button:hover {
-  background-color: hsl(var(--background) / 40%);
-}
-
-.clipboard-toolbar__button:active {
-  transform: scale(0.97);
-}
-
-.clipboard-toolbar__button-text {
-  display: none;
-}
-
-@container (width >=600px) {
-  .clipboard-toolbar__button-text {
-    display: inline;
-  }
-}
-
-.clipboard-toolbar__button--disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.clipboard-toolbar__button--discard:hover {
-  background-color: hsl(var(--destructive) / 30%);
-  color: hsl(0deg 100% 70%);
-}
-
-.clipboard-toolbar__dropdown {
-  min-width: 180px;
-}
-
-.clipboard-toolbar__dropdown-item--discard:hover,
-.clipboard-toolbar__dropdown-item--discard:focus {
-  background-color: hsl(var(--destructive) / 20%);
-  color: hsl(var(--destructive));
-}
-
-.clipboard-toolbar__popover {
-  width: 320px;
-  padding: 0;
-}
-
-.clipboard-toolbar__popover-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.clipboard-toolbar__filter-input {
-  width: 100%;
-}
-
-.clipboard-toolbar__items-header {
-  padding: 4px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-}
-
-.clipboard-toolbar__scroll-area {
-  height: 200px;
-}
-
-.clipboard-toolbar__scroll-area :deep(.sigma-ui-scroll-area-scrollbar) {
-  right: -6px;
-}
-
-.clipboard-toolbar__items-list {
-  display: flex;
-  flex-direction: column;
-  margin: 8px;
-  gap: 2px;
-}
-
-.clipboard-toolbar__item {
-  display: flex;
-  align-items: stretch;
-  border-radius: 4px;
-  gap: 8px;
-}
-
-.clipboard-toolbar__item:hover {
-  background-color: hsl(var(--secondary));
-}
-
-.clipboard-toolbar__item-info {
-  display: flex;
-  overflow: hidden;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  justify-content: center;
-  padding: 6px 0 6px 8px;
-  gap: 2px;
-}
-
-.clipboard-toolbar__item-name {
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.clipboard-toolbar__item-path {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.clipboard-toolbar__item-remove {
-  flex-shrink: 0;
-  align-self: stretch;
-}
-
-.clipboard-toolbar__no-items {
-  padding: 16px;
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  text-align: center;
-}
-</style>
-
-<style>
-.clipboard-toolbar__shortcut {
-  margin-left: 8px;
-  opacity: 0.6;
-}
-
-.clipboard-toolbar__item .clipboard-toolbar__item-remove.sigma-ui-button.sigma-ui-button--size-icon {
-  width: 36px;
-  height: auto;
-  min-height: 100%;
-  border-radius: 0 4px 4px 0;
 }
 </style>

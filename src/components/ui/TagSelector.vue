@@ -1,5 +1,16 @@
 <script setup lang="ts">
+/**
+ * El selector de etiquetas del menú de acciones.
+ *
+ * El panel se abre **en el lugar**, colgado del botón, y no teletransportado
+ * como un `Popover`: vive adentro de un menú desplegable, y un clic en algo
+ * que está fuera del menú lo cierra —con el selector adentro—. Las piezas sí
+ * son de la librería: `Badge` y `StatusDot` con el color de la etiqueta, que es
+ * un dato (sólo tiñe el punto y el canto; el texto queda en el del esquema y no
+ * en un blanco fijo), `TextInput` y `ActionButton`.
+ */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ActionButton, Badge, StatusDot, TextInput } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const { t } = useI18n();
@@ -45,15 +56,16 @@ const visibleBadges = computed(() => selectedTags.value.slice(0, props.maxBadges
 const hiddenCount = computed(() => Math.max(selectedTags.value.length - props.maxBadges, 0));
 
 const triggerClass = computed(() => {
-	const base = 'inline-flex items-center gap-2 rounded-corner px-2 py-1 text-xs transition-colors';
+	const base =
+		'inline-flex min-h-8 min-w-0 items-center gap-2 rounded-corner-m px-2 py-1 text-label-s text-tx-main transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed';
 
 	switch (props.triggerVariant) {
 		case 'ghost':
-			return `${base} hover:bg-secondary text-tx-on-secondary`;
+			return base;
 		case 'default':
-			return `${base} bg-ui-surface text-tx-main hover:bg-primary`;
+			return `${base} bg-ui-surface/70`;
 		default:
-			return `${base} border border-ui-border text-tx-main hover:bg-primary`;
+			return `${base} border border-ui-line`;
 	}
 });
 
@@ -94,72 +106,54 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div ref="containerRef" class="relative" :class="{ 'w-full': fullWidth }">
-		<button type="button" :class="triggerClass" @click="toggleOpen">
-			<span>{{ t('tags.title') }}</span>
-			<div class="flex items-center gap-1">
-				<span
-					v-for="tag in visibleBadges"
-					:key="tag.id"
-					class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]"
-					:style="{ backgroundColor: tag.color, color: '#fff' }"
-				>
-					{{ tag.name }}
-				</span>
-				<span v-if="hiddenCount > 0" class="text-[10px] text-tx-muted">
+	<div ref="containerRef" class="relative min-w-0" :class="{ 'w-full': fullWidth }">
+		<button type="button" :class="[triggerClass, fullWidth ? 'w-full' : '']" :aria-expanded="isOpen" @click="toggleOpen">
+			<span class="truncate">{{ t('tags.title') }}</span>
+			<span class="flex min-w-0 items-center gap-1">
+				<Badge v-for="tag in visibleBadges" :key="tag.id" :color="tag.color" size="sm" :label="tag.name" />
+				<span v-if="hiddenCount > 0" class="text-label-xs text-tx-muted">
 					+{{ hiddenCount }}
 				</span>
-			</div>
+			</span>
 		</button>
 
 		<div
 			v-if="isOpen"
-			class="absolute z-50 mt-2 w-64 rounded-corner border border-ui-border bg-ui-bg/80 p-2 shadow-lg"
+			class="absolute z-50 mt-2 w-64 max-w-[calc(100vw-32px)] rounded-corner-l border border-ui-line bg-ui-float p-2 text-tx-main shadow-surface-m"
 		>
-			<div v-if="tags.length === 0" class="px-2 py-2 text-xs text-tx-muted">
-				No tags available
-			</div>
+			<p v-if="tags.length === 0" class="m-0 px-2 py-2 text-body-xs text-tx-muted">
+				{{ t('tags.noTags') }}
+			</p>
 			<div v-else class="flex flex-col gap-1">
 				<div
 					v-for="tag in tags"
 					:key="tag.id"
-					class="flex items-center justify-between rounded-corner px-2 py-1 text-xs hover:bg-primary"
+					class="flex min-w-0 items-center justify-between gap-1 rounded-corner-m px-1 transition-colors duration-200 ease-ui hover:bg-ui-hover"
 				>
 					<button
 						type="button"
-						class="flex flex-1 items-center gap-2 text-left"
+						class="flex min-h-8 min-w-0 flex-1 items-center gap-2 px-1 text-left text-label-s"
+						:aria-pressed="selectedTagIds.includes(tag.id)"
 						@click="handleToggleTag(tag.id)"
 					>
-						<span class="h-2 w-2 rounded-full" :style="{ backgroundColor: tag.color }" />
-						<span :class="{ 'font-semibold': selectedTagIds.includes(tag.id) }">
+						<StatusDot :color="tag.color" />
+						<span class="truncate" :class="{ 'font-semibold': selectedTagIds.includes(tag.id) }">
 							{{ tag.name }}
 						</span>
 					</button>
-					<button
-						type="button"
-						class="rounded px-1 text-[10px] text-tx-muted hover:text-tx-main"
-						@click="handleDeleteTag(tag.id)"
-					>
-						Delete
-					</button>
+					<ActionButton :label="t('tags.delete')" variant="ghost" size="sm" @click="handleDeleteTag(tag.id)" />
 				</div>
 			</div>
 
-			<div v-if="allowCreate" class="mt-2 flex items-center gap-2 border-t border-ui-border pt-2">
-				<input
+			<div v-if="allowCreate" class="mt-2 flex min-w-0 items-center gap-2 border-t border-ui-line-weak pt-2">
+				<TextInput
 					v-model="newTagName"
-					type="text"
+					class="min-w-0 flex-1"
 					:placeholder="t('tags.newTag')"
-					class="w-full rounded-corner border border-ui-border px-2 py-1 text-xs focus:border-primary"
-					@keydown.enter.prevent="handleCreateTag"
+					:ariaLabel="t('tags.newTag')"
+					@keydown="($event) => { if ($event.key === 'Enter') { $event.preventDefault(); handleCreateTag(); } }"
 				/>
-				<button
-					type="button"
-					class="rounded-corner border border-ui-border px-2 py-1 text-xs text-tx-main hover:bg-primary"
-					@click="handleCreateTag"
-				>
-					Add
-				</button>
+				<ActionButton :label="t('tags.add')" variant="secondary" size="sm" @click="handleCreateTag" />
 			</div>
 		</div>
 	</div>

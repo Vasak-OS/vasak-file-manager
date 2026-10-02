@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+	SegmentedControl,
+	type SegmentedOption,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import StatusCenterButton from '@/components/statuscenter/StatusCenterButton.vue';
-import Popover from '@/components/ui/popover/Popover.vue';
-import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
-import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
+import { useWindowColumns } from '@/composables/use-window-columns';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import type { Layout } from '@/types/navigator';
 
@@ -33,7 +46,18 @@ const emit = defineEmits<{
 	 * con `v-show` y no se mostraba nunca.
 	 */
 	'toggle-global-search': [];
+	/** Abrir o cerrar el cajón de la barra lateral, en una ventana compacta. */
+	'toggle-sidebar': [];
 }>();
+
+/**
+ * En una columna por vez los cuatro botones no entran al lado de las pestañas
+ * y de los de la ventana: a 240 píxeles se comían los de cerrar y minimizar.
+ * Ahí pasan a un menú «más» con los mismos cuatro, marcados igual; el centro
+ * de estado queda afuera porque avisa solo cuando hay trabajo. En compacto el
+ * menú suma «Lugares», el cajón de la barra lateral.
+ */
+const { isOneColumn, isCompact, isSidebarOpen } = useWindowColumns();
 
 const isLayoutPopoverOpen = ref(false);
 const currentLayout = computed(() => {
@@ -43,72 +67,122 @@ async function setLayout(layoutName: LayoutType) {
 	await userLayoutStore.setLayout(layoutName);
 	isLayoutPopoverOpen.value = false;
 }
+
+const layoutOptions = computed<SegmentedOption<LayoutType>[]>(() => [
+	{ value: 'list', label: t('listLayout'), icon: 'view-list-text' },
+	{ value: 'grid', label: t('gridLayout'), icon: 'view-grid' },
+]);
 </script>
 
 <template>
-  <div class="flex items-center gap-1 animate-fade-in">
+  <div class="flex min-w-0 items-center gap-1">
+    <template v-if="!isOneColumn">
       <Popover :open="isLayoutPopoverOpen" @update:open="isLayoutPopoverOpen = $event">
-        <PopoverTrigger as-child>
-          <Tooltip>
-            <TooltipTrigger>
-              <button class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border">
-                <ThemeIcon v-if="currentLayout === 'grid'" name="view-grid" type="symbol" :size="24" :alt="t('gridLayout')" />
-                <ThemeIcon v-else name="view-list-text" type="symbol" :size="24" :alt="t('listLayout')" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('settings.navigator.navigatorViewLayout') }}</TooltipContent>
-          </Tooltip>
-        </PopoverTrigger>
-        <PopoverContent :side="'bottom'" :align="'end'" class="navigator-layout-popover">
-          <button class="flex items-center gap-2 px-2 w-full py-1 rounded-corner hover:bg-primary"
-            :class="{ 'bg-secondary hover:bg-primary': currentLayout === 'list' }" @click="setLayout('list')">
-            <ThemeIcon name="view-list-text" type="symbol" :size="24" :alt="t('listLayout')" />
-            <span>{{ t('listLayout') }}</span>
-          </button>
-          <button class="flex items-center gap-2 px-2 py-1 rounded-corner hover:bg-primary"
-            :class="{ 'bg-secondary hover:bg-primary': currentLayout === 'grid' }" @click="setLayout('grid')">
-            <ThemeIcon name="view-grid" type="symbol" :size="24" :alt="t('gridLayout')" />
-            <span>{{ t('gridLayout') }}</span>
-          </button>
+        <Tooltip>
+          <TooltipTrigger>
+            <PopoverTrigger as-child>
+              <ActionButton
+                label=""
+                :icon-alt="currentLayout === 'grid' ? t('gridLayout') : t('listLayout')"
+                :icon="currentLayout === 'grid' ? 'view-grid' : 'view-list-text'"
+                variant="ghost" />
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{{ t('settings.navigator.navigatorViewLayout') }}</TooltipContent>
+        </Tooltip>
+        <PopoverContent side="bottom" align="end" padding="sm" :label="t('settings.navigator.navigatorViewLayout')">
+          <SegmentedControl
+            :model-value="currentLayout"
+            :options="layoutOptions"
+            :label="t('settings.navigator.navigatorViewLayout')"
+            @update:model-value="setLayout($event as LayoutType)" />
         </PopoverContent>
       </Popover>
       <Tooltip>
         <TooltipTrigger>
-          <button
-            class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
-            :class="{ 'bg-primary hover:bg-secondary': props.isGlobalSearchOpen }"
-            @click="emit('toggle-global-search')" :aria-label="t('globalSearch.globalSearch')">
-            <!-- `search` y no `system-search`: ése es el de la búsqueda rápida
-                 de cada panel, que es otra cosa. Éste es el mismo que la propia
-                 vista de búsqueda global dibuja en su campo. -->
-            <ThemeIcon name="search" type="symbol" :size="24" :alt="t('globalSearch.globalSearch')" />
-          </button>
+          <!-- `search` y no `system-search`: ése es el de la búsqueda rápida
+               de cada panel, que es otra cosa. Éste es el mismo que la propia
+               vista de búsqueda global dibuja en su campo. -->
+          <ActionButton
+            label=""
+            :icon-alt="t('globalSearch.globalSearch')"
+            icon="search"
+            variant="ghost"
+            :pressed="props.isGlobalSearchOpen"
+            @click="emit('toggle-global-search')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('globalSearch.globalSearch') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger>
-          <button
-            class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
-            :class="{ 'bg-primary hover:bg-secondary': props.isSplitView }"
+          <ActionButton
+            label=""
+            :icon-alt="t('splitView')"
+            icon="view-split-left-right"
+            variant="ghost"
+            :pressed="props.isSplitView"
             :disabled="props.isGlobalSearchOpen"
-            @click="emit('toggle-split-view')" :aria-label="t('splitView')">
-            <ThemeIcon name="view-split-left-right" type="symbol" :size="24" :alt="t('splitView')" />
-          </button>
+            @click="emit('toggle-split-view')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('splitView') }}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger>
-          <button
-            class="bg-ui-bg/80 rounded-corner p-1 flex justify-center items-center hover:bg-primary border border-ui-border"
-            :class="{ 'bg-primary hover:bg-secondary': props.showInfoPanel }"
-            @click="emit('toggle-info-panel')" :aria-label="t('toolbar.infoPanel')">
-            <ThemeIcon name="swap-panels" type="symbol" :size="24" :alt="t('toolbar.infoPanel')" />
-          </button>
+          <ActionButton
+            label=""
+            :icon-alt="t('toolbar.infoPanel')"
+            icon="swap-panels"
+            variant="ghost"
+            :pressed="props.showInfoPanel"
+            @click="emit('toggle-info-panel')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('settings.infoPanel.title') }}</TooltipContent>
       </Tooltip>
-      <StatusCenterButton />
-    </div>
+    </template>
+
+    <DropdownMenu v-else>
+      <DropdownMenuTrigger as-child>
+        <ActionButton
+          label=""
+          :icon-alt="t('window.moreActions')"
+          :title="t('window.moreActions')"
+          icon="view-more"
+          variant="ghost" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" side="bottom" class="min-w-50">
+        <!-- En compacto, la barra lateral se abre desde acá: un botón suelto
+             le quitaba el lugar a las pestañas. -->
+        <template v-if="isCompact">
+          <DropdownMenuItem icon="sidebar-show" toggle="checkbox" :checked="isSidebarOpen" @click="emit('toggle-sidebar')">
+            {{ t('window.places') }}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+        </template>
+        <DropdownMenuItem icon="view-list-text" toggle="radio" :checked="currentLayout === 'list'" @click="setLayout('list')">
+          {{ t('listLayout') }}
+        </DropdownMenuItem>
+        <DropdownMenuItem icon="view-grid" toggle="radio" :checked="currentLayout === 'grid'" @click="setLayout('grid')">
+          {{ t('gridLayout') }}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem icon="search" toggle="checkbox" :checked="props.isGlobalSearchOpen" @click="emit('toggle-global-search')">
+          {{ t('globalSearch.globalSearch') }}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          icon="view-split-left-right"
+          toggle="checkbox"
+          :checked="props.isSplitView"
+          :disabled="props.isGlobalSearchOpen"
+          @click="emit('toggle-split-view')">
+          {{ t('splitView') }}
+        </DropdownMenuItem>
+        <DropdownMenuItem icon="swap-panels" toggle="checkbox" :checked="props.showInfoPanel" @click="emit('toggle-info-panel')">
+          {{ t('settings.infoPanel.title') }}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+
+    <!-- En compacto, el centro de estado aparece sólo cuando hay trabajo. -->
+    <StatusCenterButton :hide-when-idle="isCompact" />
+  </div>
 </template>

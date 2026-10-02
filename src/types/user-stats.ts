@@ -1,3 +1,5 @@
+import { DEFAULT_TAG_COLORS } from '@/data/tag-colors';
+
 export interface ItemTag {
 	id: string;
 	name: string;
@@ -43,22 +45,22 @@ export const DEFAULT_USER_STATS: UserStats = {
 		{
 			id: 'tag-important',
 			name: 'Important',
-			color: '#ef4444',
+			color: DEFAULT_TAG_COLORS.important,
 		},
 		{
 			id: 'tag-work',
 			name: 'Work',
-			color: '#3b82f6',
+			color: DEFAULT_TAG_COLORS.work,
 		},
 		{
 			id: 'tag-personal',
 			name: 'Personal',
-			color: '#22c55e',
+			color: DEFAULT_TAG_COLORS.personal,
 		},
 		{
 			id: 'tag-archive',
 			name: 'Archive',
-			color: '#a855f7',
+			color: DEFAULT_TAG_COLORS.archive,
 		},
 	],
 	taggedItems: [],
