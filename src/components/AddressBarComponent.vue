@@ -381,7 +381,11 @@ onUnmounted(() => {
          atajo. Un disparador de la librería alternaría en el mismo clic y lo
          volvería a cerrar. -->
     <Popover :open="isEditorOpen" @update:open="handleEditorOpenChange">
+      <!-- El ancla es una caja propia y no las migas mismas: `as-child` le
+           pone su `ref` al hijo y se llevaría puesto `breadcrumbsContainerRef`,
+           que es el que desplaza las migas largas hasta el final. -->
       <PopoverAnchor as-child>
+        <div class="flex h-full min-w-0 flex-1">
         <div ref="breadcrumbsContainerRef" class="flex flex-1 h-full items-center overflow-x-auto cursor-text min-w-0" @wheel="handleBreadcrumbsWheel"
           @click="openEditor" @keydown.enter.self="openEditor">
           <div class="flex min-w-max items-center overflow-x-auto pr-2">
@@ -418,6 +422,7 @@ onUnmounted(() => {
               </DropdownMenu>
             </template>
           </div>
+        </div>
         </div>
       </PopoverAnchor>
       <PopoverContent class="min-w-75" :style="{ width: `${popoverWidth}px` }" side="bottom" align="end"

@@ -263,6 +263,25 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		}
 	}
 
+	/**
+	 * Las opciones del panel de la búsqueda: el límite, la coincidencia exacta
+	 * y la tolerancia a errores de tipeo.
+	 *
+	 * El panel las mostraba y nadie las leía: la consulta salía siempre con los
+	 * valores fijos (500, no exacta, con tolerancia), así que tocarlas sólo
+	 * volvía a buscar lo mismo. Ahora la vista las escribe acá y cada consulta
+	 * —también las que siguen al editar el texto— sale con ellas.
+	 */
+	const searchOptions = ref({
+		resultLimit: SEARCH_CONSTANTS.DEFAULT_RESULT_LIMIT as number,
+		exactMatch: false,
+		typoTolerance: true,
+	});
+
+	function setSearchOptions(options: Partial<typeof searchOptions.value>) {
+		searchOptions.value = { ...searchOptions.value, ...options };
+	}
+
 	async function executeSearch(searchQuery: string) {
 		if (!searchQuery.trim()) {
 			results.value = [];
@@ -273,13 +292,12 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		isSearching.value = true;
 
 		try {
-			// const settings = userSettingsStore.userSettings.globalSearch;
 			const queryOptions = {
-				limit: /*settings.resultLimit ??*/ SEARCH_CONSTANTS.DEFAULT_RESULT_LIMIT,
+				limit: searchOptions.value.resultLimit,
 				include_files: true,
 				include_directories: true,
-				exact_match: /*settings.exactMatch ??*/ false,
-				typo_tolerance: /*settings.typoTolerance ??*/ true,
+				exact_match: searchOptions.value.exactMatch,
+				typo_tolerance: searchOptions.value.typoTolerance,
 				min_score_threshold: null,
 			};
 
@@ -490,5 +508,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		startStatusPolling,
 		stopStatusPolling,
 		search,
+		searchOptions,
+		setSearchOptions,
 	};
 });

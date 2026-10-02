@@ -37,9 +37,11 @@ const showOptions = ref(false);
 
 const includeFiles = ref(true);
 const includeDirectories = ref(true);
-const resultLimit = ref(500);
-const exactMatch = ref(false);
-const typoTolerance = ref(true);
+// Arrancan con las que usa la consulta: el campo decía 500 y la consulta
+// salía con 50.
+const resultLimit = ref(globalSearchStore.searchOptions.resultLimit);
+const exactMatch = ref(globalSearchStore.searchOptions.exactMatch);
+const typoTolerance = ref(globalSearchStore.searchOptions.typoTolerance);
 const scanDepth = ref(6);
 
 function toggleOptions() {
@@ -170,6 +172,11 @@ const groupedResults = computed<GroupedResults[]>(() => {
 const totalResultsCount = computed(() => filteredResults.value.length);
 
 watch([exactMatch, typoTolerance, resultLimit], () => {
+	globalSearchStore.setSearchOptions({
+		resultLimit: resultLimit.value,
+		exactMatch: exactMatch.value,
+		typoTolerance: typoTolerance.value,
+	});
 	if (globalSearchStore.query.trim()) {
 		globalSearchStore.search();
 	}

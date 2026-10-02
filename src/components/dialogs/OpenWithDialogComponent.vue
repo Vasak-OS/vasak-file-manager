@@ -279,20 +279,25 @@ const canSaveCommand = computed(() => {
           </SectionHeading>
 
           <!-- La barra de desplazamiento la pone `scrollbar.css`. -->
-          <div v-if="customCommands.length > 0" class="flex max-h-50 flex-col gap-0.5 overflow-y-auto" role="listbox"
+          <!-- Una lista común y no un `listbox`: cada fila lleva sus botones
+               (ejecutar, editar, borrar), y una opción de `listbox` no puede
+               tener controles adentro. Elegir con el ratón sigue marcando la
+               fila para «Abrir»; con el teclado, «Ejecutar» hace lo mismo. -->
+          <ul v-if="customCommands.length > 0" class="m-0 flex max-h-50 list-none flex-col gap-0.5 overflow-y-auto p-0"
             :aria-label="t('openWith.customCommands')">
-            <!-- El doble clic lo atiende el envoltorio: `ListRow` declara sólo
-                 `click`. -->
-            <div v-for="command in customCommands" :key="command.id" role="none" class="group" @dblclick="runCommand(command)">
+            <!-- El clic y el doble clic los atiende el elemento de la lista: una
+                 `ListRow` sin rol no emite `click`. -->
+            <li v-for="command in customCommands" :key="command.id" class="group cursor-pointer"
+              :aria-current="selectedCommandId === command.id ? 'true' : undefined"
+              @click="selectedCommandId = command.id" @dblclick="runCommand(command)">
             <ListRow
-              role="option"
+              role="none"
               :title="command.name"
               :description="command.programPath"
               icon="application-x-executable"
               icon-type="symbol"
               :selected="selectedCommandId === command.id"
-              truncate
-              @click="selectedCommandId = command.id">
+              truncate>
               <template #trailing>
                 <div class="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-150 ease-ui group-hover:opacity-100 group-focus-within:opacity-100">
                   <Tooltip>
@@ -319,8 +324,8 @@ const canSaveCommand = computed(() => {
                 </div>
               </template>
             </ListRow>
-            </div>
-          </div>
+            </li>
+          </ul>
 
           <EmptyState v-else-if="!isAddingCommand" :title="t('openWith.noCustomCommands')" icon="" size="sm" bordered />
         </div>
