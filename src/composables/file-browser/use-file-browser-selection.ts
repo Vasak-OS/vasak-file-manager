@@ -784,7 +784,7 @@ export function useFileBrowserSelection(
 				const newPath = `${parentDir}/${trimmedName}`;
 
 				workspacesStore.handlePathRenamed(oldPath, newPath);
-				userStatsStore.handlePathRenamed(oldPath, newPath);
+				void userStatsStore.handlePathRenamed(oldPath, newPath);
 
 				dirSizesStore.invalidate([entry.path, currentPathRef.value]);
 
@@ -897,31 +897,31 @@ export function useFileBrowserSelection(
 
 			case 'paste': {
 				const targetDir = entries.length === 1 && !entries[0].is_file ? entries[0].path : undefined;
-				pasteItems(targetDir);
+				void pasteItems(targetDir);
 				break;
 			}
 
 			case 'delete':
 				if (entries.length > 0) {
-					deleteItems(entries, true);
+					void deleteItems(entries, true);
 				}
 
 				break;
 			case 'delete-permanently':
 				if (entries.length > 0) {
-					deleteItems(entries, false);
+					void deleteItems(entries, false);
 				}
 
 				break;
 			case 'open-in-new-tab':
 				if (entries.length > 0) {
-					openEntriesInNewTabs(entries);
+					void openEntriesInNewTabs(entries);
 				}
 
 				break;
 			case 'toggle-favorite':
 				if (entries.length > 0) {
-					toggleFavorites(entries);
+					void toggleFavorites(entries);
 				}
 
 				break;
@@ -1085,7 +1085,7 @@ export function useFileBrowserSelection(
 				toastData.value.actionText = 'close';
 
 				workspacesStore.handlePathsDeleted(paths);
-				userStatsStore.handlePathsDeleted(paths);
+				void userStatsStore.handlePathsDeleted(paths);
 
 				dirSizesStore.invalidate([currentPathRef.value, ...paths]);
 

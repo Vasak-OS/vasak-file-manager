@@ -174,7 +174,7 @@ async function closeAllTabs() {
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger>
           <div v-if="props.tabGroup?.length" v-wave class="relative flex w-34 max-w-34 rounded-corner-m p-1 px-3 pr-3 items-center border border-ui-line" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }"
-            @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
+            @click.stop="tabOnClick(props.tabGroup)" @keydown.enter.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
             <div class="w-full overflow-hidden">
               <span class="overflow-hidden text-ellipsis whitespace-nowrap" :title="tabName">

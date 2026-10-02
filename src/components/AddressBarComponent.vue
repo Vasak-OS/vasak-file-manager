@@ -383,7 +383,7 @@ onUnmounted(() => {
     <Popover :open="isEditorOpen" @update:open="handleEditorOpenChange">
       <PopoverAnchor as-child>
         <div ref="breadcrumbsContainerRef" class="flex flex-1 h-full items-center overflow-x-auto cursor-text min-w-0" @wheel="handleBreadcrumbsWheel"
-          @click="openEditor">
+          @click="openEditor" @keydown.enter.self="openEditor">
           <div class="flex min-w-max items-center overflow-x-auto pr-2">
             <template v-for="(part, index) in addressParts" :key="index">
               <button class="px-1.5 py-1 rounded-corner-m text-sm whitespace-nowrap hover:text-primary" :class="{ 'text-secondary': part.isLast }"

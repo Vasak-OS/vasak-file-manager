@@ -7,7 +7,7 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { toNotice } from '@/components/ui/toast/toast-notice';
+import { operationLabel, toNotice } from '@/components/ui/toast/toast-notice';
 import { type ProgressToastData, toast, useToast } from '@/components/ui/toast/toaster';
 import { randomTagColor, TAG_COLORS } from '@/data/tag-colors';
 
@@ -105,6 +105,34 @@ describe('el aviso de una copia', () => {
 		expect(notice.tone).toBe('error');
 		expect(notice.progress).toBeUndefined();
 		expect(notice.description).toBe('«sin lugar»');
+	});
+});
+
+describe('la etiqueta de cada operación', () => {
+	test('mover y borrar tienen la suya, y una sin cantidad no la lleva', () => {
+		expect(operationLabel(progressData({ operationType: 'move', itemCount: 1 }), translate)).toBe(
+			'«operations.movingOne»'
+		);
+		expect(operationLabel(progressData({ operationType: 'delete' }), translate)).toBe(
+			'«operations.deletingOther»'
+		);
+		expect(operationLabel(progressData({ operationType: '' }), translate)).toBe('');
+		expect(operationLabel(progressData({ itemCount: 0 }), translate)).toBe('');
+	});
+
+	test('sin etiqueta, el mensaje es el título; sin botón, no hay acción', () => {
+		const notice = toNotice(
+			{
+				id: 'a',
+				kind: 'progress',
+				title: '',
+				data: progressData({ operationType: '', actionText: '' }),
+			},
+			translate
+		);
+
+		expect(notice.message).toBe('«notifications.copyingItems»');
+		expect(notice.action).toBeUndefined();
 	});
 });
 

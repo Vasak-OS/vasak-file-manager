@@ -16,17 +16,24 @@ import type { ProgressToastData, QueuedToast } from './toaster';
 
 type Translate = (key: string) => string;
 
+/** La frase del catálogo de cada operación, sin la forma de uno o de varios. */
+const OPERATION_KEYS: Record<ProgressToastData['operationType'], string> = {
+	copy: 'operations.copying',
+	move: 'operations.moving',
+	delete: 'operations.deleting',
+	'': '',
+};
+
 export function operationLabel(data: ProgressToastData, translate: Translate): string {
-	const base =
-		data.operationType === 'copy'
-			? 'operations.copying'
-			: data.operationType === 'move'
-				? 'operations.moving'
-				: data.operationType === 'delete'
-					? 'operations.deleting'
-					: '';
+	const base = OPERATION_KEYS[data.operationType];
 	if (!base || data.itemCount <= 0) return '';
 	return interpolar(translate(claveSegunCantidad(base, data.itemCount)), data.itemCount);
+}
+
+/** El tono dice el estado: rojo si falló, verde al terminar, neutro mientras corre. */
+function toneOf(data: ProgressToastData, complete: boolean): ToastNotice['tone'] {
+	if (data.failed) return 'error';
+	return complete ? 'success' : 'info';
 }
 
 export function toNotice(queued: QueuedToast, translate: Translate): ToastNotice {
@@ -48,7 +55,7 @@ export function toNotice(queued: QueuedToast, translate: Translate): ToastNotice
 	const label = operationLabel(data, translate);
 	return {
 		id: queued.id,
-		tone: data.failed ? 'error' : complete ? 'success' : 'info',
+		tone: toneOf(data, complete),
 		title: translate(data.title),
 		message: complete ? translate('progress.completed') : label || translate(data.title),
 		description: data.description ? translate(data.description) : undefined,
