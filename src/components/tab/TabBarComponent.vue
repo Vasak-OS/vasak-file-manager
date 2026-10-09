@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
+import { Kbd, ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import TabComponent from '@/components/tab/TabComponent.vue';
 import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
@@ -85,13 +85,13 @@ onBeforeUnmount(() => {
 
       <Tooltip>
         <TooltipTrigger>
-          <button class="rounded-corner p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
+          <button class="rounded-corner-m p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
             <ThemeIcon name="gtk-add" type="symbol" :size="14" :alt="t('toolbar.newTab')" />
           </button>
         </TooltipTrigger>
         <TooltipContent>
           {{ t('tabs.newTab') }}
-          <kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</kbd>
+          <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</Kbd>
         </TooltipContent>
       </Tooltip>
     </div>

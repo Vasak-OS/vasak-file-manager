@@ -173,8 +173,8 @@ async function closeAllTabs() {
     <Tooltip :disabled="!(props.previewEnabled && showTabPreview) || isMenuOpen"
       :key="props.previewEnabled && showTabPreview ? 'enabled' : 'disabled'">
       <TooltipTrigger>
-          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-34 max-w-34 rounded-corner p-1 px-3 pr-3 items-center border border-ui-border" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }"
-            @click.stop="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
+          <div v-if="props.tabGroup?.length" v-wave class="relative flex w-34 max-w-34 rounded-corner-m p-1 px-3 pr-3 items-center border border-ui-line" :class="{ 'bg-primary text-tx-on-primary font-bold': isActive, 'bg-ui-bg/80': !isActive }"
+            tabindex="0" @click.stop="tabOnClick(props.tabGroup)" @keydown.enter.self.stop.prevent="tabOnClick(props.tabGroup)" @auxclick.stop="handleAuxClick"
             @contextmenu="handleContextMenu" @pointerdown="handlePointerDown">
             <div class="w-full overflow-hidden">
               <span class="overflow-hidden text-ellipsis whitespace-nowrap" :title="tabName">
@@ -188,7 +188,7 @@ async function closeAllTabs() {
             </button>
           </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" class="min-w-50 max-w-100 bg-ui-bg/80 rounded-corner p-2">
+      <TooltipContent side="bottom" class="min-w-50 max-w-100 bg-ui-bg/80 rounded-corner-m p-2">
         <span>
           <div v-for="(tab, index) in props.tabGroup" :key="index">
             <div class="overflow-hidden text-ellipsis whitespace-nowrap text-primary text-base" :title="tab.name || tab.path">

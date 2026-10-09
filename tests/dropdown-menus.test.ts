@@ -28,103 +28,129 @@ import { olvidarTodo } from './dobles';
 // puesto en la siguiente y `[role="menuitem"]` devuelve las opciones de las dos.
 enableAutoUnmount(afterEach);
 
-const entrada = (parcial: Partial<DirEntry> = {}): DirEntry =>
-	({ name: 'archivo.txt', path: '/home/pato/archivo.txt', is_dir: false, ...parcial }) as DirEntry;
+/**
+ * Una barra angosta.
+ *
+ * El menú de la barra del portapapeles es su forma angosta: por debajo de 400
+ * píxeles los botones pasan a él. Lo decide un `ResizeObserver` sobre la barra,
+ * y happy-dom no mide nada, así que se le hace decir 300.
+ */
+const realResizeObserver = globalThis.ResizeObserver;
+class NarrowResizeObserver {
+	constructor(private readonly callback: ResizeObserverCallback) {}
+	observe(element: Element) {
+		this.callback(
+			[{ contentRect: { width: 300 }, target: element } as unknown as ResizeObserverEntry],
+			this as unknown as ResizeObserver
+		);
+	}
+	unobserve() {}
+	disconnect() {}
+}
 
-function lasOpciones(): HTMLElement[] {
+const entry = (partial: Partial<DirEntry> = {}): DirEntry =>
+	({ name: 'archivo.txt', path: '/home/pato/archivo.txt', is_dir: false, ...partial }) as DirEntry;
+
+function menuItems(): HTMLElement[] {
 	return Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]'));
 }
 
-function elMenu(): HTMLElement | null {
+function theMenu(): HTMLElement | null {
 	return document.querySelector<HTMLElement>('[role="menu"]');
 }
 
-function abrirElMenu() {
-	const disparador = document.querySelector<HTMLElement>('[aria-haspopup="menu"]');
-	disparador?.click();
+function openTheMenu() {
+	const trigger = document.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+	trigger?.click();
 }
 
 /**
  * La barra del portapapeles con algo adentro.
  *
- * Con `move` y el destino igual al origen, «pegar» queda apagado, que es el
+ * Con `move` y el target igual al origen, «paste» queda apagado, que es el
  * caso que importa: era el que se disparaba igual.
  */
-async function montarElPortapapeles(tipo: 'copy' | 'move', destino: string) {
+async function mountClipboardBar(kind: 'copy' | 'move', target: string) {
 	const pinia = createPinia();
 	setActivePinia(pinia);
 	const clipboard = useClipboardStore();
-	clipboard.setClipboard(tipo, [entrada()]);
+	clipboard.setClipboard(kind, [entry()]);
 
-	const vista = mount(ClipboardToolbarComponent, {
+	const view = mount(ClipboardToolbarComponent, {
 		attachTo: document.body,
-		props: { currentPath: destino },
+		props: { currentPath: target },
 		global: { plugins: [pinia] },
 	});
 	await nextTick();
-	return vista;
+	await nextTick();
+	return view;
 }
 
 beforeEach(() => {
 	olvidarTodo();
 	setActivePinia(createPinia());
+	globalThis.ResizeObserver = NarrowResizeObserver as unknown as typeof ResizeObserver;
+});
+
+afterEach(() => {
+	globalThis.ResizeObserver = realResizeObserver;
 });
 
 describe('el menú del portapapeles', () => {
 	test('se anuncia como menú y sus opciones como opciones', async () => {
-		await montarElPortapapeles('copy', '/otro');
-		abrirElMenu();
+		await mountClipboardBar('copy', '/otro');
+		openTheMenu();
 		await nextTick();
 		await nextTick();
 
-		expect(elMenu()).not.toBeNull();
-		expect(elMenu()?.getAttribute('aria-orientation')).toBe('vertical');
-		expect(lasOpciones().length).toBeGreaterThan(1);
-		for (const opcion of lasOpciones()) {
-			expect(opcion.getAttribute('tabindex')).toBe('0');
+		expect(theMenu()).not.toBeNull();
+		expect(theMenu()?.getAttribute('aria-orientation')).toBe('vertical');
+		expect(menuItems().length).toBeGreaterThan(1);
+		for (const item of menuItems()) {
+			expect(item.getAttribute('tabindex')).toBe('0');
 		}
 	});
 
-	test('el disparador dice que abre un menú', async () => {
-		await montarElPortapapeles('copy', '/otro');
+	test('el trigger dice que abre un menú', async () => {
+		await mountClipboardBar('copy', '/otro');
 
-		const disparador = document.querySelector('[aria-haspopup="menu"]');
+		const trigger = document.querySelector('[aria-haspopup="menu"]');
 		// Sobre el botón, no sobre un envoltorio: es lo que recibe el foco y
 		// por lo tanto lo único que se anuncia.
-		expect(disparador?.tagName).toBe('BUTTON');
-		expect(disparador?.getAttribute('aria-expanded')).toBe('false');
+		expect(trigger?.tagName).toBe('BUTTON');
+		expect(trigger?.getAttribute('aria-expanded')).toBe('false');
 
-		abrirElMenu();
+		openTheMenu();
 		await nextTick();
-		expect(disparador?.getAttribute('aria-expanded')).toBe('true');
+		expect(trigger?.getAttribute('aria-expanded')).toBe('true');
 	});
 
-	test('«pegar» apagado ya no pega', async () => {
+	test('«paste» apagado ya no pega', async () => {
 		// Estaba roto y no se veía: el `@click` del ítem era el evento nativo
 		// del `div`, que no pasa por donde se comprueba `disabled`. La opción
 		// se dibujaba gris y pegaba igual.
-		const vista = await montarElPortapapeles('move', '/home/pato');
-		abrirElMenu();
+		const view = await mountClipboardBar('move', '/home/pato');
+		openTheMenu();
 		await nextTick();
 
-		const pegar = lasOpciones().find((opcion) => opcion.getAttribute('aria-disabled') === 'true');
-		expect(pegar).toBeDefined();
+		const paste = menuItems().find((item) => item.getAttribute('aria-disabled') === 'true');
+		expect(paste).toBeDefined();
 
-		pegar?.click();
+		paste?.click();
 		await nextTick();
 
-		expect(vista.emitted('paste')).toBeUndefined();
+		expect(view.emitted('paste')).toBeUndefined();
 	});
 
 	test('la clase del menú llega al menú', async () => {
 		// `class` se declaraba como propiedad y se leía de `$attrs`, donde ya no
 		// estaba: todo lo que se le pasara se descartaba en silencio. Los anchos
 		// y el `[&_[role=menuitem]]` de los cuatro menús nunca se aplicaron.
-		await montarElPortapapeles('copy', '/otro');
-		abrirElMenu();
+		await mountClipboardBar('copy', '/otro');
+		openTheMenu();
 		await nextTick();
 
-		expect(elMenu()?.className).toContain('clipboard-toolbar__dropdown');
+		expect(theMenu()?.className).toContain('min-w-45');
 	});
 });
 
@@ -135,23 +161,23 @@ describe('el menú de acciones sobre una selección', () => {
 		// clic hacía la acción dos veces. Ahora `click` también es del
 		// componente —llega con el teclado— y con los dos enlazados se emitía
 		// igual de doble.
-		const vista = mount(ActionMenuComponent, {
+		const view = mount(ActionMenuComponent, {
 			attachTo: document.body,
 			props: {
-				selectedEntries: [entrada()],
+				selectedEntries: [entry()],
 				menuItemComponent: DropdownMenuItem,
 				menuSeparatorComponent: DropdownMenuSeparator,
 			},
 		});
 		await nextTick();
 
-		const abrirCon = lasOpciones().find((opcion) =>
-			opcion.textContent?.includes('fileBrowser.actions.openWith')
+		const abrirCon = menuItems().find((item) =>
+			item.textContent?.includes('fileBrowser.actions.openWith')
 		);
 		expect(abrirCon).toBeDefined();
 		abrirCon?.click();
 		await nextTick();
 
-		expect(vista.emitted('action')).toEqual([['open-with']]);
+		expect(view.emitted('action')).toEqual([['open-with']]);
 	});
 });

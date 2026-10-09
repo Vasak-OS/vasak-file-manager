@@ -23,6 +23,7 @@ filter:
   showHiddenItems: Show Hidden Items
   filter: Filter
 globalSearch:
+  close: Close the search
   launcherIsIndexing: The launcher is updating the index…
   indexMayBeIncomplete: The last scan did not finish, so something may be missing.
   indexedItemsOne: "{0} item indexed"
@@ -63,6 +64,7 @@ globalSearch:
   showFiles: Show Files
   typoTolerance: Typo Tolerance
 fileBrowser:
+  navigation: Navigation
   sortAscending: Sorted ascending
   sortDescending: Sorted descending
   selected: Selected
@@ -316,6 +318,8 @@ root: Root
 cloudNeedsReconnect: "{0}: it has to be connected again from Settings"
 cloudNotAvailableYet: "{0}: not available yet"
 cloudMountFailed: "Could not open {0}: {1}"
+networkMountMissingPackage: "The {0} package must be installed to mount this folder"
+networkMountFailed: "Could not mount the network folder: {0}"
 search: Search
 driveNotMounted: Drive not mounted
 freeOf: free of
@@ -341,9 +345,16 @@ statusCenter:
   cancelled: Cancelled
   failed: Failed
 tags:
+  noTags: No tags available
+  delete: Delete
+  add: Add
   title: Tags
   newTag: New tag
 window:
+  places: Places
+  closeSidebar: Close places
+  backToFiles: Back to files
+  moreActions: More actions
   minimize: Minimize
   close: Close the window
   maximize: Maximize

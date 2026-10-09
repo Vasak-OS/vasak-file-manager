@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { Skeleton, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { storeToRefs } from 'pinia';
 import { computed, type Ref, ref, watchEffect } from 'vue';
 import {
@@ -10,7 +10,6 @@ import {
 } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
-import Skeleton from '@/components/ui/Skeleton.vue';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
@@ -186,7 +185,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
         :active="active"
         :size-dependencies="[entry.name, ctx.entryDescription?.(entry)]"
       >
-      <button :key="entry.path" class="relative grid border-b border-ui-border text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5 w-full" :class="{
+      <button :key="entry.path" class="relative grid border-b border-ui-line text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5 w-full" :class="{
         'opacity-50': entry.is_hidden,
       }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
         :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -196,8 +195,8 @@ function handleEntryKeydown(event: KeyboardEvent): void {
         @keydown="handleEntryKeydown"
         style="grid-template-columns: var(--file-browser-list-columns); padding: var(--file-browser-list-row-padding-y) var(--file-browser-list-row-padding-x);">
         <div class="absolute inset-0 z-0 pointer-events-none">
-          <div class="absolute inset-0 pointer-events-none opacity-0 data-[in-clipboard]:data-[clipboard-type='copy']:opacity-100 data-[in-clipboard]:data-[clipboard-type='copy']:bg-status-success/5 data-[in-clipboard]:data-[clipboard-type='copy']:shadow-[inset_0_0_0_1px_hsl(var(--success)/0.3),inset_3px_0_0_0_hsl(var(--success)/0.5)] data-[selected]:data-[in-clipboard]:data-[clipboard-type='copy']:bg-status-success/10 data-[selected]:data-[in-clipboard]:data-[clipboard-type='copy']:shadow-[inset_0_0_0_1px_hsl(var(--success)/0.5),inset_3px_0_0_0_hsl(var(--success)/0.7)] data-[in-clipboard]:data-[clipboard-type='move']:opacity-100 data-[in-clipboard]:data-[clipboard-type='move']:bg-status-warning/5 data-[in-clipboard]:data-[clipboard-type='move']:shadow-[inset_0_0_0_1px_hsl(var(--warning)/0.3),inset_3px_0_0_0_hsl(var(--warning)/0.5)] data-[selected]:data-[in-clipboard]:data-[clipboard-type='move']:bg-status-warning/10 data-[selected]:data-[in-clipboard]:data-[clipboard-type='move']:shadow-[inset_0_0_0_1px_hsl(var(--warning)/0.5),inset_3px_0_0_0_hsl(var(--warning)/0.7)]" />
-          <div class="absolute inset-0 pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
+          <div class="absolute inset-0 pointer-events-none opacity-0 data-[in-clipboard]:data-[clipboard-type='copy']:opacity-100 data-[in-clipboard]:data-[clipboard-type='copy']:bg-status-success/5 data-[in-clipboard]:data-[clipboard-type='copy']:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-status-success)_30%,transparent),inset_3px_0_0_0_color-mix(in_srgb,var(--color-status-success)_50%,transparent)] data-[selected]:data-[in-clipboard]:data-[clipboard-type='copy']:bg-status-success/10 data-[selected]:data-[in-clipboard]:data-[clipboard-type='copy']:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-status-success)_50%,transparent),inset_3px_0_0_0_color-mix(in_srgb,var(--color-status-success)_70%,transparent)] data-[in-clipboard]:data-[clipboard-type='move']:opacity-100 data-[in-clipboard]:data-[clipboard-type='move']:bg-status-warning/5 data-[in-clipboard]:data-[clipboard-type='move']:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-status-warning)_30%,transparent),inset_3px_0_0_0_color-mix(in_srgb,var(--color-status-warning)_50%,transparent)] data-[selected]:data-[in-clipboard]:data-[clipboard-type='move']:bg-status-warning/10 data-[selected]:data-[in-clipboard]:data-[clipboard-type='move']:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-status-warning)_50%,transparent),inset_3px_0_0_0_color-mix(in_srgb,var(--color-status-warning)_70%,transparent)]" />
+          <div class="absolute inset-0 pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
         </div>
         <div class="relative z-10 flex overflow-hidden items-center pr-4 gap-2.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
           <ThemeIcon
@@ -218,7 +217,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
         </span>
         <span v-if="showSizeColumn" class="relative z-10 flex items-center gap-1.5 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-tx-muted text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
           <ThemeIcon v-if="isDirLoadingWithProgress(entry)" name="content-loading-symbolic" type="symbol" :size="16" :alt="t('operations.calculatingSize')" class="animate-spin text-tx-muted" />
-          <Skeleton v-if="getSizeDisplay(entry) === null" class="w-[50px] h-3" />
+          <Skeleton v-if="getSizeDisplay(entry) === null" :width="50" :height="12" />
           <template v-else>{{ getSizeDisplay(entry) }}</template>
         </span>
         <span v-if="showModifiedColumn" class="relative z-10 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-tx-muted text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">

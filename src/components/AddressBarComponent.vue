@@ -3,21 +3,21 @@ import { invoke } from '@tauri-apps/api/core';
 import { dirname } from '@tauri-apps/api/path';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	Kbd,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
 	ThemeIcon,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
-import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import Popover from '@/components/ui/popover/Popover.vue';
-import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
-import PopoverTrigger from '@/components/ui/popover/PopoverTrigger.vue';
-import ScrollArea from '@/components/ui/ScrollArea.vue';
-import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { toast } from '@/components/ui/toast/toaster';
 import type { DirContents } from '@/types/dir-entry';
 
@@ -309,11 +309,9 @@ function handleKeydown(event: KeyboardEvent) {
 async function copyPathToClipboard() {
 	try {
 		await navigator.clipboard.writeText(props.currentPath);
-		toast.custom(markRaw(CustomSimple), {
-			componentProps: {
-				title: 'dialogs.localShareManagerDialog.addressCopiedToClipboard',
-				description: props.currentPath,
-			},
+		toast.success({
+			title: 'dialogs.localShareManagerDialog.addressCopiedToClipboard',
+			description: props.currentPath,
 			duration: 2000,
 		});
 	} catch (error) {
@@ -353,7 +351,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="addressBarRef" class="address-bar relative flex overflow-hidden flex-1 h-10 items-center bg-ui-bg/80 rounded-corner gap-1 transition-colors p-1 border border-ui-border">
+  <div ref="addressBarRef" class="address-bar relative flex overflow-hidden flex-1 h-10 items-center bg-ui-bg/80 rounded-corner-m gap-1 transition-colors p-1 border border-ui-line">
     <DropdownMenu v-model:open="isActionsMenuOpen">
       <Tooltip>
         <TooltipTrigger>
@@ -378,13 +376,21 @@ onUnmounted(() => {
         </TooltipContent>
       </Tooltip>
     </DropdownMenu>
-    <Popover :open="isEditorOpen" class="flex-1" @update:open="handleEditorOpenChange">
-      <PopoverTrigger as-child>
+    <!-- El editor de la ruta cuelga de las migas (`PopoverAnchor`) pero no lo
+         abren ellas por su cuenta: lo abre `openEditor`, con el clic o con el
+         atajo. Un disparador de la librería alternaría en el mismo clic y lo
+         volvería a cerrar. -->
+    <Popover :open="isEditorOpen" @update:open="handleEditorOpenChange">
+      <!-- El ancla es una caja propia y no las migas mismas: `as-child` le
+           pone su `ref` al hijo y se llevaría puesto `breadcrumbsContainerRef`,
+           que es el que desplaza las migas largas hasta el final. -->
+      <PopoverAnchor as-child>
+        <div class="flex h-full min-w-0 flex-1">
         <div ref="breadcrumbsContainerRef" class="flex flex-1 h-full items-center overflow-x-auto cursor-text min-w-0" @wheel="handleBreadcrumbsWheel"
-          @click="openEditor">
+          @click="openEditor" @keydown.enter.self="openEditor">
           <div class="flex min-w-max items-center overflow-x-auto pr-2">
             <template v-for="(part, index) in addressParts" :key="index">
-              <button class="px-1.5 py-1 rounded-corner text-sm whitespace-nowrap hover:text-primary" :class="{ 'text-secondary': part.isLast }"
+              <button class="px-1.5 py-1 rounded-corner-m text-sm whitespace-nowrap hover:text-primary" :class="{ 'text-secondary': part.isLast }"
                 :disabled="part.isLast" :title="part.path" @click.stop="navigateToPart(part.path)">
                 {{ part.name }}
               </button>
@@ -394,7 +400,7 @@ onUnmounted(() => {
                 @update:open="(open: boolean) => handleSeparatorOpenChange(index, open)"
               >
                 <DropdownMenuTrigger as-child>
-                  <button class="px-1.5 py-1 border-none rounded-corner bg-transparent text-tx-muted/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
+                  <button class="px-1.5 py-1 border-none rounded-corner-m bg-transparent text-tx-muted/60 cursor-pointer text-[13px] transition-colors hover:bg-secondary hover:text-tx-main focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" :title="t('settings.addressBar.showSiblingDirectories')"
                     @click.stop="openSeparatorMenu(index)" :aria-label="t('settings.addressBar.showSiblingDirectories')">
                     <ThemeIcon
                       name="arrow-right"
@@ -405,33 +411,30 @@ onUnmounted(() => {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent :side="'bottom'" :align="'start'" class="min-w-[180px] max-w-[300px] p-0 [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-1.5 [&_[role=menuitem]]:text-xs [&_[role=menuitem]]:gap-2 [&_[role=menuitem]]:w-full [&_[role=menuitem]]:flex">
-                  <ScrollArea class="max-h-[250px] py-1">
+                  <div class="max-h-62 overflow-y-auto py-1">
                     <DropdownMenuItem v-for="dirPath in separatorDropdowns[index]" :key="dirPath"
                       @select="handleSeparatorNavigate(dirPath)" class="flex items-center justify-start">
                       <ThemeIcon name="folder" :size="16" :alt="dirPath" class="inline-block shrink-0 mr-2" />
                       <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ dirPath.split('/').pop() || dirPath }}</span>
                     </DropdownMenuItem>
-                  </ScrollArea>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </template>
           </div>
         </div>
-      </PopoverTrigger>
-      <PopoverContent class="min-w-[300px] p-0 border border-ui-border rounded-corner bg-ui-bg/80-3 shadow-[0_10px_40px_hsl(var(--foreground)/10%)] text-tx-main" :style="{ width: `${popoverWidth}px` }" :side="'bottom'"
-        :align="'end'" :side-offset="4" @open-auto-focus.prevent
-        @escape-key-down="(event?: Event) => { if (isPinned) event?.preventDefault(); else isEditorOpen = false }"
-        @pointer-down-outside="(event?: Event) => { if (isPinned) event?.preventDefault() }"
-        @interact-outside="(event?: Event) => { if (isPinned) event?.preventDefault() }">
+        </div>
+      </PopoverAnchor>
+      <PopoverContent class="min-w-75" :style="{ width: `${popoverWidth}px` }" side="bottom" align="end"
+        :side-offset="4" padding="none" :label="t('settings.addressBar.editAddress')">
         <div class="flex items-center p-2 gap-1">
           <input ref="pathInputRef" type="text" :value="pathQuery" :placeholder="t('settings.addressBar.enterValidPath')"
-            class="h-8 flex-1 mr-2 text-[13px] bg-transparent" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
+            :aria-label="t('settings.addressBar.enterValidPath')"
+            class="mr-2 h-8 min-w-0 flex-1 bg-transparent text-body-s text-tx-main placeholder:text-tx-muted focus-visible:outline-none" @input="handlePathInput(($event.target as HTMLInputElement).value)" @keydown="handleKeydown" />
           <Tooltip>
             <TooltipTrigger>
-              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm"
-                :class="{ 'bg-primary/15 text-primary stroke-primary': isPinned }" @click="isPinned = !isPinned">
-                <ThemeIcon name="pin" type="symbol" :size="16" />
-              </button>
+              <ActionButton label="" :icon-alt="t('settings.addressBar.keepEditorOpened')" icon="pin" variant="ghost"
+                size="sm" :pressed="isPinned" @click="isPinned = !isPinned" />
             </TooltipTrigger>
             <TooltipContent>
               {{ t('settings.addressBar.keepEditorOpened') }}
@@ -443,39 +446,37 @@ onUnmounted(() => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger>
-              <button type="button" tabindex="-1" class="w-6 h-6 shrink-0 flex items-center justify-center rounded-corner-sm text-tx-main/70 hover:text-tx-main"
-                @click="isEditorOpen = false">
-                <ThemeIcon name="gtk-close" type="symbol" :size="16" />
-              </button>
+              <ActionButton label="" :icon-alt="t('settings.addressBar.closeEditor')" icon="window-close" variant="ghost"
+                size="sm" @click="isEditorOpen = false" />
             </TooltipTrigger>
             <TooltipContent>
               {{ t('settings.addressBar.closeEditor') }}
-              <kbd class="shortcut">{{ t('keys.esc') }}</kbd>
+              <Kbd class="shortcut">{{ t('keys.esc') }}</Kbd>
             </TooltipContent>
           </Tooltip>
         </div>
 
-        <ScrollArea v-if="autocompleteList.length > 0">
-          <button v-for="(path, index) in autocompleteList" :key="path" tabindex="-1" class="flex no-wrap items-center w-full px-3 py-1.5 text-sm gap-2 text-left"
-            :class="{ 'bg-secondary': index === selectedIndex }" @click="handlePathSelect(path)"
+        <div v-if="autocompleteList.length > 0">
+          <button v-for="(path, index) in autocompleteList" :key="path" tabindex="-1" class="flex no-wrap items-center w-full px-3 py-1.5 text-body-s gap-2 text-left transition-colors duration-150 ease-ui"
+            :class="{ 'bg-ui-selected': index === selectedIndex }" @click="handlePathSelect(path)"
             @mouseenter="selectedIndex = index">
             <ThemeIcon name="folder" :size="16" :alt="path" class="inline-block mr-2" />
             <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ path }}</span>
           </button>
-        </ScrollArea>
+        </div>
 
-        <div v-else class="p-3 border-t border-ui-border text-tx-muted text-xs text-center">
+        <div v-else class="p-3 border-t border-ui-line-weak text-tx-muted text-body-xs text-center">
           {{ t('settings.addressBar.noMatchingDirectories') }}
         </div>
 
-        <div class="px-2.5 py-1.5 border-t border-ui-border text-tx-muted text-[10px]">
-          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">↑↓</span>
+        <div class="flex flex-wrap items-center gap-1 px-2.5 py-1.5 border-t border-ui-line-weak text-tx-muted text-label-xs">
+          <Kbd>↑↓</Kbd>
           /
-          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">{{ t('keys.tab') }}</span>
+          <Kbd>{{ t('keys.tab') }}</Kbd>
           /
-          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">{{ t('keys.shiftTab') }}</span>
+          <Kbd>{{ t('keys.shiftTab') }}</Kbd>
           {{ t('settings.addressBar.toAutocomplete') }};
-          <span class="px-1.5 py-0.5 rounded-corner-sm bg-ui-surface text-[10px]">{{ t('keys.enter') }}</span>
+          <Kbd>{{ t('keys.enter') }}</Kbd>
           {{ t('settings.addressBar.toOpenThePath') }}
         </div>
       </PopoverContent>
@@ -483,13 +484,12 @@ onUnmounted(() => {
 
     <Tooltip>
       <TooltipTrigger>
-        <button type="button" class="shrink-0 h-7 w-7 p-1" @click="openEditor" :aria-label="t('settings.addressBar.editAddress')">
-          <ThemeIcon name="edit-select-text" type="symbol" :size="16" :alt="t('settings.addressBar.editAddress')" />
-        </button>
+        <ActionButton label="" :icon-alt="t('settings.addressBar.editAddress')" icon="edit-select-text" variant="ghost"
+          size="sm" class="shrink-0" @click="openEditor" />
       </TooltipTrigger>
       <TooltipContent>
         {{ t('settings.addressBar.editAddress') }}
-        <kbd class="shortcut">{{ t('keys.ctrlP') }}</kbd>
+        <Kbd class="shortcut">{{ t('keys.ctrlP') }}</Kbd>
       </TooltipContent>
     </Tooltip>
   </div>

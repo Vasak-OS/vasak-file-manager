@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import ClipboardToolbarComponent from '@/components/navigator/ClipboardToolbarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
 import ResizablePanel from '@/components/ui/ResizablePanel.vue';
 import ResizablePanelGroup from '@/components/ui/ResizablePanelGroup.vue';
+import { useWindowColumns } from '@/composables/use-window-columns';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
@@ -56,9 +57,6 @@ const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
 const activeTabId = ref<string | null>(null);
 
-const smallScreenMediaQuery = window.matchMedia(`(max-width: 800px)`);
-const isSmallScreen = ref(smallScreenMediaQuery.matches);
-
 watch(
 	() => workspacesStore.currentTabGroup,
 	() => {
@@ -72,10 +70,6 @@ watch(
 	}
 );
 
-function handleSmallScreenChange(event: MediaQueryListEvent) {
-	isSmallScreen.value = event.matches;
-}
-
 const currentLayout = computed<Layout>(() => {
 	return userLayoutStore.layout;
 });
@@ -83,6 +77,14 @@ const currentLayout = computed<Layout>(() => {
 const isSplitView = computed(() => {
 	return (workspacesStore.currentTabGroup?.length ?? 0) > 1;
 });
+
+/**
+ * En una columna por vez los dos paneles de la vista dividida no entran uno
+ * al lado del otro —quedaban dos tiras de 120 píxeles—: se apilan, uno arriba
+ * del otro, con el mismo tirador para repartir el alto.
+ */
+const { isOneColumn } = useWindowColumns();
+const panesDirection = computed(() => (isOneColumn.value ? 'vertical' : 'horizontal'));
 
 const currentActivePath = computed(() => {
 	return currentDirEntry.value?.path;
@@ -532,14 +534,9 @@ function registerShortcutHandlers() {
 
 onMounted(() => {
 	registerShortcutHandlers();
-	smallScreenMediaQuery.addEventListener('change', handleSmallScreenChange);
 
 	// Recover any in-progress directory size calculations from backend
 	dirSizesStore.recoverActiveCalculations();
-});
-
-onUnmounted(() => {
-	smallScreenMediaQuery.removeEventListener('change', handleSmallScreenChange);
 });
 </script>
 
@@ -565,12 +562,12 @@ onUnmounted(() => {
 				<GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
 					class="flex-1" @close="globalSearchStore.close()"
 					@open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
-				<ResizablePanelGroup direction="horizontal" class="navigator-page__panes">
+				<ResizablePanelGroup :direction="panesDirection" class="navigator-page__panes">
 					<template v-if="workspacesStore.currentTabGroup && isSplitView">
 						<template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">
 							<ResizablePanel :default-size="50" :min-size="15" @mousedown="handlePaneFocus(tab.id)">
 								<FileBrowserComponent :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)" :tab="tab"
-									:pane-index="index" :layout="currentLayout" class="navigator-page__pane rounded-corner border border-ui-border bg-ui-surface/70 overflow-hidden"
+									:pane-index="index" :layout="currentLayout" class="navigator-page__pane rounded-corner-l border border-ui-line bg-ui-surface/70 overflow-hidden"
 									@update:selected-entries="(entries) => handleSelectionChange(entries, tab.id)"
 									@update:current-dir-entry="handleCurrentDirChange" />
 							</ResizablePanel>
@@ -583,14 +580,14 @@ onUnmounted(() => {
 								:ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
 								:tab="workspacesStore.currentTabGroup[0]" :pane-index="0" :layout="currentLayout"
 								toolbar-teleport-target=".window-path-teleport-target"
-								class="navigator-page__pane rounded-corner border border-ui-border bg-ui-surface/70 overflow-hidden"
+								class="navigator-page__pane rounded-corner-l border border-ui-line bg-ui-surface/70 overflow-hidden"
 								@update:selected-entries="(entries) => handleSelectionChange(entries, workspacesStore.currentTabGroup![0].id)"
 								@update:current-dir-entry="handleCurrentDirChange" />
 						</ResizablePanel>
 					</template>
 					<ResizablePanel v-else :default-size="100">
 						<FileBrowserComponent ref="singlePaneRef" :layout="currentLayout"
-							toolbar-teleport-target=".window-path-teleport-target" class="navigator-page__pane rounded-corner border border-ui-border bg-ui-surface/70 overflow-hidden"
+							toolbar-teleport-target=".window-path-teleport-target" class="navigator-page__pane rounded-corner-l border border-ui-line bg-ui-surface/70 overflow-hidden"
 							@update:selected-entries="(entries) => handleSelectionChange(entries)"
 							@update:current-dir-entry="handleCurrentDirChange" />
 					</ResizablePanel>

@@ -1,9 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, markRaw, type Ref, ref } from 'vue';
-import CustomProgress from '@/components/ui/toast/CustomProgress.vue';
-import CustomSimple from '@/components/ui/toast/CustomSimple.vue';
-import { toast } from '@/components/ui/toast/toaster';
+import { computed, type Ref, ref } from 'vue';
+import { type ProgressToastData, toast } from '@/components/ui/toast/toaster';
 import {
 	type ConflictItem,
 	type ConflictResolution,
@@ -390,13 +388,9 @@ export function useFileBrowserSelection(
 			onRefresh();
 		}
 
-		toast.custom(markRaw(CustomSimple), {
-			componentProps: {
-				title: result.success
-					? 'notifications.archiveCreated'
-					: 'notifications.archiveCreateFailed',
-				description: result.success ? '' : String(result.error ?? ''),
-			},
+		toast[result.success ? 'success' : 'error']({
+			title: result.success ? 'notifications.archiveCreated' : 'notifications.archiveCreateFailed',
+			description: result.success ? '' : String(result.error ?? ''),
 		});
 	}
 
@@ -409,9 +403,7 @@ export function useFileBrowserSelection(
 		const info = await invoke<UndoInfo | null>('get_undo_info');
 
 		if (!info) {
-			toast.custom(markRaw(CustomSimple), {
-				componentProps: { title: 'notifications.nothingToUndo', description: '' },
-			});
+			toast.success({ title: 'notifications.nothingToUndo' });
 			return;
 		}
 
@@ -424,11 +416,9 @@ export function useFileBrowserSelection(
 		clearSelection();
 		onRefresh();
 
-		toast.custom(markRaw(CustomSimple), {
-			componentProps: {
-				title: result.success ? 'notifications.undone' : 'notifications.undoFailed',
-				description: result.success ? '' : String(result.error ?? ''),
-			},
+		toast[result.success ? 'success' : 'error']({
+			title: result.success ? 'notifications.undone' : 'notifications.undoFailed',
+			description: result.success ? '' : String(result.error ?? ''),
 		});
 	}
 
@@ -461,7 +451,7 @@ export function useFileBrowserSelection(
 			? new Set(entriesRef.value.map((entry) => entry.path))
 			: null;
 
-		const toastData = ref({
+		const toastData = ref<ProgressToastData & { timer: number }>({
 			id: '' as string | number,
 			title: isCopy ? 'notifications.copyingItems' : 'notifications.movingItems',
 			description: '',
@@ -473,19 +463,13 @@ export function useFileBrowserSelection(
 			itemCount: itemCount,
 		});
 
-		toastData.value.id = toast.custom(markRaw(CustomProgress), {
-			componentProps: {
-				data: toastData.value,
-				onAction: () => {
-					if (autoDismissTimeout) {
-						clearTimeout(autoDismissTimeout);
-						autoDismissTimeout = null;
-					}
+		toastData.value.id = toast.progress(toastData.value, () => {
+			if (autoDismissTimeout) {
+				clearTimeout(autoDismissTimeout);
+				autoDismissTimeout = null;
+			}
 
-					toast.dismiss(toastData.value.id);
-				},
-			},
-			duration: Infinity,
+			toast.dismiss(toastData.value.id);
 		});
 
 		let autoDismissTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -570,6 +554,7 @@ export function useFileBrowserSelection(
 				errorMessage = 'fileBrowser.cannotPasteIntoItself';
 			}
 
+			toastData.value.failed = true;
 			toastData.value.title = isCopy ? 'fileBrowser.copyFailed' : 'fileBrowser.moveFailed';
 			toastData.value.description = errorMessage;
 			toastData.value.actionText = 'close';
@@ -617,7 +602,7 @@ export function useFileBrowserSelection(
 			? new Set(entriesRef.value.map((entry) => entry.path))
 			: null;
 
-		const toastData = ref({
+		const toastData = ref<ProgressToastData & { timer: number }>({
 			id: '' as string | number,
 			title: isCopy ? 'notifications.copyingItems' : 'notifications.movingItems',
 			description: '',
@@ -629,19 +614,13 @@ export function useFileBrowserSelection(
 			itemCount: sourcePaths.length,
 		});
 
-		toastData.value.id = toast.custom(markRaw(CustomProgress), {
-			componentProps: {
-				data: toastData.value,
-				onAction: () => {
-					if (autoDismissTimeout) {
-						clearTimeout(autoDismissTimeout);
-						autoDismissTimeout = null;
-					}
+		toastData.value.id = toast.progress(toastData.value, () => {
+			if (autoDismissTimeout) {
+				clearTimeout(autoDismissTimeout);
+				autoDismissTimeout = null;
+			}
 
-					toast.dismiss(toastData.value.id);
-				},
-			},
-			duration: Infinity,
+			toast.dismiss(toastData.value.id);
 		});
 
 		let autoDismissTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -730,6 +709,7 @@ export function useFileBrowserSelection(
 
 				return true;
 			} else {
+				toastData.value.failed = true;
 				toastData.value.title = isCopy ? 'fileBrowser.copyFailed' : 'fileBrowser.moveFailed';
 				toastData.value.description = result.error || '';
 				toastData.value.actionText = 'close';
@@ -744,6 +724,7 @@ export function useFileBrowserSelection(
 			}
 		} catch (error) {
 			toastData.value.cleanup();
+			toastData.value.failed = true;
 			toastData.value.title = isCopy ? 'fileBrowser.copyFailed' : 'fileBrowser.moveFailed';
 			toastData.value.description = String(error);
 			toastData.value.actionText = 'close';
@@ -793,11 +774,9 @@ export function useFileBrowserSelection(
 			});
 
 			if (result.success) {
-				toast.custom(markRaw(CustomSimple), {
-					componentProps: {
-						title: 'notifications.renamed',
-						description: '',
-					},
+				toast.success({
+					title: 'notifications.renamed',
+					description: '',
 				});
 
 				const oldPath = entry.path;
@@ -805,7 +784,7 @@ export function useFileBrowserSelection(
 				const newPath = `${parentDir}/${trimmedName}`;
 
 				workspacesStore.handlePathRenamed(oldPath, newPath);
-				userStatsStore.handlePathRenamed(oldPath, newPath);
+				void userStatsStore.handlePathRenamed(oldPath, newPath);
 
 				dirSizesStore.invalidate([entry.path, currentPathRef.value]);
 
@@ -814,20 +793,16 @@ export function useFileBrowserSelection(
 				onRefresh();
 				return true;
 			} else {
-				toast.custom(markRaw(CustomSimple), {
-					componentProps: {
-						title: 'notifications.failedToRenameItem',
-						description: result.error || '',
-					},
+				toast.error({
+					title: 'notifications.failedToRenameItem',
+					description: result.error || '',
 				});
 				return false;
 			}
 		} catch (error) {
-			toast.custom(markRaw(CustomSimple), {
-				componentProps: {
-					title: 'notifications.failedToRenameItem',
-					description: String(error),
-				},
+			toast.error({
+				title: 'notifications.failedToRenameItem',
+				description: String(error),
 			});
 			return false;
 		}
@@ -859,14 +834,12 @@ export function useFileBrowserSelection(
 			});
 
 			if (result.success) {
-				toast.custom(markRaw(CustomSimple), {
-					componentProps: {
-						title:
-							itemType === 'directory'
-								? 'dialogs.newDirItemDialog.newDirectoryCreated'
-								: 'dialogs.newDirItemDialog.newFileCreated',
-						description: '',
-					},
+				toast.success({
+					title:
+						itemType === 'directory'
+							? 'dialogs.newDirItemDialog.newDirectoryCreated'
+							: 'dialogs.newDirItemDialog.newFileCreated',
+					description: '',
 				});
 
 				dirSizesStore.invalidate([currentPathRef.value]);
@@ -878,26 +851,22 @@ export function useFileBrowserSelection(
 				onRefresh();
 				return true;
 			} else {
-				toast.custom(markRaw(CustomSimple), {
-					componentProps: {
-						title:
-							itemType === 'directory'
-								? 'dialogs.newDirItemDialog.failedToCreateNewDirectory'
-								: 'dialogs.newDirItemDialog.failedToCreateNewFile',
-						description: result.error || '',
-					},
-				});
-				return false;
-			}
-		} catch (error) {
-			toast.custom(markRaw(CustomSimple), {
-				componentProps: {
+				toast.error({
 					title:
 						itemType === 'directory'
 							? 'dialogs.newDirItemDialog.failedToCreateNewDirectory'
 							: 'dialogs.newDirItemDialog.failedToCreateNewFile',
-					description: String(error),
-				},
+					description: result.error || '',
+				});
+				return false;
+			}
+		} catch (error) {
+			toast.error({
+				title:
+					itemType === 'directory'
+						? 'dialogs.newDirItemDialog.failedToCreateNewDirectory'
+						: 'dialogs.newDirItemDialog.failedToCreateNewFile',
+				description: String(error),
 			});
 			return false;
 		}
@@ -928,31 +897,31 @@ export function useFileBrowserSelection(
 
 			case 'paste': {
 				const targetDir = entries.length === 1 && !entries[0].is_file ? entries[0].path : undefined;
-				pasteItems(targetDir);
+				void pasteItems(targetDir);
 				break;
 			}
 
 			case 'delete':
 				if (entries.length > 0) {
-					deleteItems(entries, true);
+					void deleteItems(entries, true);
 				}
 
 				break;
 			case 'delete-permanently':
 				if (entries.length > 0) {
-					deleteItems(entries, false);
+					void deleteItems(entries, false);
 				}
 
 				break;
 			case 'open-in-new-tab':
 				if (entries.length > 0) {
-					openEntriesInNewTabs(entries);
+					void openEntriesInNewTabs(entries);
 				}
 
 				break;
 			case 'toggle-favorite':
 				if (entries.length > 0) {
-					toggleFavorites(entries);
+					void toggleFavorites(entries);
 				}
 
 				break;
@@ -988,11 +957,9 @@ export function useFileBrowserSelection(
 			? 'notifications.removedFromFavorites'
 			: 'notifications.addedToFavorites';
 
-		toast.custom(markRaw(CustomSimple), {
-			componentProps: {
-				title: message,
-				description: '',
-			},
+		toast.success({
+			title: message,
+			description: '',
 		});
 	}
 
@@ -1002,18 +969,14 @@ export function useFileBrowserSelection(
 				archivePath: entry.path,
 				destDir,
 			});
-			toast.custom(markRaw(CustomSimple), {
-				componentProps: {
-					title: 'notifications.archiveExtracted',
-					description: '',
-				},
+			toast.success({
+				title: 'notifications.archiveExtracted',
+				description: '',
 			});
 		} catch (error) {
-			toast.custom(markRaw(CustomSimple), {
-				componentProps: {
-					title: 'notifications.archiveExtractFailed',
-					description: String(error),
-				},
+			toast.error({
+				title: 'notifications.archiveExtractFailed',
+				description: String(error),
 			});
 		}
 	}
@@ -1051,7 +1014,7 @@ export function useFileBrowserSelection(
 
 		const itemCount = entries.length;
 
-		const toastData = ref({
+		const toastData = ref<ProgressToastData & { timer: number }>({
 			id: '' as string | number,
 			title: useTrash ? 'notifications.trashingItems' : 'notifications.deletingItems',
 			description: '',
@@ -1063,19 +1026,13 @@ export function useFileBrowserSelection(
 			itemCount: itemCount,
 		});
 
-		toastData.value.id = toast.custom(markRaw(CustomProgress), {
-			componentProps: {
-				data: toastData.value,
-				onAction: () => {
-					if (autoDismissTimeout) {
-						clearTimeout(autoDismissTimeout);
-						autoDismissTimeout = null;
-					}
+		toastData.value.id = toast.progress(toastData.value, () => {
+			if (autoDismissTimeout) {
+				clearTimeout(autoDismissTimeout);
+				autoDismissTimeout = null;
+			}
 
-					toast.dismiss(toastData.value.id);
-				},
-			},
-			duration: Infinity,
+			toast.dismiss(toastData.value.id);
 		});
 
 		let autoDismissTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -1128,7 +1085,7 @@ export function useFileBrowserSelection(
 				toastData.value.actionText = 'close';
 
 				workspacesStore.handlePathsDeleted(paths);
-				userStatsStore.handlePathsDeleted(paths);
+				void userStatsStore.handlePathsDeleted(paths);
 
 				dirSizesStore.invalidate([currentPathRef.value, ...paths]);
 
@@ -1153,6 +1110,7 @@ export function useFileBrowserSelection(
 				clearSelection();
 				onRefresh();
 
+				toastData.value.failed = true;
 				toastData.value.title = useTrash
 					? 'notifications.errorTrashItems'
 					: 'notifications.errorDeleteItems';
@@ -1169,6 +1127,7 @@ export function useFileBrowserSelection(
 			return result.success;
 		} catch (error) {
 			toastData.value.cleanup();
+			toastData.value.failed = true;
 			toastData.value.title = useTrash
 				? 'notifications.errorTrashItems'
 				: 'notifications.errorDeleteItems';

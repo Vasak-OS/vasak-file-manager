@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
 	Dialog,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	FormGroup,
+	TextInput,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
 
@@ -22,7 +25,12 @@ const { t } = useI18n();
 
 const isOpen = defineModel<boolean>('open', { required: true });
 
-const inputRef = ref<HTMLInputElement | null>(null);
+/**
+ * El campo es el `TextInput` de la librería, cuya raíz es el `<input>`: se
+ * toma de ahí para seleccionar el nombre al abrir, que la librería no expone.
+ */
+const field = ref<InstanceType<typeof TextInput> | null>(null);
+const inputRef = computed(() => (field.value?.$el as HTMLInputElement | undefined) ?? null);
 const name = ref('');
 const isSubmitting = ref(false);
 
@@ -89,25 +97,19 @@ function handleKeydown(event: KeyboardEvent) {
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="w-[420px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
+    <DialogContent size="sm" class="overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{{ dialogTitle }}</DialogTitle>
       </DialogHeader>
 
       <div class="flex w-full min-w-0 flex-col gap-4">
-        <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="new-item-input" class="text-tx-main text-sm font-medium">
-            {{ t('name') }}
-          </label>
+        <FormGroup :label="t('name')" html-for="new-item-input">
           <div class="flex w-full min-w-0 items-center gap-2">
-            <input id="new-item-input" ref="inputRef" v-model="name" type="text"
-              class="w-full min-w-0 max-w-full box-border"
-              :class="{ '!border-status-error': name && !isValid }" @keydown="handleKeydown" />
-            <button type="button" :disabled="!isValid || isSubmitting" @click="handleSubmit">
-              {{ t('create') }}
-            </button>
+            <TextInput id="new-item-input" ref="field" v-model="name" class="min-w-0 flex-1"
+              :invalid="Boolean(name) && !isValid" @keydown="handleKeydown" />
+            <ActionButton :label="t('create')" :disabled="!isValid" :loading="isSubmitting" @click="handleSubmit" />
           </div>
-        </div>
+        </FormGroup>
       </div>
 
       <DialogFooter />

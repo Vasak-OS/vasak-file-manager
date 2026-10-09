@@ -66,7 +66,8 @@ const waveDirective: Directive<HTMLElement> = {
 				`height:${size}px`,
 				`left:${x}px`,
 				`top:${y}px`,
-				'border-radius:50%',
+				// Redonda por naturaleza: el radio «lleno» de la persona.
+				'border-radius:var(--radius-corner-full)',
 				'background:currentColor',
 				'opacity:0.2',
 				'transform:scale(0)',

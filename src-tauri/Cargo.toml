@@ -1,6 +1,6 @@
 [package]
 name = "vasak-file-manager"
-version = "0.23.2"
+version = "0.26.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -20,7 +20,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 # The XDG base directories, so the rule that a relative variable is ignored is
 # not one more hand-written copy. See `open_with::linux::base_xdg`.
-dirs = "6"
+dirs = "7"
 tauri = { version = "2", features = ["protocol-asset", "devtools", "image-png"] }
 webkit2gtk = "2.0"
 tauri-plugin-shell = "2"
@@ -29,8 +29,10 @@ serde_json = "1"
 log = "0.4"
 tauri-plugin-vicons = "2.2"
 tauri-plugin-config-manager = "2"
+# gtk y gio siguen en 0.18 porque es la que trae tauri: subirlas solas deja dos
+# generaciones de gtk-rs en el árbol. Suben cuando suba tauri.
 gtk = "0.18"
-base64 = "0.22"
+base64 = "0.23"
 tauri-plugin-store = "2"
 tauri-plugin-i18n-vsk = "2.3.0"
 # tauri-plugin-i18n-vsk = { path = "../../tauri-plugin-i18n"}
@@ -40,13 +42,17 @@ tauri-plugin-log = "2"
 tauri-plugin-os = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-system-fonts = "2"
-sysinfo = { version = "0.37", features = ["linux-netdevs"] }
+sysinfo = { version = "0.39", features = ["linux-netdevs"] }
 trash = "5.2.5"
-png = "0.17"
+png = "0.18"
 file_icon_provider = "1.0.0"
 image = { version = "0.25", default-features = false, features = ["png"] }
-lru = "0.16"
+lru = "0.18"
 once_cell = "1.19"
+# Se queda en 0.22 a propósito: el índice de la búsqueda global vive en disco,
+# y pasar a 0.26 es verificar que un índice escrito por la 0.22 se siga abriendo
+# —o que se reconstruya sin que nadie lo note—, cosa que no mira ninguna prueba.
+# Va en su propio PR; se saca cuando esa verificación esté hecha.
 tantivy = "0.22"
 walkdir = "2.5"
 rayon = "1.10"
@@ -62,7 +68,6 @@ wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 tauri-plugin-drag-and-drop-wayland = "2.1"
 tauri-plugin-vsk-contextual-menu = "2"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-vsk-journal = "2"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 # Los tipos del bus: las rutas de objeto y las variantes de `udisks2`.

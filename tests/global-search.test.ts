@@ -77,11 +77,11 @@ describe('el botón de la barra', () => {
 		);
 
 		return fuente.text().then((texto) => {
-			expect(texto).toContain('name="search"');
+			expect(texto).toContain('icon="search"');
 			// El nombre puesto, no el nombre nombrado: el comentario de al lado
 			// explica por qué no es `system-search` y lo dice con todas las
 			// letras, así que buscar la cadena suelta da rojo con el código bien.
-			expect(texto).not.toContain('name="system-search"');
+			expect(texto).not.toContain('icon="system-search"');
 		});
 	});
 
@@ -90,7 +90,10 @@ describe('el botón de la barra', () => {
 		// contenido es la búsqueda.
 		const boton = botonDe(barra(true), 'globalSearch.globalSearch');
 
-		expect(boton?.classes()).toContain('bg-primary');
+		// Con `ActionButton pressed`: el velo de lo elegido y `aria-pressed`,
+		// que es lo que oye un lector de pantalla.
+		expect(boton?.attributes('aria-pressed')).toBe('true');
+		expect(boton?.classes()).toContain('from-ui-selected-accent');
 	});
 });
 

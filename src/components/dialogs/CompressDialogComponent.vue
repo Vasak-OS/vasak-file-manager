@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
+	ActionButton,
 	Dialog,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	FormGroup,
+	SelectField,
+	TextInput,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ArchiveFormat } from '@/types/file-browser';
@@ -33,7 +37,12 @@ const FORMATS: { value: ArchiveFormat; label: string }[] = [
 	{ value: '7z', label: '7-Zip (.7z)' },
 ];
 
-const inputRef = ref<HTMLInputElement | null>(null);
+/**
+ * El campo es el `TextInput` de la librería, cuya raíz es el `<input>`: se
+ * toma de ahí para seleccionar el nombre al abrir, que la librería no expone.
+ */
+const field = ref<InstanceType<typeof TextInput> | null>(null);
+const inputRef = computed(() => (field.value?.$el as HTMLInputElement | undefined) ?? null);
 const name = ref('');
 const format = ref<ArchiveFormat>('zip');
 const isSubmitting = ref(false);
@@ -92,42 +101,30 @@ function handleKeydown(event: KeyboardEvent) {
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="w-[420px] max-w-[calc(100vw-32px)] box-border overflow-x-hidden [&>*]:min-w-0">
+    <DialogContent size="sm" class="overflow-x-hidden [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{{ t('dialogs.compressDialog.title') }}</DialogTitle>
       </DialogHeader>
 
       <div class="flex w-full min-w-0 flex-col gap-4">
-        <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="compress-name-input" class="text-tx-main text-sm font-medium">
-            {{ t('name') }}
-          </label>
-          <input id="compress-name-input" ref="inputRef" v-model="name" type="text"
-            class="w-full min-w-0 max-w-full box-border"
-            :class="{ '!border-status-error': name && !isValid }" @keydown="handleKeydown" />
-        </div>
+        <FormGroup :label="t('name')" html-for="compress-name-input">
+          <TextInput id="compress-name-input" ref="field" v-model="name"
+            :invalid="Boolean(name) && !isValid" @keydown="handleKeydown" />
+        </FormGroup>
 
-        <div class="flex w-full min-w-0 flex-col gap-2">
-          <label for="compress-format-select" class="text-tx-main text-sm font-medium">
-            {{ t('dialogs.compressDialog.format') }}
-          </label>
-          <select id="compress-format-select" v-model="format"
-            class="w-full min-w-0 max-w-full box-border rounded-corner border border-ui-border bg-ui-bg/80 px-2 py-1 text-tx-main">
-            <option v-for="option in FORMATS" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </div>
+        <SelectField
+          v-model="format"
+          :label="t('dialogs.compressDialog.format')"
+          :options="FORMATS" />
 
-        <p class="truncate text-[12px] text-tx-muted" :title="previewName">
+        <p class="m-0 truncate text-body-xs text-tx-muted" :title="previewName">
           {{ t('dialogs.compressDialog.summary').replace('{0}', String(props.itemCount)).replace('{1}', previewName) }}
         </p>
       </div>
 
       <DialogFooter>
-        <button type="button" :disabled="!isValid || isSubmitting" @click="handleSubmit">
-          {{ t('dialogs.compressDialog.compress') }}
-        </button>
+        <ActionButton :label="t('dialogs.compressDialog.compress')" :disabled="!isValid" :loading="isSubmitting"
+          @click="handleSubmit" />
       </DialogFooter>
     </DialogContent>
   </Dialog>

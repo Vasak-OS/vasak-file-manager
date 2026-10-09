@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { SectionHeading, Skeleton, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { RecycleScroller } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
-import Skeleton from '@/components/ui/Skeleton.vue';
 import {
 	columnasQueEntran,
 	enFilas,
@@ -289,11 +288,10 @@ watchEffect(() => {
          navegador, así que el `ScrollArea` tampoco tenía alto propio. Arreglado
          eso, la cuadrícula crece con sus filas y desplaza el de arriba. -->
     <template v-if="groupedEntries.dirs.length > 0">
-      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <ThemeIcon name="folder" :size="16" />
-        <span>{{ t('fileBrowser.folders') }}</span>
-        <span class="py-0.5 px-2 rounded-corner bg-ui-bg/80 text-[11px]">{{ groupedEntries.dirs.length }}</span>
-      </div>
+      <!-- La cabecera del grupo, pegada arriba mientras desplaza. Va afuera del
+           desplazador virtual, así que su alto no entra en la cuenta de filas. -->
+      <SectionHeading sticky surface="panel" variant="eyebrow" as="h3" class="rounded-corner-m px-3"
+        icon="folder" icon-type="icon" :title="t('fileBrowser.folders')" :count="groupedEntries.dirs.length" />
       <div :ref="(el) => setContenedor('dirs', el as Element | null)">
         <RecycleScroller
           :ref="(el) => setDesplazador('dirs', el)"
@@ -305,7 +303,7 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('dirs')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-18 !flex-row items-center py-2 px-3 gap-2.5"
+          class="relative flex overflow-hidden border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-18 !flex-row items-center py-2 px-3 gap-2.5"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -313,9 +311,9 @@ watchEffect(() => {
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.openEntryContextMenu(entry, $event)" @keydown="handleEntryKeydown">
           <div class="absolute z-3 inset-0 pointer-events-none">
-            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
-            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
-            <div class="absolute inset-0 rounded-corner pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_50%,transparent)] group-data-[in-clipboard]:opacity-0" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_40%,transparent)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_40%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_60%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_60%,transparent)]" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div class="relative z-1 flex w-auto h-auto shrink-0 items-center justify-center">
             <EntryIconComponent :entry="entry" :size="24" class="text-primary" />
@@ -329,7 +327,7 @@ watchEffect(() => {
                 <template v-if="getDirSizeDisplay(entry)">{{ getDirSizeDisplay(entry) }}</template>
                 <template v-if="shouldShowSizeSkeleton(entry)">
                   <span v-if="entry.item_count !== null" class="after:content-['_\·_']" />
-                  <Skeleton class="w-10 h-[11px]" />
+                  <Skeleton :width="40" :height="11" />
                 </template>
               </span>
             </div>
@@ -341,11 +339,10 @@ watchEffect(() => {
     </template>
 
     <template v-if="groupedEntries.images.length > 0">
-      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <ThemeIcon name="image-x-generic" :size="16" />
-        <span>{{ t('fileBrowser.images') }}</span>
-        <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.images.length }}</span>
-      </div>
+      <!-- La cabecera del grupo, pegada arriba mientras desplaza. Va afuera del
+           desplazador virtual, así que su alto no entra en la cuenta de filas. -->
+      <SectionHeading sticky surface="panel" variant="eyebrow" as="h3" class="rounded-corner-m px-3"
+        icon="image-x-generic" icon-type="icon" :title="t('fileBrowser.images')" :count="groupedEntries.images.length" />
       <div :ref="(el) => setContenedor('images', el as Element | null)">
         <RecycleScroller
           :ref="(el) => setDesplazador('images', el)"
@@ -357,7 +354,7 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('images')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -365,14 +362,14 @@ watchEffect(() => {
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.openEntryContextMenu(entry, $event)" @keydown="handleEntryKeydown">
           <div class="absolute z-3 inset-0 pointer-events-none">
-            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/30 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
-            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/15 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/15 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
-            <div class="absolute inset-0 rounded-corner pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/30 group-data-[selected]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_50%,transparent)] group-data-[in-clipboard]:opacity-0" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/15 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_40%,transparent)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/15 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_40%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_60%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_60%,transparent)]" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div class="relative z-1 flex w-full h-full items-center justify-center">
             <img :src="getImageSrc(entry)" :alt="entry.name" class="w-full h-full object-cover pointer-events-none" loading="lazy">
           </div>
-          <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-linear-to-t from-black/80 to-transparent text-white flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
+          <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-linear-to-t from-ui-overlay to-transparent text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
             <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
             <div class="flex items-center text-[11px] gap-1.5 opacity-80 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
               <span class="file-browser-grid-view__card-type">{{ entry.ext?.toUpperCase() }}</span>
@@ -386,11 +383,10 @@ watchEffect(() => {
     </template>
 
     <template v-if="groupedEntries.videos.length > 0">
-      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <ThemeIcon name="video-x-generic" :size="16" />
-        <span>{{ t('fileBrowser.videos') }}</span>
-        <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.videos.length }}</span>
-      </div>
+      <!-- La cabecera del grupo, pegada arriba mientras desplaza. Va afuera del
+           desplazador virtual, así que su alto no entra en la cuenta de filas. -->
+      <SectionHeading sticky surface="panel" variant="eyebrow" as="h3" class="rounded-corner-m px-3"
+        icon="video-x-generic" icon-type="icon" :title="t('fileBrowser.videos')" :count="groupedEntries.videos.length" />
       <div :ref="(el) => setContenedor('videos', el as Element | null)">
         <RecycleScroller
           :ref="(el) => setDesplazador('videos', el)"
@@ -402,7 +398,7 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('videos')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{
             'opacity-50': entry.is_hidden,
           }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
@@ -411,13 +407,13 @@ watchEffect(() => {
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.openEntryContextMenu(entry, $event)" @keydown="handleEntryKeydown">
           <div class="absolute z-3 inset-0 pointer-events-none">
-            <div v-if="ctx.getVideoThumbnail(entry)" class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/30 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
-            <div v-else class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
+            <div v-if="ctx.getVideoThumbnail(entry)" class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/30 group-data-[selected]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_50%,transparent)] group-data-[in-clipboard]:opacity-0" />
+            <div v-else class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_50%,transparent)] group-data-[in-clipboard]:opacity-0" />
             
-            <div v-if="ctx.getVideoThumbnail(entry)" class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/15 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/15 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
-            <div v-else class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
+            <div v-if="ctx.getVideoThumbnail(entry)" class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/15 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_40%,transparent)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/15 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_40%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_60%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_60%,transparent)]" />
+            <div v-else class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_40%,transparent)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_40%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_60%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_60%,transparent)]" />
 
-            <div class="absolute inset-0 rounded-corner pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div :class="[
             ctx.getVideoThumbnail(entry) ? 'relative z-1 flex w-full h-full items-center justify-center' : 'absolute top-2 left-2 w-12 h-12 bg-transparent'
@@ -426,7 +422,7 @@ watchEffect(() => {
               class="w-full h-full object-cover pointer-events-none">
             <ThemeIcon v-else name="video-x-generic" :size="48" class="text-tx-muted" />
           </div>
-          <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-linear-to-t from-black/80 to-transparent text-white flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
+          <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-linear-to-t from-ui-overlay to-transparent text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
             <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
             <div class="flex items-center text-[11px] gap-1.5 opacity-80 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
               <span class="file-browser-grid-view__card-type">{{ t('fileBrowser.video') }}</span>
@@ -440,11 +436,10 @@ watchEffect(() => {
     </template>
 
     <template v-if="groupedEntries.others.length > 0">
-      <div class="sticky z-5 top-0 flex items-center py-2 px-3 rounded-corner backdrop-blur bg-ui-surface text-tx-muted text-xs font-medium gap-2 uppercase">
-        <ThemeIcon name="text-x-generic" :size="16" />
-        <span>{{ t('fileBrowser.otherFiles') }}</span>
-        <span class="py-0.5 px-2 rounded-[10px] bg-ui-bg/80-3 text-[11px]">{{ groupedEntries.others.length }}</span>
-      </div>
+      <!-- La cabecera del grupo, pegada arriba mientras desplaza. Va afuera del
+           desplazador virtual, así que su alto no entra en la cuenta de filas. -->
+      <SectionHeading sticky surface="panel" variant="eyebrow" as="h3" class="rounded-corner-m px-3"
+        icon="text-x-generic" icon-type="icon" :title="t('fileBrowser.otherFiles')" :count="groupedEntries.others.length" />
       <div :ref="(el) => setContenedor('others', el as Element | null)">
         <RecycleScroller
           :ref="(el) => setDesplazador('others', el)"
@@ -456,7 +451,7 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('others')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-border rounded-corner bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -464,9 +459,9 @@ watchEffect(() => {
           @mousedown="ctx.onEntryMouseDown(entry, $event)" @mouseup="ctx.onEntryMouseUp(entry, $event)"
           @contextmenu="ctx.openEntryContextMenu(entry, $event)" @keydown="handleEntryKeydown">
           <div class="absolute z-3 inset-0 pointer-events-none">
-            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.5)] group-data-[in-clipboard]:opacity-0" />
-            <div class="absolute inset-0 rounded-corner pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.4)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.4)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_hsl(var(--success)/0.6)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_hsl(var(--warning)/0.6)]" />
-            <div class="absolute inset-0 rounded-corner pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.6)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[selected]:opacity-100 group-data-[selected]:bg-primary/12 group-data-[selected]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_50%,transparent)] group-data-[in-clipboard]:opacity-0" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_40%,transparent)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_40%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_60%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_60%,transparent)]" />
+            <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div class="absolute top-2 left-2 w-12 h-12 bg-transparent">
             <EntryIconComponent :entry="entry" :size="48" class="text-tx-muted" />

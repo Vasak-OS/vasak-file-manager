@@ -17,20 +17,15 @@
  *   sigue en verde.
  *
  * El segundo es el que importa: es la forma en que este arreglo se puede
- * romper solo. De la misma familia es el tercero: el globo marcaba su
- * contenido con un atributo `popover-content` a secas, que `strictTemplates`
- * rechaza por no ser ni una propiedad ni un `data-*`. Renombrarlo obliga a
- * mover también el `closest()` que lo busca, y si los dos no se mueven juntos
- * el globo se cierra al tocarlo.
+ * romper solo. (Había un tercero, la marca del contenido del globo propio; el
+ * globo ahora es el `Popover` de la librería, que lo prueba allá.)
  */
 
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { olvidarLosIconosDelTema } from '@vasakgroup/vue-libvasak';
+import { forgetThemeIcons } from '@vasakgroup/vue-libvasak';
 import { mount } from '@vue/test-utils';
-import { h, nextTick } from 'vue';
+import { nextTick } from 'vue';
 import FileBrowserErrorComponent from '@/components/filebrowser/FileBrowserErrorComponent.vue';
-import Popover from '@/components/ui/popover/Popover.vue';
-import PopoverContent from '@/components/ui/popover/PopoverContent.vue';
 import ResizablePanel from '@/components/ui/ResizablePanel.vue';
 import { emitir, olvidarTodo, ponerEnElTema } from './dobles';
 
@@ -43,7 +38,7 @@ beforeEach(() => {
 	// No va en `dobles.ts`: ese archivo lo importa `preparar.ts` para registrar
 	// los mocks, así que importar la librería ahí la carga **antes** que ellos y
 	// se rompen nueve pruebas de otros archivos.
-	olvidarLosIconosDelTema();
+	forgetThemeIcons();
 });
 
 /** Deja que terminen las promesas encadenadas del pedido del icono. */
@@ -164,77 +159,5 @@ describe('el panel que se puede redimensionar', () => {
 		const [[evento]] = panel.emitted('mousedown') as [MouseEvent][];
 		expect(evento).toBeInstanceOf(MouseEvent);
 		expect(evento.button).toBe(2);
-	});
-});
-
-describe('el globo y la marca de su contenido', () => {
-	/**
-	 * Un globo abierto, con su contenido ya teletransportado al `body`.
-	 *
-	 * Se devuelve el `Popover` de afuera porque es el que avisa de que se
-	 * cierra: `update:open` sale de ahí.
-	 */
-	function abrirUnGlobo() {
-		return mount(Popover, {
-			props: { open: true },
-			slots: { default: () => h(PopoverContent, null, () => 'contenido') },
-			attachTo: document.body,
-		});
-	}
-
-	/** Un clic que sube hasta `document`, como el de cualquier otro nodo. */
-	function clicDesde(nodo: HTMLElement) {
-		nodo.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-	}
-
-	test('un clic dentro de otro globo no lo cierra', async () => {
-		// Es para lo que está la marca. El contenido se teletransporta al
-		// `body`, así que un segundo globo no es descendiente del primero: su
-		// clic llega a `document` con un destino de afuera, y sin reconocer la
-		// marca el primero se cerraría. Pasa de verdad con el menú de columnas
-		// abierto sobre el filtro.
-		const globo = abrirUnGlobo();
-		const otro = document.createElement('div');
-		otro.setAttribute('data-popover-content', '');
-		document.body.appendChild(otro);
-
-		try {
-			clicDesde(otro);
-			await nextTick();
-
-			expect(globo.emitted('update:open')).toBeUndefined();
-		} finally {
-			otro.remove();
-			globo.unmount();
-		}
-	});
-
-	test('y un clic en cualquier otro lado sí lo cierra', async () => {
-		const globo = abrirUnGlobo();
-		const afuera = document.createElement('div');
-		document.body.appendChild(afuera);
-
-		try {
-			clicDesde(afuera);
-			await nextTick();
-
-			expect(globo.emitted('update:open')).toEqual([[false]]);
-		} finally {
-			afuera.remove();
-			globo.unmount();
-		}
-	});
-
-	test('la marca que se dibuja es la misma que se busca', async () => {
-		// Las dos puntas viven en el mismo archivo y se tienen que mover
-		// juntas; si el atributo se renombrara sin tocar el `closest()`, las
-		// dos pruebas de arriba lo dirían, pero esta nombra el porqué.
-		const globo = abrirUnGlobo();
-
-		try {
-			expect(document.querySelector('[data-popover-content]')).not.toBeNull();
-		} finally {
-			globo.unmount();
-		}
 	});
 });

@@ -80,21 +80,21 @@ function getUpdatedList(dropResult: DropResult) {
 .draggable-list__item--drag-active {
   z-index: 100;
   backdrop-filter: blur(24px);
-  background-color: hsl(var(--background-2) / 50%);
+  background-color: color-mix(in srgb, var(--color-ui-surface) 50%, transparent);
   cursor: grabbing;
   opacity: 1 !important;
 }
 
 .draggable-list__item--drag-active .tab {
-  border: 1px solid hsl(var(--primary) / 50%);
-  background-color: hsl(var(--background-2) / 50%);
-  box-shadow: 0 4px 12px hsl(var(--background) / 80%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
+  background-color: color-mix(in srgb, var(--color-ui-surface) 50%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-ui-bg) 80%, transparent);
   cursor: grabbing;
 }
 
 .draggable-list__item .tab:active {
-  border: 1px solid hsl(var(--primary) / 50%);
-  background-color: hsl(var(--background-2) / 50%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
+  background-color: color-mix(in srgb, var(--color-ui-surface) 50%, transparent);
   transition: border 0.5s ease;
 }
 
