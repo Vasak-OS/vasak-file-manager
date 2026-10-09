@@ -174,15 +174,20 @@
 }
 
 .config-status {
-  color: var(--use-text-muted, #666);
-  background-color: var(--use-ui-surface, #e8eaf0);
-  border-top: 1px solid var(--use-ui-border, #dce0e8);
+  color: var(--use-text-muted);
+  background-color: var(--use-ui-surface);
+  border-top: 1px solid var(--use-ui-border);
 }
 
+/* El tinte del aviso de error se deriva del color de estado con el fondo y el
+   borde del esquema, así que sigue al tema que elija la persona en lugar de
+   fijar un rosa claro propio. El 40 % del borde contra `--use-ui-border` es lo
+   que lo lleva por encima del 3:1 que pide WCAG 1.4.11 para el contorno de algo
+   que no es texto. */
 .error-banner {
-  color: var(--use-status-error, #d32f2f);
-  background-color: #ffebee;
-  border-top: 1px solid #f5c6cb;
+  color: var(--use-status-error);
+  background-color: color-mix(in srgb, var(--use-status-error) 12%, var(--use-ui-surface));
+  border-top: 1px solid color-mix(in srgb, var(--use-status-error) 40%, var(--use-ui-border));
 }
 
 .dark {
