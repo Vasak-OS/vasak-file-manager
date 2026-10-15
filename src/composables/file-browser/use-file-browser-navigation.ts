@@ -204,9 +204,23 @@ export function useFileBrowserNavigation(
 	async function validateCurrentPath(): Promise<void> {
 		if (!currentPath.value) return;
 
+		// `path_exists` y no `read_dir`: para saber si la carpeta existe no hace
+		// falta que el backend la liste entera con el `stat` de cada entrada, y
+		// esto corre cada vez que el vigilante avisa de un cambio en otra ruta.
+		//
+		// El comando sólo mira si la ruta está —`Path::exists()`— y contesta
+		// `false`, no un error, cuando no está: ese es el caso normal de que la
+		// carpeta se haya borrado o renombrado, y navega al ancestro como antes.
 		try {
-			await invoke<DirContents>('read_dir', { path: currentPath.value });
+			const exists = await invoke<boolean>('path_exists', { path: currentPath.value });
+
+			if (!exists) {
+				await navigateToNearestExistingAncestor();
+			}
 		} catch {
+			// Si falla la invocación misma —el puente caído, el comando ausente—
+			// tampoco hay forma de saber que la carpeta siga ahí: mismo camino
+			// que antes, al ancestro existente más cercano.
 			await navigateToNearestExistingAncestor();
 		}
 	}
