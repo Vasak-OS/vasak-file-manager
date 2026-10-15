@@ -95,15 +95,26 @@ fn get_extension(path: &Path) -> Option<String> {
 }
 
 fn read_entry(path: &Path) -> Option<DirEntry> {
-    let metadata = match fs::metadata(path) {
+    // Un solo `stat` por entrada en el caso común.
+    //
+    // `symlink_metadata` no sigue el enlace y coincide con `metadata` para todo
+    // lo que no es symlink, así que se pide una sola vez. Sólo los enlaces
+    // —raros— pagan el segundo `stat`, y ahí sí se sigue para tomar `is_dir`,
+    // `is_file`, tamaño y tiempos del destino. Un enlace roto sigue sin aparecer:
+    // el `metadata` de adentro falla y la entrada se descarta.
+    let link_metadata = match fs::symlink_metadata(path) {
         Ok(meta) => meta,
         Err(_) => return None,
     };
-
-    let symlink_metadata = fs::symlink_metadata(path).ok();
-    let is_symlink = symlink_metadata
-        .map(|meta| meta.is_symlink())
-        .unwrap_or(false);
+    let is_symlink = link_metadata.is_symlink();
+    let metadata = if is_symlink {
+        match fs::metadata(path) {
+            Ok(meta) => meta,
+            Err(_) => return None,
+        }
+    } else {
+        link_metadata
+    };
 
     let name = path.file_name()?.to_str()?.to_string();
     let extension = get_extension(path);
@@ -199,10 +210,16 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
     // entradas que se devolvían.
     let total_count = entries.len();
 
-    entries.sort_by(|first, second| match (first.is_dir, second.is_dir) {
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        _ => first.name.to_lowercase().cmp(&second.name.to_lowercase()),
+    // La clave se arma una vez por entrada y no en cada comparación: antes se
+    // asignaba un `String` por cada `to_lowercase()`, o sea O(n log n) veces.
+    // `sort_by_cached_key` es estable igual que `sort_by`, y la tupla ordena
+    // primero carpetas (0) y después archivos (1), y dentro de cada grupo por
+    // nombre en minúsculas: el mismo criterio de antes.
+    entries.sort_by_cached_key(|entry| {
+        (
+            if entry.is_dir { 0u8 } else { 1u8 },
+            entry.name.to_lowercase(),
+        )
     });
 
     Ok(DirContents {
@@ -1123,5 +1140,157 @@ mod tests {
             json,
             serde_json::json!({ "code": "missingPackage", "detail": "sshfs" })
         );
+    }
+
+    /// Un directorio propio que se borra al salir del alcance.
+    ///
+    /// Hecho a mano para no sumar una dependencia por una prueba: el nombre
+    /// lleva el pid y un número que sube, así que dos pruebas en paralelo no se
+    /// pisan.
+    struct TestDir(std::path::PathBuf);
+
+    impl TestDir {
+        fn new(label: &str) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "vasak-file-manager-lectura-{}-{}-{label}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn un_enlace_roto_no_aparece_en_el_listado() {
+        // Un enlace a la nada no es ni archivo ni carpeta, y la lista no lo
+        // muestra: el `metadata` del destino falla y la entrada se descarta.
+        // Sigue así aunque el camino común ahora pida un solo `stat`.
+        let dir = TestDir::new("enlace-roto");
+        std::fs::write(dir.0.join("comun.txt"), b"hola").unwrap();
+        std::os::unix::fs::symlink(dir.0.join("no-existe"), dir.0.join("roto")).unwrap();
+
+        let contenido = read_dir(dir.0.to_string_lossy().to_string()).unwrap();
+
+        assert!(
+            contenido
+                .entries
+                .iter()
+                .all(|entrada| entrada.name != "roto"),
+            "un enlace roto no aparece, ni siquiera marcado como enlace"
+        );
+        assert_eq!(contenido.total_count, 1);
+        assert_eq!(contenido.file_count, 1);
+    }
+
+    #[test]
+    fn un_enlace_valido_aparece_con_los_datos_del_destino() {
+        // El enlace se marca como enlace, pero `is_file` y `size` salen del
+        // destino: para eso sí se sigue el enlace, que es el segundo `stat` y
+        // sólo lo pagan los enlaces.
+        let dir = TestDir::new("enlace-valido");
+        let destino = dir.0.join("destino.bin");
+        std::fs::write(&destino, vec![0u8; 4096]).unwrap();
+        std::os::unix::fs::symlink(&destino, dir.0.join("enlace.bin")).unwrap();
+
+        let contenido = read_dir(dir.0.to_string_lossy().to_string()).unwrap();
+        let enlace = contenido
+            .entries
+            .iter()
+            .find(|entrada| entrada.name == "enlace.bin")
+            .expect("el enlace válido tiene que aparecer");
+
+        assert!(enlace.is_symlink, "el enlace se marca como enlace");
+        assert!(enlace.is_file, "el tipo sale del destino");
+        assert!(!enlace.is_dir);
+        assert_eq!(enlace.size, 4096, "el tamaño sale del destino");
+    }
+
+    #[test]
+    fn un_archivo_y_una_carpeta_comunes_conservan_sus_datos() {
+        let dir = TestDir::new("comunes");
+        std::fs::write(dir.0.join("nota.txt"), b"abc").unwrap();
+        std::fs::create_dir(dir.0.join("carpeta")).unwrap();
+
+        let contenido = read_dir(dir.0.to_string_lossy().to_string()).unwrap();
+
+        let archivo = contenido
+            .entries
+            .iter()
+            .find(|entrada| entrada.name == "nota.txt")
+            .expect("el archivo común tiene que aparecer");
+        assert!(archivo.is_file && !archivo.is_dir && !archivo.is_symlink);
+        assert_eq!(archivo.size, 3);
+        assert_eq!(archivo.ext.as_deref(), Some("txt"));
+
+        let carpeta = contenido
+            .entries
+            .iter()
+            .find(|entrada| entrada.name == "carpeta")
+            .expect("la carpeta común tiene que aparecer");
+        assert!(carpeta.is_dir && !carpeta.is_file && !carpeta.is_symlink);
+        assert_eq!(carpeta.size, 0);
+        assert_eq!(carpeta.item_count, Some(0));
+    }
+
+    #[test]
+    fn el_orden_deja_las_carpetas_primero_y_ordena_sin_distinguir_mayusculas() {
+        // Carpetas primero, después archivos, y dentro de cada grupo por nombre
+        // en minúsculas. `Alfa.txt` y `alfa.txt` empatan en la clave, así que
+        // quedan juntos.
+        let dir = TestDir::new("orden");
+        for carpeta in ["Beta", "alfa"] {
+            std::fs::create_dir(dir.0.join(carpeta)).unwrap();
+        }
+        for archivo in ["Gamma.txt", "beta.txt", "Alfa.txt", "alfa.txt"] {
+            std::fs::write(dir.0.join(archivo), b"").unwrap();
+        }
+
+        let contenido = read_dir(dir.0.to_string_lossy().to_string()).unwrap();
+        let nombres: Vec<&str> = contenido
+            .entries
+            .iter()
+            .map(|entrada| entrada.name.as_str())
+            .collect();
+        let en_minusculas: Vec<String> =
+            nombres.iter().map(|nombre| nombre.to_lowercase()).collect();
+
+        assert_eq!(
+            en_minusculas,
+            vec![
+                "alfa",
+                "beta",
+                "alfa.txt",
+                "alfa.txt",
+                "beta.txt",
+                "gamma.txt"
+            ],
+            "carpetas primero y después archivos, cada grupo por nombre en minúsculas"
+        );
+
+        // El bloque de carpetas va antes que el de archivos.
+        let carpetas = contenido
+            .entries
+            .iter()
+            .filter(|entrada| entrada.is_dir)
+            .count();
+        assert_eq!(carpetas, 2);
+        assert!(contenido.entries[..carpetas].iter().all(|e| e.is_dir));
+        assert!(contenido.entries[carpetas..].iter().all(|e| !e.is_dir));
+
+        // Los que sólo difieren en mayúsculas quedan juntos. Cuál va primero no
+        // se fija: el orden en que `read_dir` los trae no es nuestro.
+        let mut empatados = [nombres[2], nombres[3]];
+        empatados.sort();
+        assert_eq!(empatados, ["Alfa.txt", "alfa.txt"]);
     }
 }

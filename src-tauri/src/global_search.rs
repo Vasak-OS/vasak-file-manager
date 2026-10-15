@@ -164,13 +164,34 @@ fn calculate_dir_size(path: &Path) -> u64 {
 
     if let Ok(entries) = std::fs::read_dir(path) {
         for entry in entries.flatten() {
-            let entry_path = entry.path();
-            if entry_path.is_file() {
+            // El tipo sale del propio `readdir`, así que no hace falta un `stat`
+            // de más para decidir archivo o carpeta. Un enlace no es ninguna de
+            // las dos cosas para `file_type()`, así que se resuelve aparte: se
+            // sigue el enlace para clasificarlo y se mantiene el tamaño que daba
+            // `entry.metadata()` —que no lo atraviesa— para no mover el total.
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+
+            if file_type.is_symlink() {
+                // Un enlace no es ni archivo ni carpeta para `file_type()`, así
+                // que se resuelve con el criterio de siempre: `is_file`/`is_dir`
+                // sí siguen el enlace. El tamaño lo sigue dando
+                // `entry.metadata()`, que no lo atraviesa, para no mover el total.
+                let entry_path = entry.path();
+                if entry_path.is_file() {
+                    if let Ok(metadata) = entry.metadata() {
+                        total_size += metadata.len();
+                    }
+                } else if entry_path.is_dir() {
+                    total_size += calculate_dir_size(&entry_path);
+                }
+            } else if file_type.is_file() {
                 if let Ok(metadata) = entry.metadata() {
                     total_size += metadata.len();
                 }
-            } else if entry_path.is_dir() {
-                total_size += calculate_dir_size(&entry_path);
+            } else if file_type.is_dir() {
+                total_size += calculate_dir_size(&entry.path());
             }
         }
     }
@@ -1093,5 +1114,37 @@ mod pruebas {
             hace_mucho,
             VENCIMIENTO_DE_EJEMPLO
         )));
+    }
+
+    #[test]
+    fn el_tamano_de_la_carpeta_cuenta_los_symlinks_como_antes() {
+        // El tipo ahora sale de `entry.file_type()`, que no sigue el enlace, y
+        // los enlaces se resuelven aparte. El total tiene que dar lo mismo que
+        // antes, y con los enlaces adentro: un enlace a un archivo aporta el
+        // tamaño del **enlace** —lo que da `entry.metadata()`, que es `lstat`—,
+        // no el del destino.
+        let dir = DirectorioDePrueba::nuevo("tamano-con-enlaces");
+
+        std::fs::write(dir.0.join("real.txt"), vec![0u8; 5000]).unwrap();
+        let sub = dir.0.join("sub");
+        std::fs::create_dir(&sub).unwrap();
+        std::fs::write(sub.join("dentro.txt"), b"cinco").unwrap();
+
+        let enlace_a_archivo = dir.0.join("enlace-a-archivo");
+        std::os::unix::fs::symlink(dir.0.join("real.txt"), &enlace_a_archivo).unwrap();
+        let enlace_a_carpeta = dir.0.join("enlace-a-carpeta");
+        std::os::unix::fs::symlink(&sub, &enlace_a_carpeta).unwrap();
+
+        let largo_del_enlace = std::fs::symlink_metadata(&enlace_a_archivo).unwrap().len();
+
+        let total = calculate_dir_size(&dir.0);
+
+        // real.txt (5000) + sub/dentro.txt (5) + el enlace a archivo (su propio
+        // largo) + lo que cuelga del enlace a carpeta (5, la misma subcarpeta).
+        assert_eq!(total, 5000 + 5 + largo_del_enlace + 5);
+        assert!(
+            largo_del_enlace < 5000,
+            "el enlace mide el largo de su destino, no los 5000 bytes del archivo"
+        );
     }
 }
