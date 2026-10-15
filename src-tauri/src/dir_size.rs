@@ -275,18 +275,28 @@ fn calculate_dir_size_no_timeout(
     let file_count_clone = file_count.clone();
     let dir_count_clone = dir_count.clone();
 
-    // Process entries one by one, updating progress as we go
-    for entry in WalkDir::new(path)
+    // Igual que el camino con timeout: primero se recorre —comprobando la
+    // cancelación entre entradas, que es liviano y no hace `stat`— y recién
+    // después la suma se reparte entre los núcleos. El lazo secuencial que
+    // había hacía que el caso grande, justo el que llega sin timeout, fuera de
+    // un archivo por vez. Los contadores siguen siendo los de `progress`, así
+    // que `get_dir_size_progress` ve lo mismo.
+    let entries: Vec<_> = WalkDir::new(path)
         .min_depth(1)
         .into_iter()
         .filter_map(|entry| entry.ok())
-    {
-        // Check cancellation
-        if cancel_token_clone.load(Ordering::SeqCst) {
-            was_cancelled_clone.store(true, Ordering::SeqCst);
-            break;
-        }
+        .take_while(|_| {
+            // Check cancellation
+            if cancel_token_clone.load(Ordering::SeqCst) {
+                was_cancelled_clone.store(true, Ordering::SeqCst);
+                false
+            } else {
+                true
+            }
+        })
+        .collect();
 
+    entries.par_iter().for_each(|entry| {
         if let Ok(metadata) = entry.metadata() {
             if metadata.is_file() {
                 total_size_clone.fetch_add(metadata.len(), Ordering::Relaxed);
@@ -295,7 +305,7 @@ fn calculate_dir_size_no_timeout(
                 dir_count_clone.fetch_add(1, Ordering::Relaxed);
             }
         }
-    }
+    });
 
     // Check if cancelled
     if cancel_token.load(Ordering::SeqCst) || was_cancelled.load(Ordering::SeqCst) {
@@ -481,5 +491,100 @@ pub fn invalidate_dir_size_cache(paths: Vec<String>) {
 pub fn clear_dir_size_cache() {
     if let Ok(mut cache) = SIZE_CACHE.lock() {
         cache.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Un directorio propio que se borra al salir del alcance.
+    struct TestDir(std::path::PathBuf);
+
+    impl TestDir {
+        fn new(label: &str) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "vasak-file-manager-tamano-{}-{}-{label}",
+                std::process::id(),
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn nuevo_progreso() -> CalculationProgress {
+        CalculationProgress {
+            size: Arc::new(AtomicU64::new(0)),
+            file_count: Arc::new(AtomicU64::new(0)),
+            dir_count: Arc::new(AtomicU64::new(0)),
+        }
+    }
+
+    /// Un árbol con tamaños conocidos: 4 archivos y 2 subcarpetas.
+    ///
+    /// `a.txt` 100 + `b.txt` 250 + `sub/c.txt` 7 + `sub/sub2/d.txt` 1000 = 1357.
+    fn armar_arbol(dir: &Path) {
+        std::fs::write(dir.join("a.txt"), vec![0u8; 100]).unwrap();
+        std::fs::write(dir.join("b.txt"), vec![0u8; 250]).unwrap();
+        let sub = dir.join("sub");
+        std::fs::create_dir(&sub).unwrap();
+        std::fs::write(sub.join("c.txt"), vec![0u8; 7]).unwrap();
+        let sub2 = sub.join("sub2");
+        std::fs::create_dir(&sub2).unwrap();
+        std::fs::write(sub2.join("d.txt"), vec![0u8; 1000]).unwrap();
+    }
+
+    #[test]
+    fn el_tamano_total_no_cambia_al_repartir_la_suma_entre_los_nucleos() {
+        // Repartir la suma con `par_iter` no puede mover el total ni los
+        // contadores: es el mismo árbol, sumado de otra forma.
+        let dir = TestDir::new("repartir");
+        armar_arbol(&dir.0);
+
+        let progreso = nuevo_progreso();
+        let size = progreso.size.clone();
+        let file_count = progreso.file_count.clone();
+        let dir_count = progreso.dir_count.clone();
+
+        let resultado =
+            calculate_dir_size_no_timeout(&dir.0, Arc::new(AtomicBool::new(false)), progreso);
+
+        assert_eq!(resultado.status, SizeStatus::Complete);
+        assert_eq!(resultado.size, 1357);
+        assert_eq!(resultado.file_count, 4);
+        assert_eq!(resultado.dir_count, 2);
+
+        // Los contadores de `progress` —los que ve `get_dir_size_progress`—
+        // tienen que decir lo mismo que el resultado.
+        assert_eq!(size.load(Ordering::SeqCst), 1357);
+        assert_eq!(file_count.load(Ordering::SeqCst), 4);
+        assert_eq!(dir_count.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn un_calculo_cancelado_se_sigue_marcando_como_cancelado() {
+        // La cancelación se comprueba antes de repartir la suma, así que un
+        // token ya pedido deja el cálculo marcado como cancelado y no como
+        // completo.
+        let dir = TestDir::new("cancelado");
+        armar_arbol(&dir.0);
+
+        let resultado = calculate_dir_size_no_timeout(
+            &dir.0,
+            Arc::new(AtomicBool::new(true)),
+            nuevo_progreso(),
+        );
+
+        assert_eq!(resultado.status, SizeStatus::Cancelled);
     }
 }
