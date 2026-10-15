@@ -1,4 +1,4 @@
-import { type ComputedRef, computed, type Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ListSortColumn, ListSortDirection } from '@/types/file-browser';
@@ -13,8 +13,7 @@ export function useFileBrowserEntries(
 	filterQuery: Ref<string>,
 	showHiddenFiles: Ref<boolean>,
 	sortColumn: Ref<ListSortColumn | null>,
-	sortDirection: Ref<ListSortDirection>,
-	applySort: ComputedRef<boolean>
+	sortDirection: Ref<ListSortDirection>
 ) {
 	const dirSizesStore = useDirSizesStore();
 
@@ -38,10 +37,11 @@ export function useFileBrowserEntries(
 			}
 		}
 
-		if (applySort.value) {
-			const column = sortColumn.value ?? 'name';
-			items = sortFileBrowserEntries(items, column, sortDirection.value, dirSizesStore);
-		}
+		// El orden es uno solo, y es el de `sortFileBrowserEntries`: carpetas
+		// primero y después el criterio de la columna. Lo leen la vista y el
+		// teclado, así que no hay un orden dibujado y otro para las flechas.
+		const column = sortColumn.value ?? 'name';
+		items = sortFileBrowserEntries(items, column, sortDirection.value, dirSizesStore);
 
 		return items;
 	});

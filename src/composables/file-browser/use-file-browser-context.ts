@@ -8,7 +8,12 @@ import {
 } from 'vue';
 import type { SeccionVisual } from '@/composables/file-browser/recorrido-visual';
 import type { DirEntry } from '@/types/dir-entry';
-import type { ContextMenuAction, ContextMenuState } from '@/types/file-browser';
+import type {
+	ContextMenuAction,
+	ContextMenuState,
+	ListSortColumn,
+	ListSortDirection,
+} from '@/types/file-browser';
 
 export interface FileBrowserContext {
 	entries: ComputedRef<DirEntry[]>;
@@ -16,6 +21,17 @@ export interface FileBrowserContext {
 	isLoading: Ref<boolean>;
 	isDirectoryEmpty: ComputedRef<boolean>;
 	error: Ref<string | null>;
+
+	/**
+	 * El orden de las entradas: la columna y la dirección.
+	 *
+	 * Es la única fuente del estado de orden, y la escribe la cabecera de la
+	 * lista. El arreglo que sale en `entries` ya viene ordenado con ese mismo
+	 * criterio —carpetas primero—, así que lo que se dibuja y lo que recorren
+	 * las flechas son el mismo arreglo.
+	 */
+	listSortColumn: Ref<ListSortColumn | null>;
+	listSortDirection: Ref<ListSortDirection>;
 
 	selectedEntries: Ref<DirEntry[]>;
 	isEntrySelected: (entry: DirEntry) => boolean;

@@ -67,65 +67,14 @@ function toggleColumnVisibility(column: 'items' | 'size' | 'modified', checked: 
 	columnVisibility.value[column] = checked;
 }
 
-const listSortColumn = ref<ListSortColumn | null>('name');
-const listSortDirection = ref<'asc' | 'desc'>('asc');
-
 function handleColumnHeaderClick(column: ListSortColumn) {
-	if (listSortColumn.value === column) {
-		listSortDirection.value = listSortDirection.value === 'asc' ? 'desc' : 'asc';
+	if (ctx.listSortColumn.value === column) {
+		ctx.listSortDirection.value = ctx.listSortDirection.value === 'asc' ? 'desc' : 'asc';
 	} else {
-		listSortColumn.value = column;
-		listSortDirection.value = 'asc';
+		ctx.listSortColumn.value = column;
+		ctx.listSortDirection.value = 'asc';
 	}
 }
-
-const sortedEntries = computed(() => {
-	const entries = [...ctx.entries.value];
-
-	if (!listSortColumn.value) return entries;
-
-	entries.sort((a, b) => {
-		let aValue: any;
-		let bValue: any;
-
-		switch (listSortColumn.value) {
-			case 'name':
-				aValue = a.name.toLowerCase();
-				bValue = b.name.toLowerCase();
-				break;
-			case 'size':
-				aValue = a.is_dir ? (a.item_count ?? 0) : a.size;
-				bValue = b.is_dir ? (b.item_count ?? 0) : b.size;
-				break;
-			case 'items':
-				aValue = a.item_count ?? 0;
-				bValue = b.item_count ?? 0;
-				break;
-			case 'modified':
-				aValue = a.modified_time;
-				bValue = b.modified_time;
-				break;
-			default:
-				return 0;
-		}
-
-		// Handle string comparisons
-		if (typeof aValue === 'string' && typeof bValue === 'string') {
-			return listSortDirection.value === 'asc'
-				? aValue.localeCompare(bValue)
-				: bValue.localeCompare(aValue);
-		}
-
-		// Handle numeric comparisons
-		if (listSortDirection.value === 'asc') {
-			return aValue - bValue;
-		} else {
-			return bValue - aValue;
-		}
-	});
-
-	return entries;
-});
 </script>
 
 <template>
@@ -137,13 +86,13 @@ const sortedEntries = computed(() => {
           @click="handleColumnHeaderClick('name')">
           {{ t('fileBrowser.name') }}
           <ThemeIcon
-            v-if="listSortColumn === 'name' && listSortDirection === 'asc'"
+            v-if="ctx.listSortColumn.value === 'name' && ctx.listSortDirection.value === 'asc'"
             name="arrow-up"
             type="symbol"
             :size="16"
             :alt="t('fileBrowser.sortAscending')" />
           <ThemeIcon
-            v-else-if="listSortColumn === 'name' && listSortDirection === 'desc'"
+            v-else-if="ctx.listSortColumn.value === 'name' && ctx.listSortDirection.value === 'desc'"
             name="arrow-down"
             type="symbol"
             :size="16"
@@ -154,13 +103,13 @@ const sortedEntries = computed(() => {
           @click="handleColumnHeaderClick('items')">
           {{ t('fileBrowser.items') }}
           <ThemeIcon
-            v-if="listSortColumn === 'items' && listSortDirection === 'asc'"
+            v-if="ctx.listSortColumn.value === 'items' && ctx.listSortDirection.value === 'asc'"
             name="arrow-up"
             type="symbol"
             :size="16"
             :alt="t('fileBrowser.sortAscending')" />
           <ThemeIcon
-            v-else-if="listSortColumn === 'items' && listSortDirection === 'desc'"
+            v-else-if="ctx.listSortColumn.value === 'items' && ctx.listSortDirection.value === 'desc'"
             name="arrow-down"
             type="symbol"
             :size="16"
@@ -174,13 +123,13 @@ const sortedEntries = computed(() => {
               {{ t('fileBrowser.size') }}
               <ThemeIcon name="showinfo" type="symbol" :size="16" alt="" />
               <ThemeIcon
-                v-if="listSortColumn === 'size' && listSortDirection === 'asc'"
+                v-if="ctx.listSortColumn.value === 'size' && ctx.listSortDirection.value === 'asc'"
                 name="arrow-up"
                 type="symbol"
                 :size="16"
                 :alt="t('fileBrowser.sortAscending')" />
               <ThemeIcon
-                v-else-if="listSortColumn === 'size' && listSortDirection === 'desc'"
+                v-else-if="ctx.listSortColumn.value === 'size' && ctx.listSortDirection.value === 'desc'"
                 name="arrow-down"
                 type="symbol"
                 :size="16"
@@ -221,13 +170,13 @@ const sortedEntries = computed(() => {
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
           <ThemeIcon
-            v-if="listSortColumn === 'modified' && listSortDirection === 'asc'"
+            v-if="ctx.listSortColumn.value === 'modified' && ctx.listSortDirection.value === 'asc'"
             name="arrow-up"
             type="symbol"
             :size="16"
             :alt="t('fileBrowser.sortAscending')" />
           <ThemeIcon
-            v-else-if="listSortColumn === 'modified' && listSortDirection === 'desc'"
+            v-else-if="ctx.listSortColumn.value === 'modified' && ctx.listSortDirection.value === 'desc'"
             name="arrow-down"
             type="symbol"
             :size="16"
@@ -275,8 +224,8 @@ const sortedEntries = computed(() => {
       <div class="relative min-h-0 w-full flex-1 overflow-hidden">
         <div class="h-full w-full overflow-x-hidden overflow-y-auto">
           <div :ref="ctx.setEntriesContainerRef" class="min-h-full">
-            <FileBrowserGridView v-if="props.layout === 'grid'" :entries="sortedEntries" />
-            <FileBrowserListView v-else :entries="sortedEntries" />
+            <FileBrowserGridView v-if="props.layout === 'grid'" :entries="ctx.entries.value" />
+            <FileBrowserListView v-else :entries="ctx.entries.value" />
           </div>
         </div>
       </div>
