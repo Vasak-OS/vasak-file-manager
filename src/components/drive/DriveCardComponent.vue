@@ -3,9 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ProgressBar, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
-import { toast } from '@/components/ui/toast/toaster';
+import { useMountDrive } from '@/composables/use-mount-drive';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
-import { avisoDeFallo } from '@/tools/aviso-de-montaje';
 import type { DriveInfo } from '@/types/drive-info';
 import toReadableBytes from '@/utils/byte-parser';
 
@@ -16,6 +15,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const isMounting = ref(false);
+const { mountDrive } = useMountDrive();
 const LOW_SPACE_THRESHOLD = 15;
 
 const isLowSpace = computed(() => props.drive.percent_used >= 100 - LOW_SPACE_THRESHOLD);
@@ -58,34 +58,13 @@ async function mountAndNavigate() {
 	isMounting.value = true;
 
 	try {
-		const mountPoint = await invoke<string>('mount_drive', { devicePath: props.drive.device_path });
-
+		const mountPoint = await mountDrive(props.drive);
 		if (mountPoint) {
 			await navigateToDrive(mountPoint);
 		}
-	} catch (mountError) {
-		// Esto antes se iba a la consola y la ventana no mostraba nada: el clic
-		// parecía no haber ocurrido. Ver `avisoDeFallo`.
-		console.error('Failed to mount drive:', mountError);
-		mostrarFallo(mountError);
 	} finally {
 		isMounting.value = false;
 	}
-}
-
-function mostrarFallo(mountError: unknown) {
-	const aviso = avisoDeFallo(mountError);
-
-	// Cerrar el diálogo de la contraseña no es un fallo: no se avisa nada.
-	if (!aviso) {
-		return;
-	}
-
-	toast.error({
-		title: t(aviso.claveDelTitulo),
-		description: aviso.detalle,
-		duration: 6000,
-	});
 }
 
 async function navigateToDrive(drivePath: string) {

@@ -20,6 +20,7 @@ import { nextTick } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
+import { toast, useToast } from '@/components/ui/toast/toaster';
 import type { CloudDrive } from '@/composables/use-cloud-drives';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
@@ -207,6 +208,76 @@ describe('los discos', () => {
 		await asentar();
 
 		expect(workspaces.currentTab?.path).toBe('/run/media/pato/KINGSTON');
+	});
+
+	test('apretar uno ya montado lo abre sin pedir que se monte', async () => {
+		const { vista, workspaces } = await abrirLaBarra({ discos: [unDisco()] });
+
+		await botonDe(vista, 'Kingston DataTraveler')?.trigger('click');
+		await asentar();
+
+		expect(pedidos('mount_drive')).toHaveLength(0);
+		expect(workspaces.currentTab?.path).toBe('/run/media/pato/KINGSTON');
+	});
+
+	describe('sin montar', () => {
+		const sinMontar = () => unDisco({ is_mounted: false, path: '', device_path: '/dev/nvme0n1p3' });
+
+		beforeEach(() => toast.dismissAll());
+
+		test('apretar uno lo monta y abre donde quedó montado', async () => {
+			responder('mount_drive', () => '/run/media/pato/DATOS');
+			const { vista, workspaces } = await abrirLaBarra({ discos: [sinMontar()] });
+
+			await botonDe(vista, 'Kingston DataTraveler')?.trigger('click');
+			await asentar();
+
+			expect(pedidos('mount_drive').map((p) => p.argumentos)).toEqual([
+				{ devicePath: '/dev/nvme0n1p3' },
+			]);
+			expect(workspaces.currentTab?.path).toBe('/run/media/pato/DATOS');
+		});
+
+		test('si el montaje falla, avisa con un cartel de error y no navega', async () => {
+			responder('mount_drive', () => {
+				throw { codigo: 'notAuthorized', detalle: 'sin permiso' };
+			});
+			const { vista, workspaces } = await abrirLaBarra({ discos: [sinMontar()] });
+			const antes = workspaces.currentTab?.path;
+
+			await botonDe(vista, 'Kingston DataTraveler')?.trigger('click');
+			await asentar();
+
+			const avisos = [...useToast().toasts.value.values()];
+			expect(avisos).toHaveLength(1);
+			expect(avisos[0].title).toBe('drive.mountNotAuthorized');
+			expect(workspaces.currentTab?.path).toBe(antes);
+		});
+
+		test('si el montaje no dice dónde quedó, avisa con un cartel y no navega', async () => {
+			responder('mount_drive', () => '');
+			const { vista, workspaces } = await abrirLaBarra({ discos: [sinMontar()] });
+			const antes = workspaces.currentTab?.path;
+
+			await botonDe(vista, 'Kingston DataTraveler')?.trigger('click');
+			await asentar();
+
+			expect(useToast().toasts.value.size).toBe(1);
+			expect(workspaces.currentTab?.path).toBe(antes);
+		});
+
+		test('si se cancela la contraseña, no muestra ningún cartel', async () => {
+			responder('mount_drive', () => {
+				throw { codigo: 'cancelled', detalle: '' };
+			});
+			const { vista } = await abrirLaBarra({ discos: [sinMontar()] });
+
+			await botonDe(vista, 'Kingston DataTraveler')?.trigger('click');
+			await asentar();
+
+			expect(pedidos('mount_drive')).toHaveLength(1);
+			expect(useToast().toasts.value.size).toBe(0);
+		});
 	});
 });
 
