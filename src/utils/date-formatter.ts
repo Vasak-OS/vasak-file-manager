@@ -50,8 +50,26 @@ export function formatDateTime(date: Date | number): string {
 	});
 }
 
-export function formatDate(timestamp: number, includeSeconds = false): string {
-	if (!timestamp) return '-';
+/**
+ * Los formateadores de `formatDate`, armados una sola vez.
+ *
+ * `toLocaleString(undefined, options)` construye un `Intl.DateTimeFormat` nuevo
+ * por llamada, y esto se llama por celda de la columna «modificado» de la vista
+ * de lista: con una carpeta grande son cientos de formateadores por dibujado,
+ * todos iguales. Son dos variantes —con segundos y sin—, así que van dos.
+ *
+ * El locale sigue siendo el del entorno: `undefined` y no un código fijo, que
+ * cambiaría la salida. `Intl.DateTimeFormat` guarda el idioma que resolvió
+ * `undefined` en ese momento, que es exactamente lo que hacía
+ * `toLocaleString(undefined, …)` llamada por llamada.
+ */
+const cachedDateFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function getDateFormatter(includeSeconds: boolean): Intl.DateTimeFormat {
+	const key = includeSeconds ? 'seconds' : 'minutes';
+	const cached = cachedDateFormatters.get(key);
+
+	if (cached) return cached;
 
 	const options: Intl.DateTimeFormatOptions = {
 		year: 'numeric',
@@ -65,7 +83,16 @@ export function formatDate(timestamp: number, includeSeconds = false): string {
 		options.second = '2-digit';
 	}
 
-	return new Date(timestamp).toLocaleString(undefined, options);
+	const formatter = new Intl.DateTimeFormat(undefined, options);
+	cachedDateFormatters.set(key, formatter);
+
+	return formatter;
+}
+
+export function formatDate(timestamp: number, includeSeconds = false): string {
+	if (!timestamp) return '-';
+
+	return getDateFormatter(includeSeconds).format(new Date(timestamp));
 }
 
 export interface RelativeTimeTranslations {

@@ -1,7 +1,7 @@
 {
 	"name": "vasak-file-manager",
 	"private": true,
-	"version": "0.27.3",
+	"version": "0.27.4",
 	"type": "module",
 	"scripts": {
 		"dev": "bunx --bun vite",

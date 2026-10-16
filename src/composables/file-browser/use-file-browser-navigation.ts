@@ -65,7 +65,7 @@ export function useFileBrowserNavigation(
 		pendingDirectoryPath = path;
 		pendingDirectoryRecordTimer = setTimeout(() => {
 			if (pendingDirectoryPath === path) {
-				userStatsStore.recordItemOpen(path, false);
+				void userStatsStore.recordItemOpen(path, false);
 			}
 
 			pendingDirectoryRecordTimer = null;
@@ -95,7 +95,7 @@ export function useFileBrowserNavigation(
 
 						watcherRefreshTimer = setTimeout(() => {
 							if (currentPath.value && watchedPath === currentPath.value) {
-								silentRefresh();
+								void silentRefresh();
 							}
 
 							watcherRefreshTimer = null;
@@ -106,7 +106,7 @@ export function useFileBrowserNavigation(
 						}
 
 						watcherValidationTimer = setTimeout(() => {
-							validateCurrentPath();
+							void validateCurrentPath();
 							watcherValidationTimer = null;
 						}, WATCHER_DEBOUNCE_MS);
 					}
@@ -141,7 +141,7 @@ export function useFileBrowserNavigation(
 
 	onUnmounted(() => {
 		cancelPendingDirectoryRecord();
-		stopWatching();
+		void stopWatching();
 
 		if (dirChangeUnlisten) {
 			dirChangeUnlisten();
@@ -176,7 +176,7 @@ export function useFileBrowserNavigation(
 				.map((entry) => entry.path);
 
 			if (dirPaths.length > 0) {
-				dirSizesStore.requestSizesBatch(dirPaths);
+				void dirSizesStore.requestSizesBatch(dirPaths);
 			}
 		} catch {
 			await navigateToNearestExistingAncestor();
@@ -204,9 +204,23 @@ export function useFileBrowserNavigation(
 	async function validateCurrentPath(): Promise<void> {
 		if (!currentPath.value) return;
 
+		// `path_exists` y no `read_dir`: para saber si la carpeta existe no hace
+		// falta que el backend la liste entera con el `stat` de cada entrada, y
+		// esto corre cada vez que el vigilante avisa de un cambio en otra ruta.
+		//
+		// El comando sólo mira si la ruta está —`Path::exists()`— y contesta
+		// `false`, no un error, cuando no está: ese es el caso normal de que la
+		// carpeta se haya borrado o renombrado, y navega al ancestro como antes.
 		try {
-			await invoke<DirContents>('read_dir', { path: currentPath.value });
+			const exists = await invoke<boolean>('path_exists', { path: currentPath.value });
+
+			if (!exists) {
+				await navigateToNearestExistingAncestor();
+			}
 		} catch {
+			// Si falla la invocación misma —el puente caído, el comando ausente—
+			// tampoco hay forma de saber que la carpeta siga ahí: mismo camino
+			// que antes, al ancestro existente más cercano.
 			await navigateToNearestExistingAncestor();
 		}
 	}
@@ -280,7 +294,7 @@ export function useFileBrowserNavigation(
 				historyIndex.value = history.value.length - 1;
 			}
 
-			nextTick(() => {
+			void nextTick(() => {
 				onNavigationComplete?.(currentDirEntry.value);
 			});
 
@@ -290,7 +304,7 @@ export function useFileBrowserNavigation(
 				.map((entry) => entry.path);
 
 			if (dirPaths.length > 0) {
-				dirSizesStore.requestSizesBatch(dirPaths);
+				void dirSizesStore.requestSizesBatch(dirPaths);
 			}
 
 			await startWatching(result.path);
@@ -371,7 +385,7 @@ export function useFileBrowserNavigation(
 	async function openFile(path: string) {
 		try {
 			await openPath(path);
-			userStatsStore.recordItemOpen(path, true);
+			void userStatsStore.recordItemOpen(path, true);
 		} catch (error) {
 			console.error('Failed to open path:', error);
 			// Silently fail - the file manager will display error UI if needed
