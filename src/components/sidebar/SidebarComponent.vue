@@ -36,6 +36,7 @@ import { onMounted } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import { type CloudDrive, useCloudDrives } from '@/composables/use-cloud-drives';
 import { useDrives } from '@/composables/use-drives';
+import { useMountDrive } from '@/composables/use-mount-drive';
 import { useWindowColumns } from '@/composables/use-window-columns';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
@@ -60,6 +61,14 @@ const { isSidebarOpen } = useWindowColumns();
 async function openDrive(path: string) {
 	isSidebarOpen.value = false;
 	await workspacesStore.openNewTabGroup(path);
+}
+
+const { mountDrive } = useMountDrive();
+
+/** Una unidad sin montar no tiene ruta todavía: primero se monta. */
+async function openLocalDrive(drive: DriveInfo) {
+	const path = drive.is_mounted ? drive.path : await mountDrive(drive);
+	if (path) await openDrive(path);
 }
 
 /** El ícono del tema que le corresponde a una unidad. */
@@ -145,7 +154,7 @@ onMounted(async () => {
               :label="drive.name"
               :icon="iconOf(drive)"
               :collapsed="collapsed"
-              @click="openDrive(drive.path)" />
+              @click="openLocalDrive(drive)" />
           </TooltipTrigger>
           <TooltipContent
             side="right"
