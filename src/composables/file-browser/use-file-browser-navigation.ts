@@ -65,7 +65,7 @@ export function useFileBrowserNavigation(
 		pendingDirectoryPath = path;
 		pendingDirectoryRecordTimer = setTimeout(() => {
 			if (pendingDirectoryPath === path) {
-				userStatsStore.recordItemOpen(path, false);
+				void userStatsStore.recordItemOpen(path, false);
 			}
 
 			pendingDirectoryRecordTimer = null;
@@ -95,7 +95,7 @@ export function useFileBrowserNavigation(
 
 						watcherRefreshTimer = setTimeout(() => {
 							if (currentPath.value && watchedPath === currentPath.value) {
-								silentRefresh();
+								void silentRefresh();
 							}
 
 							watcherRefreshTimer = null;
@@ -106,7 +106,7 @@ export function useFileBrowserNavigation(
 						}
 
 						watcherValidationTimer = setTimeout(() => {
-							validateCurrentPath();
+							void validateCurrentPath();
 							watcherValidationTimer = null;
 						}, WATCHER_DEBOUNCE_MS);
 					}
@@ -141,7 +141,7 @@ export function useFileBrowserNavigation(
 
 	onUnmounted(() => {
 		cancelPendingDirectoryRecord();
-		stopWatching();
+		void stopWatching();
 
 		if (dirChangeUnlisten) {
 			dirChangeUnlisten();
@@ -176,7 +176,7 @@ export function useFileBrowserNavigation(
 				.map((entry) => entry.path);
 
 			if (dirPaths.length > 0) {
-				dirSizesStore.requestSizesBatch(dirPaths);
+				void dirSizesStore.requestSizesBatch(dirPaths);
 			}
 		} catch {
 			await navigateToNearestExistingAncestor();
@@ -294,7 +294,7 @@ export function useFileBrowserNavigation(
 				historyIndex.value = history.value.length - 1;
 			}
 
-			nextTick(() => {
+			void nextTick(() => {
 				onNavigationComplete?.(currentDirEntry.value);
 			});
 
@@ -304,7 +304,7 @@ export function useFileBrowserNavigation(
 				.map((entry) => entry.path);
 
 			if (dirPaths.length > 0) {
-				dirSizesStore.requestSizesBatch(dirPaths);
+				void dirSizesStore.requestSizesBatch(dirPaths);
 			}
 
 			await startWatching(result.path);
@@ -385,7 +385,7 @@ export function useFileBrowserNavigation(
 	async function openFile(path: string) {
 		try {
 			await openPath(path);
-			userStatsStore.recordItemOpen(path, true);
+			void userStatsStore.recordItemOpen(path, true);
 		} catch (error) {
 			console.error('Failed to open path:', error);
 			// Silently fail - the file manager will display error UI if needed
