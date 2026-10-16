@@ -254,6 +254,18 @@ describe('los discos', () => {
 			expect(workspaces.currentTab?.path).toBe(antes);
 		});
 
+		test('si el montaje no dice dónde quedó, avisa con un cartel y no navega', async () => {
+			responder('mount_drive', () => '');
+			const { vista, workspaces } = await abrirLaBarra({ discos: [sinMontar()] });
+			const antes = workspaces.currentTab?.path;
+
+			await botonDe(vista, 'Kingston DataTraveler')?.trigger('click');
+			await asentar();
+
+			expect(useToast().toasts.value.size).toBe(1);
+			expect(workspaces.currentTab?.path).toBe(antes);
+		});
+
 		test('si se cancela la contraseña, no muestra ningún cartel', async () => {
 			responder('mount_drive', () => {
 				throw { codigo: 'cancelled', detalle: '' };
