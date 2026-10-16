@@ -19,6 +19,7 @@ import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useQuickViewStore } from '@/stores/runtime/quick-view';
 import type { DirContents, DirEntry } from '@/types/dir-entry';
+import type { ListSortColumn, ListSortDirection } from '@/types/file-browser';
 import type { Layout } from '@/types/navigator';
 import type { Tab } from '@/types/workspaces';
 import { entryPathSelector } from '@/utils/css-escape';
@@ -64,6 +65,15 @@ interface DataSource {
 	closeFilter: () => void;
 	showHiddenFiles: Ref<boolean>;
 	toggleHiddenFiles: () => void;
+	/**
+	 * El orden de las entradas: la columna y la dirección.
+	 *
+	 * Es la única fuente del estado de orden. La cabecera de la lista escribe
+	 * acá y el arreglo que sale de `entries` ya viene ordenado con el mismo
+	 * criterio para la vista y para el recorrido por teclado.
+	 */
+	listSortColumn: Ref<ListSortColumn | null>;
+	listSortDirection: Ref<ListSortDirection>;
 }
 
 function setupNavigationDataSource(
@@ -91,17 +101,18 @@ function setupNavigationDataSource(
 	const toggleHiddenFiles = () => {
 		showHiddenFiles.value = !showHiddenFiles.value;
 	};
-	const listSortColumn = ref(null);
-	const listSortDirection = ref<'asc' | 'desc'>('asc');
-	const applyListSort = computed(() => options.layout() === 'list');
+	// El orden es uno solo para la lista y para la cuadrícula, y arranca por
+	// nombre ascendente, que es lo que marcan las flechas de la cabecera. La
+	// misma copia ordenada la leen la vista, el foco y el teclado.
+	const listSortColumn = ref<ListSortColumn | null>('name');
+	const listSortDirection = ref<ListSortDirection>('asc');
 	const { entries: filteredEntries, isDirectoryEmpty: filteredIsDirectoryEmpty } =
 		useFileBrowserEntries(
 			navigation.dirContents,
 			filter.filterQuery,
 			showHiddenFiles,
 			listSortColumn,
-			listSortDirection,
-			applyListSort
+			listSortDirection
 		);
 
 	const tabRef = toRef(options.tab);
@@ -141,6 +152,8 @@ function setupNavigationDataSource(
 		toggleHiddenFiles,
 		openFilter: filter.openFilter,
 		closeFilter: filter.closeFilter,
+		listSortColumn,
+		listSortDirection,
 	};
 }
 
@@ -150,8 +163,10 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 	const getEntries = options.externalEntries ?? (() => []);
 	const getBasePath = options.basePath ?? (() => '');
 
-	const listSortColumn = ref(null);
-	const listSortDirection = ref<'asc' | 'desc'>('asc');
+	// Mismo orden y mismo arranque que la navegación: la barra de la búsqueda
+	// global también tiene sus cabeceras y su flecha.
+	const listSortColumn = ref<ListSortColumn | null>('name');
+	const listSortDirection = ref<ListSortDirection>('asc');
 
 	const entries = computed(() => {
 		const rawEntries = getEntries();
@@ -197,6 +212,8 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 		// incluyen lo que corresponda: acá no hay directorio que filtrar.
 		showHiddenFiles: ref(true),
 		toggleHiddenFiles: () => {},
+		listSortColumn,
+		listSortDirection,
 	};
 }
 
@@ -395,6 +412,10 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		isExternalMode,
 
 		entries: dataSource.entries,
+		// El estado del orden, para que la cabecera de la lista lo escriba: es
+		// la única fuente, y `entries` ya sale ordenado con ese criterio.
+		listSortColumn: dataSource.listSortColumn,
+		listSortDirection: dataSource.listSortDirection,
 		currentPath: dataSource.currentPath,
 		isDirectoryEmpty: dataSource.isDirectoryEmpty,
 		dirContents: dataSource.dirContents,

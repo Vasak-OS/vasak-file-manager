@@ -68,6 +68,8 @@ const entryContextMenu = useEntryContextMenu({
 
 provideFileBrowserContext({
 	entries: fb.entries,
+	listSortColumn: fb.listSortColumn,
+	listSortDirection: fb.listSortDirection,
 	currentPath: fb.currentPath,
 	isLoading: fb.isLoading,
 	isDirectoryEmpty: fb.isDirectoryEmpty,
