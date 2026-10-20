@@ -2,8 +2,15 @@ use log::info;
 use std::path::Path;
 use std::process::Command;
 
+/// En las pruebas, un programa que falla sin hacer nada: correr cada operación
+/// de verdad sin que aparezca un diálogo de contraseña ni se toque el disco.
+#[cfg(not(test))]
+const PKEXEC: &str = "/usr/bin/pkexec";
+#[cfg(test)]
+const PKEXEC: &str = "/usr/bin/false";
+
 fn pkexec_available() -> bool {
-    Path::new("/usr/bin/pkexec").exists()
+    Path::new(PKEXEC).exists()
 }
 
 fn run_with_pkexec(args: &[&str]) -> Result<(), String> {
@@ -11,7 +18,7 @@ fn run_with_pkexec(args: &[&str]) -> Result<(), String> {
         return Err("pkexec not available. Install polkit.".into());
     }
     info!("Elevating privileges: pkexec {}", args.join(" "));
-    let output = Command::new("pkexec")
+    let output = Command::new(PKEXEC)
         .args(args)
         .output()
         .map_err(|e| format!("Failed to execute pkexec: {e}"))?;
@@ -74,7 +81,19 @@ pub fn is_permission_denied(error: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::is_permission_denied;
+    use super::*;
+
+    #[test]
+    fn cada_operacion_elevada_pasa_por_pkexec_y_devuelve_su_fallo() {
+        let a = Path::new("/no/existe/a");
+        let b = Path::new("/no/existe/b");
+        assert!(copy_with_pkexec(a, b).is_err());
+        assert!(move_with_pkexec(a, b).is_err());
+        assert!(remove_with_pkexec(a).is_err());
+        assert!(create_dir_with_pkexec(a).is_err());
+        assert!(create_file_with_pkexec(a).is_err());
+        assert!(rename_with_pkexec(a, b).is_err());
+    }
 
     #[test]
     fn el_mensaje_en_castellano_de_permiso_denegado_se_detecta() {
