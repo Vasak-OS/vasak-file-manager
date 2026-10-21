@@ -8,6 +8,7 @@ import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
 import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import { createWindowColumns, WINDOW_COLUMNS_KEY } from '@/composables/use-window-columns';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import ContentInformation from '../components/content/ContentInformation.vue';
@@ -15,10 +16,10 @@ import ContentInformation from '../components/content/ContentInformation.vue';
 const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const globalSearchStore = useGlobalSearchStore();
+const userLayoutStore = useUserLayoutStore();
 
 const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
-const isInfoPanelVisible = ref(true);
 
 /**
  * El formato de la ventana: el de siempre, o una columna por vez cuando no
@@ -32,7 +33,7 @@ const { isOneColumn, isCompact, column, isSidebarOpen } = columns;
 
 /** Si se ve la información: en su columna, o en lugar de los archivos. */
 const isInfoShown = computed(() =>
-	isOneColumn.value ? column.value === 'info' : isInfoPanelVisible.value
+	isOneColumn.value ? column.value === 'info' : userLayoutStore.infoPanelVisible
 );
 
 const isSplitView = computed(() => {
@@ -59,7 +60,7 @@ function handleToggleInfoPanel() {
 		column.value = column.value === 'info' ? 'files' : 'info';
 		return;
 	}
-	isInfoPanelVisible.value = !isInfoPanelVisible.value;
+	userLayoutStore.setInfoPanelVisible(!userLayoutStore.infoPanelVisible);
 }
 
 function handleToggleSidebar() {
