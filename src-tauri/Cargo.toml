@@ -1,6 +1,6 @@
 [package]
 name = "vasak-file-manager"
-version = "0.29.1"
+version = "0.29.2"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -28,7 +28,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"
 tauri-plugin-vicons = "2.2"
-tauri-plugin-config-manager = "2"
+tauri-plugin-config-manager = "2.13"
 # gtk y gio siguen en 0.18 porque es la que trae tauri: subirlas solas deja dos
 # generaciones de gtk-rs en el árbol. Suben cuando suba tauri.
 gtk = "0.18"
