@@ -1,4 +1,5 @@
 mod cloud_accounts;
+mod commands;
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;
@@ -63,21 +64,6 @@ fn default_locale() -> String {
     }
 }
 
-#[cfg(debug_assertions)]
-fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView> {
-    for child in container.children() {
-        if child.type_().name() == "WebKitWebView" {
-            return child.downcast::<webkit2gtk::WebView>().ok();
-        }
-        if let Some(child_container) = child.downcast_ref::<gtk::Container>() {
-            if let Some(found) = find_webkit_webview(child_container) {
-                return Some(found);
-            }
-        }
-    }
-    None
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -97,7 +83,7 @@ pub fn run() {
                 #[cfg(debug_assertions)]
                 if let Ok(gtk_window) = window.gtk_window() {
                     let container = gtk_window.clone().upcast::<gtk::Container>();
-                    if let Some(wv) = find_webkit_webview(&container) {
+                    if let Some(wv) = commands::webkit::find_webkit_webview(&container) {
                         if let Some(settings) = WebViewExt::settings(&wv) {
                             settings.set_enable_developer_extras(true);
                         }
@@ -143,6 +129,7 @@ pub fn run() {
             cloud_accounts::list_cloud_drives,
             mount_cloud::mount_cloud_drive,
             video_thumbnail,
+            commands::webkit::tune_webview,
             clipboard::clipboard_read_text,
             clipboard::clipboard_write_text,
             dir_reader::read_dir,
