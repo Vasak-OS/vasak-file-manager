@@ -455,9 +455,13 @@ function isDialogOpened(): boolean {
 	const dialogs = document.querySelectorAll('[role="dialog"]');
 
 	for (const dialog of dialogs) {
-		if (!dialog.classList.contains('sigma-ui-popover-content')) {
-			return true;
-		}
+		// Los popovers de la biblioteca quedan montados siempre (`v-show`, `inert`)
+		// con `role="dialog"` y `aria-modal="false"`: no son un diálogo abierto.
+		// Contarlos apagaba todos los atajos con `dialogIsOpened: false`.
+		if (dialog.getAttribute('aria-modal') === 'false') continue;
+		if (dialog.closest('[inert]') || (dialog as HTMLElement).style?.display === 'none') continue;
+
+		return true;
 	}
 
 	return false;
