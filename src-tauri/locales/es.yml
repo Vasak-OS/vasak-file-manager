@@ -170,6 +170,15 @@ shortcuts:
   switchToRightPane: Cambiar a panel derecho
   deleteSelectedItemsFromDrive: Eliminar elementos seleccionados del disco
   moveSelectedItemsToTrash: Mover elementos seleccionados a la papelera
+  createNewFolder: Crear carpeta nueva
+  closeCurrentTab: Cerrar pestaña actual
+  switchToNextTab: Pestaña siguiente
+  switchToPreviousTab: Pestaña anterior
+  reloadDirectory: Recargar directorio
+  navigateToParentDirectory: Subir al directorio superior
+  navigateBackInHistory: Ir atrás en el historial
+  navigateForwardInHistory: Ir adelante en el historial
+  navigateToHome: Ir a la carpeta personal
 moreOptions:
   shellExtensions: Extensiones del Shell
   loading: Cargando...

@@ -487,6 +487,35 @@ function callActivePaneMethod(
 	return false;
 }
 
+function switchTabGroup(step: 1 | -1): boolean {
+	const workspace = workspacesStore.currentWorkspace;
+	const count = workspace?.tabGroups?.length ?? 0;
+
+	if (!workspace || count < 2) return false;
+
+	const current = workspace.currentTabGroupIndex || 0;
+	workspacesStore.setCurrentTabGroupIndex((current + step + count) % count);
+
+	return true;
+}
+
+function closeCurrentTab(): boolean {
+	const tabGroup = workspacesStore.currentTabGroup;
+
+	// Con una sola pestaña, cerrarla la reabriría en el inicio: no se hace nada.
+	if (!tabGroup || (workspacesStore.currentWorkspace?.tabGroups?.length ?? 0) < 2) return false;
+
+	void workspacesStore.closeTabGroup(tabGroup);
+
+	return true;
+}
+
+function runOnActivePane(
+	method: 'refresh' | 'navigateToParent' | 'goBack' | 'goForward' | 'navigateToHome'
+) {
+	void getActivePaneRef()?.[method]();
+}
+
 function registerShortcutHandlers() {
 	// `toggleGlobalSearch` estaba **definido** —Ctrl+Shift+F, con su etiqueta
 	// traducida y editable desde los ajustes de atajos— y nunca se le registró
@@ -530,6 +559,17 @@ function registerShortcutHandlers() {
 	shortcutsStore.registerHandler('navigateBack', () => callActivePaneMethod('navigateBack'));
 	shortcutsStore.registerHandler('switchToLeftPane', () => switchToPane(0));
 	shortcutsStore.registerHandler('switchToRightPane', () => switchToPane(1));
+	shortcutsStore.registerHandler('newFolder', () => {
+		getActivePaneRef()?.openNewItemDialog('directory');
+	});
+	shortcutsStore.registerHandler('closeTab', closeCurrentTab);
+	shortcutsStore.registerHandler('nextTab', () => switchTabGroup(1));
+	shortcutsStore.registerHandler('previousTab', () => switchTabGroup(-1));
+	shortcutsStore.registerHandler('reload', () => runOnActivePane('refresh'));
+	shortcutsStore.registerHandler('goUp', () => runOnActivePane('navigateToParent'));
+	shortcutsStore.registerHandler('goBackHistory', () => runOnActivePane('goBack'));
+	shortcutsStore.registerHandler('goForwardHistory', () => runOnActivePane('goForward'));
+	shortcutsStore.registerHandler('goHome', () => runOnActivePane('navigateToHome'));
 }
 
 onMounted(() => {

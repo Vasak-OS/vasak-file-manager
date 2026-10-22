@@ -115,6 +115,12 @@ defineExpose({
 	deleteItems: fb.deleteItems,
 	startRename: fb.startRename,
 	undoLastOperation: fb.undoLastOperation,
+	goBack: fb.goBack,
+	goForward: fb.goForward,
+	navigateToParent: fb.navigateToParent,
+	navigateToHome: fb.navigateToHome,
+	refresh: fb.refresh,
+	openNewItemDialog: fb.openNewItemDialog,
 });
 </script>
 
