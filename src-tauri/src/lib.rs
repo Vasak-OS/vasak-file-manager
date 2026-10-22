@@ -31,6 +31,8 @@ use tauri::Manager;
 // Sólo se usan para abrir las herramientas de desarrollo, que no existen en
 // un build de release.
 #[cfg(debug_assertions)]
+use commands::webkit::find_webkit_webview;
+#[cfg(debug_assertions)]
 use webkit2gtk::{SettingsExt, WebViewExt};
 
 /// Where the translations are. The plugin only probes paths relative to the
@@ -83,7 +85,7 @@ pub fn run() {
                 #[cfg(debug_assertions)]
                 if let Ok(gtk_window) = window.gtk_window() {
                     let container = gtk_window.clone().upcast::<gtk::Container>();
-                    if let Some(wv) = commands::webkit::find_webkit_webview(&container) {
+                    if let Some(wv) = find_webkit_webview(&container) {
                         if let Some(settings) = WebViewExt::settings(&wv) {
                             settings.set_enable_developer_extras(true);
                         }
