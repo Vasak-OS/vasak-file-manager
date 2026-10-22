@@ -343,6 +343,133 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
+	{
+		id: 'newFolder',
+		labelKey: 'shortcuts.createNewFolder',
+		defaultKeys: {
+			ctrl: true,
+			shift: true,
+			key: 'n',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'closeTab',
+		labelKey: 'shortcuts.closeCurrentTab',
+		defaultKeys: {
+			ctrl: true,
+			key: 'w',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'nextTab',
+		labelKey: 'shortcuts.switchToNextTab',
+		defaultKeys: {
+			ctrl: true,
+			key: 'Tab',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'previousTab',
+		labelKey: 'shortcuts.switchToPreviousTab',
+		defaultKeys: {
+			ctrl: true,
+			shift: true,
+			key: 'Tab',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'reload',
+		labelKey: 'shortcuts.reloadDirectory',
+		defaultKeys: {
+			key: 'F5',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'goUp',
+		labelKey: 'shortcuts.navigateToParentDirectory',
+		defaultKeys: {
+			alt: true,
+			key: 'ArrowUp',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'goBackHistory',
+		labelKey: 'shortcuts.navigateBackInHistory',
+		defaultKeys: {
+			alt: true,
+			key: 'ArrowLeft',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'goForwardHistory',
+		labelKey: 'shortcuts.navigateForwardInHistory',
+		defaultKeys: {
+			alt: true,
+			key: 'ArrowRight',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'goHome',
+		labelKey: 'shortcuts.navigateToHome',
+		defaultKeys: {
+			alt: true,
+			key: 'Home',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
 ];
 
 export function formatShortcutKeys(keys: ShortcutKeys): string {

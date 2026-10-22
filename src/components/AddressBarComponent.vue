@@ -332,7 +332,10 @@ async function openCopiedPath() {
 }
 
 function handleGlobalKeydown(event: KeyboardEvent) {
-	if (event.ctrlKey && event.key === 'p') {
+	if (
+		(event.ctrlKey && (event.key === 'p' || event.key === 'l')) ||
+		(event.altKey && event.key === 'd')
+	) {
 		event.preventDefault();
 		openEditor();
 	}

@@ -594,6 +594,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		getDirEntry,
 		openTabGroup,
 		closeTabGroup,
+		setCurrentTabGroupIndex,
 		closeAllTabGroups,
 		closeOtherTabGroups,
 		setTabs,
