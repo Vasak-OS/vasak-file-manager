@@ -332,9 +332,12 @@ async function openCopiedPath() {
 }
 
 function handleGlobalKeydown(event: KeyboardEvent) {
+	// Con Bloq Mayús `key` llega en mayúscula; `code` cubre otras distribuciones.
+	const key = event.key.toLowerCase();
+
 	if (
-		(event.ctrlKey && (event.key === 'p' || event.key === 'l')) ||
-		(event.altKey && event.key === 'd')
+		(event.ctrlKey && (key === 'p' || key === 'l' || event.code === 'KeyL')) ||
+		(event.altKey && (key === 'd' || event.code === 'KeyD'))
 	) {
 		event.preventDefault();
 		openEditor();
