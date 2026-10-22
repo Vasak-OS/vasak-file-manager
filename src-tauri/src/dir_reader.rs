@@ -2,7 +2,7 @@ use crate::utils::normalize_path;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use sysinfo::Disks;
 
@@ -94,7 +94,55 @@ fn get_extension(path: &Path) -> Option<String> {
         .map(str::to_lowercase)
 }
 
-fn read_entry(path: &Path) -> Option<DirEntry> {
+/// Los puntos de montaje de sistemas de archivos de red, de `/proc/mounts`.
+///
+/// Abrir una carpeta ahí es un viaje de ida y vuelta por la red, así que no se
+/// abre sólo para contar lo que tiene adentro (ver `read_entry`).
+fn network_mount_points(mounts: &str) -> Vec<PathBuf> {
+    mounts
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split_whitespace();
+            let _device = fields.next()?;
+            let mount_point = fields.next()?;
+            let file_system = fields.next()?;
+            is_network_filesystem(file_system)
+                .then(|| PathBuf::from(unescape_mount_field(mount_point)))
+        })
+        .collect()
+}
+
+/// `/proc/mounts` escribe en octal lo que separaría los campos: `\040` es un espacio.
+fn unescape_mount_field(field: &str) -> String {
+    let bytes = field.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let octal = bytes
+            .get(i + 1..i + 4)
+            .filter(|_| bytes[i] == b'\\')
+            .and_then(|digits| std::str::from_utf8(digits).ok())
+            .and_then(|digits| u8::from_str_radix(digits, 8).ok());
+        match octal {
+            Some(byte) => {
+                out.push(byte);
+                i += 4;
+            }
+            None => {
+                out.push(bytes[i]);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Si esa ruta está en un sistema de archivos de red, o es uno.
+fn is_on_network_mount(path: &Path, network_mounts: &[PathBuf]) -> bool {
+    network_mounts.iter().any(|mount| path.starts_with(mount))
+}
+
+fn read_entry(path: &Path, network_mounts: &[PathBuf]) -> Option<DirEntry> {
     // Un solo `stat` por entrada en el caso común.
     //
     // `symlink_metadata` no sigue el enlace y coincide con `metadata` para todo
@@ -145,7 +193,10 @@ fn read_entry(path: &Path) -> Option<DirEntry> {
 
     let size = if is_file { metadata.len() } else { 0 };
 
-    let item_count = if is_dir {
+    // En un sistema de archivos de red no se cuenta: el conteo abre cada
+    // subcarpeta y ahí cada una es un viaje por la red. `None` ya es un valor
+    // que toda la interfaz sabe mostrar («—», sin ordenar por él).
+    let item_count = if is_dir && !is_on_network_mount(path, network_mounts) {
         fs::read_dir(path)
             .ok()
             .map(|entries| entries.count() as u32)
@@ -197,9 +248,20 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
     // se pierda no importa: abajo se ordena igual.
     let rutas: Vec<std::path::PathBuf> = read_result.flatten().map(|entry| entry.path()).collect();
 
+    // Se mira una vez por carpeta, no por entrada. Si la carpeta se alcanzó por
+    // un enlace, la ruta cruda no dice dónde está de verdad: se busca la real.
+    let mut network_mounts = fs::read_to_string("/proc/mounts")
+        .map(|mounts| network_mount_points(&mounts))
+        .unwrap_or_default();
+    if let Ok(real) = fs::canonicalize(directory) {
+        if is_on_network_mount(&real, &network_mounts) {
+            network_mounts.push(directory.to_path_buf());
+        }
+    }
+
     let mut entries: Vec<DirEntry> = rutas
         .par_iter()
-        .filter_map(|ruta| read_entry(ruta))
+        .filter_map(|ruta| read_entry(ruta, &network_mounts))
         .collect();
 
     let dir_count = entries.iter().filter(|entrada| entrada.is_dir).count();
@@ -1062,6 +1124,53 @@ mod tests {
             stdout: Vec::new(),
             stderr: Vec::new(),
         })
+    }
+
+    const MOUNTS: &str = "\
+/dev/sda1 / ext4 rw,relatime 0 0
+server:/export /mnt/nfs nfs4 rw 0 0
+//nas/cosas /mnt/mi\\040nas cifs rw 0 0
+user@host:/ /home/u/ssh fuse.sshfs rw 0 0
+tmpfs /run tmpfs rw 0 0
+";
+
+    #[test]
+    fn solo_los_montajes_de_red_cuentan_como_red() {
+        assert_eq!(
+            network_mount_points(MOUNTS),
+            vec![
+                PathBuf::from("/mnt/nfs"),
+                PathBuf::from("/mnt/mi nas"),
+                PathBuf::from("/home/u/ssh"),
+            ]
+        );
+    }
+
+    #[test]
+    fn una_ruta_dentro_de_un_montaje_de_red_es_de_red() {
+        let mounts = network_mount_points(MOUNTS);
+        assert!(is_on_network_mount(Path::new("/mnt/nfs"), &mounts));
+        assert!(is_on_network_mount(Path::new("/mnt/nfs/a/b"), &mounts));
+        assert!(is_on_network_mount(Path::new("/mnt/mi nas/x"), &mounts));
+        assert!(!is_on_network_mount(Path::new("/mnt/nfs2"), &mounts));
+        assert!(!is_on_network_mount(Path::new("/home/u"), &mounts));
+    }
+
+    #[test]
+    fn un_directorio_local_se_cuenta_y_uno_de_red_no() {
+        let base = std::env::temp_dir().join(format!("vasak-fm-conteo-{}", std::process::id()));
+        let carpeta = base.join("carpeta");
+        fs::create_dir_all(&carpeta).unwrap();
+        fs::write(carpeta.join("a"), b"").unwrap();
+        fs::write(carpeta.join("b"), b"").unwrap();
+
+        let local = read_entry(&carpeta, &[]).unwrap();
+        let en_red = read_entry(&carpeta, &[base.clone()]).unwrap();
+        fs::remove_dir_all(&base).unwrap();
+
+        assert_eq!(local.item_count, Some(2));
+        assert_eq!(en_red.item_count, None);
+        assert!(en_red.is_dir);
     }
 
     #[test]
