@@ -1,4 +1,5 @@
 mod cloud_accounts;
+mod commands;
 mod dir_reader;
 mod dir_size;
 mod dir_watcher;
@@ -29,6 +30,8 @@ use std::path::PathBuf;
 use tauri::Manager;
 // Sólo se usan para abrir las herramientas de desarrollo, que no existen en
 // un build de release.
+#[cfg(debug_assertions)]
+use commands::webkit::find_webkit_webview;
 #[cfg(debug_assertions)]
 use webkit2gtk::{SettingsExt, WebViewExt};
 
@@ -61,21 +64,6 @@ fn default_locale() -> String {
         "en" => "en".to_string(),
         _ => "es".to_string(),
     }
-}
-
-#[cfg(debug_assertions)]
-fn find_webkit_webview(container: &gtk::Container) -> Option<webkit2gtk::WebView> {
-    for child in container.children() {
-        if child.type_().name() == "WebKitWebView" {
-            return child.downcast::<webkit2gtk::WebView>().ok();
-        }
-        if let Some(child_container) = child.downcast_ref::<gtk::Container>() {
-            if let Some(found) = find_webkit_webview(child_container) {
-                return Some(found);
-            }
-        }
-    }
-    None
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -143,6 +131,7 @@ pub fn run() {
             cloud_accounts::list_cloud_drives,
             mount_cloud::mount_cloud_drive,
             video_thumbnail,
+            commands::webkit::tune_webview,
             clipboard::clipboard_read_text,
             clipboard::clipboard_write_text,
             dir_reader::read_dir,

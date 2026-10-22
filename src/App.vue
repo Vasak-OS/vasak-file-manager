@@ -59,6 +59,10 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 onMounted(async () => {
+	// Baja el consumo de memoria del WebKit de esta ventana. No espera: nada de
+	// lo de abajo depende de él, y si falla la ventana anda igual, sólo gasta más.
+	invoke('tune_webview').catch((error) => console.warn('No se pudo afinar el WebKit', error));
+
 	// Los stores de rutas, layout y espacios de trabajo primero: sin ellos el
 	// gestor no puede trabajar. Van en su propio `try` para que un fallo acá
 	// no salte al final y deje el banner de configuración clavado en
