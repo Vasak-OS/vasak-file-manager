@@ -16,7 +16,12 @@ function disableNativeFind() {
 		(event) => {
 			const isCtrlOrCmd = event.ctrlKey || event.metaKey;
 
-			if (isCtrlOrCmd && event.key === 'f') {
+			// Con Mayúsculas o Bloq Mayús `key` llega como 'F': sin pasarlo a
+			// minúscula la búsqueda del navegador se colaba. F3 y Ctrl+G son su
+			// «buscar siguiente».
+			const key = event.key.toLowerCase();
+
+			if ((isCtrlOrCmd && (key === 'f' || key === 'g')) || key === 'f3') {
 				event.preventDefault();
 			}
 		},
