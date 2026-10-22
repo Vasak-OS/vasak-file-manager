@@ -170,6 +170,15 @@ shortcuts:
   switchToRightPane: Switch to right pane
   deleteSelectedItemsFromDrive: Delete selected items from drive
   moveSelectedItemsToTrash: Move selected items to trash
+  createNewFolder: Create new folder
+  closeCurrentTab: Close current tab
+  switchToNextTab: Next tab
+  switchToPreviousTab: Previous tab
+  reloadDirectory: Reload directory
+  navigateToParentDirectory: Go to parent directory
+  navigateBackInHistory: Go back in history
+  navigateForwardInHistory: Go forward in history
+  navigateToHome: Go to home folder
 moreOptions:
   shellExtensions: Shell Extensions
   loading: Loading...

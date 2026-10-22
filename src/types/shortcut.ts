@@ -22,7 +22,16 @@ export type ShortcutId =
 	| 'navigateBack'
 	| 'switchToLeftPane'
 	| 'switchToRightPane'
-	| 'undo';
+	| 'undo'
+	| 'newFolder'
+	| 'closeTab'
+	| 'nextTab'
+	| 'previousTab'
+	| 'reload'
+	| 'goUp'
+	| 'goBackHistory'
+	| 'goForwardHistory'
+	| 'goHome';
 
 export type ShortcutKeys = {
 	ctrl?: boolean;

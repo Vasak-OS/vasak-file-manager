@@ -63,7 +63,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		() => currentWorkspace?.value?.tabGroups?.length,
 		(value) => {
 			if (value === 0) {
-				preloadDefaultTab();
+				void preloadDefaultTab();
 			}
 		}
 	);
@@ -119,7 +119,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		await addNewTabGroup();
 
 		if (currentTabGroup.value) {
-			openTabGroup(currentTabGroup.value);
+			void openTabGroup(currentTabGroup.value);
 		}
 	}
 
@@ -245,7 +245,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 
 	async function openNewTabGroup(path?: string) {
 		const newTabGroup = await addNewTabGroup(path);
-		openTabGroup(newTabGroup);
+		void openTabGroup(newTabGroup);
 	}
 
 	function setTabFilterQuery(tab: Tab, filterQuery: string) {
@@ -315,7 +315,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 
 			setCurrentTabGroupIndex(tabGroupIndex);
 			await loadTabGroupDirEntries(tabGroup);
-			updateInfoPanel(tabGroup);
+			void updateInfoPanel(tabGroup);
 		} catch (error) {
 			// El envoltorio también va traducido: envolver un mensaje traducido en
 			// un texto en inglés deja la mitad de la frase sin traducir, que es peor
@@ -594,6 +594,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 		getDirEntry,
 		openTabGroup,
 		closeTabGroup,
+		setCurrentTabGroupIndex,
 		closeAllTabGroups,
 		closeOtherTabGroups,
 		setTabs,
