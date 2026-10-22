@@ -510,6 +510,12 @@ function closeCurrentTab(): boolean {
 	return true;
 }
 
+function runOnActivePane(
+	method: 'refresh' | 'navigateToParent' | 'goBack' | 'goForward' | 'navigateToHome'
+) {
+	void getActivePaneRef()?.[method]();
+}
+
 function registerShortcutHandlers() {
 	// `toggleGlobalSearch` estaba **definido** —Ctrl+Shift+F, con su etiqueta
 	// traducida y editable desde los ajustes de atajos— y nunca se le registró
@@ -559,21 +565,11 @@ function registerShortcutHandlers() {
 	shortcutsStore.registerHandler('closeTab', closeCurrentTab);
 	shortcutsStore.registerHandler('nextTab', () => switchTabGroup(1));
 	shortcutsStore.registerHandler('previousTab', () => switchTabGroup(-1));
-	shortcutsStore.registerHandler('reload', () => {
-		void getActivePaneRef()?.refresh();
-	});
-	shortcutsStore.registerHandler('goUp', () => {
-		void getActivePaneRef()?.navigateToParent();
-	});
-	shortcutsStore.registerHandler('goBackHistory', () => {
-		void getActivePaneRef()?.goBack();
-	});
-	shortcutsStore.registerHandler('goForwardHistory', () => {
-		void getActivePaneRef()?.goForward();
-	});
-	shortcutsStore.registerHandler('goHome', () => {
-		void getActivePaneRef()?.navigateToHome();
-	});
+	shortcutsStore.registerHandler('reload', () => runOnActivePane('refresh'));
+	shortcutsStore.registerHandler('goUp', () => runOnActivePane('navigateToParent'));
+	shortcutsStore.registerHandler('goBackHistory', () => runOnActivePane('goBack'));
+	shortcutsStore.registerHandler('goForwardHistory', () => runOnActivePane('goForward'));
+	shortcutsStore.registerHandler('goHome', () => runOnActivePane('navigateToHome'));
 }
 
 onMounted(() => {

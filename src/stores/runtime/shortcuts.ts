@@ -17,6 +17,22 @@ export type ShortcutDefinition = {
 	isReadOnly: boolean;
 };
 
+// Los atajos del navegador que se disparan fuera de campos de texto y de diálogos.
+function navigatorShortcut(
+	id: ShortcutId,
+	labelKey: string,
+	defaultKeys: ShortcutKeys
+): ShortcutDefinition {
+	return {
+		id,
+		labelKey,
+		defaultKeys,
+		scope: 'navigator',
+		conditions: { inputFieldIsActive: false, dialogIsOpened: false },
+		isReadOnly: false,
+	};
+}
+
 const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 	{
 		id: 'toggleGlobalSearch',
@@ -343,133 +359,29 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
-	{
-		id: 'newFolder',
-		labelKey: 'shortcuts.createNewFolder',
-		defaultKeys: {
-			ctrl: true,
-			shift: true,
-			key: 'n',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'closeTab',
-		labelKey: 'shortcuts.closeCurrentTab',
-		defaultKeys: {
-			ctrl: true,
-			key: 'w',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'nextTab',
-		labelKey: 'shortcuts.switchToNextTab',
-		defaultKeys: {
-			ctrl: true,
-			key: 'Tab',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'previousTab',
-		labelKey: 'shortcuts.switchToPreviousTab',
-		defaultKeys: {
-			ctrl: true,
-			shift: true,
-			key: 'Tab',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'reload',
-		labelKey: 'shortcuts.reloadDirectory',
-		defaultKeys: {
-			key: 'F5',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'goUp',
-		labelKey: 'shortcuts.navigateToParentDirectory',
-		defaultKeys: {
-			alt: true,
-			key: 'ArrowUp',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'goBackHistory',
-		labelKey: 'shortcuts.navigateBackInHistory',
-		defaultKeys: {
-			alt: true,
-			key: 'ArrowLeft',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'goForwardHistory',
-		labelKey: 'shortcuts.navigateForwardInHistory',
-		defaultKeys: {
-			alt: true,
-			key: 'ArrowRight',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'goHome',
-		labelKey: 'shortcuts.navigateToHome',
-		defaultKeys: {
-			alt: true,
-			key: 'Home',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
+	navigatorShortcut('newFolder', 'shortcuts.createNewFolder', {
+		ctrl: true,
+		shift: true,
+		key: 'n',
+	}),
+	navigatorShortcut('closeTab', 'shortcuts.closeCurrentTab', { ctrl: true, key: 'w' }),
+	navigatorShortcut('nextTab', 'shortcuts.switchToNextTab', { ctrl: true, key: 'Tab' }),
+	navigatorShortcut('previousTab', 'shortcuts.switchToPreviousTab', {
+		ctrl: true,
+		shift: true,
+		key: 'Tab',
+	}),
+	navigatorShortcut('reload', 'shortcuts.reloadDirectory', { key: 'F5' }),
+	navigatorShortcut('goUp', 'shortcuts.navigateToParentDirectory', { alt: true, key: 'ArrowUp' }),
+	navigatorShortcut('goBackHistory', 'shortcuts.navigateBackInHistory', {
+		alt: true,
+		key: 'ArrowLeft',
+	}),
+	navigatorShortcut('goForwardHistory', 'shortcuts.navigateForwardInHistory', {
+		alt: true,
+		key: 'ArrowRight',
+	}),
+	navigatorShortcut('goHome', 'shortcuts.navigateToHome', { alt: true, key: 'Home' }),
 ];
 
 export function formatShortcutKeys(keys: ShortcutKeys): string {
