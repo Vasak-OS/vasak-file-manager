@@ -259,8 +259,19 @@ fn miniatura_de_imagen(origen: &Path, destino: &Path) -> Result<PathBuf, String>
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-    let imagen =
-        image::open(origen).map_err(|error| format!("no se pudo abrir la imagen: {error}"))?;
+    let abrir = |error: image::ImageError| format!("no se pudo abrir la imagen: {error}");
+    let mut decodificador = image::ImageReader::open(origen)
+        .map_err(|error| format!("no se pudo abrir la imagen: {error}"))?
+        .with_guessed_format()
+        .map_err(|error| format!("no se pudo abrir la imagen: {error}"))?
+        .into_decoder()
+        .map_err(abrir)?;
+    // La marca EXIF de una foto de celular dice cómo girarla. Sin una marca
+    // legible se la toma derecha, no se descarta la miniatura.
+    let orientacion = image::ImageDecoder::orientation(&mut decodificador)
+        .unwrap_or(image::metadata::Orientation::NoTransforms);
+    let mut imagen = image::DynamicImage::from_decoder(decodificador).map_err(abrir)?;
+    imagen.apply_orientation(orientacion);
     // `thumbnail` también agranda: un icono de 64 px saldría de 320.
     let chica = if imagen.width() <= LADO && imagen.height() <= LADO {
         imagen
@@ -428,6 +439,43 @@ mod tests {
         assert!(!destino.exists());
         let sobrantes = std::fs::read_dir(&dir).unwrap().count();
         assert_eq!(sobrantes, 1, "sólo el original: ni destino ni parciales");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn la_miniatura_respeta_la_orientacion_exif() {
+        use image::ImageEncoder;
+
+        // Una foto de celular se guarda acostada con una marca que dice «girala
+        // 90°». El WebView la aplica al dibujar la imagen entera; si la
+        // miniatura no lo hace, la tarjeta mostraría de costado lo que antes se
+        // veía derecho.
+        let exif_girada_90 = [
+            b'I', b'I', 42, 0, 8, 0, 0, 0, // cabecera TIFF, little-endian
+            1, 0, // una entrada
+            0x12, 0x01, 3, 0, 1, 0, 0, 0, 6, 0, 0, 0, // Orientation = 6
+            0, 0, 0, 0, // sin más directorios
+        ];
+        let dir = std::env::temp_dir().join("vasak-thumb-img-exif");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let origen = dir.join("celular.jpg");
+        let pixeles = image::RgbImage::from_pixel(2000, 1000, image::Rgb([200, 30, 30]));
+        let mut archivo = std::fs::File::create(&origen).unwrap();
+        let mut codificador = image::codecs::jpeg::JpegEncoder::new(&mut archivo);
+        codificador
+            .set_exif_metadata(exif_girada_90.to_vec())
+            .unwrap();
+        codificador
+            .write_image(pixeles.as_raw(), 2000, 1000, image::ExtendedColorType::Rgb8)
+            .unwrap();
+        drop(archivo);
+        let destino = dir.join("salida.png");
+
+        miniatura_de_imagen(&origen, &destino).unwrap();
+
+        let chica = image::open(&destino).unwrap();
+        assert_eq!((chica.width(), chica.height()), (LADO / 2, LADO));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
