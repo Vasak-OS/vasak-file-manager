@@ -18,11 +18,11 @@ export function isImageFile(entry: DirEntry): boolean {
 const MIN_THUMBNAIL_BYTES = 256 * 1024;
 
 /** Las que el backend sabe achicar (`video_thumbnail.rs`); SVG se dibuja a la medida. */
-const THUMBNAIL_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+const THUMBNAIL_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']);
 
 export function needsThumbnail(entry: DirEntry): boolean {
 	if (!isImageFile(entry) || entry.size < MIN_THUMBNAIL_BYTES) return false;
-	return THUMBNAIL_EXTENSIONS.includes(entry.ext?.toLowerCase() ?? '');
+	return THUMBNAIL_EXTENSIONS.has(entry.ext?.toLowerCase() ?? '');
 }
 
 export function isVideoFile(entry: DirEntry): boolean {

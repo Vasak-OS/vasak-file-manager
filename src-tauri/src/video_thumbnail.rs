@@ -231,11 +231,13 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
 /// que se le pide, así que no pesa; el resto no se compilan para no sumar
 /// decodificadores a un binario por casos raros. La vista no los pide.
 fn es_imagen(ruta: &Path) -> bool {
-    ruta.extension().and_then(|e| e.to_str()).is_some_and(|e| {
-        ["jpg", "jpeg", "png", "gif", "bmp", "webp"]
-            .iter()
-            .any(|conocida| e.eq_ignore_ascii_case(conocida))
-    })
+    ruta.extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|e| {
+            ["jpg", "jpeg", "png", "gif", "bmp", "webp"]
+                .iter()
+                .any(|conocida| e.eq_ignore_ascii_case(conocida))
+        })
 }
 
 /// Miniatura de una imagen, hecha acá y no por ffmpeg.
@@ -253,7 +255,9 @@ fn miniatura_de_imagen(origen: &Path, destino: &Path) -> Result<PathBuf, String>
     // shortcut: una a la vez aunque sobren núcleos; si la primera visita a una
     // carpeta enorme se siente lenta, escalar mientras se decodifica.
     static UNA_A_LA_VEZ: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _turno = UNA_A_LA_VEZ.lock().unwrap_or_else(|e| e.into_inner());
+    let _turno = UNA_A_LA_VEZ
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     let imagen =
         image::open(origen).map_err(|error| format!("no se pudo abrir la imagen: {error}"))?;
