@@ -1,6 +1,6 @@
 [package]
 name = "vasak-file-manager"
-version = "0.29.2"
+version = "0.29.3"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -46,7 +46,8 @@ sysinfo = { version = "0.39", features = ["linux-netdevs"] }
 trash = "5.2.5"
 png = "0.18"
 file_icon_provider = "1.0.0"
-image = { version = "0.25", default-features = false, features = ["png"] }
+# jpeg, webp, gif y bmp: los que decodifica `video_thumbnail` para las miniaturas de imagen.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp"] }
 lru = "0.18"
 once_cell = "1.19"
 # Se queda en 0.22 a propósito: el índice de la búsqueda global vive en disco,

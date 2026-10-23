@@ -23,7 +23,7 @@ import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import type { GroupedEntries } from '@/types/file-browser';
 import { formatBytes } from '@/utils/byte-parser';
-import { isImageFile, isVideoFile } from '@/utils/files';
+import { isImageFile, isVideoFile, needsThumbnail } from '@/utils/files';
 import { getImageSrc } from '@/utils/images';
 
 interface Props {
@@ -371,7 +371,13 @@ watchEffect(() => {
             <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div class="relative z-1 flex w-full h-full items-center justify-center">
-            <img :src="getImageSrc(entry)" :alt="entry.name" class="w-full h-full object-cover pointer-events-none" loading="lazy">
+            <img v-if="!needsThumbnail(entry)" :src="getImageSrc(entry)" :alt="entry.name" class="w-full h-full object-cover pointer-events-none" loading="lazy">
+            <!-- Las grandes van por miniatura: el WebView decodifica la imagen entera
+                 aunque se dibuje a 120 px. Mientras llega, el icono. -->
+            <VideoThumbnailComponent v-else :entry="entry" v-slot="{ thumbnail }">
+              <img v-if="thumbnail" :src="thumbnail" :alt="entry.name" class="w-full h-full object-cover pointer-events-none">
+              <ThemeIcon v-else name="image-x-generic" :size="48" class="text-tx-muted" />
+            </VideoThumbnailComponent>
           </div>
           <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-linear-to-t from-ui-overlay to-transparent text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
             <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>

@@ -7,6 +7,24 @@ export function isImageFile(entry: DirEntry): boolean {
 	return extension ? FILE_EXTENSIONS.IMAGE.includes(extension) : false;
 }
 
+/**
+ * Desde qué tamaño en disco una imagen de la grilla pasa por miniatura.
+ *
+ * WebKit decodifica a tamaño real aunque la tarjeta mida 120 px, y el tamaño
+ * decodificado no se parece al del archivo (un fondo de 2,3 MB son más de cien
+ * megas de píxeles). Abajo de esto el archivo es un icono o una foto chica y
+ * cargarlo directo es más barato que pedir una miniatura.
+ */
+const MIN_THUMBNAIL_BYTES = 256 * 1024;
+
+/** Las que el backend sabe achicar (`video_thumbnail.rs`); SVG se dibuja a la medida. */
+const THUMBNAIL_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+
+export function needsThumbnail(entry: DirEntry): boolean {
+	if (!isImageFile(entry) || entry.size < MIN_THUMBNAIL_BYTES) return false;
+	return THUMBNAIL_EXTENSIONS.includes(entry.ext?.toLowerCase() ?? '');
+}
+
 export function isVideoFile(entry: DirEntry): boolean {
 	if (entry.is_dir) return false;
 	const extension = entry.ext?.toLowerCase();
