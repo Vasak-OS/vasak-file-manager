@@ -11,7 +11,7 @@ import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
-import { guardarTema } from '@/tools/tema-cache';
+import { saveTheme } from '@/tools/theme-cache';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
 
@@ -102,7 +102,7 @@ onMounted(async () => {
 		lectura.catch(() => {});
 		// Se guarda el tema apenas el gestor lo aplica, también si eso pasa
 		// después del plazo: el próximo arranque lo reaplica desde `index.html`.
-		lectura.then(() => guardarTema()).catch(() => {});
+		lectura.then(() => saveTheme()).catch(() => {});
 		await Promise.race([lectura, new Promise((resolve) => setTimeout(resolve, PLAZO_CONFIG_MS))]);
 		configLoading.value = false;
 	} catch (configError_: any) {
@@ -116,7 +116,7 @@ onMounted(async () => {
 	try {
 		unListenConfig.value = await listen('config-changed', async () => {
 			document.startViewTransition(() => {
-				configStore.loadConfig().then(() => guardarTema());
+				configStore.loadConfig().then(() => saveTheme());
 			});
 		});
 	} catch (listenError: any) {
