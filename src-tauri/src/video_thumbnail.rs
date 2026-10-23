@@ -1,4 +1,5 @@
-//! Miniaturas de video, hechas por ffmpeg y guardadas en disco.
+//! Miniaturas de video, hechas por ffmpeg y guardadas en disco. Y las de imagen,
+//! hechas en Rust: ver [`miniatura_de_imagen`].
 //!
 //! Antes las generaba el frontend: creaba un `<video>`, lo buscaba al 10 % y
 //! dibujaba el cuadro en un `<canvas>` **del tamaño del video**
@@ -145,9 +146,20 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
 
     let cache = directorio_cache().ok_or("No se pudo crear la caché de miniaturas")?;
     let destino = cache.join(clave(video).ok_or("No se pudo leer el video")?);
+    // Las de imagen son PNG: conservan la transparencia de un logo o un icono, que
+    // en JPEG saldría sobre negro.
+    let destino = if es_imagen(video) {
+        destino.with_extension("png")
+    } else {
+        destino
+    };
 
     if destino.is_file() {
         return Ok(destino);
+    }
+
+    if es_imagen(video) {
+        return miniatura_de_imagen(video, &destino);
     }
 
     // `-ss` antes de `-i` busca por índice sin decodificar lo anterior, que es
@@ -211,6 +223,79 @@ pub fn miniatura(video: &Path) -> Result<PathBuf, String> {
     })?;
 
     Ok(destino)
+}
+
+/// Las extensiones que decodifica `image` con los formatos que se compilan.
+///
+/// SVG, ICO, TIFF y AVIF quedan afuera: el primero WebKit lo dibuja a la medida
+/// que se le pide, así que no pesa; el resto no se compilan para no sumar
+/// decodificadores a un binario por casos raros. La vista no los pide.
+fn es_imagen(ruta: &Path) -> bool {
+    ruta.extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|e| {
+            ["jpg", "jpeg", "png", "gif", "bmp", "webp"]
+                .iter()
+                .any(|conocida| e.eq_ignore_ascii_case(conocida))
+        })
+}
+
+/// Miniatura de una imagen, hecha acá y no por ffmpeg.
+///
+/// Es opcional que ffmpeg esté instalado (`optdepends`), y la miniatura de una
+/// imagen no puede depender de él: sin miniatura la grilla cargaría la imagen
+/// entera en el WebView, que es lo que esto viene a evitar. WebKit decodifica a
+/// tamaño real aunque el `<img>` se dibuje a 120 px: seis fondos de pantalla
+/// (14 MB en disco) eran ~480 MiB en el proceso web.
+///
+/// Se decodifica de a una por vez. Un fondo de 8K ocupa más de cien megas
+/// descomprimido, y con las seis generaciones simultáneas de la vista el pico
+/// pasaba de los seiscientos.
+fn miniatura_de_imagen(origen: &Path, destino: &Path) -> Result<PathBuf, String> {
+    // shortcut: una a la vez aunque sobren núcleos; si la primera visita a una
+    // carpeta enorme se siente lenta, escalar mientras se decodifica.
+    static UNA_A_LA_VEZ: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _turno = UNA_A_LA_VEZ
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+    let abrir = |error: image::ImageError| format!("no se pudo abrir la imagen: {error}");
+    let mut decodificador = image::ImageReader::open(origen)
+        .map_err(|error| format!("no se pudo abrir la imagen: {error}"))?
+        .with_guessed_format()
+        .map_err(|error| format!("no se pudo abrir la imagen: {error}"))?
+        .into_decoder()
+        .map_err(abrir)?;
+    // La marca EXIF de una foto de celular dice cómo girarla. Sin una marca
+    // legible se la toma derecha, no se descarta la miniatura.
+    let orientacion = image::ImageDecoder::orientation(&mut decodificador)
+        .unwrap_or(image::metadata::Orientation::NoTransforms);
+    let mut imagen = image::DynamicImage::from_decoder(decodificador).map_err(abrir)?;
+    imagen.apply_orientation(orientacion);
+    // `thumbnail` también agranda: un icono de 64 px saldría de 320.
+    let chica = if imagen.width() <= LADO && imagen.height() <= LADO {
+        imagen
+    } else {
+        imagen.thumbnail(LADO, LADO)
+    };
+
+    // Temporal y `rename`, por lo mismo que en el video: dos generaciones de la
+    // misma imagen no pueden dejar un archivo a medias como caché válida.
+    static NONCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let parcial = destino.with_extension(format!("parcial-{}-{nonce}.png", std::process::id()));
+
+    chica
+        .save_with_format(&parcial, image::ImageFormat::Png)
+        .map_err(|error| {
+            let _ = std::fs::remove_file(&parcial);
+            format!("no se pudo guardar la miniatura: {error}")
+        })?;
+    std::fs::rename(&parcial, destino).map_err(|error| {
+        let _ = std::fs::remove_file(&parcial);
+        format!("no se pudo guardar la miniatura: {error}")
+    })?;
+    Ok(destino.to_path_buf())
 }
 
 /// Duración en segundos, según ffprobe.
@@ -278,6 +363,132 @@ mod tests {
     fn un_archivo_que_no_existe_no_genera_nada() {
         let error = miniatura(Path::new("/no/existe/video.mp4")).unwrap_err();
         assert!(error.contains("no existe"), "{error}");
+    }
+
+    /// Una imagen RGBA de `ancho` x `alto` con la mitad izquierda transparente,
+    /// guardada como PNG en un directorio propio de la prueba. Una mitad entera y
+    /// no un píxel: al reducir, un píxel suelto se promedia con sus vecinos.
+    fn imagen_de_prueba(nombre: &str, ancho: u32, alto: u32) -> (PathBuf, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("vasak-thumb-img-{nombre}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut pixeles =
+            image::RgbaImage::from_pixel(ancho, alto, image::Rgba([200, 30, 30, 255]));
+        for x in 0..ancho / 2 {
+            for y in 0..alto {
+                pixeles.put_pixel(x, y, image::Rgba([0, 0, 0, 0]));
+            }
+        }
+        let origen = dir.join("grande.png");
+        pixeles.save(&origen).unwrap();
+        (dir, origen)
+    }
+
+    #[test]
+    fn la_miniatura_de_una_imagen_grande_sale_chica_y_conserva_la_proporcion() {
+        // El objetivo de todo esto: que la vista no cargue 2000x1000 píxeles
+        // para dibujar una tarjeta de 120.
+        let (dir, origen) = imagen_de_prueba("tamano", 2000, 1000);
+        let destino = dir.join("salida.png");
+
+        let ruta = miniatura_de_imagen(&origen, &destino).unwrap();
+
+        let chica = image::open(&ruta).unwrap();
+        assert_eq!((chica.width(), chica.height()), (LADO, LADO / 2));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn la_miniatura_de_una_imagen_conserva_la_transparencia() {
+        // Por eso es PNG y no JPEG: un logo con fondo transparente saldría negro.
+        let (dir, origen) = imagen_de_prueba("alfa", 640, 640);
+        let destino = dir.join("salida.png");
+
+        miniatura_de_imagen(&origen, &destino).unwrap();
+
+        let chica = image::open(&destino).unwrap().to_rgba8();
+        assert_eq!(chica.get_pixel(2, LADO / 2).0[3], 0);
+        assert_eq!(chica.get_pixel(LADO - 3, LADO / 2).0[3], 255);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn una_imagen_ya_chica_no_se_agranda() {
+        let (dir, origen) = imagen_de_prueba("chica", 100, 80);
+        let destino = dir.join("salida.png");
+
+        miniatura_de_imagen(&origen, &destino).unwrap();
+
+        let chica = image::open(&destino).unwrap();
+        assert_eq!((chica.width(), chica.height()), (100, 80));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn una_imagen_rota_da_error_y_no_deja_nada_en_la_cache() {
+        // Un archivo a medias como caché válida se vería roto para siempre: la
+        // clave sólo cambia si cambia el tamaño o la fecha del original.
+        let dir = std::env::temp_dir().join("vasak-thumb-img-rota");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let origen = dir.join("rota.png");
+        std::fs::write(&origen, b"no soy un png").unwrap();
+        let destino = dir.join("salida.png");
+
+        assert!(miniatura_de_imagen(&origen, &destino).is_err());
+        assert!(!destino.exists());
+        let sobrantes = std::fs::read_dir(&dir).unwrap().count();
+        assert_eq!(sobrantes, 1, "sólo el original: ni destino ni parciales");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn la_miniatura_respeta_la_orientacion_exif() {
+        use image::ImageEncoder;
+
+        // Una foto de celular se guarda acostada con una marca que dice «girala
+        // 90°». El WebView la aplica al dibujar la imagen entera; si la
+        // miniatura no lo hace, la tarjeta mostraría de costado lo que antes se
+        // veía derecho.
+        let exif_girada_90 = [
+            b'I', b'I', 42, 0, 8, 0, 0, 0, // cabecera TIFF, little-endian
+            1, 0, // una entrada
+            0x12, 0x01, 3, 0, 1, 0, 0, 0, 6, 0, 0, 0, // Orientation = 6
+            0, 0, 0, 0, // sin más directorios
+        ];
+        let dir = std::env::temp_dir().join("vasak-thumb-img-exif");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let origen = dir.join("celular.jpg");
+        let pixeles = image::RgbImage::from_pixel(2000, 1000, image::Rgb([200, 30, 30]));
+        let mut archivo = std::fs::File::create(&origen).unwrap();
+        let mut codificador = image::codecs::jpeg::JpegEncoder::new(&mut archivo);
+        codificador
+            .set_exif_metadata(exif_girada_90.to_vec())
+            .unwrap();
+        codificador
+            .write_image(pixeles.as_raw(), 2000, 1000, image::ExtendedColorType::Rgb8)
+            .unwrap();
+        drop(archivo);
+        let destino = dir.join("salida.png");
+
+        miniatura_de_imagen(&origen, &destino).unwrap();
+
+        let chica = image::open(&destino).unwrap();
+        assert_eq!((chica.width(), chica.height()), (LADO / 2, LADO));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn solo_se_toman_por_imagen_las_extensiones_que_se_decodifican() {
+        for si in ["a.jpg", "a.JPEG", "a.png", "a.gif", "a.bmp", "a.webp"] {
+            assert!(es_imagen(Path::new(si)), "{si}");
+        }
+        // SVG lo dibuja WebKit a la medida; un video o un archivo sin extensión
+        // siguen el camino de ffmpeg.
+        for no in ["a.svg", "a.mp4", "a.avif", "a"] {
+            assert!(!es_imagen(Path::new(no)), "{no}");
+        }
     }
 
     #[test]
