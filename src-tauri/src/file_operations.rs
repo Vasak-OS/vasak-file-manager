@@ -218,16 +218,27 @@ fn copy_pending_elevated(
 }
 
 fn get_unique_destination_path(destination: &Path, name: &str) -> std::path::PathBuf {
+    unique_destination_avoiding(destination, name, &[])
+}
+
+/// Una ruta libre en `destination`, que además no es la de nada que esta operación
+/// ya reservó para la elevación (todavía no está en el disco).
+fn unique_destination_avoiding(
+    destination: &Path,
+    name: &str,
+    reserved: &[PendingCopy],
+) -> std::path::PathBuf {
+    let taken = |path: &Path| path.exists() || reserved.iter().any(|item| item.dest_path == path);
     let mut dest_path = destination.join(name);
     let mut counter = 1;
 
-    while dest_path.exists() {
+    while taken(&dest_path) {
         let path = Path::new(name);
         let stem = path
             .file_stem()
-            .and_then(|stem| stem.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or(name);
-        let extension = path.extension().and_then(|ext| ext.to_str());
+        let extension = path.extension().and_then(std::ffi::OsStr::to_str);
 
         let new_name = if let Some(ext) = extension {
             format!("{} ({}).{}", stem, counter, ext)
@@ -240,6 +251,70 @@ fn get_unique_destination_path(destination: &Path, name: &str) -> std::path::Pat
     }
 
     dest_path
+}
+
+/// Qué hacer con el destino de una cosa a copiar.
+enum Destination {
+    /// Resolución «omitir» ante un conflicto: no se copia.
+    Skip,
+    /// Se copia a `path`. `remove_first`: hay algo en el disco que borrar antes
+    /// («reemplazar»). `dropped`: cuántas cosas ya reservadas para esa ruta se
+    /// descartaron porque ésta las reemplaza.
+    Copy {
+        path: PathBuf,
+        remove_first: bool,
+        dropped: u32,
+    },
+}
+
+/// Resuelve el destino de una cosa según la resolución elegida.
+///
+/// Un conflicto es una ruta que existe en el disco **o** que ya reservó otra cosa de
+/// esta misma operación a la espera de la elevación: dos orígenes con el mismo nombre
+/// (resultados de una búsqueda, por ejemplo) hacia un destino que pide privilegios
+/// quedaban con la misma ruta, y el segundo pisaba al primero sin avisar.
+fn plan_destination(
+    destination: &Path,
+    file_name: &str,
+    is_same_directory: bool,
+    resolution: &ConflictResolution,
+    pending: &mut Vec<PendingCopy>,
+) -> Destination {
+    let free = |path: PathBuf, remove_first, dropped| Destination::Copy {
+        path,
+        remove_first,
+        dropped,
+    };
+    if is_same_directory {
+        return free(
+            unique_destination_avoiding(destination, file_name, pending),
+            false,
+            0,
+        );
+    }
+
+    let initial = destination.join(file_name);
+    let on_disk = initial.exists();
+    let reserved = pending.iter().any(|item| item.dest_path == initial);
+    if !on_disk && !reserved {
+        return free(initial, false, 0);
+    }
+
+    match resolution {
+        ConflictResolution::Skip => Destination::Skip,
+        ConflictResolution::AutoRename => free(
+            unique_destination_avoiding(destination, file_name, pending),
+            false,
+            0,
+        ),
+        ConflictResolution::Replace => {
+            // Lo reservado nunca llegó al disco: reemplazarlo es no copiarlo.
+            let before = pending.len();
+            pending.retain(|item| item.dest_path != initial);
+            let dropped = (before - pending.len()) as u32;
+            free(initial, on_disk, dropped)
+        }
+    }
 }
 
 #[tauri::command]
@@ -388,7 +463,6 @@ pub fn copy_items(
         }
         emit_progress(&app, &operation_id, "copy", index, total, source_path_str);
 
-        let mut replaced_existing = false;
         let source = Path::new(source_path_str);
 
         if !source.exists() {
@@ -414,37 +488,38 @@ pub fn copy_items(
             }
         };
 
-        let dest_path = if is_same_directory {
-            get_unique_destination_path(destination, &file_name)
-        } else {
-            let initial_dest = destination.join(&file_name);
-            if initial_dest.exists() {
-                match resolution {
-                    ConflictResolution::Skip => {
-                        skipped_count += 1;
+        let (dest_path, replaced_existing) = match plan_destination(
+            destination,
+            &file_name,
+            is_same_directory,
+            &resolution,
+            &mut pending,
+        ) {
+            Destination::Skip => {
+                skipped_count += 1;
+                continue;
+            }
+            Destination::Copy {
+                path,
+                remove_first,
+                dropped,
+            } => {
+                // Lo reservado que éste reemplaza no se copia: cuenta como omitido.
+                skipped_count += dropped;
+                if remove_first {
+                    if let Err(error) = remove_dir_or_file(&path) {
+                        failed_count += 1;
+                        // Si no autorizó, no se sigue: lo que viene volvería a pedir.
+                        let refused = polkit::is_auth_refused(&error);
+                        last_error = Some(error);
+                        if refused {
+                            elevation.refuse();
+                            break;
+                        }
                         continue;
                     }
-                    ConflictResolution::Replace => {
-                        if let Err(error) = remove_dir_or_file(&initial_dest) {
-                            failed_count += 1;
-                            // Si no autorizó, no se sigue: lo que viene volvería a pedir.
-                            let refused = polkit::is_auth_refused(&error);
-                            last_error = Some(error);
-                            if refused {
-                                elevation.refuse();
-                                break;
-                            }
-                            continue;
-                        }
-                        replaced_existing = true;
-                        initial_dest
-                    }
-                    ConflictResolution::AutoRename => {
-                        get_unique_destination_path(destination, &file_name)
-                    }
                 }
-            } else {
-                initial_dest
+                (path, remove_first)
             }
         };
 
@@ -1307,6 +1382,186 @@ mod tests {
         assert!(root.join("origen (1)/a0.txt").is_file());
         assert!(root.join("origen (1)/sub/b1.txt").is_file());
         assert!(!root.join("origen (1)/origen").exists());
+        cleanup(&dir);
+    }
+
+    fn reserved(destination: &Path, name: &str) -> PendingCopy {
+        PendingCopy {
+            source: PathBuf::from("/origen-otro").join(name),
+            dest_path: destination.join(name),
+            replaced_existing: false,
+        }
+    }
+
+    fn copy_path(planned: Destination) -> PathBuf {
+        match planned {
+            Destination::Copy { path, .. } => path,
+            Destination::Skip => panic!("se esperaba una copia"),
+        }
+    }
+
+    #[test]
+    fn dos_origenes_con_el_mismo_nombre_no_quedan_con_la_misma_ruta() {
+        // Con el destino pidiendo privilegios la primera queda reservada y no está
+        // en el disco: sin contarla, la segunda tomaba la misma ruta y `cp` la
+        // pisaba sin avisar.
+        let dir = scratch("conflicto-reservado");
+        let mut pending = vec![reserved(&dir, "foto.png")];
+        // Lo que pasaba: mirando sólo el disco, la segunda tomaba la misma ruta.
+        assert_eq!(
+            get_unique_destination_path(&dir, "foto.png"),
+            pending[0].dest_path
+        );
+
+        let second = copy_path(plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::AutoRename,
+            &mut pending,
+        ));
+
+        assert_eq!(second, dir.join("foto (1).png"));
+        pending.push(PendingCopy {
+            source: PathBuf::from("/otro/foto.png"),
+            dest_path: second,
+            replaced_existing: false,
+        });
+        let third = copy_path(plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::AutoRename,
+            &mut pending,
+        ));
+        assert_eq!(third, dir.join("foto (2).png"));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn omitir_tambien_omite_lo_que_ya_estaba_reservado() {
+        let dir = scratch("omitir-reservado");
+        let mut pending = vec![reserved(&dir, "foto.png")];
+
+        let planned = plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::Skip,
+            &mut pending,
+        );
+
+        assert!(matches!(planned, Destination::Skip));
+        assert_eq!(pending.len(), 1, "lo ya reservado se conserva");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn reemplazar_lo_reservado_descarta_el_anterior_y_no_borra_nada_del_disco() {
+        let dir = scratch("reemplazar-reservado");
+        let mut pending = vec![reserved(&dir, "foto.png"), reserved(&dir, "otra.png")];
+
+        let planned = plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::Replace,
+            &mut pending,
+        );
+
+        match planned {
+            Destination::Copy {
+                path,
+                remove_first,
+                dropped,
+            } => {
+                assert_eq!(path, dir.join("foto.png"));
+                // No hay nada en el disco que borrar: mandar a `rm` una ruta que
+                // sólo existe en la cola pedía la contraseña para nada.
+                assert!(!remove_first);
+                assert_eq!(dropped, 1);
+            }
+            Destination::Skip => panic!("se esperaba una copia"),
+        }
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].dest_path, dir.join("otra.png"));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_conflicto_en_el_disco_se_resuelve_como_siempre() {
+        let dir = scratch("conflicto-en-disco");
+        std::fs::write(dir.join("a.txt"), b"x").unwrap();
+        let mut pending = Vec::new();
+
+        let replace = plan_destination(
+            &dir,
+            "a.txt",
+            false,
+            &ConflictResolution::Replace,
+            &mut pending,
+        );
+        assert!(matches!(
+            replace,
+            Destination::Copy {
+                remove_first: true,
+                dropped: 0,
+                ..
+            }
+        ));
+
+        let renamed = copy_path(plan_destination(
+            &dir,
+            "a.txt",
+            false,
+            &ConflictResolution::AutoRename,
+            &mut pending,
+        ));
+        assert_eq!(renamed, dir.join("a (1).txt"));
+
+        let skipped = plan_destination(
+            &dir,
+            "a.txt",
+            false,
+            &ConflictResolution::Skip,
+            &mut pending,
+        );
+        assert!(matches!(skipped, Destination::Skip));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn sin_conflicto_va_al_nombre_de_siempre_y_en_la_misma_carpeta_se_renombra() {
+        let dir = scratch("sin-conflicto");
+        let mut pending = Vec::new();
+
+        let free = plan_destination(
+            &dir,
+            "nuevo.txt",
+            false,
+            &ConflictResolution::Skip,
+            &mut pending,
+        );
+        assert!(matches!(
+            free,
+            Destination::Copy {
+                remove_first: false,
+                dropped: 0,
+                ..
+            }
+        ));
+        assert_eq!(copy_path(free), dir.join("nuevo.txt"));
+
+        // Copiar una cosa sobre su propia carpeta nunca pisa: siempre se renombra.
+        std::fs::write(dir.join("nuevo.txt"), b"x").unwrap();
+        let same_dir = copy_path(plan_destination(
+            &dir,
+            "nuevo.txt",
+            true,
+            &ConflictResolution::Replace,
+            &mut pending,
+        ));
+        assert_eq!(same_dir, dir.join("nuevo (1).txt"));
         cleanup(&dir);
     }
 }

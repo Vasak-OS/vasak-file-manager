@@ -127,10 +127,13 @@ pub fn copy_dir_contents_with_pkexec(src: &Path, dest: &Path) -> Result<(), Stri
 /// Varias cosas **adentro** de `dest_dir`, con su mismo nombre, en una sola
 /// elevación: una contraseña por operación y no una por archivo.
 pub fn copy_into_with_pkexec(sources: &[&Path], dest_dir: &Path) -> Result<(), String> {
-    let dest_dir = dest_dir.to_string_lossy();
-    let sources: Vec<_> = sources.iter().map(|s| s.to_string_lossy()).collect();
-    let mut args = vec!["cp", "-r", "-t", dest_dir.as_ref(), "--"];
-    args.extend(sources.iter().map(|s| s.as_ref()));
+    let dest_dir = dest_dir.to_string_lossy().into_owned();
+    let sources: Vec<String> = sources
+        .iter()
+        .map(|s| s.to_string_lossy().into_owned())
+        .collect();
+    let mut args = vec!["cp", "-r", "-t", dest_dir.as_str(), "--"];
+    args.extend(sources.iter().map(String::as_str));
     run_with_pkexec(&args)
 }
 
