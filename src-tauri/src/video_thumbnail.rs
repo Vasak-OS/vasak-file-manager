@@ -108,36 +108,47 @@ fn nombre_de_miniatura(uri: &str) -> String {
 }
 
 /// Fecha de modificación del archivo en segundos desde época.
-fn mtime_segundos(ruta: &Path) -> Option<u64> {
-    std::fs::metadata(ruta)
-        .ok()?
-        .modified()
-        .ok()?
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()
-        .map(|d| d.as_secs())
+///
+/// Con signo: un archivo anterior a 1970 tiene un mtime negativo. Con `u64` y
+/// `duration_since(UNIX_EPOCH).ok()` ese caso daba `None`, y `miniatura` se
+/// rajaba con «No se pudo leer el archivo» sin generar nada.
+fn mtime_segundos(ruta: &Path) -> Option<i64> {
+    let modificado = std::fs::metadata(ruta).ok()?.modified().ok()?;
+    Some(match modificado.duration_since(std::time::UNIX_EPOCH) {
+        Ok(desde) => desde.as_secs() as i64,
+        Err(antes) => -(antes.duration().as_secs() as i64),
+    })
 }
 
-/// Dónde iría un bucket de la caché, sin crear nada y sin leer el entorno.
+/// La base de la caché, sólo si es absoluta.
 ///
-/// Aparte para poder probar la decisión sin tocar el disco. La base pasa por
-/// `dirs` en vez de leerse acá: antes se aceptaba cualquier valor de
-/// `XDG_CACHE_HOME`, incluida la cadena vacía y cualquier ruta relativa, que el
-/// estándar manda ignorar — y como después se hace `create_dir_all`, con una
-/// base relativa las miniaturas se escribían bajo el directorio de trabajo del
-/// proceso sin que nada fallara. `dirs` implementa la regla, y el filtro de
-/// absoluta cierra el caso de la cadena vacía.
-fn bucket_bajo(base: Option<PathBuf>, nombre: &str) -> Option<PathBuf> {
-    let base = base.filter(|base| base.is_absolute())?;
-    Some(base.join("thumbnails").join(nombre))
+/// La base pasa por `dirs` en vez de leerse acá: antes se aceptaba cualquier
+/// valor de `XDG_CACHE_HOME`, incluida la cadena vacía y cualquier ruta
+/// relativa, que el estándar manda ignorar — y como después se hace
+/// `create_dir_all`, con una base relativa las miniaturas se escribían bajo el
+/// directorio de trabajo del proceso sin que nada fallara. `dirs` implementa la
+/// regla, y el filtro de absoluta cierra el caso de la cadena vacía.
+fn base_valida(base: Option<PathBuf>) -> Option<PathBuf> {
+    base.filter(|base| base.is_absolute())
+}
+
+/// Dónde iría un bucket bajo `base`, sin crear nada.
+///
+/// `base` es el directorio de caché (`~/.cache`); la toma por parámetro para que
+/// las pruebas ejerciten el flujo con un directorio temporal, en vez de leer el
+/// entorno global.
+fn bucket_en(base: &Path, nombre: &str) -> PathBuf {
+    base.join("thumbnails").join(nombre)
 }
 
 /// Bucket de la caché freedesktop, creado con los permisos que pide el estándar.
 ///
 /// `700` en `thumbnails/` y en el bucket: son miniaturas de archivos del
-/// usuario, no se comparten con otras cuentas.
-fn bucket_cache(nombre: &str) -> Option<PathBuf> {
-    let dir = bucket_bajo(dirs::cache_dir(), nombre)?;
+/// usuario, no se comparten con otras cuentas. El `chmod` es best-effort: en un
+/// filesystem sin permisos Unix (una caché en FAT, por ejemplo) falla, y fallar
+/// cerrado dejaría al usuario sin ninguna miniatura.
+fn asegurar_bucket(base: &Path, nombre: &str) -> Option<PathBuf> {
+    let dir = bucket_en(base, nombre);
     std::fs::create_dir_all(&dir).ok()?;
     if let Some(padre) = dir.parent() {
         let _ = fijar_modo(padre, 0o700);
@@ -156,9 +167,9 @@ fn fijar_modo(ruta: &Path, modo: u32) -> std::io::Result<()> {
 /// Se recorren los buckets de mayor a menor utilidad para la grilla. Una
 /// miniatura ajena sólo vale si su `Thumb::MTime` coincide con el archivo: si no,
 /// es de una versión vieja y hay que regenerarla.
-fn miniatura_compartida_valida(nombre: &str, mtime: u64) -> Option<PathBuf> {
+fn miniatura_compartida_valida(base: &Path, nombre: &str, mtime: i64) -> Option<PathBuf> {
     for bucket in ["large", "x-large", "xx-large", "normal"] {
-        let ruta = bucket_bajo(dirs::cache_dir(), bucket)?.join(nombre);
+        let ruta = bucket_en(base, bucket).join(nombre);
         if ruta.is_file() && mtime_de_png(&ruta) == Some(mtime) {
             return Some(ruta);
         }
@@ -167,7 +178,7 @@ fn miniatura_compartida_valida(nombre: &str, mtime: u64) -> Option<PathBuf> {
 }
 
 /// Lee `Thumb::MTime` de los chunks de texto de un PNG.
-fn mtime_de_png(ruta: &Path) -> Option<u64> {
+fn mtime_de_png(ruta: &Path) -> Option<i64> {
     let archivo = std::fs::File::open(ruta).ok()?;
     let lector = png::Decoder::new(std::io::BufReader::new(archivo))
         .read_info()
@@ -189,7 +200,7 @@ fn mtime_de_png(ruta: &Path) -> Option<u64> {
 fn escribir_png_freedesktop(
     imagen: &image::DynamicImage,
     uri: &str,
-    mtime: u64,
+    mtime: i64,
     destino: &Path,
 ) -> Result<(), String> {
     let rgba = imagen.to_rgba8();
@@ -204,7 +215,15 @@ fn escribir_png_freedesktop(
     let parcial = destino.with_extension(format!("parcial-{}-{nonce}.png", std::process::id()));
 
     let escribir = || -> Result<(), String> {
-        let archivo = std::fs::File::create(&parcial)
+        // `0o600` desde la creación, no un `chmod` posterior: así la miniatura no
+        // pasa ni un instante con permisos más amplios. En un filesystem sin
+        // permisos Unix el modo se ignora, igual que el `chmod` de antes.
+        use std::os::unix::fs::OpenOptionsExt;
+        let archivo = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&parcial)
             .map_err(|error| format!("no se pudo crear la miniatura: {error}"))?;
         let mut encoder = png::Encoder::new(std::io::BufWriter::new(archivo), ancho, alto);
         encoder.set_color(png::ColorType::Rgba);
@@ -229,7 +248,6 @@ fn escribir_png_freedesktop(
         writer
             .finish()
             .map_err(|error| format!("no se pudo cerrar la miniatura: {error}"))?;
-        let _ = fijar_modo(&parcial, 0o600);
         Ok(())
     };
 
@@ -250,6 +268,15 @@ fn escribir_png_freedesktop(
 /// archivos, así que la imagen no cruza el IPC. Antes viajaba como data URL en
 /// base64, o sea un tercio más de bytes por cada miniatura de cada carpeta.
 pub fn miniatura(archivo: &Path) -> Result<PathBuf, String> {
+    let base = base_valida(dirs::cache_dir()).ok_or("No se pudo ubicar la caché de miniaturas")?;
+    miniatura_en(&base, archivo)
+}
+
+/// El cuerpo de [`miniatura`], con la base de la caché por parámetro.
+///
+/// Separado para poder probar todo el flujo —reutilización, generación y
+/// escritura— contra un directorio temporal, sin tocar `~/.cache` ni el entorno.
+fn miniatura_en(base: &Path, archivo: &Path) -> Result<PathBuf, String> {
     if !archivo.is_file() {
         return Err("El archivo no existe".to_string());
     }
@@ -258,11 +285,11 @@ pub fn miniatura(archivo: &Path) -> Result<PathBuf, String> {
     let uri = uri_de_archivo(archivo);
     let nombre = nombre_de_miniatura(&uri);
 
-    if let Some(ruta) = miniatura_compartida_valida(&nombre, mtime) {
+    if let Some(ruta) = miniatura_compartida_valida(base, &nombre, mtime) {
         return Ok(ruta);
     }
 
-    let dir = bucket_cache("large").ok_or("No se pudo crear la caché de miniaturas")?;
+    let dir = asegurar_bucket(base, "large").ok_or("No se pudo crear la caché de miniaturas")?;
     let destino = dir.join(&nombre);
 
     // Otra generación en paralelo pudo haberla dejado ya, y válida.
@@ -357,11 +384,16 @@ fn cuadro_de_video(video: &Path, dir_tmp: &Path) -> Result<image::DynamicImage, 
         .arg("-i")
         .arg(video)
         .args(["-frames:v", "1"])
-        // `force_original_aspect_ratio=decrease` con `-2` en un lado deforma
-        // menos que fijar los dos; `scale` sólo reduce.
+        // Acota las DOS dimensiones a `LADO`: con `-2` en una, un video vertical
+        // (1080×1920) daba 256×456 y se guardaba en `large`, que sólo admite hasta
+        // 256 de lado. `force_original_aspect_ratio=decrease` encaja el cuadro
+        // dentro de la caja sin deformarlo, y `min(...,iw/ih)` evita agrandar uno
+        // más chico.
         .args([
             "-vf",
-            &format!("scale='min({LADO},iw)':-2:force_original_aspect_ratio=decrease"),
+            &format!(
+                "scale='min({LADO},iw)':'min({LADO},ih)':force_original_aspect_ratio=decrease"
+            ),
         ])
         .arg("-y")
         .arg(&parcial);
@@ -426,13 +458,13 @@ mod tests {
     }
 
     #[test]
-    fn el_bucket_ignora_una_base_relativa_o_vacia() {
+    fn la_base_ignora_una_ruta_relativa_o_vacia() {
         // El estándar manda ignorar un `XDG_CACHE_HOME` que no sea absoluto, y
         // con `create_dir_all` una base relativa escribiría bajo el directorio
         // de trabajo del proceso.
-        assert!(bucket_bajo(Some(PathBuf::from("relativo")), "large").is_none());
-        assert!(bucket_bajo(Some(PathBuf::from("")), "large").is_none());
-        assert!(bucket_bajo(Some(PathBuf::from("/abs")), "large").is_some());
+        assert!(base_valida(Some(PathBuf::from("relativo"))).is_none());
+        assert!(base_valida(Some(PathBuf::from(""))).is_none());
+        assert!(base_valida(Some(PathBuf::from("/abs"))).is_some());
     }
 
     /// Directorio temporal propio de cada prueba, sin tocar `HOME` ni el entorno.
@@ -531,5 +563,78 @@ mod tests {
 
         assert_eq!(mtime_de_png(&basura), None);
         assert_eq!(mtime_de_png(&tmp.0.join("no-existe.png")), None);
+    }
+
+    #[test]
+    fn el_mtime_negativo_antes_de_epoca_se_lee_igual() {
+        // Un archivo anterior a 1970 tiene mtime negativo; el chunk y su lectura
+        // tienen que preservarlo.
+        let tmp = Tmp::nuevo("pre-epoca");
+        let destino = tmp.0.join("neg.png");
+
+        escribir_png_freedesktop(&imagen_chica(), "file:///x/neg.mp4", -86_400, &destino).unwrap();
+
+        assert_eq!(mtime_de_png(&destino), Some(-86_400));
+    }
+
+    /// Guarda `imagen` como PNG en `origen` y devuelve su mtime.
+    fn imagen_en_disco(origen: &Path, lado: u32) -> i64 {
+        image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
+            lado,
+            lado,
+            image::Rgba([1, 2, 3, 255]),
+        ))
+        .save(origen)
+        .unwrap();
+        mtime_segundos(origen).unwrap()
+    }
+
+    #[test]
+    fn genera_la_miniatura_de_una_imagen_en_large_con_permisos_600() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = Tmp::nuevo("imagen");
+        let origen = tmp.0.join("foto.png");
+        // Más grande que `LADO` para ejercitar el reescalado.
+        let mtime = imagen_en_disco(&origen, 600);
+        let base = tmp.0.join("cache");
+
+        let destino = miniatura_en(&base, &origen).unwrap();
+
+        assert!(destino.starts_with(bucket_en(&base, "large")));
+        assert!(destino.is_file());
+        let mini = image::open(&destino).unwrap();
+        assert!(mini.width() <= LADO && mini.height() <= LADO);
+        assert_eq!(mtime_de_png(&destino), Some(mtime));
+        assert_eq!(
+            std::fs::metadata(&destino).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
+
+    #[test]
+    fn la_segunda_vez_reutiliza_y_otro_mtime_no_vale() {
+        let tmp = Tmp::nuevo("reuso");
+        let origen = tmp.0.join("foto.png");
+        imagen_en_disco(&origen, 64);
+        let base = tmp.0.join("cache");
+
+        let primera = miniatura_en(&base, &origen).unwrap();
+        let segunda = miniatura_en(&base, &origen).unwrap();
+        assert_eq!(
+            primera, segunda,
+            "la segunda tiene que reutilizar la primera"
+        );
+
+        // Una miniatura guardada con un mtime no sirve para otro: hay que regenerar.
+        let nombre = nombre_de_miniatura(&uri_de_archivo(&origen));
+        assert!(miniatura_compartida_valida(&base, &nombre, 999_999).is_none());
+    }
+
+    #[test]
+    fn una_ruta_que_no_es_archivo_no_tiene_miniatura() {
+        let tmp = Tmp::nuevo("sin-archivo");
+        let base = tmp.0.join("cache");
+        assert!(miniatura_en(&base, &tmp.0.join("no-existe.png")).is_err());
     }
 }
