@@ -116,19 +116,18 @@ impl ConflictResolution {
     }
 }
 
+/// Copia una carpeta **sin privilegios**.
+///
+/// Un error de permisos vuelve tal cual: elevar es decisión de quien llama, y una
+/// sola vez para toda la carpeta. Antes pedía la contraseña por cada subcarpeta y
+/// por cada archivo que fallaba: una carpeta de doce archivos eran catorce.
 fn copy_dir_recursive(
     source: &Path,
     destination: &Path,
     cancel: Option<&Arc<AtomicBool>>,
 ) -> Result<(), String> {
     if !destination.exists() {
-        if let Err(error) = fs::create_dir_all(destination) {
-            if polkit::is_permission_denied(&error.to_string()) {
-                polkit::create_dir_with_pkexec(destination)?;
-            } else {
-                return Err(error.to_string());
-            }
-        }
+        fs::create_dir_all(destination).map_err(|error| error.to_string())?;
     }
 
     for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
@@ -142,29 +141,104 @@ fn copy_dir_recursive(
 
         if source_path.is_dir() {
             copy_dir_recursive(&source_path, &dest_path, cancel)?;
-        } else if let Err(error) = fs::copy(&source_path, &dest_path) {
-            if polkit::is_permission_denied(&error.to_string()) {
-                polkit::copy_with_pkexec(&source_path, &dest_path)?;
-            } else {
-                return Err(error.to_string());
-            }
+        } else {
+            fs::copy(&source_path, &dest_path).map_err(|error| error.to_string())?;
         }
     }
 
     Ok(())
 }
 
+/// Copia un archivo o una carpeta sin privilegios.
+fn copy_unprivileged(
+    source: &Path,
+    dest_path: &Path,
+    cancel: Option<&Arc<AtomicBool>>,
+) -> Result<(), String> {
+    if source.is_dir() {
+        copy_dir_recursive(source, dest_path, cancel)
+    } else {
+        fs::copy(source, dest_path)
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    }
+}
+
+/// Lo que no se pudo copiar sin privilegios y espera la elevación de la operación.
+struct PendingCopy {
+    source: PathBuf,
+    dest_path: PathBuf,
+    replaced_existing: bool,
+}
+
+/// Copia con privilegios lo que no se pudo copiar sin ellos, pidiendo la contraseña
+/// **una vez** para todo lo que va con su mismo nombre adentro de `destination`, y
+/// una vez más sólo por cada cosa que cambió de nombre (un conflicto resuelto con
+/// «renombrar», que es raro). Si la persona rechaza la primera no se vuelve a pedir.
+///
+/// Devuelve un resultado por elemento, en el mismo orden. Las que van juntas
+/// comparten el suyo: si `cp` falla a mitad no se sabe cuáles quedaron copiadas.
+fn copy_pending_elevated(
+    pending: &[PendingCopy],
+    destination: &Path,
+    elevation: &polkit::Elevation,
+) -> Vec<Result<(), String>> {
+    let mut results: Vec<Option<Result<(), String>>> = vec![None; pending.len()];
+
+    let together: Vec<usize> = (0..pending.len())
+        .filter(|&i| {
+            pending[i].dest_path.parent() == Some(destination)
+                && pending[i].dest_path.file_name() == pending[i].source.file_name()
+        })
+        .collect();
+    if !together.is_empty() {
+        let sources: Vec<&Path> = together
+            .iter()
+            .map(|&i| pending[i].source.as_path())
+            .collect();
+        let outcome = elevation.attempt(|| polkit::copy_into_with_pkexec(&sources, destination));
+        for &i in &together {
+            results[i] = Some(outcome.clone());
+        }
+    }
+
+    for (i, item) in pending.iter().enumerate() {
+        if results[i].is_none() {
+            results[i] = Some(elevation.attempt(|| {
+                if item.source.is_dir() {
+                    polkit::copy_dir_contents_with_pkexec(&item.source, &item.dest_path)
+                } else {
+                    polkit::copy_with_pkexec(&item.source, &item.dest_path)
+                }
+            }));
+        }
+    }
+
+    results.into_iter().flatten().collect()
+}
+
 fn get_unique_destination_path(destination: &Path, name: &str) -> std::path::PathBuf {
+    unique_destination_avoiding(destination, name, &[])
+}
+
+/// Una ruta libre en `destination`, que además no es la de nada que esta operación
+/// ya reservó para la elevación (todavía no está en el disco).
+fn unique_destination_avoiding(
+    destination: &Path,
+    name: &str,
+    reserved: &[PendingCopy],
+) -> std::path::PathBuf {
+    let taken = |path: &Path| path.exists() || reserved.iter().any(|item| item.dest_path == path);
     let mut dest_path = destination.join(name);
     let mut counter = 1;
 
-    while dest_path.exists() {
+    while taken(&dest_path) {
         let path = Path::new(name);
         let stem = path
             .file_stem()
-            .and_then(|stem| stem.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or(name);
-        let extension = path.extension().and_then(|ext| ext.to_str());
+        let extension = path.extension().and_then(std::ffi::OsStr::to_str);
 
         let new_name = if let Some(ext) = extension {
             format!("{} ({}).{}", stem, counter, ext)
@@ -177,6 +251,70 @@ fn get_unique_destination_path(destination: &Path, name: &str) -> std::path::Pat
     }
 
     dest_path
+}
+
+/// Qué hacer con el destino de una cosa a copiar.
+enum Destination {
+    /// Resolución «omitir» ante un conflicto: no se copia.
+    Skip,
+    /// Se copia a `path`. `remove_first`: hay algo en el disco que borrar antes
+    /// («reemplazar»). `dropped`: cuántas cosas ya reservadas para esa ruta se
+    /// descartaron porque ésta las reemplaza.
+    Copy {
+        path: PathBuf,
+        remove_first: bool,
+        dropped: u32,
+    },
+}
+
+/// Resuelve el destino de una cosa según la resolución elegida.
+///
+/// Un conflicto es una ruta que existe en el disco **o** que ya reservó otra cosa de
+/// esta misma operación a la espera de la elevación: dos orígenes con el mismo nombre
+/// (resultados de una búsqueda, por ejemplo) hacia un destino que pide privilegios
+/// quedaban con la misma ruta, y el segundo pisaba al primero sin avisar.
+fn plan_destination(
+    destination: &Path,
+    file_name: &str,
+    is_same_directory: bool,
+    resolution: &ConflictResolution,
+    pending: &mut Vec<PendingCopy>,
+) -> Destination {
+    let free = |path: PathBuf, remove_first, dropped| Destination::Copy {
+        path,
+        remove_first,
+        dropped,
+    };
+    if is_same_directory {
+        return free(
+            unique_destination_avoiding(destination, file_name, pending),
+            false,
+            0,
+        );
+    }
+
+    let initial = destination.join(file_name);
+    let on_disk = initial.exists();
+    let reserved = pending.iter().any(|item| item.dest_path == initial);
+    if !on_disk && !reserved {
+        return free(initial, false, 0);
+    }
+
+    match resolution {
+        ConflictResolution::Skip => Destination::Skip,
+        ConflictResolution::AutoRename => free(
+            unique_destination_avoiding(destination, file_name, pending),
+            false,
+            0,
+        ),
+        ConflictResolution::Replace => {
+            // Lo reservado nunca llegó al disco: reemplazarlo es no copiarlo.
+            let before = pending.len();
+            pending.retain(|item| item.dest_path != initial);
+            let dropped = (before - pending.len()) as u32;
+            free(initial, on_disk, dropped)
+        }
+    }
 }
 
 #[tauri::command]
@@ -314,13 +452,17 @@ pub fn copy_items(
     let mut created: Vec<PathBuf> = Vec::new();
     let mut partial_undo = false;
 
+    // Lo que necesita privilegios se junta y se eleva una sola vez al final: una
+    // contraseña por operación, no una por archivo ni por carpeta.
+    let elevation = polkit::Elevation::new();
+    let mut pending: Vec<PendingCopy> = Vec::new();
+
     for (index, source_path_str) in source_paths.iter().enumerate() {
         if is_cancelled(&token) {
             break;
         }
         emit_progress(&app, &operation_id, "copy", index, total, source_path_str);
 
-        let mut replaced_existing = false;
         let source = Path::new(source_path_str);
 
         if !source.exists() {
@@ -346,59 +488,42 @@ pub fn copy_items(
             }
         };
 
-        let dest_path = if is_same_directory {
-            get_unique_destination_path(destination, &file_name)
-        } else {
-            let initial_dest = destination.join(&file_name);
-            if initial_dest.exists() {
-                match resolution {
-                    ConflictResolution::Skip => {
-                        skipped_count += 1;
+        let (dest_path, replaced_existing) = match plan_destination(
+            destination,
+            &file_name,
+            is_same_directory,
+            &resolution,
+            &mut pending,
+        ) {
+            Destination::Skip => {
+                skipped_count += 1;
+                continue;
+            }
+            Destination::Copy {
+                path,
+                remove_first,
+                dropped,
+            } => {
+                // Lo reservado que éste reemplaza no se copia: cuenta como omitido.
+                skipped_count += dropped;
+                if remove_first {
+                    if let Err(error) = remove_dir_or_file(&path) {
+                        failed_count += 1;
+                        // Si no autorizó, no se sigue: lo que viene volvería a pedir.
+                        let refused = polkit::is_auth_refused(&error);
+                        last_error = Some(error);
+                        if refused {
+                            elevation.refuse();
+                            break;
+                        }
                         continue;
                     }
-                    ConflictResolution::Replace => {
-                        if let Err(error) = remove_dir_or_file(&initial_dest) {
-                            failed_count += 1;
-                            last_error = Some(error);
-                            continue;
-                        }
-                        replaced_existing = true;
-                        initial_dest
-                    }
-                    ConflictResolution::AutoRename => {
-                        get_unique_destination_path(destination, &file_name)
-                    }
                 }
-            } else {
-                initial_dest
+                (path, remove_first)
             }
         };
 
-        let result = if source.is_dir() {
-            match copy_dir_recursive(source, &dest_path, token.as_ref()) {
-                Ok(()) => Ok(()),
-                Err(error) => {
-                    if polkit::is_permission_denied(&error) {
-                        polkit::copy_with_pkexec(source, &dest_path)
-                    } else {
-                        Err(error)
-                    }
-                }
-            }
-        } else {
-            match fs::copy(source, &dest_path) {
-                Ok(_) => Ok(()),
-                Err(error) => {
-                    if polkit::is_permission_denied(&error.to_string()) {
-                        polkit::copy_with_pkexec(source, &dest_path)
-                    } else {
-                        Err(error.to_string())
-                    }
-                }
-            }
-        };
-
-        match result {
+        match copy_unprivileged(source, &dest_path, token.as_ref()) {
             Ok(()) => {
                 copied_count += 1;
 
@@ -410,9 +535,40 @@ pub fn copy_items(
                     created.push(dest_path);
                 }
             }
+            Err(error) if polkit::is_permission_denied(&error) => {
+                pending.push(PendingCopy {
+                    source: source.to_path_buf(),
+                    dest_path,
+                    replaced_existing,
+                });
+            }
             Err(error) => {
                 failed_count += 1;
                 last_error = Some(error);
+            }
+        }
+    }
+
+    if !pending.is_empty() {
+        let results = if is_cancelled(&token) {
+            vec![Err("Operation cancelled".to_string()); pending.len()]
+        } else {
+            copy_pending_elevated(&pending, destination, &elevation)
+        };
+        for (item, result) in pending.into_iter().zip(results) {
+            match result {
+                Ok(()) => {
+                    copied_count += 1;
+                    if item.replaced_existing {
+                        partial_undo = true;
+                    } else {
+                        created.push(item.dest_path);
+                    }
+                }
+                Err(error) => {
+                    failed_count += 1;
+                    last_error = Some(error);
+                }
             }
         }
     }
@@ -484,6 +640,8 @@ pub fn move_items(
 
     let total = source_paths.len();
     let token = operation_id.as_ref().map(|id| register_operation(id));
+    // Una sola autorización para la operación: si se rechaza, no se vuelve a pedir.
+    let elevation = polkit::Elevation::new();
 
     // Undo bookkeeping: (destination, original) pairs to move back.
     let mut moved_pairs: Vec<(PathBuf, PathBuf)> = Vec::new();
@@ -559,17 +717,19 @@ pub fn move_items(
                     let copy_ok = if source.is_dir() {
                         match copy_dir_recursive(source, &final_dest_path, token.as_ref()) {
                             Ok(()) => true,
-                            Err(e) if polkit::is_permission_denied(&e) => {
-                                polkit::copy_with_pkexec(source, &final_dest_path).is_ok()
-                            }
+                            Err(e) if polkit::is_permission_denied(&e) => elevation
+                                .attempt(|| {
+                                    polkit::copy_dir_contents_with_pkexec(source, &final_dest_path)
+                                })
+                                .is_ok(),
                             Err(_) => false,
                         }
                     } else {
                         match fs::copy(source, &final_dest_path) {
                             Ok(_) => true,
-                            Err(e) if polkit::is_permission_denied(&e.to_string()) => {
-                                polkit::copy_with_pkexec(source, &final_dest_path).is_ok()
-                            }
+                            Err(e) if polkit::is_permission_denied(&e.to_string()) => elevation
+                                .attempt(|| polkit::copy_with_pkexec(source, &final_dest_path))
+                                .is_ok(),
                             Err(_) => false,
                         }
                     };
@@ -580,7 +740,7 @@ pub fn move_items(
                         Err("Failed to copy across devices even with elevation.".into())
                     }
                 } else if polkit::is_permission_denied(&error.to_string()) {
-                    polkit::move_with_pkexec(source, &final_dest_path)
+                    elevation.attempt(|| polkit::move_with_pkexec(source, &final_dest_path))
                 } else {
                     Err(error.to_string())
                 }
@@ -602,6 +762,11 @@ pub fn move_items(
             Err(error) => {
                 failed_count += 1;
                 last_error = Some(error);
+                // Si no autorizó, el resto de la operación también necesitaría la
+                // contraseña: no se la vuelve a pedir.
+                if elevation.refused() {
+                    break;
+                }
             }
         }
     }
@@ -1009,5 +1174,394 @@ pub fn create_item(
             failed_count: Some(1),
             skipped_count: None,
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::polkit::testing::*;
+
+    /// Una carpeta de origen con `files` archivos y una subcarpeta con otros dos.
+    fn source_tree(dir: &Path, files: usize) -> PathBuf {
+        let source = dir.join("origen");
+        std::fs::create_dir_all(source.join("sub")).unwrap();
+        for n in 0..files {
+            std::fs::write(source.join(format!("a{n}.txt")), b"x").unwrap();
+        }
+        std::fs::write(source.join("sub/b1.txt"), b"y").unwrap();
+        std::fs::write(source.join("sub/b2.txt"), b"y").unwrap();
+        source
+    }
+
+    #[test]
+    fn copiar_una_carpeta_a_un_destino_sin_permiso_no_pide_la_contrasena_adentro() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("copia-sin-pedir");
+        let source = source_tree(&dir, 3);
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let result = copy_dir_recursive(&source, &root.join("origen"), None);
+
+        // Sin permiso devuelve el error tal cual: elevar es decisión de quien
+        // llama, y una sola vez para toda la carpeta. Antes pedía la contraseña
+        // por cada subcarpeta y por cada archivo.
+        assert!(
+            polkit::is_permission_denied(&result.unwrap_err()),
+            "tiene que devolver el error de permisos"
+        );
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        cleanup(&dir);
+    }
+
+    /// Intenta sin privilegios y junta lo que no pudo, como `copy_files`.
+    fn attempt_all(sources: &[&Path], destination: &Path) -> (Vec<PendingCopy>, Vec<PathBuf>) {
+        let mut pending = Vec::new();
+        let mut copied = Vec::new();
+        for source in sources {
+            let dest_path = destination.join(source.file_name().unwrap());
+            match copy_unprivileged(source, &dest_path, None) {
+                Ok(()) => copied.push(dest_path),
+                Err(error) => {
+                    assert!(polkit::is_permission_denied(&error), "{error}");
+                    pending.push(PendingCopy {
+                        source: source.to_path_buf(),
+                        dest_path,
+                        replaced_existing: false,
+                    });
+                }
+            }
+        }
+        (pending, copied)
+    }
+
+    #[test]
+    fn una_carpeta_con_muchos_archivos_pide_la_contrasena_una_sola_vez() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("carpeta-una-vez");
+        let source = source_tree(&dir, 10);
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let (pending, copied) = attempt_all(&[&source], &root);
+        let results = copy_pending_elevated(&pending, &root, &polkit::Elevation::new());
+
+        assert!(copied.is_empty());
+        assert_eq!(results, vec![Ok(())]);
+        // Eran catorce con doce archivos: un `mkdir` y un `cp` por cada cosa.
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        // Y la carpeta quedó entera, con su subcarpeta.
+        assert!(root.join("origen/a0.txt").is_file());
+        assert!(root.join("origen/a9.txt").is_file());
+        assert!(root.join("origen/sub/b2.txt").is_file());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn varias_cosas_a_un_destino_sin_permiso_piden_la_contrasena_una_sola_vez() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("varias-una-vez");
+        let folder = source_tree(&dir, 2);
+        let file_a = dir.join("uno.txt");
+        let file_b = dir.join("dos.txt");
+        std::fs::write(&file_a, b"1").unwrap();
+        std::fs::write(&file_b, b"2").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let (pending, _) = attempt_all(&[&file_a, &folder, &file_b], &root);
+        let results = copy_pending_elevated(&pending, &root, &polkit::Elevation::new());
+
+        assert_eq!(pending.len(), 3);
+        assert_eq!(results, vec![Ok(()), Ok(()), Ok(())]);
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert!(root.join("uno.txt").is_file());
+        assert!(root.join("dos.txt").is_file());
+        assert!(root.join("origen/sub/b1.txt").is_file());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn sin_necesidad_de_privilegios_no_se_pide_nada() {
+        let dir = scratch("sin-privilegios");
+        let source = source_tree(&dir, 2);
+        let destination = dir.join("destino-comun");
+        std::fs::create_dir_all(&destination).unwrap();
+        let log = install_refusing(&dir, 126);
+
+        let (pending, copied) = attempt_all(&[&source], &destination);
+
+        assert!(pending.is_empty());
+        assert_eq!(copied.len(), 1);
+        assert!(destination.join("origen/sub/b1.txt").is_file());
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn rechazar_la_contrasena_una_vez_no_la_vuelve_a_pedir_por_ninguna_cosa() {
+        if running_as_root() {
+            return;
+        }
+        // 126: descartó el diálogo. 127: no se pudo autorizar. Las dos cortan.
+        for code in [126, 127] {
+            let dir = scratch(&format!("rechazo-{code}"));
+            let folder = source_tree(&dir, 2);
+            let file_a = dir.join("uno.txt");
+            std::fs::write(&file_a, b"1").unwrap();
+            let root = dir.join("destino-de-root");
+            std::fs::create_dir_all(&root).unwrap();
+            make_read_only(&root);
+            let log = install_refusing(&dir, code);
+
+            // Dos con su nombre, y una que cambió de nombre (conflicto renombrado).
+            let (mut pending, _) = attempt_all(&[&file_a, &folder], &root);
+            pending.push(PendingCopy {
+                source: file_a.clone(),
+                dest_path: root.join("uno (1).txt"),
+                replaced_existing: false,
+            });
+            let results = copy_pending_elevated(&pending, &root, &polkit::Elevation::new());
+
+            assert_eq!(results.len(), 3);
+            assert!(
+                results
+                    .iter()
+                    .all(|r| r == &Err(polkit::AUTH_REFUSED.to_string())),
+                "{results:?}"
+            );
+            // Una llamada, la que se rechazó: la de lo renombrado ya no se hace.
+            assert_eq!(
+                invocations(&log).len(),
+                1,
+                "código {code}: {:?}",
+                invocations(&log)
+            );
+            cleanup(&dir);
+        }
+    }
+
+    #[test]
+    fn lo_que_cambio_de_nombre_copia_el_contenido_y_no_se_anida() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("renombrada");
+        let source = source_tree(&dir, 2);
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(root.join("origen (1)")).unwrap();
+        std::fs::write(root.join("origen (1)/viejo.txt"), b"v").unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+        let pending = vec![PendingCopy {
+            source: source.clone(),
+            dest_path: root.join("origen (1)"),
+            replaced_existing: false,
+        }];
+
+        let results = copy_pending_elevated(&pending, &root, &polkit::Elevation::new());
+
+        assert_eq!(results, vec![Ok(())]);
+        assert_eq!(invocations(&log).len(), 1);
+        assert!(invocations(&log)[0].contains("cp -r -T --"));
+        // Con `cp -r origen "origen (1)"` y el destino existente, quedaba en
+        // `origen (1)/origen`: una carpeta a medio copiar se anidaba.
+        assert!(root.join("origen (1)/a0.txt").is_file());
+        assert!(root.join("origen (1)/sub/b1.txt").is_file());
+        assert!(!root.join("origen (1)/origen").exists());
+        cleanup(&dir);
+    }
+
+    fn reserved(destination: &Path, name: &str) -> PendingCopy {
+        PendingCopy {
+            source: PathBuf::from("/origen-otro").join(name),
+            dest_path: destination.join(name),
+            replaced_existing: false,
+        }
+    }
+
+    fn copy_path(planned: Destination) -> PathBuf {
+        match planned {
+            Destination::Copy { path, .. } => path,
+            Destination::Skip => panic!("se esperaba una copia"),
+        }
+    }
+
+    #[test]
+    fn dos_origenes_con_el_mismo_nombre_no_quedan_con_la_misma_ruta() {
+        // Con el destino pidiendo privilegios la primera queda reservada y no está
+        // en el disco: sin contarla, la segunda tomaba la misma ruta y `cp` la
+        // pisaba sin avisar.
+        let dir = scratch("conflicto-reservado");
+        let mut pending = vec![reserved(&dir, "foto.png")];
+        // Lo que pasaba: mirando sólo el disco, la segunda tomaba la misma ruta.
+        assert_eq!(
+            get_unique_destination_path(&dir, "foto.png"),
+            pending[0].dest_path
+        );
+
+        let second = copy_path(plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::AutoRename,
+            &mut pending,
+        ));
+
+        assert_eq!(second, dir.join("foto (1).png"));
+        pending.push(PendingCopy {
+            source: PathBuf::from("/otro/foto.png"),
+            dest_path: second,
+            replaced_existing: false,
+        });
+        let third = copy_path(plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::AutoRename,
+            &mut pending,
+        ));
+        assert_eq!(third, dir.join("foto (2).png"));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn omitir_tambien_omite_lo_que_ya_estaba_reservado() {
+        let dir = scratch("omitir-reservado");
+        let mut pending = vec![reserved(&dir, "foto.png")];
+
+        let planned = plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::Skip,
+            &mut pending,
+        );
+
+        assert!(matches!(planned, Destination::Skip));
+        assert_eq!(pending.len(), 1, "lo ya reservado se conserva");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn reemplazar_lo_reservado_descarta_el_anterior_y_no_borra_nada_del_disco() {
+        let dir = scratch("reemplazar-reservado");
+        let mut pending = vec![reserved(&dir, "foto.png"), reserved(&dir, "otra.png")];
+
+        let planned = plan_destination(
+            &dir,
+            "foto.png",
+            false,
+            &ConflictResolution::Replace,
+            &mut pending,
+        );
+
+        match planned {
+            Destination::Copy {
+                path,
+                remove_first,
+                dropped,
+            } => {
+                assert_eq!(path, dir.join("foto.png"));
+                // No hay nada en el disco que borrar: mandar a `rm` una ruta que
+                // sólo existe en la cola pedía la contraseña para nada.
+                assert!(!remove_first);
+                assert_eq!(dropped, 1);
+            }
+            Destination::Skip => panic!("se esperaba una copia"),
+        }
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].dest_path, dir.join("otra.png"));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_conflicto_en_el_disco_se_resuelve_como_siempre() {
+        let dir = scratch("conflicto-en-disco");
+        std::fs::write(dir.join("a.txt"), b"x").unwrap();
+        let mut pending = Vec::new();
+
+        let replace = plan_destination(
+            &dir,
+            "a.txt",
+            false,
+            &ConflictResolution::Replace,
+            &mut pending,
+        );
+        assert!(matches!(
+            replace,
+            Destination::Copy {
+                remove_first: true,
+                dropped: 0,
+                ..
+            }
+        ));
+
+        let renamed = copy_path(plan_destination(
+            &dir,
+            "a.txt",
+            false,
+            &ConflictResolution::AutoRename,
+            &mut pending,
+        ));
+        assert_eq!(renamed, dir.join("a (1).txt"));
+
+        let skipped = plan_destination(
+            &dir,
+            "a.txt",
+            false,
+            &ConflictResolution::Skip,
+            &mut pending,
+        );
+        assert!(matches!(skipped, Destination::Skip));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn sin_conflicto_va_al_nombre_de_siempre_y_en_la_misma_carpeta_se_renombra() {
+        let dir = scratch("sin-conflicto");
+        let mut pending = Vec::new();
+
+        let free = plan_destination(
+            &dir,
+            "nuevo.txt",
+            false,
+            &ConflictResolution::Skip,
+            &mut pending,
+        );
+        assert!(matches!(
+            free,
+            Destination::Copy {
+                remove_first: false,
+                dropped: 0,
+                ..
+            }
+        ));
+        assert_eq!(copy_path(free), dir.join("nuevo.txt"));
+
+        // Copiar una cosa sobre su propia carpeta nunca pisa: siempre se renombra.
+        std::fs::write(dir.join("nuevo.txt"), b"x").unwrap();
+        let same_dir = copy_path(plan_destination(
+            &dir,
+            "nuevo.txt",
+            true,
+            &ConflictResolution::Replace,
+            &mut pending,
+        ));
+        assert_eq!(same_dir, dir.join("nuevo (1).txt"));
+        cleanup(&dir);
     }
 }
