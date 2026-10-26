@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { RevealTransition, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import type { DragOperationType } from '@/composables/file-browser/use-file-browser-drag';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
@@ -27,7 +27,7 @@ const operationIcon = computed(() =>
 </script>
 
 <template>
-  <Transition name="inbound-drag-overlay">
+  <RevealTransition scale>
     <div v-if="isActive && (currentDirLocked || !targetingEntry)" class="inbound-drag-overlay"
       :class="{ 'inbound-drag-overlay--locked': currentDirLocked }">
       <div class="inbound-drag-overlay__card">
@@ -48,7 +48,7 @@ const operationIcon = computed(() =>
         </div>
       </div>
     </div>
-  </Transition>
+  </RevealTransition>
 </template>
 
 <style scoped>
@@ -102,27 +102,5 @@ const operationIcon = computed(() =>
 .inbound-drag-overlay__hint {
   color: var(--color-tx-muted);
   font-size: var(--text-label-xs);
-}
-
-.inbound-drag-overlay-enter-active {
-  transition:
-    opacity 0.2s var(--ease-ui-out),
-    transform 0.2s var(--ease-ui-out);
-}
-
-.inbound-drag-overlay-leave-active {
-  transition:
-    opacity 0.15s var(--ease-ui),
-    transform 0.15s var(--ease-ui);
-}
-
-.inbound-drag-overlay-enter-from {
-  opacity: 0;
-  transform: scale(0.97);
-}
-
-.inbound-drag-overlay-leave-to {
-  opacity: 0;
-  transform: scale(0.97);
 }
 </style>

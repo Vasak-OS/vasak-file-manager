@@ -7,6 +7,7 @@ import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
+	RevealTransition,
 	Skeleton,
 	ThemeIcon,
 	Tooltip,
@@ -207,28 +208,30 @@ function handleColumnHeaderClick(column: ListSortColumn) {
       </Popover>
     </div>
 
-    <FileBrowserLoading v-if="ctx.isLoading.value" />
+    <RevealTransition mode="out-in">
+      <FileBrowserLoading v-if="ctx.isLoading.value" />
 
-    <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
+      <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
 
-    <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="flex flex-1 items-center justify-center p-4"
-      icon="folder-open" :title="t('fileBrowser.directoryIsEmpty')"
-      :note="t('fileBrowser.directoryIsEmptyDescription')" />
+      <EmptyState v-else-if="ctx.isDirectoryEmpty.value" class="flex flex-1 items-center justify-center p-4"
+        icon="folder-open" :title="t('fileBrowser.directoryIsEmpty')"
+        :note="t('fileBrowser.directoryIsEmptyDescription')" />
 
-    <template v-else>
-      <!-- El que desplaza: los desplazadores virtuales de las dos vistas van en
-           modo página y lo buscan a él. Era el `ScrollArea` propio, que dibujaba
-           una barra con `bg-ui-bg/80` (invisible sobre la ventana); la barra
-           ahora es la de `scrollbar.css` y la estructura de dos cajas es la
-           misma. -->
-      <div class="relative min-h-0 w-full flex-1 overflow-hidden">
-        <div class="h-full w-full overflow-x-hidden overflow-y-auto">
-          <div :ref="ctx.setEntriesContainerRef" class="min-h-full">
-            <FileBrowserGridView v-if="props.layout === 'grid'" :entries="ctx.entries.value" />
-            <FileBrowserListView v-else :entries="ctx.entries.value" />
+      <template v-else>
+        <!-- El que desplaza: los desplazadores virtuales de las dos vistas van en
+             modo página y lo buscan a él. Era el `ScrollArea` propio, que dibujaba
+             una barra con `bg-ui-bg/80` (invisible sobre la ventana); la barra
+             ahora es la de `scrollbar.css` y la estructura de dos cajas es la
+             misma. -->
+        <div :key="ctx.currentPath.value" class="relative min-h-0 w-full flex-1 overflow-hidden">
+          <div class="h-full w-full overflow-x-hidden overflow-y-auto">
+            <div :ref="ctx.setEntriesContainerRef" class="min-h-full">
+              <FileBrowserGridView v-if="props.layout === 'grid'" :entries="ctx.entries.value" />
+              <FileBrowserListView v-else :entries="ctx.entries.value" />
+            </div>
           </div>
         </div>
-      </div>
-    </template>
+      </template>
+    </RevealTransition>
   </div>
 </template>
