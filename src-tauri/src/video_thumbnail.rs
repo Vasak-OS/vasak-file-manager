@@ -434,4 +434,102 @@ mod tests {
         assert!(bucket_bajo(Some(PathBuf::from("")), "large").is_none());
         assert!(bucket_bajo(Some(PathBuf::from("/abs")), "large").is_some());
     }
+
+    /// Directorio temporal propio de cada prueba, sin tocar `HOME` ni el entorno.
+    struct Tmp(PathBuf);
+
+    impl Tmp {
+        fn nuevo(etiqueta: &str) -> Self {
+            static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let dir = std::env::temp_dir().join(format!(
+                "vfm-miniatura-{etiqueta}-{}-{n}",
+                std::process::id()
+            ));
+            std::fs::create_dir_all(&dir).unwrap();
+            Tmp(dir)
+        }
+    }
+
+    impl Drop for Tmp {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn imagen_chica() -> image::DynamicImage {
+        image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
+            4,
+            3,
+            image::Rgba([10, 20, 30, 255]),
+        ))
+    }
+
+    #[test]
+    fn el_mtime_escrito_en_el_png_se_lee_igual() {
+        let tmp = Tmp::nuevo("ida-y-vuelta");
+        let destino = tmp.0.join("a.png");
+
+        escribir_png_freedesktop(&imagen_chica(), "file:///x/a.mp4", 1_700_000_123, &destino)
+            .unwrap();
+
+        assert_eq!(mtime_de_png(&destino), Some(1_700_000_123));
+        let leida = image::open(&destino).unwrap();
+        assert_eq!((leida.width(), leida.height()), (4, 3));
+    }
+
+    #[test]
+    fn el_png_guarda_el_uri_y_no_deja_parciales() {
+        let tmp = Tmp::nuevo("uri");
+        let destino = tmp.0.join("b.png");
+
+        escribir_png_freedesktop(&imagen_chica(), "file:///x/b.mp4", 7, &destino).unwrap();
+
+        let lector = png::Decoder::new(std::io::BufReader::new(
+            std::fs::File::open(&destino).unwrap(),
+        ))
+        .read_info()
+        .unwrap();
+        let uri = lector
+            .info()
+            .uncompressed_latin1_text
+            .iter()
+            .find(|chunk| chunk.keyword == "Thumb::URI")
+            .map(|chunk| chunk.text.clone());
+        assert_eq!(uri.as_deref(), Some("file:///x/b.mp4"));
+        let sobrantes = std::fs::read_dir(&tmp.0).unwrap().count();
+        assert_eq!(sobrantes, 1, "el temporal tiene que renombrarse al destino");
+    }
+
+    #[test]
+    fn un_png_sin_el_chunk_de_mtime_no_vale() {
+        // Una miniatura ajena sin `Thumb::MTime` no se puede dar por vigente.
+        let tmp = Tmp::nuevo("sin-chunk");
+        let destino = tmp.0.join("c.png");
+        imagen_chica().save(&destino).unwrap();
+
+        assert_eq!(mtime_de_png(&destino), None);
+    }
+
+    #[test]
+    fn un_png_con_otro_mtime_no_coincide_con_el_del_archivo() {
+        // `miniatura_compartida_valida` compara contra el mtime del archivo: una
+        // miniatura de una versión vieja tiene que quedar fuera.
+        let tmp = Tmp::nuevo("mtime-viejo");
+        let destino = tmp.0.join("d.png");
+        escribir_png_freedesktop(&imagen_chica(), "file:///x/d.mp4", 100, &destino).unwrap();
+
+        assert_ne!(mtime_de_png(&destino), Some(200));
+        assert_eq!(mtime_de_png(&destino), Some(100));
+    }
+
+    #[test]
+    fn un_archivo_inexistente_o_que_no_es_png_no_tiene_mtime() {
+        let tmp = Tmp::nuevo("invalido");
+        let basura = tmp.0.join("e.png");
+        std::fs::write(&basura, b"esto no es un png").unwrap();
+
+        assert_eq!(mtime_de_png(&basura), None);
+        assert_eq!(mtime_de_png(&tmp.0.join("no-existe.png")), None);
+    }
 }
