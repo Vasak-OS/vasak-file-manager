@@ -382,21 +382,19 @@ pub fn check_conflicts(source_paths: Vec<String>, destination_path: String) -> V
     conflicts
 }
 
-fn remove_dir_or_file(path: &Path) -> Result<(), String> {
-    let result = if path.is_dir() {
+/// Borra un archivo o una carpeta sin privilegios.
+fn remove_unprivileged(path: &Path) -> Result<(), String> {
+    if path.is_dir() {
         fs::remove_dir_all(path).map_err(|error| error.to_string())
     } else {
         fs::remove_file(path).map_err(|error| error.to_string())
-    };
-    match result {
-        Ok(()) => Ok(()),
-        Err(error) => {
-            if polkit::is_permission_denied(&error) {
-                polkit::remove_with_pkexec(path)
-            } else {
-                Err(error)
-            }
-        }
+    }
+}
+
+fn remove_dir_or_file(path: &Path) -> Result<(), String> {
+    match remove_unprivileged(path) {
+        Err(error) if polkit::is_permission_denied(&error) => polkit::remove_with_pkexec(path),
+        result => result,
     }
 }
 
@@ -633,25 +631,198 @@ pub fn move_items(
         };
     }
 
+    let total = source_paths.len();
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+
+    let report = move_paths(
+        &source_paths,
+        destination,
+        &resolution,
+        &token,
+        &|index, current| emit_progress(&app, &operation_id, "move", index, total, current),
+    );
+
+    emit_progress(&app, &operation_id, "move", total, total, "");
+    if let Some(id) = &operation_id {
+        unregister_operation(id);
+    }
+
+    undo::push(
+        "move",
+        report.moved_pairs.len(),
+        report.partial_undo,
+        undo::UndoAction::MoveBack {
+            pairs: report.moved_pairs,
+        },
+    );
+
+    FileOperationResult {
+        success: report.failed == 0,
+        error: report.last_error,
+        copied_count: Some(report.moved),
+        failed_count: Some(report.failed),
+        skipped_count: Some(report.skipped),
+    }
+}
+
+/// Lo que no se pudo mover sin privilegios y espera la elevación de la operación.
+struct PendingMove {
+    source: PathBuf,
+    dest_path: PathBuf,
+    /// Hay algo en `dest_path` que borrar antes («reemplazar»), y tampoco se pudo
+    /// sin privilegios.
+    remove_first: bool,
+    /// Lo que había en `dest_path` ya no está: no se deshace.
+    replaced_existing: bool,
+    /// Entre dispositivos: ya se copió sin privilegios y sólo falta borrar el
+    /// original.
+    copied: bool,
+}
+
+/// Cómo terminó mover una cosa sin privilegios.
+enum MoveStep {
+    Done,
+    NeedsElevation { copied: bool },
+    Failed(String),
+}
+
+/// Mover entre dispositivos es copiar y borrar el original.
+fn move_across_devices(
+    source: &Path,
+    dest_path: &Path,
+    cancel: Option<&Arc<AtomicBool>>,
+) -> MoveStep {
+    let existed = dest_path.exists();
+    match copy_unprivileged(source, dest_path, cancel) {
+        Ok(()) => match remove_unprivileged(source) {
+            Err(error) if polkit::is_permission_denied(&error) => {
+                MoveStep::NeedsElevation { copied: true }
+            }
+            // Que no se pueda borrar el original no deshace la copia.
+            _ => MoveStep::Done,
+        },
+        Err(error) if polkit::is_permission_denied(&error) => {
+            // Lo que quedó a medias lo creamos nosotros: `mv` no entra en una
+            // carpeta que ya existe.
+            if !existed {
+                let _ = remove_unprivileged(dest_path);
+            }
+            MoveStep::NeedsElevation { copied: false }
+        }
+        Err(error) => MoveStep::Failed(error),
+    }
+}
+
+/// Mueve con privilegios lo que no se pudo mover sin ellos, pidiendo la contraseña
+/// **una vez** para todo lo que va con su mismo nombre adentro de `destination` (y
+/// para borrar lo que reemplaza o los originales ya copiados), y una vez más sólo
+/// por cada cosa que cambió de nombre por un conflicto, que es raro. Si la persona
+/// rechaza la primera no se vuelve a pedir.
+///
+/// Devuelve un resultado por elemento, en el mismo orden. Si `mv` falla a mitad no
+/// se sabe, por la salida, cuáles quedaron hechas: se mira el disco, y sólo cuenta
+/// como movido lo que ya no está en el origen y sí en el destino.
+fn move_pending_elevated(
+    pending: &[PendingMove],
+    destination: &Path,
+    elevation: &polkit::Elevation,
+) -> Vec<Result<(), String>> {
+    let mut results: Vec<Option<Result<(), String>>> = vec![None; pending.len()];
+
+    let batch: Vec<usize> = (0..pending.len())
+        .filter(|&i| {
+            let item = &pending[i];
+            item.copied
+                || (item.dest_path.parent() == Some(destination)
+                    && item.dest_path.file_name() == item.source.file_name())
+        })
+        .collect();
+    if !batch.is_empty() {
+        let removals: Vec<&Path> = batch
+            .iter()
+            .filter_map(|&i| {
+                let item = &pending[i];
+                if item.copied {
+                    Some(item.source.as_path())
+                } else if item.remove_first {
+                    Some(item.dest_path.as_path())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let sources: Vec<&Path> = batch
+            .iter()
+            .filter(|&&i| !pending[i].copied)
+            .map(|&i| pending[i].source.as_path())
+            .collect();
+        let outcome =
+            elevation.attempt(|| polkit::move_into_with_pkexec(&removals, &sources, destination));
+        for &i in &batch {
+            results[i] = Some(match &outcome {
+                Err(error) if !polkit::is_auth_refused(error) => {
+                    let item = &pending[i];
+                    let done = !item.source.exists() && (item.copied || item.dest_path.exists());
+                    if done {
+                        Ok(())
+                    } else {
+                        Err(error.clone())
+                    }
+                }
+                outcome => outcome.clone(),
+            });
+        }
+    }
+
+    for (i, item) in pending.iter().enumerate() {
+        if results[i].is_none() {
+            results[i] =
+                Some(elevation.attempt(|| polkit::move_with_pkexec(&item.source, &item.dest_path)));
+        }
+    }
+
+    results.into_iter().flatten().collect()
+}
+
+/// Lo que dejó un movimiento.
+struct MoveReport {
+    moved: u32,
+    failed: u32,
+    skipped: u32,
+    last_error: Option<String>,
+    /// (destino, original) de lo que de verdad se movió, para deshacer.
+    moved_pairs: Vec<(PathBuf, PathBuf)>,
+    partial_undo: bool,
+}
+
+/// Mueve cada cosa a `destination`, sin saber de la ventana: `progress` avisa por
+/// cuál va.
+fn move_paths(
+    source_paths: &[String],
+    destination: &Path,
+    resolution: &ConflictResolution,
+    token: &Option<Arc<AtomicBool>>,
+    progress: &dyn Fn(usize, &str),
+) -> MoveReport {
     let mut moved_count: u32 = 0;
     let mut failed_count: u32 = 0;
     let mut skipped_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    let total = source_paths.len();
-    let token = operation_id.as_ref().map(|id| register_operation(id));
-    // Una sola autorización para la operación: si se rechaza, no se vuelve a pedir.
+    // Lo que necesita privilegios se junta y se eleva una sola vez al final: una
+    // contraseña por operación, no una por cosa.
     let elevation = polkit::Elevation::new();
+    let mut pending: Vec<PendingMove> = Vec::new();
 
     // Undo bookkeeping: (destination, original) pairs to move back.
     let mut moved_pairs: Vec<(PathBuf, PathBuf)> = Vec::new();
     let mut partial_undo = false;
 
     for (index, source_path_str) in source_paths.iter().enumerate() {
-        if is_cancelled(&token) {
+        if is_cancelled(token) {
             break;
         }
-        emit_progress(&app, &operation_id, "move", index, total, source_path_str);
+        progress(index, source_path_str);
 
         let mut replaced_existing = false;
         let source = Path::new(source_path_str);
@@ -691,15 +862,29 @@ pub fn move_items(
                     skipped_count += 1;
                     continue;
                 }
-                ConflictResolution::Replace => {
-                    if let Err(error) = remove_dir_or_file(&dest_path) {
+                ConflictResolution::Replace => match remove_unprivileged(&dest_path) {
+                    Ok(()) => {
+                        replaced_existing = true;
+                        dest_path
+                    }
+                    Err(error) if polkit::is_permission_denied(&error) => {
+                        // Borrar lo que hay también pide privilegios: va con el
+                        // movimiento, en la misma llamada.
+                        pending.push(PendingMove {
+                            source: source.to_path_buf(),
+                            dest_path,
+                            remove_first: true,
+                            replaced_existing: true,
+                            copied: false,
+                        });
+                        continue;
+                    }
+                    Err(error) => {
                         failed_count += 1;
                         last_error = Some(error);
                         continue;
                     }
-                    replaced_existing = true;
-                    dest_path
-                }
+                },
                 ConflictResolution::AutoRename => {
                     get_unique_destination_path(destination, &file_name)
                 }
@@ -708,47 +893,19 @@ pub fn move_items(
             dest_path
         };
 
-        let result = match fs::rename(source, &final_dest_path) {
-            Ok(()) => Ok(()),
-            Err(error) => {
-                let cross_device =
-                    error.raw_os_error() == Some(17) || error.raw_os_error() == Some(18);
-                if cross_device {
-                    let copy_ok = if source.is_dir() {
-                        match copy_dir_recursive(source, &final_dest_path, token.as_ref()) {
-                            Ok(()) => true,
-                            Err(e) if polkit::is_permission_denied(&e) => elevation
-                                .attempt(|| {
-                                    polkit::copy_dir_contents_with_pkexec(source, &final_dest_path)
-                                })
-                                .is_ok(),
-                            Err(_) => false,
-                        }
-                    } else {
-                        match fs::copy(source, &final_dest_path) {
-                            Ok(_) => true,
-                            Err(e) if polkit::is_permission_denied(&e.to_string()) => elevation
-                                .attempt(|| polkit::copy_with_pkexec(source, &final_dest_path))
-                                .is_ok(),
-                            Err(_) => false,
-                        }
-                    };
-                    if copy_ok {
-                        let _ = remove_dir_or_file(source);
-                        Ok(())
-                    } else {
-                        Err("Failed to copy across devices even with elevation.".into())
-                    }
-                } else if polkit::is_permission_denied(&error.to_string()) {
-                    elevation.attempt(|| polkit::move_with_pkexec(source, &final_dest_path))
-                } else {
-                    Err(error.to_string())
-                }
+        let step = match fs::rename(source, &final_dest_path) {
+            Ok(()) => MoveStep::Done,
+            Err(error) if matches!(error.raw_os_error(), Some(17) | Some(18)) => {
+                move_across_devices(source, &final_dest_path, token.as_ref())
             }
+            Err(error) if polkit::is_permission_denied(&error.to_string()) => {
+                MoveStep::NeedsElevation { copied: false }
+            }
+            Err(error) => MoveStep::Failed(error.to_string()),
         };
 
-        match result {
-            Ok(()) => {
+        match step {
+            MoveStep::Done => {
                 moved_count += 1;
 
                 if replaced_existing {
@@ -759,36 +916,51 @@ pub fn move_items(
                     moved_pairs.push((final_dest_path, source.to_path_buf()));
                 }
             }
-            Err(error) => {
+            MoveStep::NeedsElevation { copied } => pending.push(PendingMove {
+                source: source.to_path_buf(),
+                dest_path: final_dest_path,
+                remove_first: false,
+                replaced_existing,
+                copied,
+            }),
+            MoveStep::Failed(error) => {
                 failed_count += 1;
                 last_error = Some(error);
-                // Si no autorizó, el resto de la operación también necesitaría la
-                // contraseña: no se la vuelve a pedir.
-                if elevation.refused() {
-                    break;
+            }
+        }
+    }
+
+    if !pending.is_empty() {
+        let results = if is_cancelled(token) {
+            vec![Err("Operation cancelled".to_string()); pending.len()]
+        } else {
+            move_pending_elevated(&pending, destination, &elevation)
+        };
+        for (item, result) in pending.into_iter().zip(results) {
+            match result {
+                Ok(()) => {
+                    moved_count += 1;
+                    if item.replaced_existing {
+                        partial_undo = true;
+                    } else {
+                        moved_pairs.push((item.dest_path, item.source));
+                    }
+                }
+                Err(error) => {
+                    failed_count += 1;
+                    last_error = Some(error);
                 }
             }
         }
     }
 
-    emit_progress(&app, &operation_id, "move", total, total, "");
-    if let Some(id) = &operation_id {
-        unregister_operation(id);
-    }
-
-    undo::push(
-        "move",
-        moved_pairs.len(),
+    MoveReport {
+        moved: moved_count,
+        failed: failed_count,
+        skipped: skipped_count,
+        last_error,
+        moved_pairs,
         partial_undo,
-        undo::UndoAction::MoveBack { pairs: moved_pairs },
-    );
-
-    FileOperationResult {
-        success: failed_count == 0,
-        error: last_error,
-        copied_count: Some(moved_count),
-        failed_count: Some(failed_count),
-        skipped_count: Some(skipped_count),
     }
 }
 
@@ -910,22 +1082,92 @@ pub fn delete_items(
     app: AppHandle,
 ) -> FileOperationResult {
     let allow_elevation = allow_elevation.unwrap_or(true);
+    let total = paths.len();
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+    let deleted_after = now_secs();
+
+    let report = delete_paths(
+        &paths,
+        use_trash,
+        allow_elevation,
+        &token,
+        &|index, current| emit_progress(&app, &operation_id, "delete", index, total, current),
+    );
+
+    emit_progress(&app, &operation_id, "delete", total, total, "");
+    if let Some(id) = &operation_id {
+        unregister_operation(id);
+    }
+
+    undo::push(
+        "delete",
+        report.trashed.len(),
+        false,
+        undo::UndoAction::RestoreFromTrash {
+            paths: report.trashed,
+            deleted_after,
+        },
+    );
+
+    FileOperationResult {
+        success: report.failed == 0,
+        error: report.last_error,
+        copied_count: Some(report.deleted),
+        failed_count: Some(report.failed),
+        skipped_count: Some(0),
+    }
+}
+
+/// Borra con privilegios lo que no se pudo borrar sin ellos, pidiendo la contraseña
+/// **una vez** para todo. Devuelve un resultado por ruta, en el mismo orden; si
+/// `rm` falla a mitad no se sabe cuáles quedaron hechas, así que se mira el disco.
+fn delete_pending_elevated(
+    pending: &[PathBuf],
+    elevation: &polkit::Elevation,
+) -> Vec<Result<(), String>> {
+    let paths: Vec<&Path> = pending.iter().map(PathBuf::as_path).collect();
+    let outcome = elevation.attempt(|| polkit::remove_many_with_pkexec(&paths));
+    pending
+        .iter()
+        .map(|path| match &outcome {
+            Err(error) if !polkit::is_auth_refused(error) && !path.exists() => Ok(()),
+            outcome => outcome.clone(),
+        })
+        .collect()
+}
+
+/// Lo que dejó un borrado.
+struct DeleteReport {
+    deleted: u32,
+    failed: u32,
+    last_error: Option<String>,
+    /// Sólo lo que llegó a la papelera se puede restaurar; un borrado definitivo no se deshace.
+    trashed: Vec<PathBuf>,
+}
+
+/// Borra o manda a la papelera cada ruta, sin saber de la ventana: `progress` avisa
+/// por cuál va.
+fn delete_paths(
+    paths: &[String],
+    use_trash: bool,
+    allow_elevation: bool,
+    token: &Option<Arc<AtomicBool>>,
+    progress: &dyn Fn(usize, &str),
+) -> DeleteReport {
     let mut deleted_count: u32 = 0;
     let mut failed_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    let total = paths.len();
-    let token = operation_id.as_ref().map(|id| register_operation(id));
-
-    // Only trashed items can be restored; a permanent delete is not undoable.
+    // Sólo lo que llegó a la papelera se puede restaurar.
     let mut trashed: Vec<PathBuf> = Vec::new();
-    let deleted_after = now_secs();
+    // Lo que necesita privilegios se junta y se borra de una vez al final.
+    let mut pending: Vec<PathBuf> = Vec::new();
 
     for (index, path_str) in paths.iter().enumerate() {
-        if is_cancelled(&token) {
+        if is_cancelled(token) {
             break;
         }
-        emit_progress(&app, &operation_id, "delete", index, total, path_str);
+        progress(index, path_str);
 
         let path = Path::new(path_str);
 
@@ -935,54 +1177,28 @@ pub fn delete_items(
             continue;
         }
 
-        // Tracks whether the item really reached the trash. The elevated
-        // fallback below removes it outright, which is not restorable.
-        let mut reached_trash = false;
-
-        let result = if use_trash {
+        let attempt = if use_trash {
             trash::delete(path)
+                .map(|()| true)
                 .map_err(|error| error.to_string())
-                .map(|()| {
-                    reached_trash = true;
-                })
-                .or_else(|error| {
-                    if allow_elevation && polkit::is_permission_denied(&error) {
-                        polkit::remove_with_pkexec(path)
-                    } else {
-                        Err(error)
-                    }
-                })
-        } else if path.is_dir() {
-            match fs::remove_dir_all(path) {
-                Ok(()) => Ok(()),
-                Err(error) => {
-                    if polkit::is_permission_denied(&error.to_string()) {
-                        polkit::remove_with_pkexec(path)
-                    } else {
-                        Err(error.to_string())
-                    }
-                }
-            }
         } else {
-            match fs::remove_file(path) {
-                Ok(()) => Ok(()),
-                Err(error) => {
-                    if polkit::is_permission_denied(&error.to_string()) {
-                        polkit::remove_with_pkexec(path)
-                    } else {
-                        Err(error.to_string())
-                    }
-                }
-            }
+            remove_unprivileged(path).map(|()| false)
         };
 
-        match result {
-            Ok(()) => {
+        match attempt {
+            Ok(reached_trash) => {
                 deleted_count += 1;
-
                 if reached_trash {
                     trashed.push(path.to_path_buf());
                 }
+            }
+            // Un borrado definitivo lo pidió la persona; mandar a la papelera, en
+            // cambio, sólo se eleva si `allow_elevation` lo permite. Se junta y se
+            // eleva una vez al final.
+            Err(error)
+                if (allow_elevation || !use_trash) && polkit::is_permission_denied(&error) =>
+            {
+                pending.push(path.to_path_buf());
             }
             Err(error) => {
                 failed_count += 1;
@@ -991,27 +1207,28 @@ pub fn delete_items(
         }
     }
 
-    emit_progress(&app, &operation_id, "delete", total, total, "");
-    if let Some(id) = &operation_id {
-        unregister_operation(id);
+    if !pending.is_empty() {
+        let results = if is_cancelled(token) {
+            vec![Err("Operation cancelled".to_string()); pending.len()]
+        } else {
+            delete_pending_elevated(&pending, &polkit::Elevation::new())
+        };
+        for result in results {
+            match result {
+                Ok(()) => deleted_count += 1,
+                Err(error) => {
+                    failed_count += 1;
+                    last_error = Some(error);
+                }
+            }
+        }
     }
 
-    undo::push(
-        "delete",
-        trashed.len(),
-        false,
-        undo::UndoAction::RestoreFromTrash {
-            paths: trashed,
-            deleted_after,
-        },
-    );
-
-    FileOperationResult {
-        success: failed_count == 0,
-        error: last_error,
-        copied_count: Some(deleted_count),
-        failed_count: Some(failed_count),
-        skipped_count: Some(0),
+    DeleteReport {
+        deleted: deleted_count,
+        failed: failed_count,
+        last_error,
+        trashed,
     }
 }
 
@@ -1562,6 +1779,441 @@ mod tests {
             &mut pending,
         ));
         assert_eq!(same_dir, dir.join("nuevo (1).txt"));
+        cleanup(&dir);
+    }
+
+    /// Un destino «de root» (sin permiso de escritura) y tres cosas para mover:
+    /// un archivo, una carpeta con contenido y otro archivo.
+    fn move_scenario(name: &str) -> (PathBuf, PathBuf, Vec<String>) {
+        let dir = scratch(name);
+        let folder = source_tree(&dir, 2);
+        let file_a = dir.join("uno.txt");
+        let file_b = dir.join("dos.txt");
+        std::fs::write(&file_a, b"1").unwrap();
+        std::fs::write(&file_b, b"2").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let sources = [&file_a, &folder, &file_b]
+            .iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect();
+        (dir, root, sources)
+    }
+
+    fn run_move(sources: &[String], root: &Path, resolution: ConflictResolution) -> MoveReport {
+        move_paths(sources, root, &resolution, &None, &|_, _| {})
+    }
+
+    #[test]
+    fn mover_varias_cosas_a_un_destino_sin_permiso_pide_la_contrasena_una_sola_vez() {
+        if running_as_root() {
+            return;
+        }
+        let (dir, root, sources) = move_scenario("mover-una-vez");
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(&sources, &root, ConflictResolution::Skip);
+
+        // Antes eran tres: un `mv` por cada cosa, y cada uno pedía la contraseña.
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed, report.skipped), (3, 0, 0));
+        assert!(root.join("uno.txt").is_file());
+        assert!(root.join("dos.txt").is_file());
+        assert!(root.join("origen/sub/b1.txt").is_file());
+        assert!(!dir.join("uno.txt").exists());
+        assert!(!dir.join("origen").exists());
+        // Y se puede deshacer lo que se movió, cosa por cosa.
+        assert_eq!(report.moved_pairs.len(), 3);
+        assert!(report
+            .moved_pairs
+            .contains(&(root.join("origen"), dir.join("origen"))));
+        assert!(!report.partial_undo);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn mover_sin_necesidad_de_privilegios_no_pide_nada() {
+        let dir = scratch("mover-sin-privilegios");
+        let file = dir.join("uno.txt");
+        std::fs::write(&file, b"1").unwrap();
+        let destination = dir.join("destino-comun");
+        std::fs::create_dir_all(&destination).unwrap();
+        let log = install_refusing(&dir, 126);
+
+        let report = run_move(
+            &[file.to_string_lossy().into_owned()],
+            &destination,
+            ConflictResolution::Skip,
+        );
+
+        assert_eq!(report.moved, 1);
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn rechazar_la_contrasena_al_mover_no_la_vuelve_a_pedir_y_no_registra_nada_para_deshacer() {
+        if running_as_root() {
+            return;
+        }
+        for code in [126, 127] {
+            let (dir, root, sources) = move_scenario(&format!("mover-rechazo-{code}"));
+            let log = install_refusing(&dir, code);
+
+            let report = run_move(&sources, &root, ConflictResolution::Skip);
+
+            assert_eq!(
+                invocations(&log).len(),
+                1,
+                "código {code}: {:?}",
+                invocations(&log)
+            );
+            // Las tres se informan como fallidas y siguen donde estaban.
+            assert_eq!((report.moved, report.failed), (0, 3));
+            assert_eq!(
+                report.last_error.as_deref(),
+                Some(polkit::AUTH_REFUSED),
+                "código {code}"
+            );
+            assert!(report.moved_pairs.is_empty());
+            assert!(dir.join("uno.txt").is_file());
+            assert!(dir.join("origen/sub/b1.txt").is_file());
+            cleanup(&dir);
+        }
+    }
+
+    #[test]
+    fn reemplazar_al_mover_a_un_destino_sin_permiso_no_pide_la_contrasena_dos_veces() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-reemplazar");
+        let file = dir.join("uno.txt");
+        std::fs::write(&file, b"nuevo").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("uno.txt"), b"viejo").unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(
+            &[file.to_string_lossy().into_owned()],
+            &root,
+            ConflictResolution::Replace,
+        );
+
+        // Antes: un `rm -rf` para borrar lo que había y otro `mv`, dos contraseñas.
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed), (1, 0));
+        assert_eq!(std::fs::read(root.join("uno.txt")).unwrap(), b"nuevo");
+        assert!(!file.exists());
+        // Lo reemplazado no vuelve: no se deshace, y se avisa.
+        assert!(report.partial_undo);
+        assert!(report.moved_pairs.is_empty());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_conflicto_renombrado_al_mover_va_con_su_nombre_nuevo() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-renombrar");
+        let conflicting = dir.join("uno.txt");
+        let other = dir.join("dos.txt");
+        std::fs::write(&conflicting, b"nuevo").unwrap();
+        std::fs::write(&other, b"2").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("uno.txt"), b"viejo").unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(
+            &[
+                conflicting.to_string_lossy().into_owned(),
+                other.to_string_lossy().into_owned(),
+            ],
+            &root,
+            ConflictResolution::AutoRename,
+        );
+
+        // Una llamada para lo que conserva su nombre y otra por lo renombrado.
+        assert_eq!(invocations(&log).len(), 2, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed), (2, 0));
+        assert_eq!(std::fs::read(root.join("uno.txt")).unwrap(), b"viejo");
+        assert_eq!(std::fs::read(root.join("uno (1).txt")).unwrap(), b"nuevo");
+        assert!(root.join("dos.txt").is_file());
+        assert!(report
+            .moved_pairs
+            .contains(&(root.join("uno (1).txt"), conflicting.clone())));
+        cleanup(&dir);
+    }
+
+    fn run_delete(paths: &[PathBuf]) -> DeleteReport {
+        let paths: Vec<String> = paths
+            .iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect();
+        delete_paths(&paths, false, true, &None, &|_, _| {})
+    }
+
+    /// Un directorio «de root» con un archivo, una carpeta con contenido y otro
+    /// archivo adentro.
+    fn delete_scenario(name: &str) -> (PathBuf, PathBuf, Vec<PathBuf>) {
+        let dir = scratch(name);
+        let root = dir.join("de-root");
+        std::fs::create_dir_all(root.join("carpeta/sub")).unwrap();
+        std::fs::write(root.join("uno.txt"), b"1").unwrap();
+        std::fs::write(root.join("dos.txt"), b"2").unwrap();
+        std::fs::write(root.join("carpeta/a.txt"), b"a").unwrap();
+        std::fs::write(root.join("carpeta/sub/b.txt"), b"b").unwrap();
+        make_read_only(&root.join("carpeta/sub"));
+        make_read_only(&root.join("carpeta"));
+        make_read_only(&root);
+        let paths = vec![
+            root.join("uno.txt"),
+            root.join("carpeta"),
+            root.join("dos.txt"),
+        ];
+        (dir, root, paths)
+    }
+
+    #[test]
+    fn borrar_varias_cosas_sin_permiso_pide_la_contrasena_una_sola_vez() {
+        if running_as_root() {
+            return;
+        }
+        let (dir, root, paths) = delete_scenario("borrar-una-vez");
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_delete(&paths);
+
+        // Antes eran tres: un `rm -rf` por cada cosa.
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.deleted, report.failed), (3, 0));
+        assert!(paths.iter().all(|p| !p.exists()));
+        // Un borrado definitivo no se deshace.
+        assert!(report.trashed.is_empty());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn borrar_sin_necesidad_de_privilegios_no_pide_nada() {
+        let dir = scratch("borrar-sin-privilegios");
+        let file = dir.join("uno.txt");
+        std::fs::write(&file, b"1").unwrap();
+        let log = install_refusing(&dir, 126);
+
+        let report = run_delete(std::slice::from_ref(&file));
+
+        assert_eq!(report.deleted, 1);
+        assert!(!file.exists());
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn rechazar_la_contrasena_al_borrar_no_la_vuelve_a_pedir() {
+        if running_as_root() {
+            return;
+        }
+        for code in [126, 127] {
+            let (dir, root, paths) = delete_scenario(&format!("borrar-rechazo-{code}"));
+            let log = install_refusing(&dir, code);
+
+            let report = run_delete(&paths);
+
+            assert_eq!(
+                invocations(&log).len(),
+                1,
+                "código {code}: {:?}",
+                invocations(&log)
+            );
+            assert_eq!((report.deleted, report.failed), (0, 3));
+            assert_eq!(report.last_error.as_deref(), Some(polkit::AUTH_REFUSED));
+            assert!(paths.iter().all(|p| p.exists()));
+            let _ = root;
+            cleanup(&dir);
+        }
+    }
+
+    #[test]
+    fn si_mv_falla_a_mitad_solo_cuenta_como_movido_lo_que_de_verdad_se_movio() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-a-mitad");
+        let (kept, gone, also_kept) = (
+            dir.join("uno.txt"),
+            dir.join("dos.txt"),
+            dir.join("tres.txt"),
+        );
+        std::fs::write(&kept, b"1").unwrap();
+        std::fs::write(&also_kept, b"3").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+        let pending: Vec<PendingMove> = [&kept, &gone, &also_kept]
+            .iter()
+            .map(|source| PendingMove {
+                source: (*source).clone(),
+                dest_path: root.join(source.file_name().unwrap()),
+                remove_first: false,
+                replaced_existing: false,
+                copied: false,
+            })
+            .collect();
+
+        // `dos.txt` no está: `mv` sigue con las otras y sale con error.
+        let results = move_pending_elevated(&pending, &root, &polkit::Elevation::new());
+
+        assert_eq!(invocations(&log).len(), 1);
+        assert!(results[0].is_ok());
+        assert!(results[1].is_err());
+        assert!(results[2].is_ok());
+        assert!(root.join("uno.txt").is_file());
+        assert!(root.join("tres.txt").is_file());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn reemplazar_una_carpeta_con_contenido_la_borra_y_mueve_en_una_llamada() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-reemplazar-carpeta");
+        let folder = source_tree(&dir, 1);
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(root.join("origen/sub")).unwrap();
+        std::fs::write(root.join("origen/viejo.txt"), b"v").unwrap();
+        make_read_only(&root.join("origen/sub"));
+        make_read_only(&root.join("origen"));
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(
+            &[folder.to_string_lossy().into_owned()],
+            &root,
+            ConflictResolution::Replace,
+        );
+
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed), (1, 0));
+        assert!(root.join("origen/a0.txt").is_file());
+        // No se anida ni queda nada de lo que había.
+        assert!(!root.join("origen/origen").exists());
+        assert!(!root.join("origen/viejo.txt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn los_nombres_raros_viajan_como_argumentos_y_no_se_interpretan() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("nombres-raros");
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        let weird = [
+            "-n.txt",
+            "a b.txt",
+            "comi\"lla $HOME `x`.txt",
+            "punto;y;coma",
+        ];
+        for name in weird {
+            std::fs::write(root.join(name), b"viejo").unwrap();
+            std::fs::write(dir.join(name), b"nuevo").unwrap();
+        }
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+        let sources: Vec<PathBuf> = weird.iter().map(|n| dir.join(n)).collect();
+        let dests: Vec<PathBuf> = weird.iter().map(|n| root.join(n)).collect();
+        let sources: Vec<&Path> = sources.iter().map(PathBuf::as_path).collect();
+        let dests: Vec<&Path> = dests.iter().map(PathBuf::as_path).collect();
+
+        polkit::move_into_with_pkexec(&dests, &sources, &root).unwrap();
+
+        assert_eq!(invocations(&log).len(), 1);
+        for name in weird {
+            assert_eq!(std::fs::read(root.join(name)).unwrap(), b"nuevo", "{name}");
+            assert!(!dir.join(name).exists(), "{name}");
+        }
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn entre_dispositivos_el_original_ya_copiado_se_borra_en_la_misma_llamada_que_lo_demas() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-copiado");
+        let protected = dir.join("origen-de-root");
+        std::fs::create_dir_all(&protected).unwrap();
+        let copied_source = protected.join("copiado.txt");
+        std::fs::write(&copied_source, b"c").unwrap();
+        make_read_only(&protected);
+        let destination = dir.join("destino-comun");
+        std::fs::create_dir_all(&destination).unwrap();
+        // Ya se copió sin privilegios; falta borrar el original.
+        std::fs::write(destination.join("copiado.txt"), b"c").unwrap();
+        let other = dir.join("otro.txt");
+        std::fs::write(&other, b"o").unwrap();
+        let log = install_authorizing(&dir, &protected);
+        let pending = vec![
+            PendingMove {
+                source: copied_source.clone(),
+                dest_path: destination.join("copiado.txt"),
+                remove_first: false,
+                replaced_existing: false,
+                copied: true,
+            },
+            PendingMove {
+                source: other.clone(),
+                dest_path: destination.join("otro.txt"),
+                remove_first: false,
+                replaced_existing: false,
+                copied: false,
+            },
+        ];
+
+        let results = move_pending_elevated(&pending, &destination, &polkit::Elevation::new());
+
+        assert_eq!(results, vec![Ok(()), Ok(())]);
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert!(!copied_source.exists());
+        assert!(destination.join("otro.txt").is_file());
+        assert!(!other.exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn si_rm_falla_a_mitad_solo_cuenta_como_borrado_lo_que_de_verdad_se_borro() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("borrar-a-mitad");
+        let root = dir.join("de-root");
+        let elsewhere = dir.join("de-otro");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        std::fs::write(root.join("uno.txt"), b"1").unwrap();
+        std::fs::write(elsewhere.join("dos.txt"), b"2").unwrap();
+        make_read_only(&root);
+        make_read_only(&elsewhere);
+        // Este `pkexec` sólo tiene permiso sobre `root`.
+        let log = install_authorizing(&dir, &root);
+        let pending = vec![root.join("uno.txt"), elsewhere.join("dos.txt")];
+
+        let results = delete_pending_elevated(&pending, &polkit::Elevation::new());
+
+        assert_eq!(invocations(&log).len(), 1);
+        assert!(results[0].is_ok());
+        assert!(results[1].is_err());
+        assert!(!root.join("uno.txt").exists());
+        assert!(elsewhere.join("dos.txt").exists());
         cleanup(&dir);
     }
 }

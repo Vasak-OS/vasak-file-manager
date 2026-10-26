@@ -39,15 +39,29 @@ fn outcome(exit_code: Option<i32>, stderr: &str) -> Result<(), String> {
     }
 }
 
+/// `ETXTBSY` (26): otro hilo hizo `fork` mientras el `pkexec` falso de una prueba
+/// seguía abierto para escribir, y el `exec` lo rechaza un instante. Pasa sólo con
+/// pruebas en paralelo; se reintenta y no se le cuenta a nadie.
+fn output_retrying_busy(args: &[&str]) -> std::io::Result<std::process::Output> {
+    let mut attempts = 0;
+    loop {
+        match Command::new(pkexec_program()).args(args).output() {
+            Err(error) if error.raw_os_error() == Some(26) && attempts < 50 => {
+                attempts += 1;
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            result => return result,
+        }
+    }
+}
+
 fn run_with_pkexec(args: &[&str]) -> Result<(), String> {
     if !pkexec_available() {
         return Err("pkexec not available. Install polkit.".into());
     }
     info!("Elevating privileges: pkexec {}", args.join(" "));
-    let output = Command::new(pkexec_program())
-        .args(args)
-        .output()
-        .map_err(|e| format!("Failed to execute pkexec: {e}"))?;
+    let output =
+        output_retrying_busy(args).map_err(|e| format!("Failed to execute pkexec: {e}"))?;
     outcome(
         output.status.code(),
         &String::from_utf8_lossy(&output.stderr),
@@ -75,7 +89,9 @@ impl Elevation {
         Self::default()
     }
 
-    /// Si ya se rechazó en esta operación.
+    /// Si ya se rechazó en esta operación. Las operaciones no lo consultan: `attempt`
+    /// ya no pide de nuevo.
+    #[cfg(test)]
     pub fn refused(&self) -> bool {
         self.refused.get()
     }
@@ -134,6 +150,63 @@ pub fn copy_into_with_pkexec(sources: &[&Path], dest_dir: &Path) -> Result<(), S
         .collect();
     let mut args = vec!["cp", "-r", "-t", dest_dir.as_str(), "--"];
     args.extend(sources.iter().map(String::as_str));
+    run_with_pkexec(&args)
+}
+
+/// Varias cosas **adentro** de `dest_dir`, con su mismo nombre, en una sola
+/// elevación (`mv` también cruza dispositivos, copiando y borrando el original).
+/// Si antes hay que borrar lo que ocupaba el lugar («reemplazar»), o sólo falta
+/// borrar originales que ya se copiaron, va en la misma llamada: dos llamadas
+/// serían dos contraseñas.
+pub fn move_into_with_pkexec(
+    removals: &[&Path],
+    sources: &[&Path],
+    dest_dir: &Path,
+) -> Result<(), String> {
+    let dest_dir = dest_dir.to_string_lossy().into_owned();
+    let removals: Vec<String> = removals
+        .iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
+    let sources: Vec<String> = sources
+        .iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
+    if removals.is_empty() {
+        let mut args = vec!["mv", "-t", dest_dir.as_str(), "--"];
+        args.extend(sources.iter().map(String::as_str));
+        return run_with_pkexec(&args);
+    }
+    // Las rutas viajan como argumentos del script, nunca dentro de su texto.
+    let count = removals.len().to_string();
+    let mut args = vec![
+        "sh",
+        "-c",
+        MOVE_AFTER_REMOVING,
+        "sh",
+        count.as_str(),
+        dest_dir.as_str(),
+    ];
+    args.extend(removals.iter().map(String::as_str));
+    args.extend(sources.iter().map(String::as_str));
+    run_with_pkexec(&args)
+}
+
+/// `$1` cuántas rutas hay que borrar, `$2` el destino; después van esas rutas y,
+/// al final, lo que se mueve adentro. En una sola línea, que es como queda en el
+/// registro de llamadas.
+const MOVE_AFTER_REMOVING: &str = "set -e; count=$1; dest=$2; shift 2; \
+     while [ \"$count\" -gt 0 ]; do rm -rf -- \"$1\"; shift; count=$((count - 1)); done; \
+     if [ \"$#\" -gt 0 ]; then mv -t \"$dest\" -- \"$@\"; fi";
+
+/// Varias rutas en una sola elevación: una contraseña por operación.
+pub fn remove_many_with_pkexec(paths: &[&Path]) -> Result<(), String> {
+    let paths: Vec<String> = paths
+        .iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
+    let mut args = vec!["rm", "-rf", "--"];
+    args.extend(paths.iter().map(String::as_str));
     run_with_pkexec(&args)
 }
 
@@ -276,6 +349,29 @@ mod tests {
         assert!(rename_with_pkexec(a, b).is_err());
         assert!(copy_dir_contents_with_pkexec(a, b).is_err());
         assert!(copy_into_with_pkexec(&[a, b], Path::new("/no/existe/c")).is_err());
+    }
+
+    #[test]
+    fn mover_y_borrar_varias_cosas_es_una_sola_llamada_con_todas_las_rutas() {
+        use super::testing::*;
+        let dir = scratch("argumentos-mover-borrar");
+        let log = install_refusing(&dir, 126);
+        let (a, b, dest) = (Path::new("/o/a"), Path::new("/o/b"), Path::new("/d"));
+
+        assert_eq!(
+            move_into_with_pkexec(&[], &[a, b], dest),
+            Err(AUTH_REFUSED.to_string())
+        );
+        assert_eq!(
+            remove_many_with_pkexec(&[a, b]),
+            Err(AUTH_REFUSED.to_string())
+        );
+
+        let calls = invocations(&log);
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0], "mv -t /d -- /o/a /o/b");
+        assert_eq!(calls[1], "rm -rf -- /o/a /o/b");
+        cleanup(&dir);
     }
 
     #[test]
