@@ -382,21 +382,19 @@ pub fn check_conflicts(source_paths: Vec<String>, destination_path: String) -> V
     conflicts
 }
 
-fn remove_dir_or_file(path: &Path) -> Result<(), String> {
-    let result = if path.is_dir() {
+/// Borra un archivo o una carpeta sin privilegios.
+fn remove_unprivileged(path: &Path) -> Result<(), String> {
+    if path.is_dir() {
         fs::remove_dir_all(path).map_err(|error| error.to_string())
     } else {
         fs::remove_file(path).map_err(|error| error.to_string())
-    };
-    match result {
-        Ok(()) => Ok(()),
-        Err(error) => {
-            if polkit::is_permission_denied(&error) {
-                polkit::remove_with_pkexec(path)
-            } else {
-                Err(error)
-            }
-        }
+    }
+}
+
+fn remove_dir_or_file(path: &Path) -> Result<(), String> {
+    match remove_unprivileged(path) {
+        Err(error) if polkit::is_permission_denied(&error) => polkit::remove_with_pkexec(path),
+        result => result,
     }
 }
 
@@ -667,6 +665,125 @@ pub fn move_items(
     }
 }
 
+/// Lo que no se pudo mover sin privilegios y espera la elevación de la operación.
+struct PendingMove {
+    source: PathBuf,
+    dest_path: PathBuf,
+    /// Hay algo en `dest_path` que borrar antes («reemplazar»), y tampoco se pudo
+    /// sin privilegios.
+    remove_first: bool,
+    /// Lo que había en `dest_path` ya no está: no se deshace.
+    replaced_existing: bool,
+    /// Entre dispositivos: ya se copió sin privilegios y sólo falta borrar el
+    /// original.
+    copied: bool,
+}
+
+/// Cómo terminó mover una cosa sin privilegios.
+enum MoveStep {
+    Done,
+    NeedsElevation { copied: bool },
+    Failed(String),
+}
+
+/// Mover entre dispositivos es copiar y borrar el original.
+fn move_across_devices(
+    source: &Path,
+    dest_path: &Path,
+    cancel: Option<&Arc<AtomicBool>>,
+) -> MoveStep {
+    let existed = dest_path.exists();
+    match copy_unprivileged(source, dest_path, cancel) {
+        Ok(()) => match remove_unprivileged(source) {
+            Err(error) if polkit::is_permission_denied(&error) => {
+                MoveStep::NeedsElevation { copied: true }
+            }
+            // Que no se pueda borrar el original no deshace la copia.
+            _ => MoveStep::Done,
+        },
+        Err(error) if polkit::is_permission_denied(&error) => {
+            // Lo que quedó a medias lo creamos nosotros: `mv` no entra en una
+            // carpeta que ya existe.
+            if !existed {
+                let _ = remove_unprivileged(dest_path);
+            }
+            MoveStep::NeedsElevation { copied: false }
+        }
+        Err(error) => MoveStep::Failed(error),
+    }
+}
+
+/// Mueve con privilegios lo que no se pudo mover sin ellos, pidiendo la contraseña
+/// **una vez** para todo lo que va con su mismo nombre adentro de `destination` (y
+/// para borrar lo que reemplaza o los originales ya copiados), y una vez más sólo
+/// por cada cosa que cambió de nombre por un conflicto, que es raro. Si la persona
+/// rechaza la primera no se vuelve a pedir.
+///
+/// Devuelve un resultado por elemento, en el mismo orden. Si `mv` falla a mitad no
+/// se sabe, por la salida, cuáles quedaron hechas: se mira el disco, y sólo cuenta
+/// como movido lo que ya no está en el origen y sí en el destino.
+fn move_pending_elevated(
+    pending: &[PendingMove],
+    destination: &Path,
+    elevation: &polkit::Elevation,
+) -> Vec<Result<(), String>> {
+    let mut results: Vec<Option<Result<(), String>>> = vec![None; pending.len()];
+
+    let batch: Vec<usize> = (0..pending.len())
+        .filter(|&i| {
+            let item = &pending[i];
+            item.copied
+                || (item.dest_path.parent() == Some(destination)
+                    && item.dest_path.file_name() == item.source.file_name())
+        })
+        .collect();
+    if !batch.is_empty() {
+        let removals: Vec<&Path> = batch
+            .iter()
+            .filter_map(|&i| {
+                let item = &pending[i];
+                if item.copied {
+                    Some(item.source.as_path())
+                } else if item.remove_first {
+                    Some(item.dest_path.as_path())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let sources: Vec<&Path> = batch
+            .iter()
+            .filter(|&&i| !pending[i].copied)
+            .map(|&i| pending[i].source.as_path())
+            .collect();
+        let outcome =
+            elevation.attempt(|| polkit::move_into_with_pkexec(&removals, &sources, destination));
+        for &i in &batch {
+            results[i] = Some(match &outcome {
+                Err(error) if !polkit::is_auth_refused(error) => {
+                    let item = &pending[i];
+                    let done = !item.source.exists() && (item.copied || item.dest_path.exists());
+                    if done {
+                        Ok(())
+                    } else {
+                        Err(error.clone())
+                    }
+                }
+                outcome => outcome.clone(),
+            });
+        }
+    }
+
+    for (i, item) in pending.iter().enumerate() {
+        if results[i].is_none() {
+            results[i] =
+                Some(elevation.attempt(|| polkit::move_with_pkexec(&item.source, &item.dest_path)));
+        }
+    }
+
+    results.into_iter().flatten().collect()
+}
+
 /// Lo que dejó un movimiento.
 struct MoveReport {
     moved: u32,
@@ -692,8 +809,10 @@ fn move_paths(
     let mut skipped_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    // Una sola autorización para la operación: si se rechaza, no se vuelve a pedir.
+    // Lo que necesita privilegios se junta y se eleva una sola vez al final: una
+    // contraseña por operación, no una por cosa.
     let elevation = polkit::Elevation::new();
+    let mut pending: Vec<PendingMove> = Vec::new();
 
     // Undo bookkeeping: (destination, original) pairs to move back.
     let mut moved_pairs: Vec<(PathBuf, PathBuf)> = Vec::new();
@@ -743,15 +862,29 @@ fn move_paths(
                     skipped_count += 1;
                     continue;
                 }
-                ConflictResolution::Replace => {
-                    if let Err(error) = remove_dir_or_file(&dest_path) {
+                ConflictResolution::Replace => match remove_unprivileged(&dest_path) {
+                    Ok(()) => {
+                        replaced_existing = true;
+                        dest_path
+                    }
+                    Err(error) if polkit::is_permission_denied(&error) => {
+                        // Borrar lo que hay también pide privilegios: va con el
+                        // movimiento, en la misma llamada.
+                        pending.push(PendingMove {
+                            source: source.to_path_buf(),
+                            dest_path,
+                            remove_first: true,
+                            replaced_existing: true,
+                            copied: false,
+                        });
+                        continue;
+                    }
+                    Err(error) => {
                         failed_count += 1;
                         last_error = Some(error);
                         continue;
                     }
-                    replaced_existing = true;
-                    dest_path
-                }
+                },
                 ConflictResolution::AutoRename => {
                     get_unique_destination_path(destination, &file_name)
                 }
@@ -760,47 +893,19 @@ fn move_paths(
             dest_path
         };
 
-        let result = match fs::rename(source, &final_dest_path) {
-            Ok(()) => Ok(()),
-            Err(error) => {
-                let cross_device =
-                    error.raw_os_error() == Some(17) || error.raw_os_error() == Some(18);
-                if cross_device {
-                    let copy_ok = if source.is_dir() {
-                        match copy_dir_recursive(source, &final_dest_path, token.as_ref()) {
-                            Ok(()) => true,
-                            Err(e) if polkit::is_permission_denied(&e) => elevation
-                                .attempt(|| {
-                                    polkit::copy_dir_contents_with_pkexec(source, &final_dest_path)
-                                })
-                                .is_ok(),
-                            Err(_) => false,
-                        }
-                    } else {
-                        match fs::copy(source, &final_dest_path) {
-                            Ok(_) => true,
-                            Err(e) if polkit::is_permission_denied(&e.to_string()) => elevation
-                                .attempt(|| polkit::copy_with_pkexec(source, &final_dest_path))
-                                .is_ok(),
-                            Err(_) => false,
-                        }
-                    };
-                    if copy_ok {
-                        let _ = remove_dir_or_file(source);
-                        Ok(())
-                    } else {
-                        Err("Failed to copy across devices even with elevation.".into())
-                    }
-                } else if polkit::is_permission_denied(&error.to_string()) {
-                    elevation.attempt(|| polkit::move_with_pkexec(source, &final_dest_path))
-                } else {
-                    Err(error.to_string())
-                }
+        let step = match fs::rename(source, &final_dest_path) {
+            Ok(()) => MoveStep::Done,
+            Err(error) if matches!(error.raw_os_error(), Some(17) | Some(18)) => {
+                move_across_devices(source, &final_dest_path, token.as_ref())
             }
+            Err(error) if polkit::is_permission_denied(&error.to_string()) => {
+                MoveStep::NeedsElevation { copied: false }
+            }
+            Err(error) => MoveStep::Failed(error.to_string()),
         };
 
-        match result {
-            Ok(()) => {
+        match step {
+            MoveStep::Done => {
                 moved_count += 1;
 
                 if replaced_existing {
@@ -811,13 +916,39 @@ fn move_paths(
                     moved_pairs.push((final_dest_path, source.to_path_buf()));
                 }
             }
-            Err(error) => {
+            MoveStep::NeedsElevation { copied } => pending.push(PendingMove {
+                source: source.to_path_buf(),
+                dest_path: final_dest_path,
+                remove_first: false,
+                replaced_existing,
+                copied,
+            }),
+            MoveStep::Failed(error) => {
                 failed_count += 1;
                 last_error = Some(error);
-                // Si no autorizó, el resto de la operación también necesitaría la
-                // contraseña: no se la vuelve a pedir.
-                if elevation.refused() {
-                    break;
+            }
+        }
+    }
+
+    if !pending.is_empty() {
+        let results = if is_cancelled(token) {
+            vec![Err("Operation cancelled".to_string()); pending.len()]
+        } else {
+            move_pending_elevated(&pending, destination, &elevation)
+        };
+        for (item, result) in pending.into_iter().zip(results) {
+            match result {
+                Ok(()) => {
+                    moved_count += 1;
+                    if item.replaced_existing {
+                        partial_undo = true;
+                    } else {
+                        moved_pairs.push((item.dest_path, item.source));
+                    }
+                }
+                Err(error) => {
+                    failed_count += 1;
+                    last_error = Some(error);
                 }
             }
         }
@@ -987,6 +1118,24 @@ pub fn delete_items(
     }
 }
 
+/// Borra con privilegios lo que no se pudo borrar sin ellos, pidiendo la contraseña
+/// **una vez** para todo. Devuelve un resultado por ruta, en el mismo orden; si
+/// `rm` falla a mitad no se sabe cuáles quedaron hechas, así que se mira el disco.
+fn delete_pending_elevated(
+    pending: &[PathBuf],
+    elevation: &polkit::Elevation,
+) -> Vec<Result<(), String>> {
+    let paths: Vec<&Path> = pending.iter().map(PathBuf::as_path).collect();
+    let outcome = elevation.attempt(|| polkit::remove_many_with_pkexec(&paths));
+    pending
+        .iter()
+        .map(|path| match &outcome {
+            Err(error) if !polkit::is_auth_refused(error) && !path.exists() => Ok(()),
+            outcome => outcome.clone(),
+        })
+        .collect()
+}
+
 /// Lo que dejó un borrado.
 struct DeleteReport {
     deleted: u32,
@@ -1011,6 +1160,8 @@ fn delete_paths(
 
     // Sólo lo que llegó a la papelera se puede restaurar.
     let mut trashed: Vec<PathBuf> = Vec::new();
+    // Lo que necesita privilegios se junta y se borra de una vez al final.
+    let mut pending: Vec<PathBuf> = Vec::new();
 
     for (index, path_str) in paths.iter().enumerate() {
         if is_cancelled(token) {
@@ -1026,58 +1177,49 @@ fn delete_paths(
             continue;
         }
 
-        // Tracks whether the item really reached the trash. The elevated
-        // fallback below removes it outright, which is not restorable.
-        let mut reached_trash = false;
-
-        let result = if use_trash {
+        let attempt = if use_trash {
             trash::delete(path)
+                .map(|()| true)
                 .map_err(|error| error.to_string())
-                .map(|()| {
-                    reached_trash = true;
-                })
-                .or_else(|error| {
-                    if allow_elevation && polkit::is_permission_denied(&error) {
-                        polkit::remove_with_pkexec(path)
-                    } else {
-                        Err(error)
-                    }
-                })
-        } else if path.is_dir() {
-            match fs::remove_dir_all(path) {
-                Ok(()) => Ok(()),
-                Err(error) => {
-                    if polkit::is_permission_denied(&error.to_string()) {
-                        polkit::remove_with_pkexec(path)
-                    } else {
-                        Err(error.to_string())
-                    }
-                }
-            }
         } else {
-            match fs::remove_file(path) {
-                Ok(()) => Ok(()),
-                Err(error) => {
-                    if polkit::is_permission_denied(&error.to_string()) {
-                        polkit::remove_with_pkexec(path)
-                    } else {
-                        Err(error.to_string())
-                    }
-                }
-            }
+            remove_unprivileged(path).map(|()| false)
         };
 
-        match result {
-            Ok(()) => {
+        match attempt {
+            Ok(reached_trash) => {
                 deleted_count += 1;
-
                 if reached_trash {
                     trashed.push(path.to_path_buf());
                 }
             }
+            // Un borrado definitivo lo pidió la persona; mandar a la papelera, en
+            // cambio, sólo se eleva si `allow_elevation` lo permite. Se junta y se
+            // eleva una vez al final.
+            Err(error)
+                if (allow_elevation || !use_trash) && polkit::is_permission_denied(&error) =>
+            {
+                pending.push(path.to_path_buf());
+            }
             Err(error) => {
                 failed_count += 1;
                 last_error = Some(error);
+            }
+        }
+    }
+
+    if !pending.is_empty() {
+        let results = if is_cancelled(token) {
+            vec![Err("Operation cancelled".to_string()); pending.len()]
+        } else {
+            delete_pending_elevated(&pending, &polkit::Elevation::new())
+        };
+        for result in results {
+            match result {
+                Ok(()) => deleted_count += 1,
+                Err(error) => {
+                    failed_count += 1;
+                    last_error = Some(error);
+                }
             }
         }
     }
@@ -1864,7 +2006,7 @@ mod tests {
         std::fs::write(&file, b"1").unwrap();
         let log = install_refusing(&dir, 126);
 
-        let report = run_delete(&[file.clone()]);
+        let report = run_delete(std::slice::from_ref(&file));
 
         assert_eq!(report.deleted, 1);
         assert!(!file.exists());
@@ -1895,5 +2037,183 @@ mod tests {
             let _ = root;
             cleanup(&dir);
         }
+    }
+
+    #[test]
+    fn si_mv_falla_a_mitad_solo_cuenta_como_movido_lo_que_de_verdad_se_movio() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-a-mitad");
+        let (kept, gone, also_kept) = (
+            dir.join("uno.txt"),
+            dir.join("dos.txt"),
+            dir.join("tres.txt"),
+        );
+        std::fs::write(&kept, b"1").unwrap();
+        std::fs::write(&also_kept, b"3").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+        let pending: Vec<PendingMove> = [&kept, &gone, &also_kept]
+            .iter()
+            .map(|source| PendingMove {
+                source: (*source).clone(),
+                dest_path: root.join(source.file_name().unwrap()),
+                remove_first: false,
+                replaced_existing: false,
+                copied: false,
+            })
+            .collect();
+
+        // `dos.txt` no está: `mv` sigue con las otras y sale con error.
+        let results = move_pending_elevated(&pending, &root, &polkit::Elevation::new());
+
+        assert_eq!(invocations(&log).len(), 1);
+        assert!(results[0].is_ok());
+        assert!(results[1].is_err());
+        assert!(results[2].is_ok());
+        assert!(root.join("uno.txt").is_file());
+        assert!(root.join("tres.txt").is_file());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn reemplazar_una_carpeta_con_contenido_la_borra_y_mueve_en_una_llamada() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-reemplazar-carpeta");
+        let folder = source_tree(&dir, 1);
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(root.join("origen/sub")).unwrap();
+        std::fs::write(root.join("origen/viejo.txt"), b"v").unwrap();
+        make_read_only(&root.join("origen/sub"));
+        make_read_only(&root.join("origen"));
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(
+            &[folder.to_string_lossy().into_owned()],
+            &root,
+            ConflictResolution::Replace,
+        );
+
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed), (1, 0));
+        assert!(root.join("origen/a0.txt").is_file());
+        // No se anida ni queda nada de lo que había.
+        assert!(!root.join("origen/origen").exists());
+        assert!(!root.join("origen/viejo.txt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn los_nombres_raros_viajan_como_argumentos_y_no_se_interpretan() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("nombres-raros");
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        let weird = [
+            "-n.txt",
+            "a b.txt",
+            "comi\"lla $HOME `x`.txt",
+            "punto;y;coma",
+        ];
+        for name in weird {
+            std::fs::write(root.join(name), b"viejo").unwrap();
+            std::fs::write(dir.join(name), b"nuevo").unwrap();
+        }
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+        let sources: Vec<PathBuf> = weird.iter().map(|n| dir.join(n)).collect();
+        let dests: Vec<PathBuf> = weird.iter().map(|n| root.join(n)).collect();
+        let sources: Vec<&Path> = sources.iter().map(PathBuf::as_path).collect();
+        let dests: Vec<&Path> = dests.iter().map(PathBuf::as_path).collect();
+
+        polkit::move_into_with_pkexec(&dests, &sources, &root).unwrap();
+
+        assert_eq!(invocations(&log).len(), 1);
+        for name in weird {
+            assert_eq!(std::fs::read(root.join(name)).unwrap(), b"nuevo", "{name}");
+            assert!(!dir.join(name).exists(), "{name}");
+        }
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn entre_dispositivos_el_original_ya_copiado_se_borra_en_la_misma_llamada_que_lo_demas() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-copiado");
+        let protected = dir.join("origen-de-root");
+        std::fs::create_dir_all(&protected).unwrap();
+        let copied_source = protected.join("copiado.txt");
+        std::fs::write(&copied_source, b"c").unwrap();
+        make_read_only(&protected);
+        let destination = dir.join("destino-comun");
+        std::fs::create_dir_all(&destination).unwrap();
+        // Ya se copió sin privilegios; falta borrar el original.
+        std::fs::write(destination.join("copiado.txt"), b"c").unwrap();
+        let other = dir.join("otro.txt");
+        std::fs::write(&other, b"o").unwrap();
+        let log = install_authorizing(&dir, &protected);
+        let pending = vec![
+            PendingMove {
+                source: copied_source.clone(),
+                dest_path: destination.join("copiado.txt"),
+                remove_first: false,
+                replaced_existing: false,
+                copied: true,
+            },
+            PendingMove {
+                source: other.clone(),
+                dest_path: destination.join("otro.txt"),
+                remove_first: false,
+                replaced_existing: false,
+                copied: false,
+            },
+        ];
+
+        let results = move_pending_elevated(&pending, &destination, &polkit::Elevation::new());
+
+        assert_eq!(results, vec![Ok(()), Ok(())]);
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert!(!copied_source.exists());
+        assert!(destination.join("otro.txt").is_file());
+        assert!(!other.exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn si_rm_falla_a_mitad_solo_cuenta_como_borrado_lo_que_de_verdad_se_borro() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("borrar-a-mitad");
+        let root = dir.join("de-root");
+        let elsewhere = dir.join("de-otro");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        std::fs::write(root.join("uno.txt"), b"1").unwrap();
+        std::fs::write(elsewhere.join("dos.txt"), b"2").unwrap();
+        make_read_only(&root);
+        make_read_only(&elsewhere);
+        // Este `pkexec` sólo tiene permiso sobre `root`.
+        let log = install_authorizing(&dir, &root);
+        let pending = vec![root.join("uno.txt"), elsewhere.join("dos.txt")];
+
+        let results = delete_pending_elevated(&pending, &polkit::Elevation::new());
+
+        assert_eq!(invocations(&log).len(), 1);
+        assert!(results[0].is_ok());
+        assert!(results[1].is_err());
+        assert!(!root.join("uno.txt").exists());
+        assert!(elsewhere.join("dos.txt").exists());
+        cleanup(&dir);
     }
 }
