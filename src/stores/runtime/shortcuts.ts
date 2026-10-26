@@ -359,6 +359,21 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
+	{
+		id: 'toggleQuickView',
+		labelKey: 'shortcuts.openCloseSelectedFileInQuickView',
+		defaultKeys: {
+			key: ' ',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+			dirItemIsSelected: true,
+		},
+		isReadOnly: false,
+	},
+	navigatorShortcut('toggleSplitView', 'shortcuts.toggleSplitView', { key: 'F3' }),
 	navigatorShortcut('newFolder', 'shortcuts.createNewFolder', {
 		ctrl: true,
 		shift: true,

@@ -22,6 +22,8 @@ export type ShortcutId =
 	| 'navigateBack'
 	| 'switchToLeftPane'
 	| 'switchToRightPane'
+	| 'toggleSplitView'
+	| 'toggleQuickView'
 	| 'undo'
 	| 'newFolder'
 	| 'closeTab'
