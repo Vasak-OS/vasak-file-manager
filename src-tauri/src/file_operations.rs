@@ -633,13 +633,65 @@ pub fn move_items(
         };
     }
 
+    let total = source_paths.len();
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+
+    let report = move_paths(
+        &source_paths,
+        destination,
+        &resolution,
+        &token,
+        &|index, current| emit_progress(&app, &operation_id, "move", index, total, current),
+    );
+
+    emit_progress(&app, &operation_id, "move", total, total, "");
+    if let Some(id) = &operation_id {
+        unregister_operation(id);
+    }
+
+    undo::push(
+        "move",
+        report.moved_pairs.len(),
+        report.partial_undo,
+        undo::UndoAction::MoveBack {
+            pairs: report.moved_pairs,
+        },
+    );
+
+    FileOperationResult {
+        success: report.failed == 0,
+        error: report.last_error,
+        copied_count: Some(report.moved),
+        failed_count: Some(report.failed),
+        skipped_count: Some(report.skipped),
+    }
+}
+
+/// Lo que dejó un movimiento.
+struct MoveReport {
+    moved: u32,
+    failed: u32,
+    skipped: u32,
+    last_error: Option<String>,
+    /// (destino, original) de lo que de verdad se movió, para deshacer.
+    moved_pairs: Vec<(PathBuf, PathBuf)>,
+    partial_undo: bool,
+}
+
+/// Mueve cada cosa a `destination`, sin saber de la ventana: `progress` avisa por
+/// cuál va.
+fn move_paths(
+    source_paths: &[String],
+    destination: &Path,
+    resolution: &ConflictResolution,
+    token: &Option<Arc<AtomicBool>>,
+    progress: &dyn Fn(usize, &str),
+) -> MoveReport {
     let mut moved_count: u32 = 0;
     let mut failed_count: u32 = 0;
     let mut skipped_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    let total = source_paths.len();
-    let token = operation_id.as_ref().map(|id| register_operation(id));
     // Una sola autorización para la operación: si se rechaza, no se vuelve a pedir.
     let elevation = polkit::Elevation::new();
 
@@ -648,10 +700,10 @@ pub fn move_items(
     let mut partial_undo = false;
 
     for (index, source_path_str) in source_paths.iter().enumerate() {
-        if is_cancelled(&token) {
+        if is_cancelled(token) {
             break;
         }
-        emit_progress(&app, &operation_id, "move", index, total, source_path_str);
+        progress(index, source_path_str);
 
         let mut replaced_existing = false;
         let source = Path::new(source_path_str);
@@ -771,24 +823,13 @@ pub fn move_items(
         }
     }
 
-    emit_progress(&app, &operation_id, "move", total, total, "");
-    if let Some(id) = &operation_id {
-        unregister_operation(id);
-    }
-
-    undo::push(
-        "move",
-        moved_pairs.len(),
+    MoveReport {
+        moved: moved_count,
+        failed: failed_count,
+        skipped: skipped_count,
+        last_error,
+        moved_pairs,
         partial_undo,
-        undo::UndoAction::MoveBack { pairs: moved_pairs },
-    );
-
-    FileOperationResult {
-        success: failed_count == 0,
-        error: last_error,
-        copied_count: Some(moved_count),
-        failed_count: Some(failed_count),
-        skipped_count: Some(skipped_count),
     }
 }
 
@@ -910,22 +951,72 @@ pub fn delete_items(
     app: AppHandle,
 ) -> FileOperationResult {
     let allow_elevation = allow_elevation.unwrap_or(true);
+    let total = paths.len();
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+    let deleted_after = now_secs();
+
+    let report = delete_paths(
+        &paths,
+        use_trash,
+        allow_elevation,
+        &token,
+        &|index, current| emit_progress(&app, &operation_id, "delete", index, total, current),
+    );
+
+    emit_progress(&app, &operation_id, "delete", total, total, "");
+    if let Some(id) = &operation_id {
+        unregister_operation(id);
+    }
+
+    undo::push(
+        "delete",
+        report.trashed.len(),
+        false,
+        undo::UndoAction::RestoreFromTrash {
+            paths: report.trashed,
+            deleted_after,
+        },
+    );
+
+    FileOperationResult {
+        success: report.failed == 0,
+        error: report.last_error,
+        copied_count: Some(report.deleted),
+        failed_count: Some(report.failed),
+        skipped_count: Some(0),
+    }
+}
+
+/// Lo que dejó un borrado.
+struct DeleteReport {
+    deleted: u32,
+    failed: u32,
+    last_error: Option<String>,
+    /// Sólo lo que llegó a la papelera se puede restaurar; un borrado definitivo no se deshace.
+    trashed: Vec<PathBuf>,
+}
+
+/// Borra o manda a la papelera cada ruta, sin saber de la ventana: `progress` avisa
+/// por cuál va.
+fn delete_paths(
+    paths: &[String],
+    use_trash: bool,
+    allow_elevation: bool,
+    token: &Option<Arc<AtomicBool>>,
+    progress: &dyn Fn(usize, &str),
+) -> DeleteReport {
     let mut deleted_count: u32 = 0;
     let mut failed_count: u32 = 0;
     let mut last_error: Option<String> = None;
 
-    let total = paths.len();
-    let token = operation_id.as_ref().map(|id| register_operation(id));
-
-    // Only trashed items can be restored; a permanent delete is not undoable.
+    // Sólo lo que llegó a la papelera se puede restaurar.
     let mut trashed: Vec<PathBuf> = Vec::new();
-    let deleted_after = now_secs();
 
     for (index, path_str) in paths.iter().enumerate() {
-        if is_cancelled(&token) {
+        if is_cancelled(token) {
             break;
         }
-        emit_progress(&app, &operation_id, "delete", index, total, path_str);
+        progress(index, path_str);
 
         let path = Path::new(path_str);
 
@@ -991,27 +1082,11 @@ pub fn delete_items(
         }
     }
 
-    emit_progress(&app, &operation_id, "delete", total, total, "");
-    if let Some(id) = &operation_id {
-        unregister_operation(id);
-    }
-
-    undo::push(
-        "delete",
-        trashed.len(),
-        false,
-        undo::UndoAction::RestoreFromTrash {
-            paths: trashed,
-            deleted_after,
-        },
-    );
-
-    FileOperationResult {
-        success: failed_count == 0,
-        error: last_error,
-        copied_count: Some(deleted_count),
-        failed_count: Some(failed_count),
-        skipped_count: Some(0),
+    DeleteReport {
+        deleted: deleted_count,
+        failed: failed_count,
+        last_error,
+        trashed,
     }
 }
 
@@ -1563,5 +1638,262 @@ mod tests {
         ));
         assert_eq!(same_dir, dir.join("nuevo (1).txt"));
         cleanup(&dir);
+    }
+
+    /// Un destino «de root» (sin permiso de escritura) y tres cosas para mover:
+    /// un archivo, una carpeta con contenido y otro archivo.
+    fn move_scenario(name: &str) -> (PathBuf, PathBuf, Vec<String>) {
+        let dir = scratch(name);
+        let folder = source_tree(&dir, 2);
+        let file_a = dir.join("uno.txt");
+        let file_b = dir.join("dos.txt");
+        std::fs::write(&file_a, b"1").unwrap();
+        std::fs::write(&file_b, b"2").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let sources = [&file_a, &folder, &file_b]
+            .iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect();
+        (dir, root, sources)
+    }
+
+    fn run_move(sources: &[String], root: &Path, resolution: ConflictResolution) -> MoveReport {
+        move_paths(sources, root, &resolution, &None, &|_, _| {})
+    }
+
+    #[test]
+    fn mover_varias_cosas_a_un_destino_sin_permiso_pide_la_contrasena_una_sola_vez() {
+        if running_as_root() {
+            return;
+        }
+        let (dir, root, sources) = move_scenario("mover-una-vez");
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(&sources, &root, ConflictResolution::Skip);
+
+        // Antes eran tres: un `mv` por cada cosa, y cada uno pedía la contraseña.
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed, report.skipped), (3, 0, 0));
+        assert!(root.join("uno.txt").is_file());
+        assert!(root.join("dos.txt").is_file());
+        assert!(root.join("origen/sub/b1.txt").is_file());
+        assert!(!dir.join("uno.txt").exists());
+        assert!(!dir.join("origen").exists());
+        // Y se puede deshacer lo que se movió, cosa por cosa.
+        assert_eq!(report.moved_pairs.len(), 3);
+        assert!(report
+            .moved_pairs
+            .contains(&(root.join("origen"), dir.join("origen"))));
+        assert!(!report.partial_undo);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn mover_sin_necesidad_de_privilegios_no_pide_nada() {
+        let dir = scratch("mover-sin-privilegios");
+        let file = dir.join("uno.txt");
+        std::fs::write(&file, b"1").unwrap();
+        let destination = dir.join("destino-comun");
+        std::fs::create_dir_all(&destination).unwrap();
+        let log = install_refusing(&dir, 126);
+
+        let report = run_move(
+            &[file.to_string_lossy().into_owned()],
+            &destination,
+            ConflictResolution::Skip,
+        );
+
+        assert_eq!(report.moved, 1);
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn rechazar_la_contrasena_al_mover_no_la_vuelve_a_pedir_y_no_registra_nada_para_deshacer() {
+        if running_as_root() {
+            return;
+        }
+        for code in [126, 127] {
+            let (dir, root, sources) = move_scenario(&format!("mover-rechazo-{code}"));
+            let log = install_refusing(&dir, code);
+
+            let report = run_move(&sources, &root, ConflictResolution::Skip);
+
+            assert_eq!(
+                invocations(&log).len(),
+                1,
+                "código {code}: {:?}",
+                invocations(&log)
+            );
+            // Las tres se informan como fallidas y siguen donde estaban.
+            assert_eq!((report.moved, report.failed), (0, 3));
+            assert_eq!(
+                report.last_error.as_deref(),
+                Some(polkit::AUTH_REFUSED),
+                "código {code}"
+            );
+            assert!(report.moved_pairs.is_empty());
+            assert!(dir.join("uno.txt").is_file());
+            assert!(dir.join("origen/sub/b1.txt").is_file());
+            cleanup(&dir);
+        }
+    }
+
+    #[test]
+    fn reemplazar_al_mover_a_un_destino_sin_permiso_no_pide_la_contrasena_dos_veces() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-reemplazar");
+        let file = dir.join("uno.txt");
+        std::fs::write(&file, b"nuevo").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("uno.txt"), b"viejo").unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(
+            &[file.to_string_lossy().into_owned()],
+            &root,
+            ConflictResolution::Replace,
+        );
+
+        // Antes: un `rm -rf` para borrar lo que había y otro `mv`, dos contraseñas.
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed), (1, 0));
+        assert_eq!(std::fs::read(root.join("uno.txt")).unwrap(), b"nuevo");
+        assert!(!file.exists());
+        // Lo reemplazado no vuelve: no se deshace, y se avisa.
+        assert!(report.partial_undo);
+        assert!(report.moved_pairs.is_empty());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_conflicto_renombrado_al_mover_va_con_su_nombre_nuevo() {
+        if running_as_root() {
+            return;
+        }
+        let dir = scratch("mover-renombrar");
+        let conflicting = dir.join("uno.txt");
+        let other = dir.join("dos.txt");
+        std::fs::write(&conflicting, b"nuevo").unwrap();
+        std::fs::write(&other, b"2").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("uno.txt"), b"viejo").unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_move(
+            &[
+                conflicting.to_string_lossy().into_owned(),
+                other.to_string_lossy().into_owned(),
+            ],
+            &root,
+            ConflictResolution::AutoRename,
+        );
+
+        // Una llamada para lo que conserva su nombre y otra por lo renombrado.
+        assert_eq!(invocations(&log).len(), 2, "{:?}", invocations(&log));
+        assert_eq!((report.moved, report.failed), (2, 0));
+        assert_eq!(std::fs::read(root.join("uno.txt")).unwrap(), b"viejo");
+        assert_eq!(std::fs::read(root.join("uno (1).txt")).unwrap(), b"nuevo");
+        assert!(root.join("dos.txt").is_file());
+        assert!(report
+            .moved_pairs
+            .contains(&(root.join("uno (1).txt"), conflicting.clone())));
+        cleanup(&dir);
+    }
+
+    fn run_delete(paths: &[PathBuf]) -> DeleteReport {
+        let paths: Vec<String> = paths
+            .iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect();
+        delete_paths(&paths, false, true, &None, &|_, _| {})
+    }
+
+    /// Un directorio «de root» con un archivo, una carpeta con contenido y otro
+    /// archivo adentro.
+    fn delete_scenario(name: &str) -> (PathBuf, PathBuf, Vec<PathBuf>) {
+        let dir = scratch(name);
+        let root = dir.join("de-root");
+        std::fs::create_dir_all(root.join("carpeta/sub")).unwrap();
+        std::fs::write(root.join("uno.txt"), b"1").unwrap();
+        std::fs::write(root.join("dos.txt"), b"2").unwrap();
+        std::fs::write(root.join("carpeta/a.txt"), b"a").unwrap();
+        std::fs::write(root.join("carpeta/sub/b.txt"), b"b").unwrap();
+        make_read_only(&root.join("carpeta/sub"));
+        make_read_only(&root.join("carpeta"));
+        make_read_only(&root);
+        let paths = vec![
+            root.join("uno.txt"),
+            root.join("carpeta"),
+            root.join("dos.txt"),
+        ];
+        (dir, root, paths)
+    }
+
+    #[test]
+    fn borrar_varias_cosas_sin_permiso_pide_la_contrasena_una_sola_vez() {
+        if running_as_root() {
+            return;
+        }
+        let (dir, root, paths) = delete_scenario("borrar-una-vez");
+        let log = install_authorizing(&dir, &root);
+
+        let report = run_delete(&paths);
+
+        // Antes eran tres: un `rm -rf` por cada cosa.
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!((report.deleted, report.failed), (3, 0));
+        assert!(paths.iter().all(|p| !p.exists()));
+        // Un borrado definitivo no se deshace.
+        assert!(report.trashed.is_empty());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn borrar_sin_necesidad_de_privilegios_no_pide_nada() {
+        let dir = scratch("borrar-sin-privilegios");
+        let file = dir.join("uno.txt");
+        std::fs::write(&file, b"1").unwrap();
+        let log = install_refusing(&dir, 126);
+
+        let report = run_delete(&[file.clone()]);
+
+        assert_eq!(report.deleted, 1);
+        assert!(!file.exists());
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn rechazar_la_contrasena_al_borrar_no_la_vuelve_a_pedir() {
+        if running_as_root() {
+            return;
+        }
+        for code in [126, 127] {
+            let (dir, root, paths) = delete_scenario(&format!("borrar-rechazo-{code}"));
+            let log = install_refusing(&dir, code);
+
+            let report = run_delete(&paths);
+
+            assert_eq!(
+                invocations(&log).len(),
+                1,
+                "código {code}: {:?}",
+                invocations(&log)
+            );
+            assert_eq!((report.deleted, report.failed), (0, 3));
+            assert_eq!(report.last_error.as_deref(), Some(polkit::AUTH_REFUSED));
+            assert!(paths.iter().all(|p| p.exists()));
+            let _ = root;
+            cleanup(&dir);
+        }
     }
 }
