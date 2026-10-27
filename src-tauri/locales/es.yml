@@ -325,6 +325,20 @@ notifications:
   undone: Operación deshecha
   undoFailed: No se pudo deshacer la operación
   nothingToUndo: Nada para deshacer
+  restored: Restaurado de la papelera
+  restoreFailed: No se pudo restaurar de la papelera
+  trashEmptied: Papelera vaciada
+  emptyTrashFailed: No se pudo vaciar la papelera
+trash:
+  title: Papelera
+  close: Cerrar
+  restore: Restaurar
+  empty: Vaciar papelera
+  emptyTitle: La papelera está vacía
+  emptyNote: Lo que borrás termina acá.
+  emptyConfirmTitle: ¿Vaciar la papelera?
+  emptyConfirmQuestion: Esto borra para siempre todo lo que hay en la papelera. No se puede deshacer.
+  cancel: Cancelar
 tabs:
   newTab: Nueva Pestaña
   close: Cerrar
@@ -351,6 +365,7 @@ barraLateral:
   plegar: Plegar la barra lateral
   desplegar: Desplegar la barra lateral
   lugares: Lugares
+  papelera: Papelera
   favoritos: Favoritos
   recientes: Recientes
   discos: Discos

@@ -179,6 +179,9 @@ pub fn run() {
             undo::undo_last_operation,
             undo::get_undo_info,
             undo::clear_undo_history,
+            undo::list_trash,
+            undo::restore_trash,
+            undo::empty_trash,
             read_file::read_text_file,
             read_file::read_pdf_preview,
         ])

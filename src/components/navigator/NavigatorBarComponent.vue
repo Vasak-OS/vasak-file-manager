@@ -15,12 +15,14 @@ import { useNavigatorStore } from '@/stores/runtime/navigator';
 import { useQuickViewStore } from '@/stores/runtime/quick-view';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
+import { useTrashStore } from '@/stores/runtime/trash';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Layout } from '@/types/navigator';
 import GlobalSearchView from '@/views/GlobalSearchView.vue';
+import TrashView from '@/views/TrashView.vue';
 
 type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
 	navigateToPath?: (path: string) => Promise<void>;
@@ -53,6 +55,7 @@ const navigatorStore = useNavigatorStore();
 const quickViewStore = useQuickViewStore();
 const shortcutsStore = useShortcutsStore();
 const userStatsStore = useUserStatsStore();
+const trashStore = useTrashStore();
 const isSelectByPatternOpen = ref(false);
 const terminalsStore = useTerminalsStore();
 const dirSizesStore = useDirSizesStore();
@@ -104,6 +107,8 @@ watch(
 	() => globalSearchStore.isOpen,
 	(isOpen) => {
 		if (isOpen) {
+			// Las dos vistas overlay no conviven: abrir la búsqueda cierra la papelera.
+			trashStore.close();
 			wasSplitViewBeforeSearch.value = isSplitView.value;
 
 			if (isSplitView.value) {
@@ -118,6 +123,16 @@ watch(
 				isSearchSelectionActive.value = false;
 				selectedEntries.value = [];
 			}
+		}
+	}
+);
+
+// Y al revés: abrir la papelera cierra la búsqueda global.
+watch(
+	() => trashStore.isOpen,
+	(isOpen) => {
+		if (isOpen) {
+			globalSearchStore.close();
 		}
 	}
 );
@@ -439,6 +454,11 @@ function handleEscapeKey(): boolean {
 	// selección hecha dentro de la búsqueda tiene que poder limpiarse sin que
 	// el panel se cierre de paso. Va acá porque el panel tapa el contenido
 	// entero y salir tenía una sola puerta, la cruz de adentro.
+	if (trashStore.isOpen) {
+		trashStore.close();
+		return true;
+	}
+
 	if (globalSearchStore.isOpen) {
 		globalSearchStore.close();
 		return true;
@@ -660,6 +680,7 @@ onMounted(() => {
 				<GlobalSearchView ref="globalSearchViewRef" v-show="globalSearchStore.isOpen"
 					class="flex-1" @close="globalSearchStore.close()"
 					@open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
+				<TrashView v-show="trashStore.isOpen" class="flex-1" @close="trashStore.close()" />
 				<ResizablePanelGroup :direction="panesDirection" class="navigator-page__panes">
 					<template v-if="workspacesStore.currentTabGroup && isSplitView">
 						<template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">
