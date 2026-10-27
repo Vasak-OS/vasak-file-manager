@@ -144,65 +144,18 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
+	navigatorShortcut('invertSelection', 'shortcuts.invertSelection', {
+		ctrl: true,
+		shift: true,
+		key: 'i',
+	}),
+	navigatorShortcut('selectByPattern', 'shortcuts.selectByPattern', { ctrl: true, key: 's' }),
 	{
-		id: 'invertSelection',
-		labelKey: 'shortcuts.invertSelection',
-		defaultKeys: {
-			ctrl: true,
-			shift: true,
-			key: 'i',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
+		// `copyPath` suma `dirItemIsSelected` a las condiciones del navegador.
+		...navigatorShortcut('copyPath', 'shortcuts.copyPath', { ctrl: true, shift: true, key: 'c' }),
+		conditions: { inputFieldIsActive: false, dialogIsOpened: false, dirItemIsSelected: true },
 	},
-	{
-		id: 'selectByPattern',
-		labelKey: 'shortcuts.selectByPattern',
-		defaultKeys: {
-			ctrl: true,
-			key: 's',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'copyPath',
-		labelKey: 'shortcuts.copyPath',
-		defaultKeys: {
-			ctrl: true,
-			shift: true,
-			key: 'c',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-			dirItemIsSelected: true,
-		},
-		isReadOnly: false,
-	},
-	{
-		id: 'showProperties',
-		labelKey: 'shortcuts.showProperties',
-		defaultKeys: {
-			alt: true,
-			key: 'Enter',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
+	navigatorShortcut('showProperties', 'shortcuts.showProperties', { alt: true, key: 'Enter' }),
 	{
 		id: 'undo',
 		labelKey: 'shortcuts.undoLastOperation',
