@@ -11,6 +11,7 @@ export type ShortcutId =
 	| 'selectByPattern'
 	| 'copyPath'
 	| 'showProperties'
+	| 'addBookmark'
 	| 'delete'
 	| 'deletePermanently'
 	| 'rename'

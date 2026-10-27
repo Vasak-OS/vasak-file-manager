@@ -16,6 +16,7 @@ import { useQuickViewStore } from '@/stores/runtime/quick-view';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
+import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Layout } from '@/types/navigator';
@@ -51,6 +52,7 @@ const globalSearchStore = useGlobalSearchStore();
 const navigatorStore = useNavigatorStore();
 const quickViewStore = useQuickViewStore();
 const shortcutsStore = useShortcutsStore();
+const userStatsStore = useUserStatsStore();
 const isSelectByPatternOpen = ref(false);
 const terminalsStore = useTerminalsStore();
 const dirSizesStore = useDirSizesStore();
@@ -358,6 +360,14 @@ function handleShowPropertiesShortcut() {
 	navigatorStore.requestOpenInfoPanel();
 }
 
+// Ancla la carpeta actual al sidebar. `currentActivePath` es la carpeta que se
+// está viendo, siempre un directorio, así que `isFile` es `false`.
+async function handleAddBookmarkShortcut() {
+	if (currentActivePath.value) {
+		await userStatsStore.addToFavorites(currentActivePath.value, false);
+	}
+}
+
 function handleSelectByPatternShortcut() {
 	isSelectByPatternOpen.value = true;
 }
@@ -564,6 +574,7 @@ function registerShortcutHandlers() {
 		checkItemSelected: hasSelectedItems,
 	});
 	shortcutsStore.registerHandler('showProperties', handleShowPropertiesShortcut);
+	shortcutsStore.registerHandler('addBookmark', handleAddBookmarkShortcut);
 	shortcutsStore.registerHandler('undo', handleUndoShortcut);
 	shortcutsStore.registerHandler('delete', handleDeleteShortcut);
 	shortcutsStore.registerHandler('deletePermanently', handleDeletePermanentlyShortcut);

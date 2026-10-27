@@ -156,6 +156,7 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		conditions: { inputFieldIsActive: false, dialogIsOpened: false, dirItemIsSelected: true },
 	},
 	navigatorShortcut('showProperties', 'shortcuts.showProperties', { alt: true, key: 'Enter' }),
+	navigatorShortcut('addBookmark', 'shortcuts.addBookmark', { ctrl: true, key: 'd' }),
 	{
 		id: 'undo',
 		labelKey: 'shortcuts.undoLastOperation',

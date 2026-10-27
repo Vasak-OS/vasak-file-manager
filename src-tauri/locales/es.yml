@@ -145,6 +145,7 @@ fileBrowser:
     note: El tamaño es la suma de todos los contenidos
 shortcuts:
   selectAllItemsInCurrentDirectory: Seleccionar Todo
+  addBookmark: Anclar la carpeta actual
   undoLastOperation: Deshacer
   transferPreparedForCopying: Transferencia preparada para copiar
   transferPreparedToPane1: Transferencia preparada para panel 1
@@ -350,6 +351,8 @@ barraLateral:
   plegar: Plegar la barra lateral
   desplegar: Desplegar la barra lateral
   lugares: Lugares
+  favoritos: Favoritos
+  recientes: Recientes
   discos: Discos
   nube: En la nube
 textMenu:
