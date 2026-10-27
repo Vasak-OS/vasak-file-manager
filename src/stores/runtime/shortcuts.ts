@@ -144,6 +144,18 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
+	navigatorShortcut('invertSelection', 'shortcuts.invertSelection', {
+		ctrl: true,
+		shift: true,
+		key: 'i',
+	}),
+	navigatorShortcut('selectByPattern', 'shortcuts.selectByPattern', { ctrl: true, key: 's' }),
+	{
+		// `copyPath` suma `dirItemIsSelected` a las condiciones del navegador.
+		...navigatorShortcut('copyPath', 'shortcuts.copyPath', { ctrl: true, shift: true, key: 'c' }),
+		conditions: { inputFieldIsActive: false, dialogIsOpened: false, dirItemIsSelected: true },
+	},
+	navigatorShortcut('showProperties', 'shortcuts.showProperties', { alt: true, key: 'Enter' }),
 	{
 		id: 'undo',
 		labelKey: 'shortcuts.undoLastOperation',

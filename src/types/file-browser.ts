@@ -60,6 +60,8 @@ export type ContextMenuAction =
 	| 'open-in-new-tab'
 	| 'toggle-favorite'
 	| 'edit-tags'
+	| 'copy-path'
+	| 'properties'
 	| 'extract-here'
 	| 'compress';
 

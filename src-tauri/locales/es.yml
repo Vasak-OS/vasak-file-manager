@@ -115,6 +115,8 @@ fileBrowser:
     deletePermanently: Eliminar del disco
     tags: Etiquetas
     noTags: Sin etiquetas
+    copyPath: Copiar ruta
+    properties: Propiedades
   name: Nombre
   items: Elementos
   size: Tamaño
@@ -169,6 +171,10 @@ shortcuts:
   switchToLeftPane: Cambiar a panel izquierdo
   switchToRightPane: Cambiar a panel derecho
   toggleSplitView: Alternar vista dividida
+  invertSelection: Invertir selección
+  selectByPattern: Seleccionar por patrón
+  copyPath: Copiar ruta
+  showProperties: Propiedades
   deleteSelectedItemsFromDrive: Eliminar elementos seleccionados del disco
   moveSelectedItemsToTrash: Mover elementos seleccionados a la papelera
   createNewFolder: Crear carpeta nueva
@@ -218,6 +224,10 @@ dialogs:
   newItemDialog:
     newDirectory: Nueva Carpeta
     newFile: Nuevo Archivo
+  selectByPatternDialog:
+    title: Seleccionar por patrón
+    label: "Patrón (por ejemplo: *.jpg)"
+    confirm: Seleccionar
   compressDialog:
     title: Crear archivo comprimido
     format: Formato
@@ -303,6 +313,8 @@ notifications:
   failedToRenameItem: Error al renombrar el elemento
   removedFromFavorites: Eliminado de Favoritos
   addedToFavorites: Agregado a Favoritos
+  pathCopied: Ruta copiada al portapapeles
+  pathCopyFailed: No se pudo copiar la ruta
   cannotFetchDirectoryItems: No se pueden obtener elementos del directorio
   quickViewFileIsNotSupported: Tipo de archivo no soportado en Vista Rápida
   archiveExtracted: Archivo extraído correctamente

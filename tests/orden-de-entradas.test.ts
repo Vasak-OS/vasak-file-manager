@@ -32,6 +32,7 @@ import type { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ListSortColumn, ListSortDirection } from '@/types/short';
 import { sortFileBrowserEntries } from '@/utils/file-browser-sort';
+import { archivo, carpeta, makeDirEntry, nombres } from './support/dir-entry';
 
 type DirSizesStore = ReturnType<typeof useDirSizesStore>;
 
@@ -52,31 +53,7 @@ function storeConTamanos(tamanos: Record<string, number> = {}): DirSizesStore {
 	} as unknown as DirSizesStore;
 }
 
-function entrada(campos: Partial<DirEntry> & { name: string }): DirEntry {
-	return {
-		name: campos.name,
-		path: campos.path ?? `/casa/${campos.name}`,
-		ext: null,
-		size: 0,
-		item_count: null,
-		modified_time: 0,
-		accessed_time: 0,
-		created_time: 0,
-		mime: null,
-		is_file: true,
-		is_dir: false,
-		is_symlink: false,
-		is_hidden: false,
-		...campos,
-	};
-}
-
-const carpeta = (name: string, campos: Partial<DirEntry> = {}) =>
-	entrada({ name, is_file: false, is_dir: true, ...campos });
-const archivo = (name: string, campos: Partial<DirEntry> = {}) =>
-	entrada({ name, is_file: true, is_dir: false, ...campos });
-
-const nombres = (entradas: DirEntry[]) => entradas.map((una) => una.name);
+const entrada = makeDirEntry;
 const sinTamanos = storeConTamanos();
 
 describe('las carpetas van primero', () => {

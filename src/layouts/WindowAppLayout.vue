@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ActionButton, WindowFrame } from '@vasakgroup/vue-libvasak';
-import { computed, provide, ref } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import NavigatorBarComponent from '@/components/navigator/NavigatorBarComponent.vue';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
 import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import { createWindowColumns, WINDOW_COLUMNS_KEY } from '@/composables/use-window-columns';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useNavigatorStore } from '@/stores/runtime/navigator';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
@@ -17,6 +18,7 @@ const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const globalSearchStore = useGlobalSearchStore();
 const userLayoutStore = useUserLayoutStore();
+const navigatorStore = useNavigatorStore();
 
 const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
@@ -66,6 +68,20 @@ function handleToggleInfoPanel() {
 function handleToggleSidebar() {
 	isSidebarOpen.value = !isSidebarOpen.value;
 }
+
+// «Propiedades» (Alt+Enter o el menú contextual) abre el panel sin alternarlo:
+// en una columna por vez cambia a la columna de información, y en varias enciende
+// el panel persistido.
+watch(
+	() => navigatorStore.infoPanelOpenRequests,
+	() => {
+		if (isOneColumn.value) {
+			column.value = 'info';
+		} else {
+			userLayoutStore.setInfoPanelVisible(true);
+		}
+	}
+);
 </script>
 <template>
   <!-- La barra cruza la ventana entera. La lateral va **abajo** de ella y no a

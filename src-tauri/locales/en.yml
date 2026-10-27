@@ -115,6 +115,8 @@ fileBrowser:
     deletePermanently: Delete from drive
     tags: Tags
     noTags: No tags
+    copyPath: Copy path
+    properties: Properties
   name: Name
   items: Items
   size: Size
@@ -169,6 +171,10 @@ shortcuts:
   switchToLeftPane: Switch to left pane
   switchToRightPane: Switch to right pane
   toggleSplitView: Toggle split view
+  invertSelection: Invert selection
+  selectByPattern: Select by pattern
+  copyPath: Copy path
+  showProperties: Properties
   deleteSelectedItemsFromDrive: Delete selected items from drive
   moveSelectedItemsToTrash: Move selected items to trash
   createNewFolder: Create new folder
@@ -248,6 +254,10 @@ dialogs:
   newItemDialog:
     newDirectory: New Directory
     newFile: New File
+  selectByPatternDialog:
+    title: Select by pattern
+    label: "Pattern (e.g. *.jpg)"
+    confirm: Select
   compressDialog:
     title: Create Archive
     format: Format
@@ -303,6 +313,8 @@ notifications:
   failedToRenameItem: Failed to rename item
   removedFromFavorites: Removed from Favorites
   addedToFavorites: Added to Favorites
+  pathCopied: Path copied to clipboard
+  pathCopyFailed: Could not copy the path
   cannotFetchDirectoryItems: Cannot fetch directory items
   quickViewFileIsNotSupported: File type not supported in Quick View
   archiveExtracted: Archive extracted successfully

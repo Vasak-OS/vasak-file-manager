@@ -8,6 +8,12 @@ import type {
 	SelectionType,
 } from '@/types/file-browser';
 
+/** Visible para cualquier selección: uno o varios, archivos o carpetas. */
+const CUALQUIER_SELECCION = {
+	selectionTypes: ['single', 'multiple'] as SelectionType[],
+	entryTypes: ['file', 'directory'] as EntryType[],
+};
+
 const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 	{
 		action: 'rename',
@@ -64,6 +70,8 @@ const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 		selectionTypes: ['single', 'multiple'],
 		entryTypes: ['file', 'directory'],
 	},
+	{ action: 'copy-path', ...CUALQUIER_SELECCION },
+	{ action: 'properties', ...CUALQUIER_SELECCION },
 	{
 		action: 'extract-here',
 		selectionTypes: ['single'],
