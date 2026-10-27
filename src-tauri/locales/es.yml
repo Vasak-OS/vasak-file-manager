@@ -168,6 +168,7 @@ shortcuts:
   showHideGlobalSearch: Mostrar/Ocultar búsqueda global
   switchToLeftPane: Cambiar a panel izquierdo
   switchToRightPane: Cambiar a panel derecho
+  toggleSplitView: Alternar vista dividida
   deleteSelectedItemsFromDrive: Eliminar elementos seleccionados del disco
   moveSelectedItemsToTrash: Mover elementos seleccionados a la papelera
   createNewFolder: Crear carpeta nueva

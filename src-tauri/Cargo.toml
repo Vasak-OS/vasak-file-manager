@@ -1,6 +1,6 @@
 [package]
 name = "vasak-file-manager"
-version = "0.29.7"
+version = "0.30.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -74,6 +74,7 @@ zbus = { version = "5", default-features = false, features = ["tokio"] }
 # Los tipos del bus: las rutas de objeto y las variantes de `udisks2`.
 zvariant = "5"
 gio = "0.18"
+md5 = "0.7"
 
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.

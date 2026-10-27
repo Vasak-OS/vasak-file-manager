@@ -10,6 +10,7 @@ import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useQuickViewStore } from '@/stores/runtime/quick-view';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
@@ -45,6 +46,7 @@ const workspacesStore = useWorkspacesStore();
 const clipboardStore = useClipboardStore();
 const dismissalLayerStore = useDismissalLayerStore();
 const globalSearchStore = useGlobalSearchStore();
+const quickViewStore = useQuickViewStore();
 const shortcutsStore = useShortcutsStore();
 const terminalsStore = useTerminalsStore();
 const dirSizesStore = useDirSizesStore();
@@ -559,6 +561,20 @@ function registerShortcutHandlers() {
 	shortcutsStore.registerHandler('navigateBack', () => callActivePaneMethod('navigateBack'));
 	shortcutsStore.registerHandler('switchToLeftPane', () => switchToPane(0));
 	shortcutsStore.registerHandler('switchToRightPane', () => switchToPane(1));
+	shortcutsStore.registerHandler('toggleSplitView', () => {
+		workspacesStore.toggleSplitView();
+	});
+	shortcutsStore.registerHandler(
+		'toggleQuickView',
+		() => {
+			const entry = selectedEntries.value[selectedEntries.value.length - 1];
+
+			if (entry?.is_file) {
+				void quickViewStore.toggleQuickView(entry.path);
+			}
+		},
+		{ checkItemSelected: hasSelectedItems }
+	);
 	shortcutsStore.registerHandler('newFolder', () => {
 		getActivePaneRef()?.openNewItemDialog('directory');
 	});
