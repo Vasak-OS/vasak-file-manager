@@ -976,7 +976,7 @@ export function useFileBrowserSelection(
 			if (allAreFavorites) {
 				await userStatsStore.removeFromFavorites(entry.path);
 			} else if (!userStatsStore.isFavorite(entry.path)) {
-				await userStatsStore.addToFavorites(entry.path);
+				await userStatsStore.addToFavorites(entry.path, entry.is_file);
 			}
 		}
 

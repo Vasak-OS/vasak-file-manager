@@ -13,7 +13,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { SideBar, SideButton } from '@vasakgroup/vue-libvasak';
+import { SideBar, SideButton, SideGroup } from '@vasakgroup/vue-libvasak';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
@@ -22,8 +22,10 @@ import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
 import { toast, useToast } from '@/components/ui/toast/toaster';
 import type { CloudDrive } from '@/composables/use-cloud-drives';
+import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
+import type { FavoriteItem, HistoryItem } from '@/types/user-stats';
 import { olvidarTodo, pedidos, responder } from './dobles';
 
 const css = await Bun.file(new URL('../src/assets/main.css', import.meta.url)).text();
@@ -59,7 +61,12 @@ function unDisco(cambios: Partial<DriveInfo> = {}): DriveInfo {
 	};
 }
 
-async function abrirLaBarra({ discos = [unDisco()], nubes = [] as CloudDrive[] } = {}) {
+async function abrirLaBarra({
+	discos = [unDisco()],
+	nubes = [] as CloudDrive[],
+	favoritos = [] as FavoriteItem[],
+	historial = [] as HistoryItem[],
+} = {}) {
 	responder('get_system_drives', discos);
 	responder('list_cloud_drives', nubes);
 	const pinia = createPinia();
@@ -69,6 +76,11 @@ async function abrirLaBarra({ discos = [unDisco()], nubes = [] as CloudDrive[] }
 	// y con varias pruebas montadas en el mismo archivo ésa puede ser la de otra
 	// prueba: se miraba un store vacío mientras el componente escribía en otro.
 	const workspaces = useWorkspacesStore();
+	// Se reemplazan las listas en vez de empujar: `DEFAULT_USER_STATS` se copia
+	// superficialmente y sus arrays los comparten todos los almacenes.
+	const stats = useUserStatsStore();
+	stats.userStats.favorites = favoritos;
+	stats.userStats.history = historial;
 	const vista = mount(SidebarComponent, { global: { plugins: [pinia] } });
 	montadas.push(vista);
 	// La barra pide los discos en `onMounted` y encadena varios `await`, así
@@ -88,6 +100,16 @@ async function asentar(vueltas = 8) {
 /** El botón de la barra cuyo texto o nombre accesible es ése. */
 function botonDe(vista: Awaited<ReturnType<typeof abrirLaBarra>>['vista'], texto: string) {
 	return vista.findAllComponents(SideButton).find((boton) => boton.props('label') === texto);
+}
+
+/** Los botones de la sección con ese título (`[]` si la sección no se dibuja). */
+function botonesDe(vista: Awaited<ReturnType<typeof abrirLaBarra>>['vista'], titulo: string) {
+	return (
+		vista
+			.findAllComponents(SideGroup)
+			.find((grupo) => grupo.props('title') === titulo)
+			?.findAllComponents(SideButton) ?? []
+	);
 }
 
 /** Lo montado en la prueba en curso, para desmontarlo al terminar. */
@@ -277,6 +299,201 @@ describe('los discos', () => {
 
 			expect(pedidos('mount_drive')).toHaveLength(1);
 			expect(useToast().toasts.value.size).toBe(0);
+		});
+	});
+});
+
+describe('los favoritos y los recientes (#142, #143)', () => {
+	const favorito = (path: string, isFile?: boolean, addedAt = 1): FavoriteItem => ({
+		path,
+		addedAt,
+		...(isFile === undefined ? {} : { isFile }),
+	});
+	const reciente = (path: string, openedAt: number, isFile = false): HistoryItem => ({
+		path,
+		openedAt,
+		isFile,
+	});
+	const etiquetas = (botones: ReturnType<typeof botonesDe>) =>
+		botones.map((boton) => boton.props('label'));
+
+	describe('las secciones', () => {
+		test('sin favoritos ni historial no se dibuja ninguna', async () => {
+			const { vista } = await abrirLaBarra();
+
+			const titulos = vista.findAllComponents(SideGroup).map((grupo) => grupo.props('title'));
+			expect(titulos).not.toContain('barraLateral.favoritos');
+			expect(titulos).not.toContain('barraLateral.recientes');
+		});
+
+		test('los favoritos se muestran por el nombre de su carpeta, no por la ruta entera', async () => {
+			const { vista } = await abrirLaBarra({
+				favoritos: [
+					favorito('/casa/pato/Documentos', false),
+					favorito('/casa/pato/Música/', false),
+				],
+			});
+
+			expect(etiquetas(botonesDe(vista, 'barraLateral.favoritos'))).toEqual([
+				'Documentos',
+				'Música',
+			]);
+		});
+
+		test('con sólo favoritos no aparece la sección de recientes, y al revés', async () => {
+			const conFavoritos = await abrirLaBarra({ favoritos: [favorito('/casa/a')] });
+			const titulosA = conFavoritos.vista
+				.findAllComponents(SideGroup)
+				.map((grupo) => grupo.props('title'));
+			expect(titulosA).toContain('barraLateral.favoritos');
+			expect(titulosA).not.toContain('barraLateral.recientes');
+
+			const conHistorial = await abrirLaBarra({ historial: [reciente('/casa/b', 1)] });
+			const titulosB = conHistorial.vista
+				.findAllComponents(SideGroup)
+				.map((grupo) => grupo.props('title'));
+			expect(titulosB).toContain('barraLateral.recientes');
+			expect(titulosB).not.toContain('barraLateral.favoritos');
+		});
+
+		test('los recientes van del más nuevo al más viejo', async () => {
+			const { vista } = await abrirLaBarra({
+				historial: [
+					reciente('/casa/vieja', 10),
+					reciente('/casa/nueva', 30),
+					reciente('/casa/media', 20),
+				],
+			});
+
+			expect(etiquetas(botonesDe(vista, 'barraLateral.recientes'))).toEqual([
+				'nueva',
+				'media',
+				'vieja',
+			]);
+		});
+
+		test('los recientes son los últimos 15, no los 200 del historial', async () => {
+			const historial = Array.from({ length: 40 }, (_, i) => reciente(`/casa/carpeta-${i}`, i));
+			const { vista } = await abrirLaBarra({ historial });
+
+			const botones = etiquetas(botonesDe(vista, 'barraLateral.recientes'));
+			expect(botones).toHaveLength(15);
+			expect(botones[0]).toBe('carpeta-39');
+			expect(botones[14]).toBe('carpeta-25');
+			expect(botones).not.toContain('carpeta-24');
+		});
+
+		test('un archivo lleva el ícono de archivo y una carpeta el de carpeta', async () => {
+			const { vista } = await abrirLaBarra({
+				favoritos: [favorito('/casa/informe.pdf', true), favorito('/casa/Fotos', false)],
+				historial: [reciente('/casa/nota.txt', 2, true), reciente('/casa/Obras', 1, false)],
+			});
+
+			const iconos = (titulo: string) =>
+				Object.fromEntries(
+					botonesDe(vista, titulo).map((b) => [b.props('label'), b.props('icon')])
+				);
+			expect(iconos('barraLateral.favoritos')).toEqual({
+				'informe.pdf': 'text-x-generic',
+				Fotos: 'folder',
+			});
+			expect(iconos('barraLateral.recientes')).toEqual({
+				'nota.txt': 'text-x-generic',
+				Obras: 'folder',
+			});
+		});
+
+		test('un favorito guardado antes de que existiera el tipo se trata como carpeta', async () => {
+			const { vista } = await abrirLaBarra({ favoritos: [favorito('/casa/vieja')] });
+
+			expect(botonesDe(vista, 'barraLateral.favoritos')[0].props('icon')).toBe('folder');
+		});
+	});
+
+	describe('apretar uno', () => {
+		test('un favorito de carpeta abre una pestaña en esa carpeta', async () => {
+			const { vista, workspaces } = await abrirLaBarra({
+				favoritos: [favorito('/casa/pato/Documentos', false)],
+			});
+
+			await botonDe(vista, 'Documentos')?.trigger('click');
+			await asentar();
+
+			expect(workspaces.currentTab?.path).toBe('/casa/pato/Documentos');
+			expect(pedidos('get_parent_dir')).toHaveLength(0);
+		});
+
+		test('un favorito sin tipo guardado abre la ruta, como carpeta', async () => {
+			const { vista, workspaces } = await abrirLaBarra({ favoritos: [favorito('/casa/vieja')] });
+
+			await botonDe(vista, 'vieja')?.trigger('click');
+			await asentar();
+
+			expect(workspaces.currentTab?.path).toBe('/casa/vieja');
+			expect(pedidos('get_parent_dir')).toHaveLength(0);
+		});
+
+		test('un favorito que es archivo abre la carpeta que lo contiene, no el archivo', async () => {
+			// Las pestañas listan carpetas: abrir el archivo mismo fallaba al listar.
+			responder('get_parent_dir', () => '/casa/pato/Informes');
+			const { vista, workspaces } = await abrirLaBarra({
+				favoritos: [favorito('/casa/pato/Informes/anual.pdf', true)],
+			});
+
+			await botonDe(vista, 'anual.pdf')?.trigger('click');
+			await asentar();
+
+			expect(pedidos('get_parent_dir').map((p) => p.argumentos)).toEqual([
+				{ path: '/casa/pato/Informes/anual.pdf' },
+			]);
+			expect(workspaces.currentTab?.path).toBe('/casa/pato/Informes');
+		});
+
+		test('un reciente de carpeta abre una pestaña en esa carpeta', async () => {
+			const { vista, workspaces } = await abrirLaBarra({
+				historial: [reciente('/casa/pato/Obras', 5, false)],
+			});
+
+			await botonDe(vista, 'Obras')?.trigger('click');
+			await asentar();
+
+			expect(workspaces.currentTab?.path).toBe('/casa/pato/Obras');
+		});
+
+		test('un reciente que es archivo abre la carpeta que lo contiene', async () => {
+			responder('get_parent_dir', () => '/casa/pato/Notas');
+			const { vista, workspaces } = await abrirLaBarra({
+				historial: [reciente('/casa/pato/Notas/hoy.txt', 5, true)],
+			});
+
+			await botonDe(vista, 'hoy.txt')?.trigger('click');
+			await asentar();
+
+			expect(workspaces.currentTab?.path).toBe('/casa/pato/Notas');
+		});
+
+		test('si el backend no sabe cuál es la carpeta de un archivo, abre la ruta en vez de no hacer nada', async () => {
+			responder('get_parent_dir', () => null);
+			const { vista, workspaces } = await abrirLaBarra({
+				favoritos: [favorito('/casa/suelto.txt', true)],
+			});
+
+			await botonDe(vista, 'suelto.txt')?.trigger('click');
+			await asentar();
+
+			expect(workspaces.currentTab?.path).toBe('/casa/suelto.txt');
+		});
+
+		test('si pedir la carpeta contenedora falla, abre la ruta en vez de quedarse sin navegar', async () => {
+			responder('get_parent_dir', () => Promise.reject(new Error('sin backend')));
+			const { vista, workspaces } = await abrirLaBarra({
+				favoritos: [favorito('/casa/suelto.txt', true)],
+			});
+
+			await botonDe(vista, 'suelto.txt')?.trigger('click');
+			await asentar();
+
+			expect(workspaces.currentTab?.path).toBe('/casa/suelto.txt');
 		});
 	});
 });

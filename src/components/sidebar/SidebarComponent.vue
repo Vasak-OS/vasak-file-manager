@@ -23,6 +23,7 @@
  * se quiere copiar. La tarjeta con el espacio libre, el sistema de archivos y
  * el botón de expulsar sigue apareciendo al pasar por encima.
  */
+import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	SideBar,
@@ -32,16 +33,21 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import { type CloudDrive, useCloudDrives } from '@/composables/use-cloud-drives';
 import { useDrives } from '@/composables/use-drives';
 import { useMountDrive } from '@/composables/use-mount-drive';
 import { useWindowColumns } from '@/composables/use-window-columns';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
+import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
 import { labelOf } from '@/utils/cloud-drive-label';
+import { basename } from '@/utils/path';
+
+/** Cuántos accesos recientes muestra el sidebar: los últimos, no los 200. */
+const RECENTS_IN_SIDEBAR = 15;
 
 const { drives, refresh } = useDrives();
 const {
@@ -53,7 +59,10 @@ const {
 } = useCloudDrives();
 const workspacesStore = useWorkspacesStore();
 const userPathsStore = useUserPathsStore();
+const userStatsStore = useUserStatsStore();
 const { t } = useI18n();
+
+const recentItems = computed(() => userStatsStore.sortedHistory.slice(0, RECENTS_IN_SIDEBAR));
 
 /** En una ventana compacta la barra es un cajón: elegir un lugar lo cierra. */
 const { isSidebarOpen } = useWindowColumns();
@@ -61,6 +70,18 @@ const { isSidebarOpen } = useWindowColumns();
 async function openDrive(path: string) {
 	isSidebarOpen.value = false;
 	await workspacesStore.openNewTabGroup(path);
+}
+
+/**
+ * Abre un favorito o un reciente. Las pestañas listan carpetas, así que un
+ * archivo se abre en la carpeta que lo contiene (`get_parent_dir`) en vez de
+ * fallar al intentar listarlo.
+ */
+async function openLocation(path: string, isFile: boolean) {
+	const parent = isFile
+		? await invoke<string | null>('get_parent_dir', { path }).catch(() => null)
+		: null;
+	await openDrive(isFile ? (parent ?? path) : path);
 }
 
 const { mountDrive } = useMountDrive();
@@ -125,6 +146,32 @@ onMounted(async () => {
           icon="drive-harddisk"
           :collapsed="collapsed"
           @click="openDrive('/')" />
+      </SideGroup>
+
+      <SideGroup
+        v-if="userStatsStore.favorites.length"
+        :title="t('barraLateral.favoritos')"
+        :collapsed="collapsed">
+        <SideButton
+          v-for="favorite in userStatsStore.favorites"
+          :key="favorite.path"
+          :label="basename(favorite.path)"
+          :icon="favorite.isFile ? 'text-x-generic' : 'folder'"
+          :collapsed="collapsed"
+          @click="openLocation(favorite.path, Boolean(favorite.isFile))" />
+      </SideGroup>
+
+      <SideGroup
+        v-if="recentItems.length"
+        :title="t('barraLateral.recientes')"
+        :collapsed="collapsed">
+        <SideButton
+          v-for="item in recentItems"
+          :key="item.path"
+          :label="basename(item.path)"
+          :icon="item.isFile ? 'text-x-generic' : 'folder'"
+          :collapsed="collapsed"
+          @click="openLocation(item.path, item.isFile)" />
       </SideGroup>
 
       <SideGroup

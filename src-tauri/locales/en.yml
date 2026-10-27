@@ -145,6 +145,7 @@ fileBrowser:
     note: Size is the sum of all contents
 shortcuts:
   selectAllItemsInCurrentDirectory: Select All
+  addBookmark: Pin current folder
   undoLastOperation: Undo
   transferPreparedForCopying: Transfer prepared for copying
   transferPreparedToPane1: Transfer prepared for pane 1
@@ -350,6 +351,8 @@ barraLateral:
   plegar: Collapse the sidebar
   desplegar: Expand the sidebar
   lugares: Places
+  favoritos: Favorites
+  recientes: Recent
   discos: Drives
   nube: In the cloud
 textMenu:

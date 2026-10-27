@@ -105,12 +105,13 @@ export const useUserStatsStore = defineStore('userStats', () => {
 		return userStats.value.favorites.some((item: FavoriteItem) => item.path === path);
 	}
 
-	async function addToFavorites(path: string) {
+	async function addToFavorites(path: string, isFile = false) {
 		if (isFavorite(path)) return;
 
 		const newFavorite: FavoriteItem = {
 			path,
 			addedAt: Date.now(),
+			isFile,
 		};
 
 		userStats.value.favorites.push(newFavorite);
@@ -128,12 +129,12 @@ export const useUserStatsStore = defineStore('userStats', () => {
 		}
 	}
 
-	async function toggleFavorite(path: string): Promise<boolean> {
+	async function toggleFavorite(path: string, isFile = false): Promise<boolean> {
 		if (isFavorite(path)) {
 			await removeFromFavorites(path);
 			return false;
 		} else {
-			await addToFavorites(path);
+			await addToFavorites(path, isFile);
 			return true;
 		}
 	}

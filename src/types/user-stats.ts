@@ -16,6 +16,9 @@ export interface TaggedItem {
 export interface FavoriteItem {
 	path: string;
 	addedAt: number;
+	// Un favorito guardado antes de este campo no lo trae: `undefined` cuenta
+	// como carpeta, que es el caso común (anclar carpeta al sidebar).
+	isFile?: boolean;
 }
 
 export interface HistoryItem {
