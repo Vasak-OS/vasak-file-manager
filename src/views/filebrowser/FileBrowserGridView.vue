@@ -283,7 +283,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3 animate-in fade-in duration-200">
+  <div :key="ctx.currentPath.value" class="flex flex-col p-2 pr-4 gap-3">
     <!-- Sin alto propio, por lo mismo que la vista de lista. Acá iba un
          `h-[calc(100vh-144px)]` —y su comentario contaba que había vuelto porque
          sin él «el `ScrollArea` crece hasta el alto del contenido y deja de tener

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RevealTransition } from '@vasakgroup/vue-libvasak';
 import { ref } from 'vue';
 import CompressDialogComponent from '@/components/dialogs/CompressDialogComponent.vue';
 import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponent.vue';
@@ -170,12 +171,9 @@ defineExpose({
       :operation-type="fb.dragOperationType.value" :cursor-x="fb.dragCursorX.value" :cursor-y="fb.dragCursorY.value"
       :drag-items="fb.dragItems.value" />
 
-    <Transition enter-active-class="transition-opacity duration-150 ease-out"
-      leave-active-class="transition-opacity duration-100 ease-in"
-      enter-from-class="opacity-0"
-      leave-to-class="opacity-0">
+    <RevealTransition>
       <div v-if="fb.isCrossPaneTarget.value && !fb.isExternalMode" class="absolute z-50 border-2 border-dashed border-primary rounded-corner-m inset-0 pointer-events-none" />
-    </Transition>
+    </RevealTransition>
 
     <InboundDragOverlayComponent v-if="!fb.isExternalMode" :is-active="fb.isExternalDragActive.value"
       :item-count="fb.externalDragItemCount.value" :operation-type="fb.externalDragOperationType.value"
