@@ -11,6 +11,7 @@ import { useTerminalsStore } from '@/stores/runtime/terminals';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ContextMenuAction, ContextMenuState } from '@/types/file-browser';
+import type { ShortcutId } from '@/types/shortcut';
 
 /**
  * El menú del clic derecho sobre los archivos.
@@ -40,6 +41,125 @@ interface GetAssociatedProgramsResult {
 interface OpenWithResult {
 	success: boolean;
 	error: string | null;
+}
+
+export function actionItem(
+	action: ContextMenuAction,
+	label: string,
+	icon: string,
+	options?: { accelerator?: string; danger?: boolean }
+): MenuEntry {
+	return {
+		id: `action:${action}`,
+		label,
+		icon,
+		accelerator: options?.accelerator,
+		danger: options?.danger,
+	};
+}
+
+/** Los separadores sólo valen entre dos renglones: sueltos son una raya sola. */
+export function tidySeparators(items: MenuEntry[]): MenuEntry[] {
+	const limpios: MenuEntry[] = [];
+
+	for (const item of items) {
+		const esSeparador = 'type' in item && item.type === 'separator';
+		const anterior = limpios[limpios.length - 1];
+		const anteriorEsSeparador = anterior && 'type' in anterior && anterior.type === 'separator';
+
+		if (esSeparador && (limpios.length === 0 || anteriorEsSeparador)) continue;
+
+		limpios.push(item);
+	}
+
+	const ultimo = limpios[limpios.length - 1];
+	if (ultimo && 'type' in ultimo && ultimo.type === 'separator') limpios.pop();
+
+	return limpios;
+}
+
+/**
+ * La carpeta donde abrir la terminal: la seleccionada, o la que contiene al
+ * archivo.
+ *
+ * El padre lo resuelve `dirname`, el mismo que usa la barra de direcciones.
+ * Contando separadores a mano la raíz salía mal —para `/archivo` devolvía
+ * `/archivo`—, y la terminal se abría en un archivo en vez de en `/`.
+ */
+export async function terminalTargetPath(entries: DirEntry[]): Promise<string | null> {
+	const primera = entries[0];
+	if (!primera) return null;
+	if (primera.is_dir) return primera.path;
+
+	try {
+		return await dirname(primera.path);
+	} catch (error) {
+		console.warn('No se pudo resolver la carpeta que contiene al archivo:', error);
+		return null;
+	}
+}
+
+/** Abre cada entrada con el programa dado; corta en el primer error. */
+export async function openWithProgram(programPath: string, entries: DirEntry[]) {
+	try {
+		for (const entry of entries) {
+			const resultado = await invoke<OpenWithResult>('open_with_program', {
+				filePath: entry.path,
+				programPath,
+				arguments: [],
+			});
+
+			if (!resultado.success) {
+				console.error('Failed to open file:', resultado.error);
+				return;
+			}
+		}
+	} catch (invokeError) {
+		console.error('Failed to open file:', invokeError);
+	}
+}
+
+/** Un programa asociado como ítem del submenú «Abrir con». */
+export function programaItem(programa: AssociatedProgram): MenuEntry {
+	return {
+		id: `open-with:${programa.path}`,
+		label: programa.name,
+		icon: programa.icon ?? 'text-x-generic',
+	};
+}
+
+/**
+ * Las secciones de «Abrir con»: el programa por defecto, los sugeridos y los
+ * otros que igual pueden abrirlo. Cada sección va con su separador si hay algo
+ * arriba; si no hay ninguno, un renglón que lo dice.
+ */
+export function seccionesDeProgramas(
+	resultado: GetAssociatedProgramsResult | null,
+	t: (key: string) => string
+): MenuEntry[] {
+	const items: MenuEntry[] = [];
+	const porDefecto = resultado?.default_program ?? null;
+
+	if (porDefecto) {
+		items.push({ type: 'label', label: t('openWith.defaultApp') });
+		items.push(programaItem(porDefecto));
+	}
+
+	const agregarSeccion = (labelKey: string, programas: AssociatedProgram[]) => {
+		if (programas.length === 0) return;
+		if (items.length > 0) items.push({ type: 'separator' });
+		items.push({ type: 'label', label: t(labelKey) });
+		for (const programa of programas) items.push(programaItem(programa));
+	};
+
+	agregarSeccion('openWith.suggestedApps', resultado?.recommended_programs ?? []);
+	agregarSeccion('openWith.otherApps', resultado?.other_programs ?? []);
+
+	if (items.length === 0) {
+		items.push({ type: 'label', label: t('openWith.noProgramsFound') });
+	}
+
+	return items;
 }
 
 export interface UseEntryContextMenuOptions {
@@ -127,62 +247,6 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 	});
 
 	/**
-	 * La carpeta donde abrir la terminal: la seleccionada, o la que contiene al
-	 * archivo.
-	 *
-	 * El padre lo resuelve `dirname`, el mismo que usa la barra de direcciones.
-	 * Contando separadores a mano la raíz salía mal —para `/archivo` devolvía
-	 * `/archivo`—, y la terminal se abría en un archivo en vez de en `/`.
-	 */
-	async function terminalTargetPath(entries: DirEntry[]): Promise<string | null> {
-		const primera = entries[0];
-		if (!primera) return null;
-		if (primera.is_dir) return primera.path;
-
-		try {
-			return await dirname(primera.path);
-		} catch (error) {
-			console.warn('No se pudo resolver la carpeta que contiene al archivo:', error);
-			return null;
-		}
-	}
-
-	/** Los separadores sólo valen entre dos renglones: sueltos son una raya sola. */
-	function tidySeparators(items: MenuEntry[]): MenuEntry[] {
-		const limpios: MenuEntry[] = [];
-
-		for (const item of items) {
-			const esSeparador = 'type' in item && item.type === 'separator';
-			const anterior = limpios[limpios.length - 1];
-			const anteriorEsSeparador = anterior && 'type' in anterior && anterior.type === 'separator';
-
-			if (esSeparador && (limpios.length === 0 || anteriorEsSeparador)) continue;
-
-			limpios.push(item);
-		}
-
-		const ultimo = limpios[limpios.length - 1];
-		if (ultimo && 'type' in ultimo && ultimo.type === 'separator') limpios.pop();
-
-		return limpios;
-	}
-
-	function actionItem(
-		action: ContextMenuAction,
-		label: string,
-		icon: string,
-		options?: { accelerator?: string; danger?: boolean }
-	): MenuEntry {
-		return {
-			id: `action:${action}`,
-			label,
-			icon,
-			accelerator: options?.accelerator,
-			danger: options?.danger,
-		};
-	}
-
-	/**
 	 * Lo que contestó el sistema para cada ruta.
 	 *
 	 * El menú se arma entero antes de dibujarse, así que preguntar de nuevo es
@@ -193,7 +257,6 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 
 	async function openWithItems(entries: DirEntry[]): Promise<MenuEntry[]> {
 		const primera = entries[0];
-		const items: MenuEntry[] = [];
 
 		let resultado: GetAssociatedProgramsResult | null = programasPorRuta.get(primera.path) ?? null;
 		let error: string | null = null;
@@ -218,53 +281,10 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 			return [{ type: 'label', label: error }];
 		}
 
-		const porDefecto = resultado?.default_program ?? null;
-		const recomendados = resultado?.recommended_programs ?? [];
 		// El sistema también devuelve los que pueden abrir el archivo aunque no
 		// los recomiende. El menú los venía ignorando —también el de antes—, así
 		// que «abrir con» escondía programas que sí sirven y ya estaban pedidos.
-		const otros = resultado?.other_programs ?? [];
-
-		if (porDefecto) {
-			items.push({ type: 'label', label: t('openWith.defaultApp') });
-			items.push({
-				id: `open-with:${porDefecto.path}`,
-				label: porDefecto.name,
-				icon: porDefecto.icon ?? 'text-x-generic',
-			});
-		}
-
-		if (recomendados.length > 0) {
-			if (porDefecto) items.push({ type: 'separator' });
-
-			items.push({ type: 'label', label: t('openWith.suggestedApps') });
-
-			for (const programa of recomendados) {
-				items.push({
-					id: `open-with:${programa.path}`,
-					label: programa.name,
-					icon: programa.icon ?? 'text-x-generic',
-				});
-			}
-		}
-
-		if (otros.length > 0) {
-			if (porDefecto || recomendados.length > 0) items.push({ type: 'separator' });
-
-			items.push({ type: 'label', label: t('openWith.otherApps') });
-
-			for (const programa of otros) {
-				items.push({
-					id: `open-with:${programa.path}`,
-					label: programa.name,
-					icon: programa.icon ?? 'text-x-generic',
-				});
-			}
-		}
-
-		if (!porDefecto && recomendados.length === 0 && otros.length === 0) {
-			items.push({ type: 'label', label: t('openWith.noProgramsFound') });
-		}
+		const items = seccionesDeProgramas(resultado, t);
 
 		if (!primera.is_dir) {
 			items.push({ type: 'separator' });
@@ -327,40 +347,35 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 		}));
 	}
 
+	/** Agrega un ítem de acción simple si la acción es visible. */
+	function agregarAccion(
+		items: MenuEntry[],
+		action: ContextMenuAction,
+		labelKey: string,
+		icon: string,
+		extra?: { atajo?: ShortcutId; danger?: boolean }
+	) {
+		if (!isActionVisible(action)) return;
+
+		items.push(
+			actionItem(action, t(labelKey), icon, {
+				accelerator: extra?.atajo ? shortcutsStore.getShortcutLabel(extra.atajo) : undefined,
+				danger: extra?.danger,
+			})
+		);
+	}
+
 	async function buildMenu(entries: DirEntry[]): Promise<MenuEntry[]> {
 		const items: MenuEntry[] = [];
 
-		if (isActionVisible('rename')) {
-			items.push(
-				actionItem('rename', t('fileBrowser.actions.rename'), 'edit-rename', {
-					accelerator: shortcutsStore.getShortcutLabel('rename'),
-				})
-			);
-		}
-
-		if (isActionVisible('copy')) {
-			items.push(
-				actionItem('copy', t('fileBrowser.actions.copy'), 'edit-copy', {
-					accelerator: shortcutsStore.getShortcutLabel('copy'),
-				})
-			);
-		}
-
-		if (isActionVisible('cut')) {
-			items.push(
-				actionItem('cut', t('fileBrowser.actions.cut'), 'edit-cut', {
-					accelerator: shortcutsStore.getShortcutLabel('cut'),
-				})
-			);
-		}
-
-		if (isActionVisible('copy-path')) {
-			items.push(
-				actionItem('copy-path', t('fileBrowser.actions.copyPath'), 'edit-copy', {
-					accelerator: shortcutsStore.getShortcutLabel('copyPath'),
-				})
-			);
-		}
+		agregarAccion(items, 'rename', 'fileBrowser.actions.rename', 'edit-rename', {
+			atajo: 'rename',
+		});
+		agregarAccion(items, 'copy', 'fileBrowser.actions.copy', 'edit-copy', { atajo: 'copy' });
+		agregarAccion(items, 'cut', 'fileBrowser.actions.cut', 'edit-cut', { atajo: 'cut' });
+		agregarAccion(items, 'copy-path', 'fileBrowser.actions.copyPath', 'edit-copy', {
+			atajo: 'copyPath',
+		});
 
 		if (canPasteToSelectedDirectory.value) {
 			items.push(
@@ -410,29 +425,17 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 			items: await terminalItems(),
 		});
 
-		if (isActionVisible('open-in-new-tab')) {
-			items.push(
-				actionItem('open-in-new-tab', t('fileBrowser.actions.openInNewTab'), 'gtk-add', {
-					accelerator: shortcutsStore.getShortcutLabel('openNewTab'),
-				})
-			);
-		}
-
-		if (isActionVisible('share')) {
-			items.push(actionItem('share', t('fileBrowser.actions.share'), 'emblem-shared'));
-		}
-
-		if (isActionVisible('extract-here')) {
-			items.push(
-				actionItem('extract-here', t('fileBrowser.actions.extractHere'), 'application-x-archive')
-			);
-		}
-
-		if (isActionVisible('compress')) {
-			items.push(
-				actionItem('compress', t('fileBrowser.actions.compress'), 'application-x-archive')
-			);
-		}
+		agregarAccion(items, 'open-in-new-tab', 'fileBrowser.actions.openInNewTab', 'gtk-add', {
+			atajo: 'openNewTab',
+		});
+		agregarAccion(items, 'share', 'fileBrowser.actions.share', 'emblem-shared');
+		agregarAccion(
+			items,
+			'extract-here',
+			'fileBrowser.actions.extractHere',
+			'application-x-archive'
+		);
+		agregarAccion(items, 'compress', 'fileBrowser.actions.compress', 'application-x-archive');
 
 		items.push({ type: 'separator' });
 
@@ -461,46 +464,24 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 
 		items.push({ type: 'separator' });
 
-		if (isActionVisible('properties')) {
-			items.push(
-				actionItem('properties', t('fileBrowser.actions.properties'), 'document-properties', {
-					accelerator: shortcutsStore.getShortcutLabel('showProperties'),
-				})
-			);
-		}
+		agregarAccion(items, 'properties', 'fileBrowser.actions.properties', 'document-properties', {
+			atajo: 'showProperties',
+		});
 
 		return tidySeparators(items);
-	}
-
-	async function openWithProgram(programPath: string, entries: DirEntry[]) {
-		try {
-			for (const entry of entries) {
-				const resultado = await invoke<OpenWithResult>('open_with_program', {
-					filePath: entry.path,
-					programPath,
-					arguments: [],
-				});
-
-				if (!resultado.success) {
-					console.error('Failed to open file:', resultado.error);
-					return;
-				}
-			}
-		} catch (invokeError) {
-			console.error('Failed to open file:', invokeError);
-		}
 	}
 
 	async function toggleTag(tagId: string, entries: DirEntry[]) {
 		const yaEstaba = selectedTagIds.value.includes(tagId);
 
-		for (const entry of entries) {
-			if (yaEstaba) {
-				await userStatsStore.removeTagFromItem(entry.path, tagId);
-			} else {
-				await userStatsStore.addTagToItem(entry.path, tagId, entry.is_file);
-			}
-		}
+		// Cada entrada es independiente: se etiquetan en paralelo.
+		await Promise.all(
+			entries.map((entry) =>
+				yaEstaba
+					? userStatsStore.removeTagFromItem(entry.path, tagId)
+					: userStatsStore.addTagToItem(entry.path, tagId, entry.is_file)
+			)
+		);
 	}
 
 	async function openEntryContextMenu(entry: DirEntry, event: MouseEvent) {
