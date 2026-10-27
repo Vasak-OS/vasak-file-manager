@@ -435,7 +435,9 @@ export const useUserStatsStore = defineStore('userStats', () => {
 	async function init() {
 		await initStorage();
 		await loadStats();
-		removeNonExistentPaths();
+		// Limpiar las rutas que ya no existen corre en segundo plano: `init` no la
+		// espera a propósito, así la ventana abre sin aguardar un `stat` por ruta.
+		void removeNonExistentPaths();
 	}
 
 	return {
