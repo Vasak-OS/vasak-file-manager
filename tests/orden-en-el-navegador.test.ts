@@ -43,7 +43,7 @@ afterEach(() => {
 	vista = null;
 });
 
-const entrada = makeDirEntry;
+const _entrada = makeDirEntry;
 
 /**
  * El contenido de `/casa`.

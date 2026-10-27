@@ -36,6 +36,23 @@ interface UndoResult {
 	affected_paths: string[];
 }
 
+/**
+ * Traduce un glob (`*`, `?`) a una expresión regular anclada, sin distinguir
+ * mayúsculas. El resto de los caracteres se escapan para que un nombre con `.` o
+ * `(` no se interprete como regex.
+ */
+function patronAregex(patron: string): RegExp {
+	const escapado = patron
+		.replace(/[.+^${}()|[\]\\]/g, String.raw`\$&`)
+		// `\*+` y no `\*`: varios `*` seguidos colapsan a un solo `.*`. Con
+		// `.*.*…` anidados, un patrón como `**********z` tarda tiempo exponencial
+		// en rechazar un nombre largo (ReDoS), y la coincidencia corre en el hilo
+		// de la interfaz por cada entrada visible.
+		.replace(/\*+/g, '.*')
+		.replace(/\?/g, '.');
+	return new RegExp(`^${escapado}$`, 'i');
+}
+
 export function useFileBrowserSelection(
 	entriesRef: Ref<DirEntry[]>,
 	currentPathRef: Ref<string>,
@@ -1017,23 +1034,6 @@ export function useFileBrowserSelection(
 	function invertSelection() {
 		const seleccionadas = new Set(rutasSeleccionadas.value);
 		setSelection(entriesRef.value.filter((entrada) => !seleccionadas.has(entrada.path)));
-	}
-
-	/**
-	 * Traduce un glob (`*`, `?`) a una expresión regular anclada, sin distinguir
-	 * mayúsculas. El resto de los caracteres se escapan para que un nombre con
-	 * `.` o `(` no se interprete como regex.
-	 */
-	function patronAregex(patron: string): RegExp {
-		const escapado = patron
-			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
-			// `\*+` y no `\*`: varios `*` seguidos colapsan a un solo `.*`. Con
-			// `.*.*…` anidados, un patrón como `**********z` tarda tiempo
-			// exponencial en rechazar un nombre largo (ReDoS), y la coincidencia
-			// corre en el hilo de la interfaz por cada entrada visible.
-			.replace(/\*+/g, '.*')
-			.replace(/\?/g, '.');
-		return new RegExp(`^${escapado}$`, 'i');
 	}
 
 	/** Selecciona las entradas visibles cuyo nombre coincide con el glob. */

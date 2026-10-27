@@ -29,7 +29,6 @@ import {
 } from '@/composables/file-browser/recorrido-visual';
 import { useFileBrowserEntries } from '@/composables/file-browser/use-file-browser-entries';
 import type { useDirSizesStore } from '@/stores/runtime/dir-sizes';
-import type { DirEntry } from '@/types/dir-entry';
 import type { ListSortColumn, ListSortDirection } from '@/types/short';
 import { sortFileBrowserEntries } from '@/utils/file-browser-sort';
 import { archivo, carpeta, makeDirEntry, nombres } from './support/dir-entry';
@@ -53,7 +52,7 @@ function storeConTamanos(tamanos: Record<string, number> = {}): DirSizesStore {
 	} as unknown as DirSizesStore;
 }
 
-const entrada = makeDirEntry;
+const _entrada = makeDirEntry;
 const sinTamanos = storeConTamanos();
 
 describe('las carpetas van primero', () => {
