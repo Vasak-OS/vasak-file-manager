@@ -22,6 +22,7 @@ import { useFileBrowserContext } from '@/composables/file-browser/use-file-brows
 import type { DirEntry } from '@/types/dir-entry';
 import type { Tab } from '@/types/workspaces';
 import { olvidarTodo, responder } from './dobles';
+import { archivo, carpeta, makeDirEntry } from './support/dir-entry';
 
 let vista: VueWrapper | null = null;
 
@@ -42,29 +43,7 @@ afterEach(() => {
 	vista = null;
 });
 
-function entrada(campos: Partial<DirEntry> & { name: string }): DirEntry {
-	return {
-		name: campos.name,
-		path: campos.path ?? `/casa/${campos.name}`,
-		ext: null,
-		size: 0,
-		item_count: null,
-		modified_time: 0,
-		accessed_time: 0,
-		created_time: 0,
-		mime: null,
-		is_file: true,
-		is_dir: false,
-		is_symlink: false,
-		is_hidden: false,
-		...campos,
-	};
-}
-
-const carpeta = (name: string, campos: Partial<DirEntry> = {}) =>
-	entrada({ name, is_file: false, is_dir: true, ...campos });
-const archivo = (name: string, campos: Partial<DirEntry> = {}) =>
-	entrada({ name, is_file: true, is_dir: false, ...campos });
+const entrada = makeDirEntry;
 
 /**
  * El contenido de `/casa`.

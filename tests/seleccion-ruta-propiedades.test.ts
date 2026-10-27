@@ -8,27 +8,10 @@ import { useNavigatorStore } from '@/stores/runtime/navigator';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
+import { makeDirEntry, nombres } from './support/dir-entry';
 
-function entrada(name: string, campos: Partial<DirEntry> = {}): DirEntry {
-	return {
-		name,
-		path: `/casa/${name}`,
-		ext: null,
-		size: 0,
-		item_count: null,
-		modified_time: 0,
-		accessed_time: 0,
-		created_time: 0,
-		mime: null,
-		is_file: true,
-		is_dir: false,
-		is_symlink: false,
-		is_hidden: false,
-		...campos,
-	};
-}
-
-const nombres = (entradas: DirEntry[]) => entradas.map((una) => una.name);
+const entrada = (name: string, campos: Partial<DirEntry> = {}): DirEntry =>
+	makeDirEntry({ name, ...campos });
 
 /** Instancia el composable de selección con las entradas dadas. */
 function montar(entradas: DirEntry[]) {
@@ -143,29 +126,24 @@ describe('copiar ruta (#137)', () => {
 		expect(useToast().toasts.value.size).toBe(0);
 	});
 
-	test('avisa que la ruta se copió', async () => {
+	/** Copia la ruta de una entrada y devuelve los avisos [tipo, título] que quedaron. */
+	async function avisosAlCopiar() {
 		const { contextMenu, handleContextMenuAction } = montar([]);
 		contextMenu.value.selectedEntries = [entrada('a.txt')];
 
 		handleContextMenuAction('copy-path');
 		await vaciarPromesas();
 
-		const avisos = [...useToast().toasts.value.values()];
-		expect(avisos.map((a) => [a.kind, a.title])).toEqual([['success', 'notifications.pathCopied']]);
+		return [...useToast().toasts.value.values()].map((aviso) => [aviso.kind, aviso.title]);
+	}
+
+	test('avisa que la ruta se copió', async () => {
+		expect(await avisosAlCopiar()).toEqual([['success', 'notifications.pathCopied']]);
 	});
 
 	test('si el portapapeles falla avisa del error en vez de callar', async () => {
 		fallar = true;
-		const { contextMenu, handleContextMenuAction } = montar([]);
-		contextMenu.value.selectedEntries = [entrada('a.txt')];
-
-		handleContextMenuAction('copy-path');
-		await vaciarPromesas();
-
-		const avisos = [...useToast().toasts.value.values()];
-		expect(avisos.map((a) => [a.kind, a.title])).toEqual([
-			['error', 'notifications.pathCopyFailed'],
-		]);
+		expect(await avisosAlCopiar()).toEqual([['error', 'notifications.pathCopyFailed']]);
 	});
 
 	test('el menú ofrece «copiar ruta» para uno o varios, archivos o carpetas', () => {
