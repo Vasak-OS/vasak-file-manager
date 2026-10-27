@@ -145,6 +145,65 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		isReadOnly: false,
 	},
 	{
+		id: 'invertSelection',
+		labelKey: 'shortcuts.invertSelection',
+		defaultKeys: {
+			ctrl: true,
+			shift: true,
+			key: 'i',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'selectByPattern',
+		labelKey: 'shortcuts.selectByPattern',
+		defaultKeys: {
+			ctrl: true,
+			key: 's',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'copyPath',
+		labelKey: 'shortcuts.copyPath',
+		defaultKeys: {
+			ctrl: true,
+			shift: true,
+			key: 'c',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+			dirItemIsSelected: true,
+		},
+		isReadOnly: false,
+	},
+	{
+		id: 'showProperties',
+		labelKey: 'shortcuts.showProperties',
+		defaultKeys: {
+			alt: true,
+			key: 'Enter',
+		},
+		scope: 'navigator',
+		conditions: {
+			inputFieldIsActive: false,
+			dialogIsOpened: false,
+		},
+		isReadOnly: false,
+	},
+	{
 		id: 'undo',
 		labelKey: 'shortcuts.undoLastOperation',
 		defaultKeys: {

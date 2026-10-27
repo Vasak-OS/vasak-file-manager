@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import SelectByPatternDialogComponent from '@/components/dialogs/SelectByPatternDialogComponent.vue';
 import FileBrowserComponent from '@/components/filebrowser/FileBrowserComponent.vue';
 import ClipboardToolbarComponent from '@/components/navigator/ClipboardToolbarComponent.vue';
 import ResizableHandle from '@/components/ui/ResizableHandle.vue';
@@ -10,6 +11,7 @@ import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useNavigatorStore } from '@/stores/runtime/navigator';
 import { useQuickViewStore } from '@/stores/runtime/quick-view';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
@@ -46,8 +48,10 @@ const workspacesStore = useWorkspacesStore();
 const clipboardStore = useClipboardStore();
 const dismissalLayerStore = useDismissalLayerStore();
 const globalSearchStore = useGlobalSearchStore();
+const navigatorStore = useNavigatorStore();
 const quickViewStore = useQuickViewStore();
 const shortcutsStore = useShortcutsStore();
+const isSelectByPatternOpen = ref(false);
 const terminalsStore = useTerminalsStore();
 const dirSizesStore = useDirSizesStore();
 const userLayoutStore = useUserLayoutStore();
@@ -342,6 +346,27 @@ function handleSelectAllShortcut() {
 	}
 }
 
+function handleInvertSelectionShortcut() {
+	getActivePaneRef()?.invertSelection();
+}
+
+function handleCopyPathShortcut() {
+	getActivePaneRef()?.copySelectedPaths();
+}
+
+function handleShowPropertiesShortcut() {
+	navigatorStore.requestOpenInfoPanel();
+}
+
+function handleSelectByPatternShortcut() {
+	isSelectByPatternOpen.value = true;
+}
+
+function handleSelectByPatternConfirm(pattern: string) {
+	isSelectByPatternOpen.value = false;
+	getActivePaneRef()?.selectByPattern(pattern);
+}
+
 async function handleUndoShortcut() {
 	const pane = getActivePaneRef();
 
@@ -533,6 +558,12 @@ function registerShortcutHandlers() {
 	shortcutsStore.registerHandler('cut', handleCutShortcut);
 	shortcutsStore.registerHandler('paste', handlePasteShortcut);
 	shortcutsStore.registerHandler('selectAll', handleSelectAllShortcut);
+	shortcutsStore.registerHandler('invertSelection', handleInvertSelectionShortcut);
+	shortcutsStore.registerHandler('selectByPattern', handleSelectByPatternShortcut);
+	shortcutsStore.registerHandler('copyPath', handleCopyPathShortcut, {
+		checkItemSelected: hasSelectedItems,
+	});
+	shortcutsStore.registerHandler('showProperties', handleShowPropertiesShortcut);
 	shortcutsStore.registerHandler('undo', handleUndoShortcut);
 	shortcutsStore.registerHandler('delete', handleDeleteShortcut);
 	shortcutsStore.registerHandler('deletePermanently', handleDeletePermanentlyShortcut);
@@ -654,5 +685,7 @@ onMounted(() => {
 				:pane2-path="workspacesStore.currentTabGroup?.[1]?.path" @paste="handlePasteShortcut"
 				@paste-to-pane="handlePasteToPane" />
 		</div>
+		<SelectByPatternDialogComponent v-model:open="isSelectByPatternOpen"
+			@confirm="handleSelectByPatternConfirm" />
   </div>
 </template>

@@ -13,6 +13,21 @@ export const useNavigatorStore = defineStore('navigator', () => {
 		},
 	});
 
+	/**
+	 * Pedidos de abrir el panel de información.
+	 *
+	 * Es un contador y no un booleano: abrir el panel depende del formato de la
+	 * ventana (en una columna es cambiar de columna; en varias, un flag
+	 * persistido), y esa lógica vive en `WindowAppLayout`. Acá sólo se avisa
+	 * «abrilo», y el layout lo observa. Un contador permite pedirlo de nuevo
+	 * aunque el valor anterior fuera el mismo.
+	 */
+	const infoPanelOpenRequests = ref(0);
+
+	function requestOpenInfoPanel() {
+		infoPanelOpenRequests.value++;
+	}
+
 	async function updateInfoPanel(dirEntry: DirEntry | null | undefined) {
 		if (!dirEntry) {
 			return;
@@ -53,5 +68,7 @@ export const useNavigatorStore = defineStore('navigator', () => {
 	return {
 		runtime,
 		updateInfoPanel,
+		infoPanelOpenRequests,
+		requestOpenInfoPanel,
 	};
 });

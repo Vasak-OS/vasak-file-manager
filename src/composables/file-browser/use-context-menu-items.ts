@@ -65,6 +65,16 @@ const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 		entryTypes: ['file', 'directory'],
 	},
 	{
+		action: 'copy-path',
+		selectionTypes: ['single', 'multiple'],
+		entryTypes: ['file', 'directory'],
+	},
+	{
+		action: 'properties',
+		selectionTypes: ['single', 'multiple'],
+		entryTypes: ['file', 'directory'],
+	},
+	{
 		action: 'extract-here',
 		selectionTypes: ['single'],
 		entryTypes: ['file'],

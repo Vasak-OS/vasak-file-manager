@@ -13,6 +13,7 @@ import {
 	runTrackedCompress,
 	runTrackedFileOperation,
 } from '@/stores/runtime/file-operation-runner';
+import { useNavigatorStore } from '@/stores/runtime/navigator';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
@@ -47,6 +48,7 @@ export function useFileBrowserSelection(
 	const userStatsStore = useUserStatsStore();
 	const clipboardStore = useClipboardStore();
 	const dirSizesStore = useDirSizesStore();
+	const navigatorStore = useNavigatorStore();
 	const selectedEntries = ref<DirEntry[]>([]);
 	const lastSelectedEntry = ref<DirEntry | null>(null);
 
@@ -937,6 +939,14 @@ export function useFileBrowserSelection(
 				}
 
 				break;
+			case 'copy-path':
+				void copyPaths(entries);
+
+				break;
+			case 'properties':
+				navigatorStore.requestOpenInfoPanel();
+
+				break;
 		}
 
 		closeContextMenu();
@@ -994,6 +1004,58 @@ export function useFileBrowserSelection(
 				: null;
 		lastSelectedEntry.value = lastEntry;
 		onSelect(selectedEntries.value);
+	}
+
+	/** Fija la selección a `entries`, como `selectAll` pero con un conjunto dado. */
+	function setSelection(entries: DirEntry[]) {
+		selectedEntries.value = [...entries];
+		lastSelectedEntry.value = entries.length > 0 ? entries[entries.length - 1] : null;
+		onSelect(selectedEntries.value);
+	}
+
+	/** Invierte la selección sobre lo visible (lo mismo que recorre `selectAll`). */
+	function invertSelection() {
+		const seleccionadas = new Set(rutasSeleccionadas.value);
+		setSelection(entriesRef.value.filter((entrada) => !seleccionadas.has(entrada.path)));
+	}
+
+	/**
+	 * Traduce un glob (`*`, `?`) a una expresión regular anclada, sin distinguir
+	 * mayúsculas. El resto de los caracteres se escapan para que un nombre con
+	 * `.` o `(` no se interprete como regex.
+	 */
+	function patronAregex(patron: string): RegExp {
+		const escapado = patron
+			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+			.replace(/\*/g, '.*')
+			.replace(/\?/g, '.');
+		return new RegExp(`^${escapado}$`, 'i');
+	}
+
+	/** Selecciona las entradas visibles cuyo nombre coincide con el glob. */
+	function selectByPattern(patron: string) {
+		const texto = patron.trim();
+		if (!texto) return;
+
+		const regex = patronAregex(texto);
+		setSelection(entriesRef.value.filter((entrada) => regex.test(entrada.name)));
+	}
+
+	/** Copia al portapapeles las rutas absolutas de `entries`, una por línea. */
+	async function copyPaths(entries: DirEntry[]) {
+		if (entries.length === 0) return;
+
+		try {
+			await navigator.clipboard.writeText(entries.map((entrada) => entrada.path).join('\n'));
+			toast.success({ title: 'notifications.pathCopied', description: '' });
+		} catch (error) {
+			toast.error({ title: 'notifications.pathCopyFailed', description: String(error) });
+		}
+	}
+
+	/** Copia la ruta de la selección actual (para el atajo). */
+	function copySelectedPaths() {
+		void copyPaths(selectedEntries.value);
 	}
 
 	/**
@@ -1160,6 +1222,9 @@ export function useFileBrowserSelection(
 		handleContextMenuAction,
 		resetMouseState,
 		selectAll,
+		invertSelection,
+		selectByPattern,
+		copySelectedPaths,
 		selectEntryByPath,
 		removeFromSelection,
 		copyItems,

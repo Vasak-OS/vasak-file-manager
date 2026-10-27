@@ -354,6 +354,14 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 			);
 		}
 
+		if (isActionVisible('copy-path')) {
+			items.push(
+				actionItem('copy-path', t('fileBrowser.actions.copyPath'), 'edit-copy', {
+					accelerator: shortcutsStore.getShortcutLabel('copyPath'),
+				})
+			);
+		}
+
 		if (canPasteToSelectedDirectory.value) {
 			items.push(
 				actionItem('paste', t('fileBrowser.actions.paste'), 'edit-paste', {
@@ -449,6 +457,16 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 				icon: 'tag-symbolic',
 				items: tagItems(),
 			});
+		}
+
+		items.push({ type: 'separator' });
+
+		if (isActionVisible('properties')) {
+			items.push(
+				actionItem('properties', t('fileBrowser.actions.properties'), 'document-properties', {
+					accelerator: shortcutsStore.getShortcutLabel('showProperties'),
+				})
+			);
 		}
 
 		return tidySeparators(items);
