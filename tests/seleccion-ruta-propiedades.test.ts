@@ -7,6 +7,7 @@ import { useFileBrowserSelection } from '@/composables/file-browser/use-file-bro
 import { useNavigatorStore } from '@/stores/runtime/navigator';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import type { DirEntry } from '@/types/dir-entry';
+import type { ShortcutId, ShortcutKeys } from '@/types/shortcut';
 
 function entrada(name: string, campos: Partial<DirEntry> = {}): DirEntry {
 	return {
@@ -50,6 +51,26 @@ const vaciarPromesas = async () => {
 
 const teclado = (init: KeyboardEventInit) =>
 	new KeyboardEvent('keydown', { cancelable: true, ...init });
+
+/** Comprueba las teclas de un atajo y que el evento dispara su manejador una vez. */
+async function disparaAtajo(
+	id: ShortcutId,
+	keys: ShortcutKeys,
+	init: KeyboardEventInit
+): Promise<KeyboardEvent> {
+	const tienda = useShortcutsStore();
+	expect(tienda.getShortcutDefinition(id)?.defaultKeys).toEqual(keys);
+
+	let disparos = 0;
+	tienda.registerHandler(id, () => {
+		disparos++;
+	});
+	const evento = teclado(init);
+	await tienda.handleKeydown(evento);
+
+	expect(disparos).toBe(1);
+	return evento;
+}
 
 beforeEach(() => {
 	setActivePinia(createPinia());
@@ -157,19 +178,11 @@ describe('copiar ruta (#137)', () => {
 	});
 
 	test('Ctrl+Shift+C está definido y dispara su manejador', async () => {
-		const tienda = useShortcutsStore();
-		const definicion = tienda.getShortcutDefinition('copyPath');
-		expect(definicion?.defaultKeys).toEqual({ ctrl: true, shift: true, key: 'c' });
-		expect(definicion?.scope).toBe('navigator');
-
-		let disparos = 0;
-		tienda.registerHandler('copyPath', () => {
-			disparos++;
-		});
-		const evento = teclado({ key: 'C', code: 'KeyC', ctrlKey: true, shiftKey: true });
-		await tienda.handleKeydown(evento);
-
-		expect(disparos).toBe(1);
+		const evento = await disparaAtajo(
+			'copyPath',
+			{ ctrl: true, shift: true, key: 'c' },
+			{ key: 'C', code: 'KeyC', ctrlKey: true, shiftKey: true }
+		);
 		expect(evento.defaultPrevented).toBe(true);
 	});
 });
@@ -204,19 +217,11 @@ describe('propiedades (#138)', () => {
 	});
 
 	test('Alt+Enter está definido y dispara su manejador', async () => {
-		const tienda = useShortcutsStore();
-		const definicion = tienda.getShortcutDefinition('showProperties');
-		expect(definicion?.defaultKeys).toEqual({ alt: true, key: 'Enter' });
-		expect(definicion?.scope).toBe('navigator');
-
-		let disparos = 0;
-		tienda.registerHandler('showProperties', () => {
-			disparos++;
-		});
-		const evento = teclado({ key: 'Enter', code: 'Enter', altKey: true });
-		await tienda.handleKeydown(evento);
-
-		expect(disparos).toBe(1);
+		const evento = await disparaAtajo(
+			'showProperties',
+			{ alt: true, key: 'Enter' },
+			{ key: 'Enter', code: 'Enter', altKey: true }
+		);
 		expect(evento.defaultPrevented).toBe(true);
 	});
 });
@@ -274,20 +279,11 @@ describe('invertir selección (#136)', () => {
 	});
 
 	test('Ctrl+Shift+I está definido y dispara su manejador', async () => {
-		const tienda = useShortcutsStore();
-		expect(tienda.getShortcutDefinition('invertSelection')?.defaultKeys).toEqual({
-			ctrl: true,
-			shift: true,
-			key: 'i',
-		});
-
-		let disparos = 0;
-		tienda.registerHandler('invertSelection', () => {
-			disparos++;
-		});
-		await tienda.handleKeydown(teclado({ key: 'I', code: 'KeyI', ctrlKey: true, shiftKey: true }));
-
-		expect(disparos).toBe(1);
+		await disparaAtajo(
+			'invertSelection',
+			{ ctrl: true, shift: true, key: 'i' },
+			{ key: 'I', code: 'KeyI', ctrlKey: true, shiftKey: true }
+		);
 	});
 });
 
@@ -359,18 +355,17 @@ describe('seleccionar por patrón (#136)', () => {
 	});
 
 	test('Ctrl+S está definido y dispara su manejador', async () => {
-		const tienda = useShortcutsStore();
-		expect(tienda.getShortcutDefinition('selectByPattern')?.defaultKeys).toEqual({
-			ctrl: true,
-			key: 's',
-		});
+		await disparaAtajo(
+			'selectByPattern',
+			{ ctrl: true, key: 's' },
+			{ key: 's', code: 'KeyS', ctrlKey: true }
+		);
+	});
 
-		let disparos = 0;
-		tienda.registerHandler('selectByPattern', () => {
-			disparos++;
-		});
-		await tienda.handleKeydown(teclado({ key: 's', code: 'KeyS', ctrlKey: true }));
-
-		expect(disparos).toBe(1);
+	test('varios comodines seguidos equivalen a uno (no cuelga)', () => {
+		// `**` colapsa a un solo `.*`: sin eso, un patrón con muchos `*` dispara
+		// backtracking exponencial (ReDoS) en el hilo de la interfaz.
+		expect(elegir('***.jpg')).toEqual(elegir('*.jpg'));
+		expect(elegir('**********z')).toEqual([]);
 	});
 });

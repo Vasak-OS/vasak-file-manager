@@ -1027,7 +1027,11 @@ export function useFileBrowserSelection(
 	function patronAregex(patron: string): RegExp {
 		const escapado = patron
 			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
-			.replace(/\*/g, '.*')
+			// `\*+` y no `\*`: varios `*` seguidos colapsan a un solo `.*`. Con
+			// `.*.*…` anidados, un patrón como `**********z` tarda tiempo
+			// exponencial en rechazar un nombre largo (ReDoS), y la coincidencia
+			// corre en el hilo de la interfaz por cada entrada visible.
+			.replace(/\*+/g, '.*')
 			.replace(/\?/g, '.');
 		return new RegExp(`^${escapado}$`, 'i');
 	}
