@@ -414,6 +414,12 @@ fn cuadro_de_video(video: &Path, dir_tmp: &Path) -> Result<image::DynamicImage, 
         });
     }
 
+    // ffmpeg crea el temporal con el umask del proceso; se restringe a `0o600`
+    // apenas termina. El directorio ya es `0o700`, así que esto sólo acota la
+    // ventana en que el archivo —de vida muy corta— queda con permisos más
+    // amplios mientras ffmpeg lo escribe.
+    let _ = fijar_modo(&parcial, 0o600);
+
     let imagen =
         image::open(&parcial).map_err(|error| format!("no se pudo decodificar el cuadro: {error}"));
     let _ = std::fs::remove_file(&parcial);
