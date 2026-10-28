@@ -171,20 +171,7 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
-	{
-		id: 'redo',
-		labelKey: 'shortcuts.redoLastOperation',
-		defaultKeys: {
-			ctrl: true,
-			key: 'y',
-		},
-		scope: 'navigator',
-		conditions: {
-			inputFieldIsActive: false,
-			dialogIsOpened: false,
-		},
-		isReadOnly: false,
-	},
+	navigatorShortcut('redo', 'shortcuts.redoLastOperation', { ctrl: true, key: 'y' }),
 	{
 		id: 'delete',
 		labelKey: 'shortcuts.moveSelectedItemsToTrash',

@@ -417,16 +417,26 @@ export function useFileBrowserSelection(
 		closeCompressDialog();
 	}
 
-	/** Reverses the most recent undoable operation performed in this session. */
-	async function undoLastOperation() {
-		const info = await invoke<UndoInfo | null>('get_undo_info');
+	/**
+	 * Aplica un paso del historial. Deshacer y rehacer son lo mismo: preguntar qué
+	 * hay en la pila, aplicarlo, refrescar y avisar. `commands` elige la pila y
+	 * `labels` los avisos.
+	 */
+	async function applyHistoryStep(
+		commands: {
+			info: 'get_undo_info' | 'get_redo_info';
+			apply: 'undo_last_operation' | 'redo_last_operation';
+		},
+		labels: { nothing: string; done: string; failed: string }
+	) {
+		const info = await invoke<UndoInfo | null>(commands.info);
 
 		if (!info) {
-			toast.success({ title: 'notifications.nothingToUndo' });
+			toast.success({ title: labels.nothing });
 			return;
 		}
 
-		const result = await invoke<UndoResult>('undo_last_operation');
+		const result = await invoke<UndoResult>(commands.apply);
 
 		if (result.affected_paths.length > 0) {
 			dirSizesStore.invalidate([currentPathRef.value, ...result.affected_paths]);
@@ -436,33 +446,33 @@ export function useFileBrowserSelection(
 		onRefresh();
 
 		toast[result.success ? 'success' : 'error']({
-			title: result.success ? 'notifications.undone' : 'notifications.undoFailed',
+			title: result.success ? labels.done : labels.failed,
 			description: result.success ? '' : String(result.error ?? ''),
 		});
 	}
 
+	/** Reverses the most recent undoable operation performed in this session. */
+	function undoLastOperation() {
+		return applyHistoryStep(
+			{ info: 'get_undo_info', apply: 'undo_last_operation' },
+			{
+				nothing: 'notifications.nothingToUndo',
+				done: 'notifications.undone',
+				failed: 'notifications.undoFailed',
+			}
+		);
+	}
+
 	/** Re-aplica la última operación deshecha en esta sesión. */
-	async function redoLastOperation() {
-		const info = await invoke<UndoInfo | null>('get_redo_info');
-
-		if (!info) {
-			toast.success({ title: 'notifications.nothingToRedo' });
-			return;
-		}
-
-		const result = await invoke<UndoResult>('redo_last_operation');
-
-		if (result.affected_paths.length > 0) {
-			dirSizesStore.invalidate([currentPathRef.value, ...result.affected_paths]);
-		}
-
-		clearSelection();
-		onRefresh();
-
-		toast[result.success ? 'success' : 'error']({
-			title: result.success ? 'notifications.redone' : 'notifications.redoFailed',
-			description: result.success ? '' : String(result.error ?? ''),
-		});
+	function redoLastOperation() {
+		return applyHistoryStep(
+			{ info: 'get_redo_info', apply: 'redo_last_operation' },
+			{
+				nothing: 'notifications.nothingToRedo',
+				done: 'notifications.redone',
+				failed: 'notifications.redoFailed',
+			}
+		);
 	}
 
 	async function pasteItems(destinationPath?: string): Promise<boolean> {
