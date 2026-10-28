@@ -35,6 +35,9 @@ type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
 	navigateRight?: () => void;
 	openSelected?: () => void;
 	navigateBack?: () => void;
+	zoomIn?: () => void;
+	zoomOut?: () => void;
+	zoomReset?: () => void;
 };
 
 type GlobalSearchViewInstance = InstanceType<typeof GlobalSearchView> & {
@@ -534,6 +537,9 @@ function callActivePaneMethod(
 		| 'navigateRight'
 		| 'openSelected'
 		| 'navigateBack'
+		| 'zoomIn'
+		| 'zoomOut'
+		| 'zoomReset'
 	>
 ): boolean {
 	if (dismissalLayerStore.hasLayers) return false;
@@ -605,6 +611,9 @@ function registerShortcutHandlers() {
 	shortcutsStore.registerHandler('addBookmark', handleAddBookmarkShortcut);
 	shortcutsStore.registerHandler('undo', handleUndoShortcut);
 	shortcutsStore.registerHandler('redo', handleRedoShortcut);
+	shortcutsStore.registerHandler('zoomIn', () => callActivePaneMethod('zoomIn'));
+	shortcutsStore.registerHandler('zoomOut', () => callActivePaneMethod('zoomOut'));
+	shortcutsStore.registerHandler('zoomReset', () => callActivePaneMethod('zoomReset'));
 	shortcutsStore.registerHandler('delete', handleDeleteShortcut);
 	shortcutsStore.registerHandler('deletePermanently', handleDeletePermanentlyShortcut);
 	shortcutsStore.registerHandler(

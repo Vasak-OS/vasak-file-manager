@@ -172,6 +172,9 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		isReadOnly: false,
 	},
 	navigatorShortcut('redo', 'shortcuts.redoLastOperation', { ctrl: true, key: 'y' }),
+	navigatorShortcut('zoomIn', 'shortcuts.zoomIn', { ctrl: true, key: '=' }),
+	navigatorShortcut('zoomOut', 'shortcuts.zoomOut', { ctrl: true, key: '-' }),
+	navigatorShortcut('zoomReset', 'shortcuts.zoomReset', { ctrl: true, key: '0' }),
 	{
 		id: 'delete',
 		labelKey: 'shortcuts.moveSelectedItemsToTrash',

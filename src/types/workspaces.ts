@@ -18,6 +18,7 @@ export type Tab = {
 	type: 'directory' | 'file' | 'search';
 	paneWidth: number;
 	filterQuery: string;
+	iconScale: number;
 	dirEntries: DirEntry[];
 	selectedDirEntries: DirEntry[];
 };

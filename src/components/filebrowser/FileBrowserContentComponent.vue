@@ -76,6 +76,21 @@ function handleColumnHeaderClick(column: ListSortColumn) {
 		ctx.listSortDirection.value = 'asc';
 	}
 }
+
+// Ctrl+rueda sobre el área de archivos cambia el zoom; sin Ctrl se deja pasar
+// para que la rueda siga desplazando. `ctrlKey || metaKey` para el Cmd de Mac,
+// igual que `matchesShortcut`.
+function handleFileAreaWheel(event: WheelEvent) {
+	if (!event.ctrlKey && !event.metaKey) return;
+
+	event.preventDefault();
+
+	if (event.deltaY < 0) {
+		ctx.zoomIn();
+	} else if (event.deltaY > 0) {
+		ctx.zoomOut();
+	}
+}
 </script>
 
 <template>
@@ -223,11 +238,11 @@ function handleColumnHeaderClick(column: ListSortColumn) {
              una barra con `bg-ui-bg/80` (invisible sobre la ventana); la barra
              ahora es la de `scrollbar.css` y la estructura de dos cajas es la
              misma. -->
-        <div :key="ctx.currentPath.value" class="relative min-h-0 w-full flex-1 overflow-hidden">
+        <div :key="ctx.currentPath.value" class="relative min-h-0 w-full flex-1 overflow-hidden" @wheel="handleFileAreaWheel">
           <div class="h-full w-full overflow-x-hidden overflow-y-auto">
             <div :ref="ctx.setEntriesContainerRef" class="min-h-full">
-              <FileBrowserGridView v-if="props.layout === 'grid'" :entries="ctx.entries.value" />
-              <FileBrowserListView v-else :entries="ctx.entries.value" />
+              <FileBrowserGridView v-if="props.layout === 'grid'" :entries="ctx.entries.value" :icon-scale="ctx.iconScale.value" />
+              <FileBrowserListView v-else :entries="ctx.entries.value" :icon-scale="ctx.iconScale.value" />
             </div>
           </div>
         </div>

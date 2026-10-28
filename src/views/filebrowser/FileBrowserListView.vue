@@ -10,6 +10,7 @@ import {
 } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
+import { DEFAULT_ICON_SCALE } from '@/composables/file-browser/icon-scale';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
@@ -21,9 +22,14 @@ const { t } = useI18n();
 
 interface Props {
 	entries: DirEntry[];
+	iconScale?: number;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { iconScale: DEFAULT_ICON_SCALE });
+
+// El ícono de la fila sigue el nivel de zoom; el `DynamicScroller` remide la
+// fila porque `iconScale` entra en `size-dependencies`.
+const iconSize = computed(() => Math.round(16 * props.iconScale));
 
 const ctx = useFileBrowserContext();
 const clipboardStore = useClipboardStore();
@@ -183,7 +189,7 @@ function handleEntryKeydown(event: KeyboardEvent): void {
       <DynamicScrollerItem
         :item="entry"
         :active="active"
-        :size-dependencies="[entry.name, ctx.entryDescription?.(entry)]"
+        :size-dependencies="[entry.name, ctx.entryDescription?.(entry), props.iconScale]"
       >
       <button :key="entry.path" class="relative grid border-b border-ui-line text-left hover:bg-ui-bg/80 group focus-visible:outline-none data-[drag-over]:bg-primary/5 w-full" :class="{
         'opacity-50': entry.is_hidden,
@@ -203,9 +209,9 @@ function handleEntryKeydown(event: KeyboardEvent): void {
             v-if="ctx.isEntrySelected(entry)"
             name="object-select-symbolic"
             type="symbol"
-            :size="16"
+            :size="iconSize"
             :alt="t('fileBrowser.selected')" />
-          <EntryIconComponent :entry="entry" :size="16" class="shrink-0 text-tx-muted" :class="{'text-primary': entry.is_dir}" />
+          <EntryIconComponent :entry="entry" :size="iconSize" class="shrink-0 text-tx-muted" :class="{'text-primary': entry.is_dir}" />
           <div class="flex overflow-hidden min-w-0 flex-1 flex-col gap-0.5">
             <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
             <span v-if="ctx.entryDescription?.(entry)" class="overflow-hidden text-tx-muted text-[11px] text-ellipsis whitespace-nowrap">{{

@@ -67,6 +67,24 @@ const NUEVOS: Esperado[] = [
 		keys: { alt: true, key: 'Home' },
 		init: { key: 'Home', code: 'Home', altKey: true },
 	},
+	{
+		id: 'zoomIn',
+		labelKey: 'shortcuts.zoomIn',
+		keys: { ctrl: true, key: '=' },
+		init: { key: '=', code: 'Equal', ctrlKey: true },
+	},
+	{
+		id: 'zoomOut',
+		labelKey: 'shortcuts.zoomOut',
+		keys: { ctrl: true, key: '-' },
+		init: { key: '-', code: 'Minus', ctrlKey: true },
+	},
+	{
+		id: 'zoomReset',
+		labelKey: 'shortcuts.zoomReset',
+		keys: { ctrl: true, key: '0' },
+		init: { key: '0', code: 'Digit0', ctrlKey: true },
+	},
 ];
 
 const teclado = (init: KeyboardEventInit) =>

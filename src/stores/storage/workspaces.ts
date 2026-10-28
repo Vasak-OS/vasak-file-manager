@@ -5,6 +5,7 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { defineStore } from 'pinia';
 import type { ComputedRef } from 'vue';
 import { computed, ref, watch } from 'vue';
+import { DEFAULT_ICON_SCALE } from '@/composables/file-browser/icon-scale';
 import { useNavigatorStore } from '@/stores/runtime/navigator';
 import {
 	migrateWorkspacesStorage,
@@ -110,6 +111,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 			type: 'directory',
 			paneWidth: 100,
 			filterQuery: '',
+			iconScale: DEFAULT_ICON_SCALE,
 			dirEntries: [],
 			selectedDirEntries: [],
 		};
