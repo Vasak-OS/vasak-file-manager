@@ -3793,6 +3793,48 @@ mod tests {
     }
 
     #[test]
+    fn la_raiz_no_tiene_carpeta_padre_y_cuenta_como_fallo_sin_tocar_nada() {
+        let _pilas = pilas();
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items_core(vec![par(Path::new("/"), "otra")]);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.failed_count, Some(1));
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(
+            resultado.error.as_deref(),
+            Some("Cannot determine parent directory")
+        );
+        assert!(crate::undo::get_undo_info().is_none());
+    }
+
+    #[test]
+    fn un_error_que_no_es_de_permisos_se_cuenta_como_fallo_y_no_pide_elevacion() {
+        let _pilas = pilas();
+        let dir = scratch("lote-error-de-disco");
+        crear_archivos(&dir, &["a.txt", "b.txt"]);
+        let log = install_refusing(&dir, 126);
+        crate::undo::clear_undo_history();
+
+        // La subcarpeta del destino no existe: falla `rename`, pero no por permisos.
+        let resultado = rename_items_core(vec![
+            par(&dir.join("a.txt"), "no-existe/uno.txt"),
+            par(&dir.join("b.txt"), "dos.txt"),
+        ]);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(resultado.failed_count, Some(1));
+        assert!(resultado.error.is_some());
+        assert!(dir.join("a.txt").exists());
+        assert!(dir.join("dos.txt").exists());
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
     fn el_comando_rename_items_delega_en_el_nucleo() {
         let _pilas = pilas();
         let dir = scratch("lote-comando");
