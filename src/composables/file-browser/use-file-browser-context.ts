@@ -40,6 +40,12 @@ export interface FileBrowserContext {
 	getVideoThumbnail: (entry: DirEntry) => string | undefined;
 	setEntriesContainerRef: (element: Element | ComponentPublicInstance | null) => void;
 
+	/** La escala discreta de íconos y tarjetas, y cómo moverla (Ctrl+rueda). */
+	iconScale: Ref<number>;
+	zoomIn: () => void;
+	zoomOut: () => void;
+	zoomReset: () => void;
+
 	/**
 	 * La vista informa cómo se ven las entradas: en cuántas secciones y con
 	 * cuántas columnas cada una.

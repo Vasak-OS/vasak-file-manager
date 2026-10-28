@@ -1,5 +1,10 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, nextTick, ref, toRef } from 'vue';
+import {
+	clampIconScale,
+	DEFAULT_ICON_SCALE,
+	stepIconScale,
+} from '@/composables/file-browser/icon-scale';
 import type { SeccionVisual } from '@/composables/file-browser/recorrido-visual';
 import { useFileBrowserActions } from '@/composables/file-browser/use-file-browser-actions';
 import { useFileBrowserDialogs } from '@/composables/file-browser/use-file-browser-dialogs';
@@ -66,6 +71,12 @@ interface DataSource {
 	showHiddenFiles: Ref<boolean>;
 	toggleHiddenFiles: () => void;
 	/**
+	 * La escala discreta de íconos y tarjetas de la pestaña. En la navegación
+	 * está atada al `iconScale` de la pestaña —se persiste con ella—; en la
+	 * búsqueda global es efímera.
+	 */
+	iconScale: Ref<number>;
+	/**
 	 * El orden de las entradas: la columna y la dirección.
 	 *
 	 * Es la única fuente del estado de orden. La cabecera de la lista escribe
@@ -117,6 +128,17 @@ function setupNavigationDataSource(
 
 	const tabRef = toRef(options.tab);
 
+	// El zoom vive en la pestaña: escribirlo muta el objeto `Tab`, que el store
+	// de workspaces persiste solo por su watcher profundo.
+	const iconScale = computed<number>({
+		get: () => clampIconScale(tabRef.value?.iconScale ?? DEFAULT_ICON_SCALE),
+		set: (value) => {
+			if (tabRef.value) {
+				tabRef.value.iconScale = clampIconScale(value);
+			}
+		},
+	});
+
 	useFileBrowserLifecycle({
 		tabRef,
 		readDir: navigation.readDir,
@@ -150,6 +172,7 @@ function setupNavigationDataSource(
 		toggleFilter: filter.toggleFilter,
 		showHiddenFiles,
 		toggleHiddenFiles,
+		iconScale,
 		openFilter: filter.openFilter,
 		closeFilter: filter.closeFilter,
 		listSortColumn,
@@ -212,6 +235,7 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 		// incluyen lo que corresponda: acá no hay directorio que filtrar.
 		showHiddenFiles: ref(true),
 		toggleHiddenFiles: () => {},
+		iconScale: ref(DEFAULT_ICON_SCALE),
 		listSortColumn,
 		listSortDirection,
 	};
@@ -386,6 +410,18 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 			})
 		: keyboardNavDefaults;
 
+	function zoomIn() {
+		dataSource.iconScale.value = stepIconScale(dataSource.iconScale.value, 1);
+	}
+
+	function zoomOut() {
+		dataSource.iconScale.value = stepIconScale(dataSource.iconScale.value, -1);
+	}
+
+	function zoomReset() {
+		dataSource.iconScale.value = DEFAULT_ICON_SCALE;
+	}
+
 	async function selectFirstEntry() {
 		if (dataSource.entries.value.length === 0) return;
 
@@ -441,6 +477,10 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		toggleFilter: dataSource.toggleFilter,
 		showHiddenFiles: dataSource.showHiddenFiles,
 		toggleHiddenFiles: dataSource.toggleHiddenFiles,
+		iconScale: dataSource.iconScale,
+		zoomIn,
+		zoomOut,
+		zoomReset,
 		openFilter: dataSource.openFilter,
 		closeFilter: dataSource.closeFilter,
 

@@ -148,6 +148,9 @@ shortcuts:
   addBookmark: Pin current folder
   undoLastOperation: Undo
   redoLastOperation: Redo
+  zoomIn: Zoom in
+  zoomOut: Zoom out
+  zoomReset: Reset zoom
   transferPreparedForCopying: Transfer prepared for copying
   transferPreparedToPane1: Transfer prepared for pane 1
   transferPreparedToPane2: Transfer prepared for pane 2

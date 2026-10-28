@@ -1,3 +1,4 @@
+import { clampIconScale, DEFAULT_ICON_SCALE } from '@/composables/file-browser/icon-scale';
 import type { Tab, TabAction, TabGroup, Workspace } from '@/types/workspaces';
 import uniqueId from '@/utils/unique-id';
 import type { StorageAdapter } from './schema-utils';
@@ -42,6 +43,7 @@ function parseTab(tabValue: unknown): Tab | null {
 		type: parseTabType(tabValue.type),
 		paneWidth: getNumber(tabValue.paneWidth, 100),
 		filterQuery: getString(tabValue.filterQuery, ''),
+		iconScale: clampIconScale(getNumber(tabValue.iconScale, DEFAULT_ICON_SCALE)),
 		dirEntries: [],
 		selectedDirEntries: [],
 	};

@@ -16,6 +16,7 @@ import {
 	type Fila,
 	SEPARACION_PX,
 } from '@/composables/file-browser/filas-de-cuadricula';
+import { DEFAULT_ICON_SCALE } from '@/composables/file-browser/icon-scale';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
@@ -28,10 +29,17 @@ import { getImageSrc } from '@/utils/images';
 
 interface Props {
 	entries: DirEntry[];
+	iconScale?: number;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { iconScale: DEFAULT_ICON_SCALE });
 const { t } = useI18n();
+
+// Los tamaños base se multiplican por el nivel de zoom. Se redondea para que el
+// alto de fila que recibe el desplazador sea entero y no acumule fracciones.
+function conEscala(base: number): number {
+	return Math.round(base * props.iconScale);
+}
 const ctx = useFileBrowserContext();
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
@@ -182,7 +190,7 @@ function medirAnchos() {
 }
 
 function columnasDe(clave: Clave): number {
-	return columnasQueEntran(anchos.value[clave], FORMA[clave].minimo);
+	return columnasQueEntran(anchos.value[clave], conEscala(FORMA[clave].minimo));
 }
 
 const columnas = computed<Record<Clave, number>>(() => ({
@@ -199,8 +207,12 @@ const filas = computed<Record<Clave, Fila[]>>(() => ({
 	others: enFilas(groupedEntries.value.others, columnas.value.others),
 }));
 
+function altoTarjeta(clave: Clave): number {
+	return conEscala(FORMA[clave].altoTarjeta);
+}
+
 function altoDeFila(clave: Clave): number {
-	return FORMA[clave].altoTarjeta + SEPARACION_PX;
+	return altoTarjeta(clave) + SEPARACION_PX;
 }
 
 function estiloDeFila(clave: Clave) {
@@ -307,7 +319,8 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('dirs')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-18 !flex-row items-center py-2 px-3 gap-2.5"
+          :style="{ height: altoTarjeta('dirs') + 'px' }"
+          class="relative flex overflow-hidden border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group !flex-row items-center py-2 px-3 gap-2.5"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -320,7 +333,7 @@ watchEffect(() => {
             <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
           <div class="relative z-1 flex w-auto h-auto shrink-0 items-center justify-center">
-            <EntryIconComponent :entry="entry" :size="24" class="text-primary" />
+            <EntryIconComponent :entry="entry" :size="conEscala(24)" class="text-primary" />
           </div>
           <div class="relative z-1 overflow-hidden min-w-0 flex-1 flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
             <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>
@@ -358,7 +371,8 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('images')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          :style="{ height: altoTarjeta('images') + 'px' }"
+          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -376,7 +390,7 @@ watchEffect(() => {
                  aunque se dibuje a 120 px. Mientras llega, el icono. -->
             <VideoThumbnailComponent v-else :entry="entry" v-slot="{ thumbnail }">
               <img v-if="thumbnail" :src="thumbnail" :alt="entry.name" class="w-full h-full object-cover pointer-events-none">
-              <ThemeIcon v-else name="image-x-generic" :size="48" class="text-tx-muted" />
+              <ThemeIcon v-else name="image-x-generic" :size="conEscala(48)" class="text-tx-muted" />
             </VideoThumbnailComponent>
           </div>
           <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-linear-to-t from-ui-overlay to-transparent text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
@@ -408,7 +422,8 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('videos')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          :style="{ height: altoTarjeta('videos') + 'px' }"
+          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group"
           :class="{
             'opacity-50': entry.is_hidden,
           }" :data-entry-path="entry.path" :data-selected="ctx.isEntrySelected(entry) || undefined"
@@ -427,11 +442,11 @@ watchEffect(() => {
               <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
             </div>
             <div :class="[
-              thumbnail ? 'relative z-1 flex w-full h-full items-center justify-center' : 'absolute top-2 left-2 w-12 h-12 bg-transparent'
-            ]">
+              thumbnail ? 'relative z-1 flex w-full h-full items-center justify-center' : 'absolute top-2 left-2 bg-transparent'
+            ]" :style="thumbnail ? undefined : { width: conEscala(48) + 'px', height: conEscala(48) + 'px' }">
               <img v-if="thumbnail" :src="thumbnail" :alt="entry.name"
                 class="w-full h-full object-cover pointer-events-none">
-              <ThemeIcon v-else name="video-x-generic" :size="48" class="text-tx-muted" />
+              <ThemeIcon v-else name="video-x-generic" :size="conEscala(48)" class="text-tx-muted" />
             </div>
           </VideoThumbnailComponent>
           <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 bg-linear-to-t from-ui-overlay to-transparent text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
@@ -463,7 +478,8 @@ watchEffect(() => {
         >
         <div class="grid gap-3" :style="estiloDeFila('others')">
         <button v-for="entry in fila.entradas" :key="entry.path"
-          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group h-[120px]"
+          :style="{ height: altoTarjeta('others') + 'px' }"
+          class="relative flex overflow-hidden flex-col border border-ui-line rounded-corner-m bg-ui-bg/80 cursor-default text-left focus-visible:outline-none group"
           :class="{ 'opacity-50': entry.is_hidden }" :data-entry-path="entry.path"
           :data-selected="ctx.isEntrySelected(entry) || undefined"
           :data-in-clipboard="clipboardPathsMap.has(entry.path) || undefined"
@@ -475,8 +491,8 @@ watchEffect(() => {
             <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_40%,transparent)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_40%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_60%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_60%,transparent)]" />
             <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
-          <div class="absolute top-2 left-2 w-12 h-12 bg-transparent">
-            <EntryIconComponent :entry="entry" :size="48" class="text-tx-muted" />
+          <div class="absolute top-2 left-2 bg-transparent" :style="{ width: conEscala(48) + 'px', height: conEscala(48) + 'px' }">
+            <EntryIconComponent :entry="entry" :size="conEscala(48)" class="text-tx-muted" />
           </div>
           <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
             <span class="overflow-hidden text-[13px] font-medium break-words text-ellipsis whitespace-nowrap">{{ entry.name }}</span>

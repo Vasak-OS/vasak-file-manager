@@ -148,6 +148,9 @@ shortcuts:
   addBookmark: Anclar la carpeta actual
   undoLastOperation: Deshacer
   redoLastOperation: Rehacer
+  zoomIn: Acercar
+  zoomOut: Alejar
+  zoomReset: Restablecer zoom
   transferPreparedForCopying: Transferencia preparada para copiar
   transferPreparedToPane1: Transferencia preparada para panel 1
   transferPreparedToPane2: Transferencia preparada para panel 2
