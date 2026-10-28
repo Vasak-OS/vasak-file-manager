@@ -78,6 +78,59 @@ pub(crate) fn emit_progress(
     }
 }
 
+/// ¿El destino vive en una unidad removible? Busca el montaje más específico que
+/// contiene la ruta y devuelve su flag de removible. Ante la duda, `false`: el
+/// flush extra sólo hace falta donde retirar la unidad en caliente pierde datos.
+fn destination_is_removable(destination: &Path) -> bool {
+    use sysinfo::Disks;
+    let target = destination
+        .canonicalize()
+        .unwrap_or_else(|_| destination.to_path_buf());
+    Disks::new_with_refreshed_list()
+        .iter()
+        .filter(|disk| target.starts_with(disk.mount_point()))
+        .max_by_key(|disk| disk.mount_point().as_os_str().len())
+        .is_some_and(|disk| disk.is_removable())
+}
+
+/// Baja a disco el filesystem entero del directorio con `syncfs`. Devuelve el
+/// error del sistema si no se pudo abrir el directorio o si la bajada falla.
+fn sync_filesystem(directory: &Path) -> std::io::Result<()> {
+    use std::os::fd::AsRawFd;
+    let dir = fs::File::open(directory)?;
+    if unsafe { libc::syncfs(dir.as_raw_fd()) } != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+/// Antes de avisar que la operación terminó, fuerza a disco lo que se escribió
+/// en el destino si vive en una unidad removible. En un USB el «listo» puede
+/// llegar con datos todavía en la caché del kernel; si se retira ahí, se pierden.
+/// Sólo en removibles, para no penalizar las copias a disco interno; mejor
+/// esfuerzo: si falla, no hay nada mejor que avisar igual.
+fn flush_if_removable(destination: &Path) {
+    if !destination_is_removable(destination) {
+        return;
+    }
+    if let Err(error) = sync_filesystem(destination) {
+        log::warn!(
+            "No se pudo bajar a disco la unidad removible {}: {error}",
+            destination.display()
+        );
+    }
+}
+
+/// El flush de cierre de una operación: sólo si realmente se escribió algo. Un
+/// `move` que no movió nada, o un `copy` sin copias, no tocó el disco y no hay
+/// nada que bajar. Separado del comando para poder probar la compuerta sin un
+/// `AppHandle` de por medio.
+fn flush_after_write(wrote_something: bool, destination: &Path) {
+    if wrote_something {
+        flush_if_removable(destination);
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileOperationResult {
     pub success: bool,
@@ -571,6 +624,7 @@ pub fn copy_items(
         }
     }
 
+    flush_after_write(copied_count > 0, destination);
     emit_progress(&app, &operation_id, "copy", total, total, "");
     if let Some(id) = &operation_id {
         unregister_operation(id);
@@ -642,6 +696,7 @@ pub fn move_items(
         &|index, current| emit_progress(&app, &operation_id, "move", index, total, current),
     );
 
+    flush_after_write(!report.moved_pairs.is_empty(), destination);
     emit_progress(&app, &operation_id, "move", total, total, "");
     if let Some(id) = &operation_id {
         unregister_operation(id);
@@ -2214,6 +2269,72 @@ mod tests {
         assert!(results[1].is_err());
         assert!(!root.join("uno.txt").exists());
         assert!(elsewhere.join("dos.txt").exists());
+        cleanup(&dir);
+    }
+
+    // El «true» de `destination_is_removable` y la rama removible de
+    // `flush_if_removable` necesitan una unidad USB real: no se pueden probar sin
+    // hardware. Acá se cubre todo lo que corre en un disco interno.
+
+    #[test]
+    fn un_destino_interno_no_se_considera_removible() {
+        let dir = scratch("flush-interno");
+        assert!(!destination_is_removable(&dir));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_destino_que_no_existe_no_se_considera_removible() {
+        let dir = scratch("flush-inexistente");
+        assert!(!destination_is_removable(&dir.join("no/existe")));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn bajar_a_disco_un_directorio_comun_termina_bien() {
+        let dir = scratch("flush-sync-ok");
+        std::fs::write(dir.join("a.txt"), b"x").unwrap();
+        // syncfs funciona en cualquier filesystem, no sólo en removibles.
+        sync_filesystem(&dir).unwrap();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn bajar_a_disco_un_directorio_que_no_existe_devuelve_error() {
+        let dir = scratch("flush-sync-error");
+        let error = sync_filesystem(&dir.join("no-existe")).unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_flush_en_un_destino_interno_no_toca_nada() {
+        let dir = scratch("flush-interno-noop");
+        std::fs::write(dir.join("a.txt"), b"x").unwrap();
+        flush_if_removable(&dir);
+        assert_eq!(std::fs::read(dir.join("a.txt")).unwrap(), b"x");
+        cleanup(&dir);
+    }
+
+    // La compuerta no tiene efecto observable en un destino interno (el flush
+    // retorna temprano), así que estas pruebas cubren las dos ramas y fijan que
+    // ninguna rompe el destino; que flushee de verdad en un USB necesita hardware.
+
+    #[test]
+    fn sin_nada_escrito_la_compuerta_del_flush_no_toca_el_destino() {
+        let dir = scratch("flush-compuerta-falsa");
+        std::fs::write(dir.join("a.txt"), b"x").unwrap();
+        flush_after_write(false, &dir);
+        assert_eq!(std::fs::read(dir.join("a.txt")).unwrap(), b"x");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn con_algo_escrito_la_compuerta_del_flush_en_un_destino_interno_no_toca_nada() {
+        let dir = scratch("flush-compuerta-verdadera");
+        std::fs::write(dir.join("a.txt"), b"x").unwrap();
+        flush_after_write(true, &dir);
+        assert_eq!(std::fs::read(dir.join("a.txt")).unwrap(), b"x");
         cleanup(&dir);
     }
 }
