@@ -306,6 +306,11 @@ drag:
   dropToMoveItemsOther: Soltar para mover {0} elementos
   holdShiftToChangeMode: Mantén presionado Shift para cambiar el modo de arrastre
   holdCtrlForCurrentDirDrop: Mantén presionado Ctrl para soltar en el directorio actual
+  dropMenu:
+    copyHere: Copiar aquí
+    moveHere: Mover aquí
+    linkHere: Enlazar aquí
+    cancel: Cancelar
   dragging: Arrastrando
   dropping: Soltando
 conflictDialog:
@@ -334,6 +339,10 @@ notifications:
   deleted: Elementos eliminados
   errorTrashItems: Error al mover elementos a la papelera
   errorDeleteItems: Error al eliminar elementos
+  linkedItems: Enlaces creados
+  linkedCountOne: "Se creó {0} enlace"
+  linkedCountOther: "Se crearon {0} enlaces"
+  failedToLinkItems: No se pudieron crear los enlaces
   renamed: Elemento renombrado
   renamedItems: Elementos renombrados
   renamedCountOne: "Se renombró {0} elemento"

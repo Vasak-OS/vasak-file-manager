@@ -1442,6 +1442,124 @@ pub(crate) fn rename_items_core(renames: Vec<RenamePair>) -> FileOperationResult
     }
 }
 
+#[tauri::command]
+pub fn link_items(
+    source_paths: Vec<String>,
+    destination_path: String,
+    conflict_resolution: Option<String>,
+    operation_id: Option<String>,
+) -> FileOperationResult {
+    // `operation_id` se declara sólo para aceptar el argumento que manda el
+    // frontend: crear un enlace es instantáneo, no lleva seguimiento ni AppHandle.
+    let _ = operation_id;
+    link_items_core(source_paths, destination_path, conflict_resolution)
+}
+
+/// Crea un enlace simbólico de cada origen dentro de `destination_path`,
+/// apuntando a la ruta absoluta del origen, y agrupa todo en una sola entrada de
+/// undo para que un único deshacer mande el lote a la papelera.
+///
+/// Ante una colisión de nombre auto-renombra (`nombre (1)`…): es seguro y barato
+/// para enlaces, así que nunca pisa nada —por eso `conflict_resolution` se acepta
+/// por contrato con el frontend pero no cambia el comportamiento—.
+///
+/// Núcleo puro, sin Tauri, para probarlo sin montar Tauri (como
+/// `rename_items_core`).
+pub(crate) fn link_items_core(
+    source_paths: Vec<String>,
+    destination_path: String,
+    conflict_resolution: Option<String>,
+) -> FileOperationResult {
+    // Los enlaces siempre auto-renombran; el frontend manda la resolución igual.
+    let _ = conflict_resolution;
+    let destination = Path::new(&destination_path);
+
+    if !destination.exists() {
+        return FileOperationResult {
+            success: false,
+            error: Some(format!(
+                "Destination path does not exist: {}",
+                destination_path
+            )),
+            copied_count: None,
+            failed_count: None,
+            skipped_count: None,
+        };
+    }
+
+    if !destination.is_dir() {
+        return FileOperationResult {
+            success: false,
+            error: Some(format!(
+                "Destination is not a directory: {}",
+                destination_path
+            )),
+            copied_count: None,
+            failed_count: None,
+            skipped_count: None,
+        };
+    }
+
+    let mut created: Vec<PathBuf> = Vec::new();
+    let mut failed_count: u32 = 0;
+    let mut last_error: Option<String> = None;
+
+    for source_path in &source_paths {
+        let source = Path::new(source_path);
+
+        if !source.exists() {
+            failed_count += 1;
+            last_error = Some(format!("Source path does not exist: {}", source_path));
+            continue;
+        }
+
+        let file_name = match source.file_name() {
+            Some(name) => name.to_string_lossy().to_string(),
+            None => {
+                failed_count += 1;
+                last_error = Some(format!("Invalid source path: {}", source_path));
+                continue;
+            }
+        };
+
+        // Auto-renombra ante colisión: no pisa nada que ya esté en el destino.
+        let dest_path = get_unique_destination_path(destination, &file_name);
+
+        // Apunta a la ruta absoluta del origen (los `source_path` ya lo son): así
+        // el enlace no queda roto si se lo abre desde otro directorio.
+        match std::os::unix::fs::symlink(source, &dest_path) {
+            Ok(()) => created.push(dest_path),
+            Err(error) => {
+                failed_count += 1;
+                last_error = Some(error.to_string());
+            }
+        }
+    }
+
+    let linked_count = created.len() as u32;
+
+    // Un solo `push` con todos los enlaces: un deshacer manda el lote a la
+    // papelera sin tocar los originales. `partial` siempre false: crear enlaces
+    // nunca reemplaza un original, así que deshacer no puede perder datos.
+    if !created.is_empty() {
+        undo::push(
+            "link",
+            created.len(),
+            false,
+            undo::UndoAction::RemoveCreated { paths: created },
+        );
+    }
+
+    FileOperationResult {
+        // Reusamos `copied_count` como «enlaces creados».
+        success: failed_count == 0,
+        error: last_error,
+        copied_count: Some(linked_count),
+        failed_count: Some(failed_count),
+        skipped_count: Some(0),
+    }
+}
+
 /// Borra o manda a la papelera.
 ///
 /// `allow_elevation` por omisión es `true`, que es el comportamiento de siempre:

@@ -1,11 +1,16 @@
 import { resolveResource } from '@tauri-apps/api/path';
 import { startDrag as tauriStartDrag } from '@vasakgroup/plugin-drag-and-drop-wayland';
+import { useContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onUnmounted, type Ref, ref } from 'vue';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import type { DirEntry } from '@/types/dir-entry';
 import { entryPathSelector } from '@/utils/css-escape';
 
 export type DragOperationType = 'move' | 'copy';
+
+/** Lo que se puede hacer al soltar: «enlazar» sólo sale del menú del botón derecho. */
+export type DropOperationType = DragOperationType | 'link';
 
 export interface DragState {
 	isActive: boolean;
@@ -40,7 +45,7 @@ export function useFileBrowserDrag(options: {
 	isEntrySelected: (entry: DirEntry) => boolean;
 	replaceSelection: (entry: DirEntry) => void;
 	entriesContainerRef: Ref<Element | null>;
-	onDrop: (items: DirEntry[], destinationPath: string, operation: DragOperationType) => void;
+	onDrop: (items: DirEntry[], destinationPath: string, operation: DropOperationType) => void;
 	/**
 	 * Qué hacer cuando la aplicación de destino se quedó con los archivos y pidió
 	 * que el origen los saque de acá.
@@ -55,6 +60,8 @@ export function useFileBrowserDrag(options: {
 	disableBackgroundDrop?: boolean;
 }) {
 	const dismissalLayerStore = useDismissalLayerStore();
+	const { t } = useI18n();
+	const { show: showContextMenu } = useContextMenu();
 	const paneId = nextPaneId++;
 	crossPaneRegistry.push({
 		id: paneId,
@@ -73,6 +80,9 @@ export function useFileBrowserDrag(options: {
 	let mouseDownEntry: DirEntry | null = null;
 	let mouseDownX = 0;
 	let mouseDownY = 0;
+	let dragButton = 0;
+	// El `contextmenu` que se tragó mientras el botón derecho estaba apretado.
+	let swallowedContextMenu: MouseEvent | null = null;
 	let thresholdReached = false;
 	let isMouseDown = false;
 	let dropTargets: DropTargetInfo[] = [];
@@ -259,8 +269,25 @@ export function useFileBrowserDrag(options: {
 		isOutboundDragActive = false;
 	}
 
+	/** Apaga el menú del clic derecho mientras se arrastra con ese botón: en
+	 *  WebKitGTK sale al apretar, no al soltar, y taparía el menú del soltar.
+	 *  En captura y cortando la propagación, para que tampoco lo abra el
+	 *  `@contextmenu` de la entrada ni el de los campos de texto. */
+	function swallowContextMenu(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		swallowedContextMenu = event;
+	}
+
 	function handleDragMouseDown(entry: DirEntry, event: MouseEvent) {
-		if (event.button !== 0) return;
+		if (event.button !== 0 && event.button !== 2) return;
+
+		dragButton = event.button;
+		swallowedContextMenu = null;
+
+		if (dragButton === 2) {
+			window.addEventListener('contextmenu', swallowContextMenu, { capture: true });
+		}
 
 		mouseDownEntry = entry;
 		mouseDownX = event.clientX;
@@ -367,10 +394,50 @@ export function useFileBrowserDrag(options: {
 		const targetPath = dropTargetPath.value;
 		const items = [...dragItems.value];
 		const operation = event.shiftKey ? 'copy' : operationType.value;
+		const wasRightDrag = dragButton === 2;
+		const swallowed = swallowedContextMenu;
 
 		cleanup();
 
+		// Un clic derecho sin arrastre tiene que seguir abriendo el menú de la
+		// entrada: si se lo tragó al apretar, se lo reenvía ahora.
+		if (wasRightDrag && !wasDragging && swallowed?.target) {
+			swallowed.target.dispatchEvent(
+				new MouseEvent('contextmenu', {
+					bubbles: true,
+					cancelable: true,
+					clientX: event.clientX,
+					clientY: event.clientY,
+					button: 2,
+				})
+			);
+		}
+
 		if (wasDragging && targetPath && items.length > 0) {
+			if (wasRightDrag) {
+				void chooseDropOperation(items, targetPath, event);
+			} else {
+				options.onDrop(items, targetPath, operation);
+			}
+		}
+	}
+
+	/** Al soltar con el botón derecho la operación la elige quien arrastró. */
+	async function chooseDropOperation(items: DirEntry[], targetPath: string, event: MouseEvent) {
+		const elegido = await showContextMenu(
+			[
+				{ id: 'drop:copy', label: t('drag.dropMenu.copyHere'), icon: 'edit-copy' },
+				{ id: 'drop:move', label: t('drag.dropMenu.moveHere'), icon: 'edit-cut' },
+				{ id: 'drop:link', label: t('drag.dropMenu.linkHere'), icon: 'insert-link' },
+				{ type: 'separator' },
+				{ id: 'drop:cancel', label: t('drag.dropMenu.cancel'), icon: 'window-close' },
+			],
+			{ x: event.clientX, y: event.clientY }
+		);
+
+		const operation = elegido?.id.slice('drop:'.length);
+
+		if (operation === 'copy' || operation === 'move' || operation === 'link') {
 			options.onDrop(items, targetPath, operation);
 		}
 	}
@@ -380,6 +447,21 @@ export function useFileBrowserDrag(options: {
 	}
 
 	function cleanup() {
+		// Donde el menú nativo sale al soltar llega después del `mouseup`: tras un
+		// arrastre se lo sigue tragando un instante y recién entonces se quita.
+		if (dragButton === 2) {
+			const remove = () =>
+				window.removeEventListener('contextmenu', swallowContextMenu, { capture: true });
+
+			if (isDragging.value) {
+				setTimeout(remove, 0);
+			} else {
+				remove();
+			}
+
+			dragButton = 0;
+		}
+
 		isMouseDown = false;
 		mouseDownEntry = null;
 		thresholdReached = false;

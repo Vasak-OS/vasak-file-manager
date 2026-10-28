@@ -36,7 +36,7 @@ pub enum UndoAction {
 #[derive(Debug, Clone)]
 pub struct UndoEntry {
     pub id: String,
-    /// "copy" | "move" | "rename" | "delete" | "create" | "compress"
+    /// "copy" | "move" | "link" | "rename" | "delete" | "create" | "compress"
     pub kind: String,
     pub item_count: usize,
     /// True when some items of the original operation can't be undone (e.g. a

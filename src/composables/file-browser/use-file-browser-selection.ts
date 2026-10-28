@@ -811,6 +811,49 @@ export function useFileBrowserSelection(
 		};
 	}
 
+	/** Crea enlaces simbólicos a `entries` dentro de `destinationPath`. Va directo
+	 *  a `link_items` y no por el portapapeles ni por el corredor de operaciones:
+	 *  no hay «enlazar» en ninguno, y es una sola operación deshacible. */
+	async function linkItems(entries: DirEntry[], destinationPath: string): Promise<boolean> {
+		if (entries.length === 0) return false;
+
+		try {
+			const result = await invoke<FileOperationResult>('link_items', {
+				sourcePaths: entries.map((entry) => entry.path),
+				destinationPath,
+				// Un enlace nunca pisa nada: si el nombre está ocupado, se le busca otro.
+				conflictResolution: 'auto-rename' satisfies ConflictResolution,
+			});
+
+			if (result.success) {
+				const count = result.copied_count ?? entries.length;
+
+				toast.success({
+					title: 'notifications.linkedItems',
+					description: interpolar(t(claveSegunCantidad('notifications.linkedCount', count)), count),
+				});
+
+				dirSizesStore.invalidate([destinationPath, currentPathRef.value]);
+
+				clearSelection();
+				onRefresh();
+				return true;
+			}
+
+			toast.error({
+				title: 'notifications.failedToLinkItems',
+				description: result.error || '',
+			});
+			return false;
+		} catch (error) {
+			toast.error({
+				title: 'notifications.failedToLinkItems',
+				description: String(error),
+			});
+			return false;
+		}
+	}
+
 	async function confirmRename(newName: string): Promise<boolean> {
 		if (!renameState.value.entry || !newName.trim()) {
 			cancelRename();
@@ -1345,6 +1388,7 @@ export function useFileBrowserSelection(
 		copyItems,
 		cutItems,
 		pasteItems,
+		linkItems,
 		handleExternalDrop,
 		deleteItems,
 		startRename,
