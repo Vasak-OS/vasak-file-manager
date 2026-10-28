@@ -4035,4 +4035,422 @@ mod tests {
         assert!(crate::undo::get_undo_info().is_none());
         cleanup(&dir);
     }
+
+    // --- Enlazar al soltar (#148) ---
+    //
+    // `link_items_core` crea un enlace simbólico por origen y apila **una sola**
+    // entrada de deshacer. Apilar toca la pila global: todas toman su candado.
+
+    /// Adónde apunta el enlace `ruta`; falla si no es un enlace simbólico.
+    fn apunta_a(ruta: &Path) -> PathBuf {
+        assert!(
+            std::fs::symlink_metadata(ruta)
+                .unwrap()
+                .file_type()
+                .is_symlink(),
+            "{} tendría que ser un enlace simbólico",
+            ruta.display()
+        );
+        std::fs::read_link(ruta).unwrap()
+    }
+
+    fn enlazar(origenes: &[&Path], destino: &Path) -> FileOperationResult {
+        link_items_core(
+            origenes.iter().map(|o| texto(o)).collect(),
+            texto(destino),
+            None,
+        )
+    }
+
+    /// Un origen con archivos y un destino vacío al lado.
+    fn origen_y_destino(dir: &Path, nombres: &[&str]) -> (PathBuf, PathBuf) {
+        let origen = dir.join("origen");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::create_dir_all(&destino).unwrap();
+        crear_archivos(&origen, nombres);
+        (origen, destino)
+    }
+
+    #[test]
+    fn enlazar_crea_un_enlace_simbolico_que_apunta_a_la_ruta_absoluta_del_origen() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-uno");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[&origen.join("a.txt")], &destino);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.error, None);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(resultado.failed_count, Some(0));
+        assert_eq!(resultado.skipped_count, Some(0));
+        // Es un enlace, no una copia, y apunta al origen por su ruta absoluta.
+        assert_eq!(apunta_a(&destino.join("a.txt")), origen.join("a.txt"));
+        assert!(apunta_a(&destino.join("a.txt")).is_absolute());
+        // Y se lee lo mismo que en el origen.
+        assert_eq!(std::fs::read(destino.join("a.txt")).unwrap(), b"a.txt");
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn enlazar_varios_origenes_crea_un_enlace_por_cada_uno() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-varios");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt", "b.txt", "c.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(
+            &[
+                &origen.join("a.txt"),
+                &origen.join("b.txt"),
+                &origen.join("c.txt"),
+            ],
+            &destino,
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(3));
+        assert_eq!(resultado.failed_count, Some(0));
+        for nombre in ["a.txt", "b.txt", "c.txt"] {
+            assert_eq!(apunta_a(&destino.join(nombre)), origen.join(nombre));
+        }
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn enlazar_una_carpeta_crea_un_enlace_a_la_carpeta() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-carpeta");
+        let (origen, destino) = origen_y_destino(&dir, &[]);
+        std::fs::create_dir_all(origen.join("docs")).unwrap();
+        std::fs::write(origen.join("docs/nota.txt"), b"nota").unwrap();
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[&origen.join("docs")], &destino);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(apunta_a(&destino.join("docs")), origen.join("docs"));
+        // Por el enlace se llega al contenido de la carpeta original.
+        assert!(destino.join("docs").is_dir());
+        assert_eq!(
+            std::fs::read(destino.join("docs/nota.txt")).unwrap(),
+            b"nota"
+        );
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn si_el_nombre_esta_ocupado_el_enlace_se_renombra_y_no_pisa_lo_que_habia() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-colision");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt"]);
+        std::fs::write(destino.join("a.txt"), b"lo que ya estaba").unwrap();
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[&origen.join("a.txt")], &destino);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(1));
+        // Lo que había sigue siendo un archivo común, con su contenido.
+        assert!(!std::fs::symlink_metadata(destino.join("a.txt"))
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(
+            std::fs::read(destino.join("a.txt")).unwrap(),
+            b"lo que ya estaba"
+        );
+        // El enlace quedó con otro nombre.
+        assert_eq!(apunta_a(&destino.join("a (1).txt")), origen.join("a.txt"));
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn enlazar_dos_veces_lo_mismo_deja_dos_enlaces_con_nombres_distintos() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-repetido");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt"]);
+        crate::undo::clear_undo_history();
+
+        assert!(enlazar(&[&origen.join("a.txt")], &destino).success);
+        assert!(enlazar(&[&origen.join("a.txt")], &destino).success);
+
+        assert_eq!(apunta_a(&destino.join("a.txt")), origen.join("a.txt"));
+        assert_eq!(apunta_a(&destino.join("a (1).txt")), origen.join("a.txt"));
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn dos_origenes_con_el_mismo_nombre_no_se_pisan_entre_si() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-mismo-nombre");
+        let (origen, destino) = origen_y_destino(&dir, &[]);
+        std::fs::create_dir_all(origen.join("uno")).unwrap();
+        std::fs::create_dir_all(origen.join("dos")).unwrap();
+        crear_archivos(&origen.join("uno"), &["x.txt"]);
+        crear_archivos(&origen.join("dos"), &["x.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(
+            &[&origen.join("uno/x.txt"), &origen.join("dos/x.txt")],
+            &destino,
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(2));
+        assert_eq!(apunta_a(&destino.join("x.txt")), origen.join("uno/x.txt"));
+        assert_eq!(
+            apunta_a(&destino.join("x (1).txt")),
+            origen.join("dos/x.txt")
+        );
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn la_resolucion_de_conflictos_se_ignora_y_siempre_se_auto_renombra() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-ignora-resolucion");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt"]);
+        std::fs::write(destino.join("a.txt"), b"intacto").unwrap();
+        crate::undo::clear_undo_history();
+
+        for resolucion in ["replace", "skip", "auto-rename"] {
+            let resultado = link_items_core(
+                vec![texto(&origen.join("a.txt"))],
+                texto(&destino),
+                Some(resolucion.to_string()),
+            );
+            assert!(resultado.success, "{resolucion}: {:?}", resultado.error);
+            assert_eq!(resultado.copied_count, Some(1), "{resolucion}");
+            assert_eq!(resultado.skipped_count, Some(0), "{resolucion}");
+        }
+
+        // Ni «replace» pisó el archivo ni «skip» se saltó el enlace.
+        assert_eq!(std::fs::read(destino.join("a.txt")).unwrap(), b"intacto");
+        for nombre in ["a (1).txt", "a (2).txt", "a (3).txt"] {
+            assert_eq!(apunta_a(&destino.join(nombre)), origen.join("a.txt"));
+        }
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_origen_que_no_existe_es_un_fallo_y_el_resto_se_enlaza() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-origen-fantasma");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt", "b.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(
+            &[
+                &origen.join("a.txt"),
+                &origen.join("fantasma.txt"),
+                &origen.join("b.txt"),
+            ],
+            &destino,
+        );
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(2));
+        assert_eq!(resultado.failed_count, Some(1));
+        let error = resultado.error.unwrap();
+        assert!(error.contains("does not exist"), "{error}");
+        assert!(error.contains("fantasma.txt"), "{error}");
+        assert_eq!(apunta_a(&destino.join("a.txt")), origen.join("a.txt"));
+        assert_eq!(apunta_a(&destino.join("b.txt")), origen.join("b.txt"));
+        assert!(std::fs::symlink_metadata(destino.join("fantasma.txt")).is_err());
+        // Lo enlazado igual se puede deshacer, y la entrada cuenta sólo lo creado.
+        let info = crate::undo::get_undo_info().expect("lo enlazado tiene que poder deshacerse");
+        assert_eq!(info.item_count, 2);
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn la_raiz_no_tiene_nombre_y_cuenta_como_fallo_sin_crear_nada() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-raiz");
+        let (_origen, destino) = origen_y_destino(&dir, &[]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[Path::new("/")], &destino);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.failed_count, Some(1));
+        assert!(resultado.error.unwrap().contains("Invalid source path"));
+        assert_eq!(std::fs::read_dir(&destino).unwrap().count(), 0);
+        assert!(crate::undo::get_undo_info().is_none());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_destino_que_no_existe_es_un_error_y_no_apila_nada() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-destino-fantasma");
+        let (origen, _destino) = origen_y_destino(&dir, &["a.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[&origen.join("a.txt")], &dir.join("no-existe"));
+
+        assert!(!resultado.success);
+        assert!(resultado
+            .error
+            .unwrap()
+            .contains("Destination path does not exist"));
+        assert_eq!(resultado.copied_count, None);
+        assert!(!dir.join("no-existe").exists());
+        assert!(crate::undo::get_undo_info().is_none());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_destino_que_es_un_archivo_es_un_error_y_no_apila_nada() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-destino-archivo");
+        let (origen, _destino) = origen_y_destino(&dir, &["a.txt"]);
+        std::fs::write(dir.join("suelto.txt"), b"x").unwrap();
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[&origen.join("a.txt")], &dir.join("suelto.txt"));
+
+        assert!(!resultado.success);
+        assert!(resultado
+            .error
+            .unwrap()
+            .contains("Destination is not a directory"));
+        assert_eq!(resultado.copied_count, None);
+        assert_eq!(std::fs::read(dir.join("suelto.txt")).unwrap(), b"x");
+        assert!(crate::undo::get_undo_info().is_none());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn si_el_destino_no_deja_escribir_el_enlace_falla_y_no_apila_nada() {
+        if running_as_root() {
+            return;
+        }
+        let _pilas = pilas();
+        let dir = scratch("enlace-sin-permiso");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt"]);
+        make_read_only(&destino);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[&origen.join("a.txt")], &destino);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.failed_count, Some(1));
+        assert!(resultado.error.is_some());
+        assert!(crate::undo::get_undo_info().is_none());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_comando_acepta_el_id_de_operacion_que_manda_la_ventana_y_enlaza_igual() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-comando");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = link_items(
+            vec![texto(&origen.join("a.txt"))],
+            texto(&destino),
+            Some("auto-rename".to_string()),
+            Some("op-1".to_string()),
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(apunta_a(&destino.join("a.txt")), origen.join("a.txt"));
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn los_enlaces_se_apilan_como_una_sola_entrada_de_deshacer() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-una-entrada");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt", "b.txt", "c.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(
+            &[
+                &origen.join("a.txt"),
+                &origen.join("b.txt"),
+                &origen.join("c.txt"),
+            ],
+            &destino,
+        );
+        assert!(resultado.success, "{:?}", resultado.error);
+
+        // Una entrada para los tres, de tipo «link», no parcial.
+        let info = crate::undo::get_undo_info().expect("lo enlazado tiene que poder deshacerse");
+        assert_eq!(info.kind, "link");
+        assert_eq!(info.item_count, 3);
+        assert!(!info.partial);
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn deshacer_quita_todos_los_enlaces_de_una_vez_y_no_toca_los_originales() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-deshacer");
+        let datos = dir.join("datos");
+        std::fs::create_dir_all(&datos).unwrap();
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt", "b.txt"]);
+        std::fs::create_dir_all(origen.join("docs")).unwrap();
+        std::fs::write(origen.join("docs/nota.txt"), b"nota").unwrap();
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(
+            &[
+                &origen.join("a.txt"),
+                &origen.join("b.txt"),
+                &origen.join("docs"),
+            ],
+            &destino,
+        );
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(3));
+
+        // Deshacer manda los enlaces a una papelera de prueba, no a la de verdad.
+        let papelera = crate::undo::tests::PapeleraTemporal::nueva(&datos);
+        let deshecho = crate::undo::undo_last_operation();
+        drop(papelera);
+
+        assert!(deshecho.success, "{:?}", deshecho.error);
+        assert_eq!(deshecho.kind.as_deref(), Some("link"));
+        assert_eq!(deshecho.undone_count, 3);
+        assert_eq!(deshecho.failed_count, 0);
+        // Los enlaces ya no están...
+        for nombre in ["a.txt", "b.txt", "docs"] {
+            assert!(
+                std::fs::symlink_metadata(destino.join(nombre)).is_err(),
+                "{nombre} no debería seguir en el destino"
+            );
+        }
+        // ...y los originales, con su contenido, siguen donde estaban.
+        assert_eq!(std::fs::read(origen.join("a.txt")).unwrap(), b"a.txt");
+        assert_eq!(std::fs::read(origen.join("b.txt")).unwrap(), b"b.txt");
+        assert_eq!(
+            std::fs::read(origen.join("docs/nota.txt")).unwrap(),
+            b"nota"
+        );
+        // La entrada se consumió y quedó disponible para rehacer.
+        assert!(crate::undo::get_undo_info().is_none());
+        assert_eq!(crate::undo::get_redo_info().unwrap().kind, "link");
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
 }

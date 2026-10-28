@@ -550,7 +550,7 @@ pub(crate) mod tests {
     /// Redirige la papelera de `trash` a un directorio propio y deja el entorno
     /// como estaba al soltarse, aunque la prueba falle a medias. El crate lee
     /// `XDG_DATA_HOME` en cada llamada; ninguna otra prueba toca la papelera.
-    struct PapeleraTemporal {
+    pub(crate) struct PapeleraTemporal {
         previo: Option<std::ffi::OsString>,
         // Declarado después de `previo`: se suelta al final de `drop`, con el
         // entorno ya restaurado. `XDG_DATA_HOME` es del proceso entero, así que
@@ -565,7 +565,7 @@ pub(crate) mod tests {
     pub(crate) static CANDADO_PILAS: Mutex<()> = Mutex::new(());
 
     impl PapeleraTemporal {
-        fn nueva(datos: &Path) -> Self {
+        pub(crate) fn nueva(datos: &Path) -> Self {
             let candado = CANDADO_PAPELERA.lock().unwrap_or_else(|e| e.into_inner());
             let previo = std::env::var_os("XDG_DATA_HOME");
             std::env::set_var("XDG_DATA_HOME", datos);
