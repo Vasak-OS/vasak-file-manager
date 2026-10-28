@@ -2,7 +2,7 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { Skeleton, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { storeToRefs } from 'pinia';
-import { computed, type Ref, ref, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import {
 	DynamicScroller,
 	type DynamicScrollerExposed,
@@ -11,6 +11,7 @@ import {
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import EntryIconComponent from '@/components/icons/EntryIconComponent.vue';
 import { DEFAULT_ICON_SCALE } from '@/composables/file-browser/icon-scale';
+import type { ListColumnVisibility } from '@/composables/file-browser/list-columns';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
@@ -23,9 +24,14 @@ const { t } = useI18n();
 interface Props {
 	entries: DirEntry[];
 	iconScale?: number;
+	columnVisibility?: ListColumnVisibility;
 }
 
-const props = withDefaults(defineProps<Props>(), { iconScale: DEFAULT_ICON_SCALE });
+const props = withDefaults(defineProps<Props>(), {
+	iconScale: DEFAULT_ICON_SCALE,
+	// Sin padre que las decida (una prueba que monta la vista suelta), todas.
+	columnVisibility: () => ({ items: true, size: true, modified: true }),
+});
 
 // El ícono de la fila sigue el nivel de zoom; el `DynamicScroller` remide la
 // fila porque `iconScale` entra en `size-dependencies`.
@@ -36,14 +42,9 @@ const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
 
-const columnVisibility: Ref<{ items: boolean; size: boolean; modified: boolean }> = ref({
-	items: true,
-	size: true,
-	modified: true,
-});
-const showItemsColumn = computed(() => columnVisibility.value.items);
-const showSizeColumn = computed(() => columnVisibility.value.size);
-const showModifiedColumn = computed(() => columnVisibility.value.modified);
+const showItemsColumn = computed(() => props.columnVisibility.items);
+const showSizeColumn = computed(() => props.columnVisibility.size);
+const showModifiedColumn = computed(() => props.columnVisibility.modified);
 
 const clipboardPathsMap = computed(() => {
 	if (isToolbarSuppressed.value) {

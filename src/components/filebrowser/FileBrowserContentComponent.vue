@@ -17,7 +17,12 @@ import {
 import { computed, ref } from 'vue';
 import FileBrowserError from '@/components/filebrowser/FileBrowserErrorComponent.vue';
 import FileBrowserLoading from '@/components/filebrowser/FileBrowserLoadingComponent.vue';
+import {
+	columnsForWidth,
+	type ListColumnVisibility,
+} from '@/composables/file-browser/list-columns';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
+import { useElementWidth } from '@/composables/use-element-width';
 import type { Layout } from '@/types/navigator';
 import type { ListSortColumn } from '@/types/short';
 import FileBrowserGridView from '@/views/filebrowser/FileBrowserGridView.vue';
@@ -32,12 +37,28 @@ const ctx = useFileBrowserContext();
 const legendSizeText = '1.5 GB';
 const isColumnsPopoverOpen = ref(false);
 
+// Lo que la persona eligió en el menú de columnas. El ancho del panel puede
+// esconder más (abajo), pero no mostrar lo que acá está apagado.
 const columnVisibility = ref({
 	items: true,
 	size: true,
 	modified: true,
 });
-const showItemsColumn = computed(() => columnVisibility.value.items);
+
+// La raíz del contenido, que es el panel: su ancho decide qué columnas entran.
+// En vista dividida cada panel tiene el suyo.
+const rootRef = ref<HTMLElement | null>(null);
+const containerWidth = useElementWidth(rootRef);
+const fittingColumns = computed(() => columnsForWidth(containerWidth.value));
+
+// La visibilidad efectiva: lo que la persona dejó encendido y además entra en
+// el ancho. Es la que mandan el encabezado, la plantilla del grid y las filas.
+const effectiveColumns = computed<ListColumnVisibility>(() => ({
+	items: columnVisibility.value.items && fittingColumns.value.items,
+	size: columnVisibility.value.size && fittingColumns.value.size,
+	modified: columnVisibility.value.modified && fittingColumns.value.modified,
+}));
+const showItemsColumn = computed(() => effectiveColumns.value.items);
 
 /**
  * Las columnas de la lista. Las secundarias van de cero a su ancho, y no de un
@@ -53,11 +74,11 @@ const listColumnsTemplate = computed(() => {
 		columns.push('minmax(0, 90px)');
 	}
 
-	if (columnVisibility.value.size) {
+	if (effectiveColumns.value.size) {
 		columns.push('minmax(0, 100px)');
 	}
 
-	if (columnVisibility.value.modified) {
+	if (effectiveColumns.value.modified) {
 		columns.push('minmax(0, 160px)');
 	}
 
@@ -94,7 +115,7 @@ function handleFileAreaWheel(event: WheelEvent) {
 </script>
 
 <template>
-  <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden [--file-browser-list-row-padding-y:10px] [--file-browser-list-row-padding-x:16px] [--file-browser-list-header-padding-x:16px] [--file-browser-list-header-padding-y:10px] [--file-browser-list-cell-padding-right:16px] [--file-browser-list-right-gutter:24px]" :style="{ '--file-browser-list-columns': listColumnsTemplate }">
+  <div ref="rootRef" class="relative flex min-h-0 flex-1 flex-col overflow-hidden [--file-browser-list-row-padding-y:10px] [--file-browser-list-row-padding-x:16px] [--file-browser-list-header-padding-x:16px] [--file-browser-list-header-padding-y:10px] [--file-browser-list-cell-padding-right:16px] [--file-browser-list-right-gutter:24px]" :style="{ '--file-browser-list-columns': listColumnsTemplate }">
     <div v-if="props.layout === 'list'" class="relative pr-[var(--file-browser-list-right-gutter)] border-b border-ui-line">
       <div class="grid py-[var(--file-browser-list-header-padding-y)] px-[var(--file-browser-list-header-padding-x)] text-tx-muted text-label-xs font-medium [grid-template-columns:var(--file-browser-list-columns)] uppercase">
         <button type="button"
@@ -131,7 +152,7 @@ function handleFileAreaWheel(event: WheelEvent) {
             :size="16"
             :alt="t('fileBrowser.sortDescending')" />
         </button>
-        <Tooltip v-if="columnVisibility.size" :delay-duration="200">
+        <Tooltip v-if="effectiveColumns.size" :delay-duration="200">
           <TooltipTrigger>
             <button type="button"
               class="flex min-w-0 items-center overflow-hidden whitespace-nowrap pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
@@ -181,7 +202,7 @@ function handleFileAreaWheel(event: WheelEvent) {
             </div>
           </TooltipContent>
         </Tooltip>
-        <button v-if="columnVisibility.modified" type="button"
+        <button v-if="effectiveColumns.modified" type="button"
           class="flex min-w-0 items-center overflow-hidden whitespace-nowrap pr-[var(--file-browser-list-cell-padding-right)] gap-2 border-none bg-transparent text-inherit cursor-pointer uppercase hover:text-tx-main"
           @click="handleColumnHeaderClick('modified')">
           {{ t('fileBrowser.modified') }}
@@ -224,7 +245,7 @@ function handleFileAreaWheel(event: WheelEvent) {
     </div>
 
     <RevealTransition mode="out-in">
-      <FileBrowserLoading v-if="ctx.isLoading.value" />
+      <FileBrowserLoading v-if="ctx.isLoading.value" :column-visibility="effectiveColumns" />
 
       <FileBrowserError v-else-if="ctx.error.value" :error="ctx.error.value" @go-home="ctx.navigateToHome" />
 
@@ -242,7 +263,7 @@ function handleFileAreaWheel(event: WheelEvent) {
           <div class="h-full w-full overflow-x-hidden overflow-y-auto">
             <div :ref="ctx.setEntriesContainerRef" class="min-h-full">
               <FileBrowserGridView v-if="props.layout === 'grid'" :entries="ctx.entries.value" :icon-scale="ctx.iconScale.value" />
-              <FileBrowserListView v-else :entries="ctx.entries.value" :icon-scale="ctx.iconScale.value" />
+              <FileBrowserListView v-else :entries="ctx.entries.value" :icon-scale="ctx.iconScale.value" :column-visibility="effectiveColumns" />
             </div>
           </div>
         </div>
