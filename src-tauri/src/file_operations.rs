@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 use crate::polkit;
 use crate::undo;
@@ -67,8 +67,8 @@ struct OperationProgress {
 
 /// Progreso por archivos, sin información de bytes: los tres campos nuevos van en
 /// 0 y el frontend cae al conteo de archivos. Lo usan move y delete.
-pub(crate) fn emit_progress(
-    app: &AppHandle,
+pub(crate) fn emit_progress<R: Runtime>(
+    app: &AppHandle<R>,
     id: &Option<String>,
     kind: &str,
     processed: usize,
@@ -129,7 +129,7 @@ pub(crate) fn total_source_bytes(source_paths: &[String]) -> u64 {
 }
 
 /// Velocidad promedio simple y estable: bytes sobre segundos desde el arranque,
-/// redondeada a `u64`. 0 cuando el tiempo es ~0 (evita dividir por cero).
+/// truncada a `u64`. 0 cuando el tiempo es ~0 (evita dividir por cero).
 pub(crate) fn bytes_per_second(bytes: u64, elapsed_secs: f64) -> u64 {
     if elapsed_secs > 0.0 {
         (bytes as f64 / elapsed_secs) as u64
@@ -177,8 +177,8 @@ pub(crate) fn copy_file_counting(
 /// Emisor de progreso de copia con throttle y acumulador de bytes. Un único
 /// evento cada `PROGRESS_THROTTLE` como mucho (o `force`), con la velocidad
 /// promedio calculada en el momento.
-struct CopyProgress<'a> {
-    app: &'a AppHandle,
+struct CopyProgress<'a, R: Runtime> {
+    app: &'a AppHandle<R>,
     id: &'a Option<String>,
     total: usize,
     total_bytes: u64,
@@ -187,8 +187,8 @@ struct CopyProgress<'a> {
     last_emit: Cell<Option<Instant>>,
 }
 
-impl<'a> CopyProgress<'a> {
-    fn new(app: &'a AppHandle, id: &'a Option<String>, total: usize, total_bytes: u64) -> Self {
+impl<'a, R: Runtime> CopyProgress<'a, R> {
+    fn new(app: &'a AppHandle<R>, id: &'a Option<String>, total: usize, total_bytes: u64) -> Self {
         CopyProgress {
             app,
             id,
@@ -626,6 +626,24 @@ pub fn copy_items(
     operation_id: Option<String>,
     app: AppHandle,
 ) -> FileOperationResult {
+    copy_items_impl(
+        source_paths,
+        destination_path,
+        conflict_resolution,
+        operation_id,
+        app,
+    )
+}
+
+/// Núcleo genérico sobre el runtime para poder ejercitar la copia bajo el mock de
+/// Tauri (`tauri::test::mock_app()`); el comando concreto sólo delega.
+pub(crate) fn copy_items_impl<R: Runtime>(
+    source_paths: Vec<String>,
+    destination_path: String,
+    conflict_resolution: Option<String>,
+    operation_id: Option<String>,
+    app: AppHandle<R>,
+) -> FileOperationResult {
     let destination = Path::new(&destination_path);
     let resolution = conflict_resolution
         .map(|value| ConflictResolution::from_str(&value))
@@ -835,6 +853,24 @@ pub fn move_items(
     conflict_resolution: Option<String>,
     operation_id: Option<String>,
     app: AppHandle,
+) -> FileOperationResult {
+    move_items_impl(
+        source_paths,
+        destination_path,
+        conflict_resolution,
+        operation_id,
+        app,
+    )
+}
+
+/// Núcleo genérico sobre el runtime; el comando concreto sólo delega (ver
+/// `copy_items_impl`).
+pub(crate) fn move_items_impl<R: Runtime>(
+    source_paths: Vec<String>,
+    destination_path: String,
+    conflict_resolution: Option<String>,
+    operation_id: Option<String>,
+    app: AppHandle<R>,
 ) -> FileOperationResult {
     let destination = Path::new(&destination_path);
     let resolution = conflict_resolution
@@ -1318,6 +1354,18 @@ pub fn delete_items(
     operation_id: Option<String>,
     allow_elevation: Option<bool>,
     app: AppHandle,
+) -> FileOperationResult {
+    delete_items_impl(paths, use_trash, operation_id, allow_elevation, app)
+}
+
+/// Núcleo genérico sobre el runtime; el comando concreto sólo delega (ver
+/// `copy_items_impl`).
+pub(crate) fn delete_items_impl<R: Runtime>(
+    paths: Vec<String>,
+    use_trash: bool,
+    operation_id: Option<String>,
+    allow_elevation: Option<bool>,
+    app: AppHandle<R>,
 ) -> FileOperationResult {
     let allow_elevation = allow_elevation.unwrap_or(true);
     let total = paths.len();
