@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { type OperationType, useStatusCenterStore } from '@/stores/runtime/status-center';
+import { formatBytes } from '@/utils/byte-parser';
 
 export interface FileOperationResult {
 	success: boolean;
@@ -23,6 +24,11 @@ interface FileOperationProgress {
 	processed: number;
 	total: number;
 	current: string;
+	// En copias, el avance real por bytes; el backend los manda en 0 para mover y
+	// borrar (y entonces el porcentaje cae al conteo de archivos).
+	processed_bytes: number;
+	total_bytes: number;
+	bytes_per_second: number;
 }
 
 interface OperationMeta {
@@ -60,9 +66,23 @@ async function track<T extends { success: boolean; error?: string }>(
 		if (payload.operation_id !== operationId) {
 			return;
 		}
-		const pct = payload.total > 0 ? Math.round((payload.processed / payload.total) * 100) : 0;
-		const current = payload.current ? payload.current.split('/').filter(Boolean).pop() : undefined;
-		statusCenter.updateOperation(operationId, { progress: pct, message: current });
+		// Por bytes cuando el backend los conoce (copias): en pocos archivos
+		// grandes la barra ya no salta de golpe. Si no (mover, borrar), por conteo.
+		// `min(100)`: con symlinks dentro de un origen, `total_bytes` (que no los
+		// sigue) puede quedar corto y los bytes copiados pasarlo; la barra no se va
+		// de 100%. El evento final forzado la deja en 100 igual.
+		const pct =
+			payload.total_bytes > 0
+				? Math.min(100, Math.round((payload.processed_bytes / payload.total_bytes) * 100))
+				: payload.total > 0
+					? Math.round((payload.processed / payload.total) * 100)
+					: 0;
+		const name = payload.current ? payload.current.split('/').filter(Boolean).pop() : undefined;
+		// La velocidad es número + unidad, sin palabras que traducir.
+		const speed =
+			payload.bytes_per_second > 0 ? `${formatBytes(payload.bytes_per_second)}/s` : undefined;
+		const message = [name, speed].filter(Boolean).join(' · ') || undefined;
+		statusCenter.updateOperation(operationId, { progress: pct, message });
 	});
 
 	try {
