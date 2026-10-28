@@ -469,6 +469,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		handleCompressConfirm: selection.handleCompressConfirm,
 		handleCompressCancel: selection.handleCompressCancel,
 		undoLastOperation: selection.undoLastOperation,
+		redoLastOperation: selection.redoLastOperation,
 
 		getVideoThumbnail: videoThumbnails.getVideoThumbnail,
 		entriesContainerRef,

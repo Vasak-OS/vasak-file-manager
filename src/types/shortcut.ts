@@ -30,6 +30,7 @@ export type ShortcutId =
 	| 'toggleSplitView'
 	| 'toggleQuickView'
 	| 'undo'
+	| 'redo'
 	| 'newFolder'
 	| 'closeTab'
 	| 'nextTab'

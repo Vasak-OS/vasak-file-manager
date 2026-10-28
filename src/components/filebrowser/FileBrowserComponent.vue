@@ -119,6 +119,7 @@ defineExpose({
 	deleteItems: fb.deleteItems,
 	startRename: fb.startRename,
 	undoLastOperation: fb.undoLastOperation,
+	redoLastOperation: fb.redoLastOperation,
 	goBack: fb.goBack,
 	goForward: fb.goForward,
 	navigateToParent: fb.navigateToParent,

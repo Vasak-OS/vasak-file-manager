@@ -147,6 +147,7 @@ shortcuts:
   selectAllItemsInCurrentDirectory: Select All
   addBookmark: Pin current folder
   undoLastOperation: Undo
+  redoLastOperation: Redo
   transferPreparedForCopying: Transfer prepared for copying
   transferPreparedToPane1: Transfer prepared for pane 1
   transferPreparedToPane2: Transfer prepared for pane 2
@@ -325,6 +326,9 @@ notifications:
   undone: Operation undone
   undoFailed: Could not undo the operation
   nothingToUndo: Nothing to undo
+  redone: Operation redone
+  redoFailed: Could not redo the operation
+  nothingToRedo: Nothing to redo
   restored: Restored from trash
   restoreFailed: Could not restore from trash
   trashEmptied: Trash emptied

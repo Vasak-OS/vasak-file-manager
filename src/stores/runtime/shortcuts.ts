@@ -171,6 +171,7 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 		},
 		isReadOnly: false,
 	},
+	navigatorShortcut('redo', 'shortcuts.redoLastOperation', { ctrl: true, key: 'y' }),
 	{
 		id: 'delete',
 		labelKey: 'shortcuts.moveSelectedItemsToTrash',
