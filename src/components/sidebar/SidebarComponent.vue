@@ -39,6 +39,7 @@ import { type CloudDrive, useCloudDrives } from '@/composables/use-cloud-drives'
 import { useDrives } from '@/composables/use-drives';
 import { useMountDrive } from '@/composables/use-mount-drive';
 import { useWindowColumns } from '@/composables/use-window-columns';
+import { useTrashStore } from '@/stores/runtime/trash';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
@@ -60,6 +61,7 @@ const {
 const workspacesStore = useWorkspacesStore();
 const userPathsStore = useUserPathsStore();
 const userStatsStore = useUserStatsStore();
+const trashStore = useTrashStore();
 const { t } = useI18n();
 
 const recentItems = computed(() => userStatsStore.sortedHistory.slice(0, RECENTS_IN_SIDEBAR));
@@ -146,6 +148,13 @@ onMounted(async () => {
           icon="drive-harddisk"
           :collapsed="collapsed"
           @click="openDrive('/')" />
+        <!-- La papelera no es una carpeta que se abra en una pestaña: lo que hay
+             adentro no está en su ruta original. Abre la vista overlay. -->
+        <SideButton
+          :label="t('barraLateral.papelera')"
+          icon="user-trash"
+          :collapsed="collapsed"
+          @click="trashStore.open()" />
       </SideGroup>
 
       <SideGroup

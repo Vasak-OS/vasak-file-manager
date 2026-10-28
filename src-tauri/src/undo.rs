@@ -200,6 +200,60 @@ fn restore_from_trash(paths: &[PathBuf], deleted_after: i64) -> Result<usize, St
     Ok(count)
 }
 
+/// Una entrada de la papelera para la vista: lo que hace falta para mostrarla y
+/// restaurarla. La ruta original es la llave con la que `restore_trash` la
+/// encuentra de vuelta.
+#[derive(Serialize)]
+pub struct TrashEntry {
+    pub name: String,
+    pub original_path: String,
+    /// Segundos unix en que se mandó a la papelera.
+    pub deleted_time: i64,
+}
+
+/// Convierte las entradas del crate a lo que ve la vista y las ordena, la más
+/// nueva primero. Separado del listado del sistema para poder probarlo sin una
+/// papelera real.
+fn trash_entries(items: Vec<trash::TrashItem>) -> Vec<TrashEntry> {
+    let mut entries: Vec<TrashEntry> = items
+        .into_iter()
+        .map(|item| TrashEntry {
+            name: item.name.to_string_lossy().into_owned(),
+            original_path: item.original_path().to_string_lossy().into_owned(),
+            deleted_time: item.time_deleted,
+        })
+        .collect();
+
+    entries.sort_by(|a, b| b.deleted_time.cmp(&a.deleted_time));
+    entries
+}
+
+/// Lista la papelera del sistema (freedesktop), lo más nuevo primero.
+#[tauri::command]
+pub fn list_trash() -> Result<Vec<TrashEntry>, String> {
+    let items = trash::os_limited::list().map_err(|error| error.to_string())?;
+    Ok(trash_entries(items))
+}
+
+/// Restaura las entradas cuya ruta original está en `paths`. Si una ruta se
+/// mandó a la papelera más de una vez, restaura la copia más nueva: es lo mismo
+/// que hace el deshacer (sin filtro de tiempo acá, de ahí `i64::MIN`).
+#[tauri::command]
+pub fn restore_trash(paths: Vec<String>) -> Result<usize, String> {
+    let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
+    restore_from_trash(&paths, i64::MIN)
+}
+
+/// Vacía la papelera: borra definitivamente todo. Devuelve cuántos elementos se
+/// borraron.
+#[tauri::command]
+pub fn empty_trash() -> Result<usize, String> {
+    let items = trash::os_limited::list().map_err(|error| error.to_string())?;
+    let count = items.len();
+    trash::os_limited::purge_all(items).map_err(|error| error.to_string())?;
+    Ok(count)
+}
+
 fn parent_of(path: &Path) -> Option<String> {
     path.parent()
         .map(|parent| parent.to_string_lossy().to_string())
@@ -334,6 +388,114 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("failed to create temp dir");
         dir
+    }
+
+    fn item(name: &str, parent: &str, time_deleted: i64) -> trash::TrashItem {
+        trash::TrashItem {
+            id: format!("id-{name}").into(),
+            name: name.into(),
+            original_parent: PathBuf::from(parent),
+            time_deleted,
+        }
+    }
+
+    #[test]
+    fn las_entradas_de_la_papelera_salen_con_su_ruta_original() {
+        let entries = trash_entries(vec![item("informe.pdf", "/home/pato/Documentos", 100)]);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "informe.pdf");
+        assert_eq!(
+            entries[0].original_path,
+            "/home/pato/Documentos/informe.pdf"
+        );
+        assert_eq!(entries[0].deleted_time, 100);
+    }
+
+    #[test]
+    fn las_entradas_de_la_papelera_van_de_la_mas_nueva_a_la_mas_vieja() {
+        let entries = trash_entries(vec![
+            item("viejo", "/a", 100),
+            item("nuevo", "/b", 300),
+            item("medio", "/c", 200),
+        ]);
+
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, ["nuevo", "medio", "viejo"]);
+    }
+
+    #[test]
+    fn una_papelera_vacia_da_una_lista_vacia() {
+        assert!(trash_entries(Vec::new()).is_empty());
+    }
+
+    /// Redirige la papelera de `trash` a un directorio propio y deja el entorno
+    /// como estaba al soltarse, aunque la prueba falle a medias. El crate lee
+    /// `XDG_DATA_HOME` en cada llamada; ninguna otra prueba toca la papelera.
+    struct PapeleraTemporal {
+        previo: Option<std::ffi::OsString>,
+    }
+
+    impl PapeleraTemporal {
+        fn nueva(datos: &Path) -> Self {
+            let previo = std::env::var_os("XDG_DATA_HOME");
+            std::env::set_var("XDG_DATA_HOME", datos);
+            Self { previo }
+        }
+    }
+
+    impl Drop for PapeleraTemporal {
+        fn drop(&mut self) {
+            match &self.previo {
+                Some(valor) => std::env::set_var("XDG_DATA_HOME", valor),
+                None => std::env::remove_var("XDG_DATA_HOME"),
+            }
+        }
+    }
+
+    // `empty_trash` no se prueba a propósito: purga todo lo que `list()`
+    // devuelve, incluidas las papeleras de otros montajes, y correr la suite en
+    // una máquina de desarrollo borraría cosas de verdad.
+    #[test]
+    fn lo_que_se_manda_a_la_papelera_se_lista_y_se_restaura() {
+        let raiz = temp_dir("papelera");
+        let datos = raiz.join("datos");
+        fs::create_dir_all(&datos).unwrap();
+        let archivo = raiz.join("para-la-papelera.txt");
+        fs::write(&archivo, b"contenido").unwrap();
+
+        let resultado = {
+            let _papelera = PapeleraTemporal::nueva(&datos);
+
+            trash::delete(&archivo).expect("mandar a la papelera");
+            let ruta = archivo.to_string_lossy().into_owned();
+
+            // Por ruta única y no por cantidad: `list()` también ve las
+            // papeleras de otros montajes.
+            let listada = list_trash()
+                .expect("listar")
+                .iter()
+                .any(|entry| entry.original_path == ruta);
+            let existia_en_la_papelera = !archivo.exists();
+            let restauradas = restore_trash(vec![ruta]);
+            (listada, existia_en_la_papelera, restauradas)
+        };
+
+        let (listada, salio_de_su_lugar, restauradas) = resultado;
+        let volvio = archivo.exists();
+        let _ = fs::remove_dir_all(&raiz);
+
+        assert!(salio_de_su_lugar, "el archivo debía salir de su lugar");
+        assert!(listada, "la papelera debía listar el archivo borrado");
+        assert_eq!(restauradas, Ok(1));
+        assert!(volvio, "el archivo debía volver a su ruta original");
+    }
+
+    #[test]
+    fn restaurar_una_ruta_que_no_esta_en_la_papelera_falla() {
+        let resultado = restore_trash(vec!["/no/existe/vfm-papelera-fantasma.txt".to_string()]);
+
+        assert!(resultado.is_err());
     }
 
     #[test]

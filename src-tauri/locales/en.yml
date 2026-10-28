@@ -325,6 +325,20 @@ notifications:
   undone: Operation undone
   undoFailed: Could not undo the operation
   nothingToUndo: Nothing to undo
+  restored: Restored from trash
+  restoreFailed: Could not restore from trash
+  trashEmptied: Trash emptied
+  emptyTrashFailed: Could not empty the trash
+trash:
+  title: Trash
+  close: Close
+  restore: Restore
+  empty: Empty trash
+  emptyTitle: Trash is empty
+  emptyNote: Items you delete end up here.
+  emptyConfirmTitle: Empty trash?
+  emptyConfirmQuestion: This permanently deletes everything in the trash. It can't be undone.
+  cancel: Cancel
 tabs:
   newTab: New Tab
   close: Close
@@ -351,6 +365,7 @@ barraLateral:
   plegar: Collapse the sidebar
   desplegar: Expand the sidebar
   lugares: Places
+  papelera: Trash
   favoritos: Favorites
   recientes: Recent
   discos: Drives
