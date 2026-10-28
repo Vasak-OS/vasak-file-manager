@@ -6,9 +6,19 @@ type RenameState = {
 	entry: DirEntry | null;
 };
 
+type BatchRename = { sourcePath: string; newName: string };
+
+type BatchRenameState = {
+	isActive: boolean;
+	entries: DirEntry[];
+};
+
 export function useFileBrowserDialogs(options: {
 	renameState: Ref<RenameState>;
 	cancelRename: () => void;
+	batchRenameState: Ref<BatchRenameState>;
+	cancelBatchRename: () => void;
+	confirmBatchRename: (renames: BatchRename[]) => Promise<boolean>;
 	confirmRename: (newName: string) => Promise<boolean>;
 	createNewItem: (name: string, itemType: 'directory' | 'file') => Promise<boolean>;
 }) {
@@ -27,6 +37,15 @@ export function useFileBrowserDialogs(options: {
 		set: (value: boolean) => {
 			if (!value) {
 				options.cancelRename();
+			}
+		},
+	});
+
+	const isBatchRenameDialogOpen = computed({
+		get: () => options.batchRenameState.value.isActive,
+		set: (value: boolean) => {
+			if (!value) {
+				options.cancelBatchRename();
 			}
 		},
 	});
@@ -75,6 +94,14 @@ export function useFileBrowserDialogs(options: {
 		options.cancelRename();
 	}
 
+	async function handleBatchRenameConfirm(renames: BatchRename[]) {
+		await options.confirmBatchRename(renames);
+	}
+
+	function handleBatchRenameCancel() {
+		options.cancelBatchRename();
+	}
+
 	async function handleNewItemConfirm(name: string) {
 		const success = await options.createNewItem(name, newItemDialogState.value.type);
 
@@ -91,6 +118,7 @@ export function useFileBrowserDialogs(options: {
 		openWithState,
 		newItemDialogState,
 		isRenameDialogOpen,
+		isBatchRenameDialogOpen,
 		isNewItemDialogOpen,
 		openOpenWithDialog,
 		closeOpenWithDialog,
@@ -98,6 +126,8 @@ export function useFileBrowserDialogs(options: {
 		closeNewItemDialog,
 		handleRenameConfirm,
 		handleRenameCancel,
+		handleBatchRenameConfirm,
+		handleBatchRenameCancel,
 		handleNewItemConfirm,
 		handleNewItemCancel,
 	};

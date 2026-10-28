@@ -21,6 +21,11 @@ const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 		entryTypes: ['file', 'directory'],
 	},
 	{
+		action: 'batch-rename',
+		selectionTypes: ['multiple'],
+		entryTypes: ['file', 'directory'],
+	},
+	{
 		action: 'copy',
 		selectionTypes: ['single', 'multiple'],
 		entryTypes: ['file', 'directory'],

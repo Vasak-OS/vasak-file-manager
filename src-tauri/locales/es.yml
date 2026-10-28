@@ -99,6 +99,7 @@ fileBrowser:
   filter: Filtro
   actions:
     rename: Renombrar
+    batchRename: Renombrar elementos seleccionados
     copy: Copiar
     cut: Cortar
     openWith: Abrir Con
@@ -226,6 +227,25 @@ dialogs:
   renameDirItemDialog:
     renameItem: Renombrar Elemento
     newName: Nuevo Nombre
+  batchRenameDialog:
+    title: Renombrar elementos
+    find: Buscar
+    replace: Reemplazar por
+    template: Plantilla
+    templateHelp: "Marcadores: {name} nombre sin extensión, {ext} extensión, {n} número correlativo"
+    caseMode: Mayúsculas y minúsculas
+    caseNone: Conservar
+    caseUpper: MAYÚSCULAS
+    caseLower: minúsculas
+    startAt: Empezar en
+    padding: Dígitos
+    oldName: Nombre actual
+    newName: Nombre nuevo
+    preview: Vista previa
+    apply: Renombrar
+    errorEmpty: El nombre queda vacío
+    errorInvalid: El nombre tiene caracteres no permitidos
+    errorCollision: Otro elemento quedaría con el mismo nombre
   newItemDialog:
     newDirectory: Nueva Carpeta
     newFile: Nuevo Archivo
@@ -315,6 +335,10 @@ notifications:
   errorTrashItems: Error al mover elementos a la papelera
   errorDeleteItems: Error al eliminar elementos
   renamed: Elemento renombrado
+  renamedItems: Elementos renombrados
+  renamedCountOne: "Se renombró {0} elemento"
+  renamedCountOther: "Se renombraron {0} elementos"
+  failedToRenameItems: No se pudieron renombrar los elementos
   failedToRenameItem: Error al renombrar el elemento
   removedFromFavorites: Eliminado de Favoritos
   addedToFavorites: Agregado a Favoritos

@@ -371,6 +371,9 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 		agregarAccion(items, 'rename', 'fileBrowser.actions.rename', 'edit-rename', {
 			atajo: 'rename',
 		});
+		agregarAccion(items, 'batch-rename', 'fileBrowser.actions.batchRename', 'edit-rename', {
+			atajo: 'rename',
+		});
 		agregarAccion(items, 'copy', 'fileBrowser.actions.copy', 'edit-copy', { atajo: 'copy' });
 		agregarAccion(items, 'cut', 'fileBrowser.actions.cut', 'edit-cut', { atajo: 'cut' });
 		agregarAccion(items, 'copy-path', 'fileBrowser.actions.copyPath', 'edit-copy', {
