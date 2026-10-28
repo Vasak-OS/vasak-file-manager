@@ -58,12 +58,12 @@ pub fn route<R: Runtime>(app: &AppHandle<R>, paths: &[PathBuf]) {
     let _ = app.emit(OPEN_PATHS_EVENT, as_strings);
 }
 
-struct FileManager1 {
-    app: AppHandle,
+struct FileManager1<R: Runtime> {
+    app: AppHandle<R>,
 }
 
 #[zbus::interface(name = "org.freedesktop.FileManager1")]
-impl FileManager1 {
+impl<R: Runtime> FileManager1<R> {
     /// Abre cada carpeta en una pestaña. Las URIs ya son directorios.
     fn show_folders(&self, uris: Vec<String>, _startup_id: String) {
         route(&self.app, &resolve_uris(&uris));
@@ -106,6 +106,8 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use tauri::Listener;
+
+    use std::path::Path;
 
     use super::*;
 
@@ -207,6 +209,73 @@ mod tests {
 
     /// Sin rutas no se levanta ventana ni se avisa: un `ShowFolders([])` no
     /// puede abrir una pestaña vacía.
+    /// Llama a un método del bus, sin bus, sobre un `AppHandle` de mentira, con
+    /// `uri`, y devuelve lo que salió por `open-paths`.
+    fn por_el_bus(
+        uri: String,
+        metodo: impl Fn(&FileManager1<tauri::test::MockRuntime>, Vec<String>),
+    ) -> Vec<String> {
+        let app = tauri::test::mock_app();
+        let recibido = Arc::new(Mutex::new(Vec::<String>::new()));
+        let guardado = recibido.clone();
+        app.listen(OPEN_PATHS_EVENT, move |evento| {
+            guardado.lock().unwrap().push(evento.payload().to_string());
+        });
+        let bus = FileManager1 {
+            app: app.handle().clone(),
+        };
+
+        metodo(&bus, vec![uri]);
+
+        let emitidos = recibido.lock().unwrap();
+        emitidos.clone()
+    }
+
+    fn carpeta_con_archivo(nombre: &str) -> (PathBuf, String, String) {
+        let dir = temporal(nombre);
+        let archivo = dir.join("a.txt");
+        std::fs::write(&archivo, b"").unwrap();
+        let uri_dir = format!("file://{}", dir.to_str().unwrap());
+        let uri_archivo = format!("file://{}", archivo.to_str().unwrap());
+        (dir, uri_dir, uri_archivo)
+    }
+
+    fn json_de(dir: &Path) -> String {
+        serde_json::to_string(&[dir.to_str().unwrap()]).unwrap()
+    }
+
+    #[test]
+    fn show_folders_abre_la_carpeta() {
+        let (dir, uri_dir, _) = carpeta_con_archivo("bus-folders");
+        let emitidos = por_el_bus(uri_dir, |bus, uris| bus.show_folders(uris, String::new()));
+        assert_eq!(emitidos, vec![json_de(&dir)]);
+    }
+
+    #[test]
+    fn show_items_abre_la_carpeta_que_contiene_el_archivo() {
+        let (dir, _, uri_archivo) = carpeta_con_archivo("bus-items");
+        let emitidos = por_el_bus(uri_archivo, |bus, uris| bus.show_items(uris, String::new()));
+        assert_eq!(emitidos, vec![json_de(&dir)]);
+    }
+
+    #[test]
+    fn show_item_properties_abre_la_carpeta_que_contiene_el_archivo() {
+        let (dir, _, uri_archivo) = carpeta_con_archivo("bus-props");
+        let emitidos = por_el_bus(uri_archivo, |bus, uris| {
+            bus.show_item_properties(uris, String::new())
+        });
+        assert_eq!(emitidos, vec![json_de(&dir)]);
+    }
+
+    /// Una URI que no se puede abrir no levanta la ventana ni emite.
+    #[test]
+    fn un_metodo_del_bus_con_una_uri_rota_no_emite() {
+        let emitidos = por_el_bus("file:///no/existe/nada".into(), |bus, uris| {
+            bus.show_folders(uris, String::new())
+        });
+        assert!(emitidos.is_empty());
+    }
+
     #[test]
     fn route_sin_rutas_no_emite_nada() {
         assert!(rutas_emitidas(&[]).is_empty());
