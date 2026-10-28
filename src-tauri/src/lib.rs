@@ -10,6 +10,7 @@ mod startup_path;
 mod clipboard;
 mod compress;
 mod extract;
+mod file_manager1;
 mod file_operations;
 mod global_search;
 mod mount_watcher;
@@ -99,8 +100,27 @@ pub fn run() {
                     }
                 }
             }
+            // Expone org.freedesktop.FileManager1 en el bus de sesión: el
+            // contrato estándar de «mostrar en el gestor de archivos». En un
+            // hilo aparte porque mantiene viva la conexión y no retorna; que
+            // falle (otro gestor ya dueño del nombre) no impide arrancar.
+            let fm1_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = file_manager1::serve(fm1_handle).await {
+                    log::warn!("No se pudo exponer org.freedesktop.FileManager1 en D-Bus: {error}");
+                }
+            });
+
             Ok(())
         })
+        // Instancia única: va de primero (antes de window-state, o la segunda
+        // instancia deja mal el estado de la ventana). La segunda invocación no
+        // abre otra ventana —rutea su ruta a la que ya está corriendo— y sale.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(path) = startup_path::from_args(argv.into_iter()) {
+                file_manager1::route(app, &[path]);
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())

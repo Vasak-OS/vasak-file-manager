@@ -14,6 +14,9 @@ import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { saveTheme } from '@/tools/theme-cache';
 
 let unListenConfig: Ref<UnlistenFn | null> = ref(null);
+// El backend avisa con `open-paths` cuando otra invocación —instancia única o
+// `org.freedesktop.FileManager1`— pide abrir carpetas en esta ventana.
+let unListenOpenPaths: Ref<UnlistenFn | null> = ref(null);
 
 // El estado de la primera lectura de la configuración. Va en su propio bloque
 // dentro de `onMounted`: antes estaba en el mismo `try` que `shortcutsStore.init()`,
@@ -90,6 +93,22 @@ onMounted(async () => {
 		console.error('Error al restaurar el espacio de trabajo', error);
 	}
 
+	// En su propio bloque, fuera del `try` de los `init`: las invocaciones
+	// posteriores —abrir una carpeta desde otra app, o un segundo
+	// `vasak-file-manager <ruta>`— no abren otra ventana, el backend las rutea
+	// acá. Si quedara colgado del `try` de arriba, un `init` que falle dejaría la
+	// ventana ignorando en silencio toda apertura por instancia única y bus.
+	try {
+		const workspacesStore = useWorkspacesStore();
+		unListenOpenPaths.value = await listen<string[]>('open-paths', async (event) => {
+			for (const path of event.payload) {
+				await workspacesStore.openNewTabGroup(path);
+			}
+		});
+	} catch (error: any) {
+		console.error('No se pudo escuchar las aperturas del backend', error);
+	}
+
 	// La configuración en su propio bloque —y con plazo—: ni un error ni un
 	// backend colgado pueden impedir que más abajo se registren los atajos y
 	// la búsqueda global. Si el plazo se vence, se sigue con los colores por
@@ -147,6 +166,9 @@ onMounted(async () => {
 onUnmounted(() => {
 	if (unListenConfig.value !== null) {
 		unListenConfig.value();
+	}
+	if (unListenOpenPaths.value !== null) {
+		unListenOpenPaths.value();
 	}
 });
 </script>
