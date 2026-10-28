@@ -1,10 +1,13 @@
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::fs;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
 use crate::polkit;
@@ -54,8 +57,16 @@ struct OperationProgress {
     processed: usize,
     total: usize,
     current: String,
+    /// Bytes copiados hasta ahora (0 en move/delete o cuando no se sabe).
+    processed_bytes: u64,
+    /// Total de bytes a copiar (0 cuando no se sabe).
+    total_bytes: u64,
+    /// Velocidad promedio (0 cuando no se sabe); el frontend calcula la ETA.
+    bytes_per_second: u64,
 }
 
+/// Progreso por archivos, sin información de bytes: los tres campos nuevos van en
+/// 0 y el frontend cae al conteo de archivos. Lo usan move y delete.
 pub(crate) fn emit_progress(
     app: &AppHandle,
     id: &Option<String>,
@@ -73,6 +84,161 @@ pub(crate) fn emit_progress(
                 processed,
                 total,
                 current: current.to_string(),
+                processed_bytes: 0,
+                total_bytes: 0,
+                bytes_per_second: 0,
+            },
+        );
+    }
+}
+
+/// Cada cuánto, como mucho, se emite un evento de progreso de copia: no inundar
+/// el bridge de Tauri con uno por chunk.
+const PROGRESS_THROTTLE: Duration = Duration::from_millis(100);
+
+/// Tamaño de un camino en bytes, recursivo, **sin seguir symlinks**
+/// (`symlink_metadata`): así no se cuenta de más ni se cae en un ciclo. Lo que no
+/// se puede leer suma 0: el total es sólo para la barra, mejor esfuerzo.
+pub(crate) fn path_size(path: &Path) -> u64 {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => return 0,
+    };
+    let file_type = metadata.file_type();
+    if file_type.is_symlink() {
+        0
+    } else if file_type.is_dir() {
+        let mut total = 0;
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.flatten() {
+                total += path_size(&entry.path());
+            }
+        }
+        total
+    } else {
+        metadata.len()
+    }
+}
+
+/// Total de bytes de los orígenes que existen, para precalcular `total_bytes`.
+pub(crate) fn total_source_bytes(source_paths: &[String]) -> u64 {
+    source_paths
+        .iter()
+        .map(|source| path_size(Path::new(source)))
+        .sum()
+}
+
+/// Velocidad promedio simple y estable: bytes sobre segundos desde el arranque,
+/// redondeada a `u64`. 0 cuando el tiempo es ~0 (evita dividir por cero).
+pub(crate) fn bytes_per_second(bytes: u64, elapsed_secs: f64) -> u64 {
+    if elapsed_secs > 0.0 {
+        (bytes as f64 / elapsed_secs) as u64
+    } else {
+        0
+    }
+}
+
+/// Copia un archivo en chunks de 1 MiB reportando por `on_bytes` los bytes que va
+/// escribiendo, con chequeo de cancelación **entre chunks**. Conserva el modo del
+/// original, como hacía `fs::copy`. Expuesta para poder probar la copia con
+/// callback sin montar Tauri.
+pub(crate) fn copy_file_counting(
+    source: &Path,
+    dest: &Path,
+    cancel: Option<&Arc<AtomicBool>>,
+    on_bytes: &mut dyn FnMut(u64),
+) -> Result<(), String> {
+    let metadata = fs::metadata(source).map_err(|error| error.to_string())?;
+    let mut reader = fs::File::open(source).map_err(|error| error.to_string())?;
+    let mut writer = fs::File::create(dest).map_err(|error| error.to_string())?;
+    let mut buffer = vec![0u8; 1024 * 1024];
+
+    loop {
+        if cancel.is_some_and(|t| t.load(Ordering::SeqCst)) {
+            return Err("Operation cancelled".to_string());
+        }
+        let read = reader
+            .read(&mut buffer)
+            .map_err(|error| error.to_string())?;
+        if read == 0 {
+            break;
+        }
+        writer
+            .write_all(&buffer[..read])
+            .map_err(|error| error.to_string())?;
+        on_bytes(read as u64);
+    }
+
+    // `fs::copy` copiaba el modo; con la copia manual hay que replicarlo.
+    fs::set_permissions(dest, metadata.permissions()).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+/// Emisor de progreso de copia con throttle y acumulador de bytes. Un único
+/// evento cada `PROGRESS_THROTTLE` como mucho (o `force`), con la velocidad
+/// promedio calculada en el momento.
+struct CopyProgress<'a> {
+    app: &'a AppHandle,
+    id: &'a Option<String>,
+    total: usize,
+    total_bytes: u64,
+    processed_bytes: AtomicU64,
+    start: Instant,
+    last_emit: Cell<Option<Instant>>,
+}
+
+impl<'a> CopyProgress<'a> {
+    fn new(app: &'a AppHandle, id: &'a Option<String>, total: usize, total_bytes: u64) -> Self {
+        CopyProgress {
+            app,
+            id,
+            total,
+            total_bytes,
+            processed_bytes: AtomicU64::new(0),
+            start: Instant::now(),
+            last_emit: Cell::new(None),
+        }
+    }
+
+    /// Suma bytes al acumulador y devuelve el nuevo total.
+    fn add_bytes(&self, delta: u64) -> u64 {
+        self.processed_bytes.fetch_add(delta, Ordering::Relaxed) + delta
+    }
+
+    fn bytes(&self) -> u64 {
+        self.processed_bytes.load(Ordering::Relaxed)
+    }
+
+    /// Emite si pasaron ≥ `PROGRESS_THROTTLE` desde el último evento (o `force`).
+    /// `processed_bytes` se pasa explícito para que el evento final pueda llegar a
+    /// `total_bytes` aunque el acumulador se quede corto por omisiones o fallos.
+    fn emit(&self, processed: usize, current: &str, processed_bytes: u64, force: bool) {
+        let Some(id) = self.id else {
+            return;
+        };
+        let now = Instant::now();
+        let due = force
+            || self
+                .last_emit
+                .get()
+                .is_none_or(|last| now.duration_since(last) >= PROGRESS_THROTTLE);
+        if !due {
+            return;
+        }
+        self.last_emit.set(Some(now));
+
+        let bps = bytes_per_second(processed_bytes, self.start.elapsed().as_secs_f64());
+        let _ = self.app.emit(
+            "file-operation-progress",
+            OperationProgress {
+                operation_id: id.clone(),
+                kind: "copy".to_string(),
+                processed,
+                total: self.total,
+                current: current.to_string(),
+                processed_bytes,
+                total_bytes: self.total_bytes,
+                bytes_per_second: bps,
             },
         );
     }
@@ -178,6 +344,7 @@ fn copy_dir_recursive(
     source: &Path,
     destination: &Path,
     cancel: Option<&Arc<AtomicBool>>,
+    on_bytes: &mut dyn FnMut(u64),
 ) -> Result<(), String> {
     if !destination.exists() {
         fs::create_dir_all(destination).map_err(|error| error.to_string())?;
@@ -193,27 +360,27 @@ fn copy_dir_recursive(
         let dest_path = destination.join(file_name);
 
         if source_path.is_dir() {
-            copy_dir_recursive(&source_path, &dest_path, cancel)?;
+            copy_dir_recursive(&source_path, &dest_path, cancel, on_bytes)?;
         } else {
-            fs::copy(&source_path, &dest_path).map_err(|error| error.to_string())?;
+            copy_file_counting(&source_path, &dest_path, cancel, on_bytes)?;
         }
     }
 
     Ok(())
 }
 
-/// Copia un archivo o una carpeta sin privilegios.
+/// Copia un archivo o una carpeta sin privilegios, reportando por `on_bytes` los
+/// bytes que avanza.
 fn copy_unprivileged(
     source: &Path,
     dest_path: &Path,
     cancel: Option<&Arc<AtomicBool>>,
+    on_bytes: &mut dyn FnMut(u64),
 ) -> Result<(), String> {
     if source.is_dir() {
-        copy_dir_recursive(source, dest_path, cancel)
+        copy_dir_recursive(source, dest_path, cancel, on_bytes)
     } else {
-        fs::copy(source, dest_path)
-            .map(|_| ())
-            .map_err(|error| error.to_string())
+        copy_file_counting(source, dest_path, cancel, on_bytes)
     }
 }
 
@@ -498,6 +665,11 @@ pub fn copy_items(
     let total = source_paths.len();
     let token = operation_id.as_ref().map(|id| register_operation(id));
 
+    // Progreso por bytes: se precalcula el total y se acumula lo copiado, con los
+    // eventos throttleados para no inundar el bridge de Tauri.
+    let total_bytes = total_source_bytes(&source_paths);
+    let progress = CopyProgress::new(&app, &operation_id, total, total_bytes);
+
     // Undo bookkeeping: only paths we actually created are recorded, so undoing
     // never deletes something that was already there (see `replaced_existing`).
     let mut created: Vec<PathBuf> = Vec::new();
@@ -512,7 +684,7 @@ pub fn copy_items(
         if is_cancelled(&token) {
             break;
         }
-        emit_progress(&app, &operation_id, "copy", index, total, source_path_str);
+        progress.emit(index, source_path_str, progress.bytes(), false);
 
         let source = Path::new(source_path_str);
 
@@ -574,7 +746,11 @@ pub fn copy_items(
             }
         };
 
-        match copy_unprivileged(source, &dest_path, token.as_ref()) {
+        let mut on_bytes = |delta: u64| {
+            let done = progress.add_bytes(delta);
+            progress.emit(index, source_path_str, done, false);
+        };
+        match copy_unprivileged(source, &dest_path, token.as_ref(), &mut on_bytes) {
             Ok(()) => {
                 copied_count += 1;
 
@@ -610,6 +786,10 @@ pub fn copy_items(
             match result {
                 Ok(()) => {
                     copied_count += 1;
+                    // El camino elevado (pkexec/cp) no mide por bytes: cuando un
+                    // item termina OK se suma su tamaño precalculado de golpe.
+                    let done = progress.add_bytes(path_size(&item.source));
+                    progress.emit(copied_count as usize, "", done, false);
                     if item.replaced_existing {
                         partial_undo = true;
                     } else {
@@ -625,7 +805,9 @@ pub fn copy_items(
     }
 
     flush_after_write(copied_count > 0, destination);
-    emit_progress(&app, &operation_id, "copy", total, total, "");
+    // Evento final: la barra tiene que llegar a 100% aunque haya habido omisiones
+    // o fallos, así que se fuerza `processed_bytes == total_bytes`.
+    progress.emit(total, "", total_bytes, true);
     if let Some(id) = &operation_id {
         unregister_operation(id);
     }
@@ -748,7 +930,8 @@ fn move_across_devices(
     cancel: Option<&Arc<AtomicBool>>,
 ) -> MoveStep {
     let existed = dest_path.exists();
-    match copy_unprivileged(source, dest_path, cancel) {
+    // Mover sigue informando por archivos: la copia interna no reporta bytes.
+    match copy_unprivileged(source, dest_path, cancel, &mut |_| {}) {
         Ok(()) => match remove_unprivileged(source) {
             Err(error) if polkit::is_permission_denied(&error) => {
                 MoveStep::NeedsElevation { copied: true }
@@ -1478,7 +1661,7 @@ mod tests {
         make_read_only(&root);
         let log = install_authorizing(&dir, &root);
 
-        let result = copy_dir_recursive(&source, &root.join("origen"), None);
+        let result = copy_dir_recursive(&source, &root.join("origen"), None, &mut |_| {});
 
         // Sin permiso devuelve el error tal cual: elevar es decisión de quien
         // llama, y una sola vez para toda la carpeta. Antes pedía la contraseña
@@ -1497,7 +1680,7 @@ mod tests {
         let mut copied = Vec::new();
         for source in sources {
             let dest_path = destination.join(source.file_name().unwrap());
-            match copy_unprivileged(source, &dest_path, None) {
+            match copy_unprivileged(source, &dest_path, None, &mut |_| {}) {
                 Ok(()) => copied.push(dest_path),
                 Err(error) => {
                     assert!(polkit::is_permission_denied(&error), "{error}");
