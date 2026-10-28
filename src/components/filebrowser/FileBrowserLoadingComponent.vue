@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Skeleton } from '@vasakgroup/vue-libvasak';
-import { ref } from 'vue';
+import type { ListColumnVisibility } from '@/composables/file-browser/list-columns';
 
-const columnVisibility = ref({
-	items: true,
-	size: true,
-	modified: true,
+// Las mismas columnas que la lista, para que los esqueletos no se desalineen
+// con la plantilla del grid cuando el ancho esconde una.
+withDefaults(defineProps<{ columnVisibility?: ListColumnVisibility }>(), {
+	columnVisibility: () => ({ items: true, size: true, modified: true }),
 });
 </script>
 
