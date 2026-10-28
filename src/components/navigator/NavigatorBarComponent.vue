@@ -400,6 +400,14 @@ async function handleUndoShortcut() {
 	}
 }
 
+async function handleRedoShortcut() {
+	const pane = getActivePaneRef();
+
+	if (pane) {
+		await pane.redoLastOperation();
+	}
+}
+
 async function handleDeleteShortcut() {
 	const pane = getActivePaneRef();
 	if (!pane) return;
@@ -596,6 +604,7 @@ function registerShortcutHandlers() {
 	shortcutsStore.registerHandler('showProperties', handleShowPropertiesShortcut);
 	shortcutsStore.registerHandler('addBookmark', handleAddBookmarkShortcut);
 	shortcutsStore.registerHandler('undo', handleUndoShortcut);
+	shortcutsStore.registerHandler('redo', handleRedoShortcut);
 	shortcutsStore.registerHandler('delete', handleDeleteShortcut);
 	shortcutsStore.registerHandler('deletePermanently', handleDeletePermanentlyShortcut);
 	shortcutsStore.registerHandler(

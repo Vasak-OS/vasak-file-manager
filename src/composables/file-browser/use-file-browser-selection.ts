@@ -441,6 +441,30 @@ export function useFileBrowserSelection(
 		});
 	}
 
+	/** Re-aplica la última operación deshecha en esta sesión. */
+	async function redoLastOperation() {
+		const info = await invoke<UndoInfo | null>('get_redo_info');
+
+		if (!info) {
+			toast.success({ title: 'notifications.nothingToRedo' });
+			return;
+		}
+
+		const result = await invoke<UndoResult>('redo_last_operation');
+
+		if (result.affected_paths.length > 0) {
+			dirSizesStore.invalidate([currentPathRef.value, ...result.affected_paths]);
+		}
+
+		clearSelection();
+		onRefresh();
+
+		toast[result.success ? 'success' : 'error']({
+			title: result.success ? 'notifications.redone' : 'notifications.redoFailed',
+			description: result.success ? '' : String(result.error ?? ''),
+		});
+	}
+
 	async function pasteItems(destinationPath?: string): Promise<boolean> {
 		if (!clipboardStore.hasItems) {
 			return false;
@@ -1250,5 +1274,6 @@ export function useFileBrowserSelection(
 		handleCompressConfirm,
 		handleCompressCancel,
 		undoLastOperation,
+		redoLastOperation,
 	};
 }

@@ -12,6 +12,10 @@ use crate::polkit;
 const MAX_UNDO_ENTRIES: usize = 50;
 
 static UNDO_STACK: Lazy<Mutex<Vec<UndoEntry>>> = Lazy::new(|| Mutex::new(Vec::new()));
+/// La pila de rehacer: la inversa de cada operación deshecha. Una operación
+/// nueva la vacía (ver `push`), como en cualquier editor: rehacer sólo tiene
+/// sentido sobre lo que se acaba de deshacer.
+static REDO_STACK: Lazy<Mutex<Vec<UndoEntry>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static NEXT_ENTRY_ID: AtomicU64 = AtomicU64::new(1);
 
 /// The inverse of an operation that already succeeded.
@@ -69,34 +73,76 @@ pub(crate) fn now_secs() -> i64 {
         .unwrap_or(0)
 }
 
-/// Records the inverse of a just-completed operation. Entries with nothing to
-/// undo are dropped so the UI never offers a no-op undo.
-pub fn push(kind: &str, item_count: usize, partial: bool, action: UndoAction) {
-    let is_empty = match &action {
+/// Una acción sin nada que hacer: deshacerla o rehacerla sería un no-op, así que
+/// no entra a ninguna pila.
+fn action_is_empty(action: &UndoAction) -> bool {
+    match action {
         UndoAction::RemoveCreated { paths } => paths.is_empty(),
         UndoAction::MoveBack { pairs } => pairs.is_empty(),
         UndoAction::RestoreFromTrash { paths, .. } => paths.is_empty(),
-    };
-
-    if is_empty {
-        return;
     }
+}
 
-    let entry = UndoEntry {
+fn new_entry(kind: String, item_count: usize, partial: bool, action: UndoAction) -> UndoEntry {
+    UndoEntry {
         id: format!("undo-{}", NEXT_ENTRY_ID.fetch_add(1, Ordering::Relaxed)),
-        kind: kind.to_string(),
+        kind,
         item_count,
         partial,
         action,
-    };
+    }
+}
 
-    if let Ok(mut stack) = UNDO_STACK.lock() {
+/// Apila una entrada, recortando la más vieja si se pasa del tope.
+fn push_entry(stack: &Mutex<Vec<UndoEntry>>, entry: UndoEntry) {
+    if let Ok(mut stack) = stack.lock() {
         stack.push(entry);
 
         if stack.len() > MAX_UNDO_ENTRIES {
             stack.remove(0);
         }
     }
+}
+
+/// La inversa de una acción: lo que hay que hacer para rehacer lo que esa acción
+/// deshizo (o deshacer lo que rehízo). Mandar a la papelera y restaurar son
+/// inversas la una de la otra; mover de vuelta se invierte dando vuelta cada par.
+/// `applied_at` es cuándo se aplicó la acción, para que el restaurado de la
+/// inversa sólo tome lo que ESA acción mandó a la papelera y no una copia vieja.
+fn inverse_action(action: &UndoAction, applied_at: i64) -> UndoAction {
+    match action {
+        UndoAction::RemoveCreated { paths } => UndoAction::RestoreFromTrash {
+            paths: paths.clone(),
+            deleted_after: applied_at,
+        },
+        UndoAction::MoveBack { pairs } => UndoAction::MoveBack {
+            pairs: pairs
+                .iter()
+                .map(|(current, original)| (original.clone(), current.clone()))
+                .collect(),
+        },
+        UndoAction::RestoreFromTrash { paths, .. } => UndoAction::RemoveCreated {
+            paths: paths.clone(),
+        },
+    }
+}
+
+/// Records the inverse of a just-completed operation. Entries with nothing to
+/// undo are dropped so the UI never offers a no-op undo. Una operación nueva
+/// invalida la pila de rehacer, como en cualquier editor.
+pub fn push(kind: &str, item_count: usize, partial: bool, action: UndoAction) {
+    if action_is_empty(&action) {
+        return;
+    }
+
+    if let Ok(mut redo) = REDO_STACK.lock() {
+        redo.clear();
+    }
+
+    push_entry(
+        &UNDO_STACK,
+        new_entry(kind.to_string(), item_count, partial, action),
+    );
 }
 
 /// Removes a path created by the undone operation. Goes through the trash so an
@@ -259,59 +305,38 @@ fn parent_of(path: &Path) -> Option<String> {
         .map(|parent| parent.to_string_lossy().to_string())
 }
 
-/// Describes the operation that a call to `undo_last_operation` would reverse.
-#[tauri::command]
-pub fn get_undo_info() -> Option<UndoInfo> {
-    let stack = UNDO_STACK.lock().ok()?;
-
-    stack.last().map(|entry| UndoInfo {
-        id: entry.id.clone(),
-        kind: entry.kind.clone(),
-        item_count: entry.item_count,
-        partial: entry.partial,
-    })
-}
-
-#[tauri::command]
-pub fn clear_undo_history() {
-    if let Ok(mut stack) = UNDO_STACK.lock() {
-        stack.clear();
-    }
-}
-
-#[tauri::command]
-pub fn undo_last_operation() -> UndoResult {
-    let entry = match UNDO_STACK.lock() {
-        Ok(mut stack) => stack.pop(),
-        Err(error) => {
-            return UndoResult {
-                success: false,
-                error: Some(error.to_string()),
-                kind: None,
-                undone_count: 0,
-                failed_count: 0,
-                affected_paths: Vec::new(),
-            };
-        }
-    };
-
-    let Some(entry) = entry else {
-        return UndoResult {
+impl UndoResult {
+    /// Un resultado sin nada hecho: la pila vacía, o el candado envenenado.
+    fn failed(error: String) -> Self {
+        UndoResult {
             success: false,
-            error: Some("Nothing to undo".to_string()),
+            error: Some(error),
             kind: None,
             undone_count: 0,
             failed_count: 0,
             affected_paths: Vec::new(),
-        };
-    };
+        }
+    }
+}
 
+/// Lo que dejó aplicar una acción: cuántos ítems salieron, cuántos no, el último
+/// error y los directorios a refrescar (ordenados, sin repetir).
+struct ActionOutcome {
+    undone_count: usize,
+    failed_count: usize,
+    last_error: Option<String>,
+    affected: Vec<String>,
+}
+
+/// Aplica una acción sobre el disco. Deshacer y rehacer son lo mismo —aplicar una
+/// acción—, así que la mecánica vive acá una sola vez.
+fn apply_action(action: &UndoAction) -> ActionOutcome {
     let mut undone_count = 0usize;
     let mut failed_count = 0usize;
     let mut last_error: Option<String> = None;
     let mut affected: Vec<String> = Vec::new();
 
-    match &entry.action {
+    match action {
         UndoAction::RemoveCreated { paths } => {
             for path in paths {
                 if let Some(parent) = parent_of(path) {
@@ -369,14 +394,107 @@ pub fn undo_last_operation() -> UndoResult {
     affected.sort();
     affected.dedup();
 
-    UndoResult {
-        success: failed_count == 0 && undone_count > 0,
-        error: last_error,
-        kind: Some(entry.kind),
+    ActionOutcome {
         undone_count,
         failed_count,
-        affected_paths: affected,
+        last_error,
+        affected,
     }
+}
+
+/// Saca la última entrada de `from`, la aplica, y si salió completa apila su
+/// inversa en `to`, para poder deshacer lo que se acaba de hacer. Deshacer y
+/// rehacer son la misma mecánica con las pilas al revés.
+fn run_step(
+    from: &Mutex<Vec<UndoEntry>>,
+    to: &Mutex<Vec<UndoEntry>>,
+    nothing_message: &str,
+) -> UndoResult {
+    let entry = match from.lock() {
+        Ok(mut stack) => stack.pop(),
+        Err(error) => return UndoResult::failed(error.to_string()),
+    };
+
+    let Some(entry) = entry else {
+        return UndoResult::failed(nothing_message.to_string());
+    };
+
+    // Antes de aplicar: lo que la inversa de `RemoveCreated` tiene que restaurar
+    // es lo que esta aplicación manda a la papelera ahora, no una copia vieja.
+    let applied_at = now_secs();
+    let outcome = apply_action(&entry.action);
+    let success = outcome.failed_count == 0 && outcome.undone_count > 0;
+
+    // Sólo si salió completa: apilar la inversa de un paso a medio hacer dejaría
+    // la pila opuesta ofreciendo deshacer algo que no pasó del todo.
+    if success {
+        push_entry(
+            to,
+            new_entry(
+                entry.kind.clone(),
+                entry.item_count,
+                false,
+                inverse_action(&entry.action, applied_at),
+            ),
+        );
+    }
+
+    UndoResult {
+        success,
+        error: outcome.last_error,
+        kind: Some(entry.kind),
+        undone_count: outcome.undone_count,
+        failed_count: outcome.failed_count,
+        affected_paths: outcome.affected,
+    }
+}
+
+/// Describes the operation that a call to `undo_last_operation` would reverse.
+#[tauri::command]
+pub fn get_undo_info() -> Option<UndoInfo> {
+    let stack = UNDO_STACK.lock().ok()?;
+
+    stack.last().map(|entry| UndoInfo {
+        id: entry.id.clone(),
+        kind: entry.kind.clone(),
+        item_count: entry.item_count,
+        partial: entry.partial,
+    })
+}
+
+#[tauri::command]
+pub fn clear_undo_history() {
+    if let Ok(mut stack) = UNDO_STACK.lock() {
+        stack.clear();
+    }
+    if let Ok(mut redo) = REDO_STACK.lock() {
+        redo.clear();
+    }
+}
+
+#[tauri::command]
+pub fn undo_last_operation() -> UndoResult {
+    run_step(&UNDO_STACK, &REDO_STACK, "Nothing to undo")
+}
+
+/// Describe la operación que un `redo_last_operation` volvería a hacer.
+#[tauri::command]
+pub fn get_redo_info() -> Option<UndoInfo> {
+    let stack = REDO_STACK.lock().ok()?;
+
+    stack.last().map(|entry| UndoInfo {
+        id: entry.id.clone(),
+        kind: entry.kind.clone(),
+        item_count: entry.item_count,
+        partial: entry.partial,
+    })
+}
+
+/// Rehace la última operación deshecha: aplica la inversa que quedó en la pila de
+/// rehacer y, si sale, la vuelve a dejar deshacible en la pila de deshacer.
+#[tauri::command]
+pub fn redo_last_operation() -> UndoResult {
+    run_step(&REDO_STACK, &UNDO_STACK, "Nothing to redo")
 }
 
 #[cfg(test)]
@@ -434,13 +552,27 @@ mod tests {
     /// `XDG_DATA_HOME` en cada llamada; ninguna otra prueba toca la papelera.
     struct PapeleraTemporal {
         previo: Option<std::ffi::OsString>,
+        // Declarado después de `previo`: se suelta al final de `drop`, con el
+        // entorno ya restaurado. `XDG_DATA_HOME` es del proceso entero, así que
+        // dos pruebas con su propia papelera no pueden correr a la vez.
+        _candado: std::sync::MutexGuard<'static, ()>,
     }
+
+    static CANDADO_PAPELERA: Mutex<()> = Mutex::new(());
+
+    /// Los statics `UNDO_STACK`/`REDO_STACK` son del proceso: quien los toque
+    /// toma este candado.
+    static CANDADO_PILAS: Mutex<()> = Mutex::new(());
 
     impl PapeleraTemporal {
         fn nueva(datos: &Path) -> Self {
+            let candado = CANDADO_PAPELERA.lock().unwrap_or_else(|e| e.into_inner());
             let previo = std::env::var_os("XDG_DATA_HOME");
             std::env::set_var("XDG_DATA_HOME", datos);
-            Self { previo }
+            Self {
+                previo,
+                _candado: candado,
+            }
         }
     }
 
@@ -550,6 +682,7 @@ mod tests {
     /// Rust runs tests in parallel.
     #[test]
     fn stack_records_pops_and_bounds_entries() {
+        let _pilas = CANDADO_PILAS.lock().unwrap_or_else(|e| e.into_inner());
         clear_undo_history();
 
         // An action with nothing to reverse is never offered to the user.
@@ -608,6 +741,423 @@ mod tests {
         assert_eq!(depth, MAX_UNDO_ENTRIES);
 
         clear_undo_history();
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ---- Rehacer (#145) -------------------------------------------------
+
+    fn ruta(texto: &str) -> PathBuf {
+        PathBuf::from(texto)
+    }
+
+    fn pila() -> Mutex<Vec<UndoEntry>> {
+        Mutex::new(Vec::new())
+    }
+
+    fn con(accion: UndoAction) -> Mutex<Vec<UndoEntry>> {
+        Mutex::new(vec![new_entry("move".into(), 1, false, accion)])
+    }
+
+    fn mover(pares: Vec<(PathBuf, PathBuf)>) -> UndoAction {
+        UndoAction::MoveBack { pairs: pares }
+    }
+
+    fn profundidad(pila: &Mutex<Vec<UndoEntry>>) -> usize {
+        pila.lock().unwrap().len()
+    }
+
+    /// La acción de la última entrada de una pila, para mirar qué quedó apilado.
+    fn tope(pila: &Mutex<Vec<UndoEntry>>) -> UndoAction {
+        pila.lock()
+            .unwrap()
+            .last()
+            .expect("pila vacía")
+            .action
+            .clone()
+    }
+
+    #[test]
+    fn la_inversa_de_crear_es_restaurar_de_la_papelera_desde_ese_momento() {
+        let inversa = inverse_action(
+            &UndoAction::RemoveCreated {
+                paths: vec![ruta("/a"), ruta("/b")],
+            },
+            1234,
+        );
+
+        match inversa {
+            UndoAction::RestoreFromTrash {
+                paths,
+                deleted_after,
+            } => {
+                assert_eq!(paths, [ruta("/a"), ruta("/b")]);
+                assert_eq!(deleted_after, 1234);
+            }
+            otra => panic!("se esperaba RestoreFromTrash, salió {otra:?}"),
+        }
+    }
+
+    #[test]
+    fn la_inversa_de_restaurar_de_la_papelera_es_quitar_lo_creado() {
+        let inversa = inverse_action(
+            &UndoAction::RestoreFromTrash {
+                paths: vec![ruta("/a")],
+                deleted_after: 5,
+            },
+            999,
+        );
+
+        match inversa {
+            UndoAction::RemoveCreated { paths } => assert_eq!(paths, [ruta("/a")]),
+            otra => panic!("se esperaba RemoveCreated, salió {otra:?}"),
+        }
+    }
+
+    #[test]
+    fn la_inversa_de_mover_da_vuelta_cada_par_y_conserva_el_orden() {
+        let inversa = inverse_action(
+            &mover(vec![
+                (ruta("/dest/a"), ruta("/orig/a")),
+                (ruta("/dest/b"), ruta("/orig/b")),
+            ]),
+            0,
+        );
+
+        match inversa {
+            UndoAction::MoveBack { pairs } => assert_eq!(
+                pairs,
+                [
+                    (ruta("/orig/a"), ruta("/dest/a")),
+                    (ruta("/orig/b"), ruta("/dest/b"))
+                ]
+            ),
+            otra => panic!("se esperaba MoveBack, salió {otra:?}"),
+        }
+    }
+
+    #[test]
+    fn invertir_dos_veces_devuelve_la_accion_original() {
+        let pares = vec![(ruta("/x/a"), ruta("/y/a"))];
+        match inverse_action(&inverse_action(&mover(pares.clone()), 1), 2) {
+            UndoAction::MoveBack { pairs } => assert_eq!(pairs, pares),
+            otra => panic!("se esperaba MoveBack, salió {otra:?}"),
+        }
+
+        let creadas = vec![ruta("/c"), ruta("/d")];
+        let ida_y_vuelta = inverse_action(
+            &inverse_action(
+                &UndoAction::RemoveCreated {
+                    paths: creadas.clone(),
+                },
+                10,
+            ),
+            20,
+        );
+        match ida_y_vuelta {
+            UndoAction::RemoveCreated { paths } => assert_eq!(paths, creadas),
+            otra => panic!("se esperaba RemoveCreated, salió {otra:?}"),
+        }
+
+        // Desde el otro extremo el instante se reescribe: lo que importa es
+        // que el de la vuelta sea el del último `applied_at`.
+        let vuelta = inverse_action(
+            &inverse_action(
+                &UndoAction::RestoreFromTrash {
+                    paths: creadas.clone(),
+                    deleted_after: 1,
+                },
+                50,
+            ),
+            60,
+        );
+        match vuelta {
+            UndoAction::RestoreFromTrash {
+                paths,
+                deleted_after,
+            } => {
+                assert_eq!(paths, creadas);
+                assert_eq!(deleted_after, 60);
+            }
+            otra => panic!("se esperaba RestoreFromTrash, salió {otra:?}"),
+        }
+    }
+
+    #[test]
+    fn una_accion_sin_nada_que_hacer_esta_vacia_y_una_con_contenido_no() {
+        assert!(action_is_empty(&UndoAction::RemoveCreated {
+            paths: vec![]
+        }));
+        assert!(action_is_empty(&mover(vec![])));
+        assert!(action_is_empty(&UndoAction::RestoreFromTrash {
+            paths: vec![],
+            deleted_after: 7,
+        }));
+
+        assert!(!action_is_empty(&UndoAction::RemoveCreated {
+            paths: vec![ruta("/a")]
+        }));
+        assert!(!action_is_empty(&mover(vec![(ruta("/a"), ruta("/b"))])));
+        assert!(!action_is_empty(&UndoAction::RestoreFromTrash {
+            paths: vec![ruta("/a")],
+            deleted_after: 7,
+        }));
+    }
+
+    #[test]
+    fn una_pila_llena_descarta_la_entrada_mas_vieja() {
+        let pila = pila();
+        for indice in 0..(MAX_UNDO_ENTRIES + 3) {
+            push_entry(
+                &pila,
+                new_entry(
+                    format!("k{indice}"),
+                    1,
+                    false,
+                    mover(vec![(ruta("/a"), ruta("/b"))]),
+                ),
+            );
+        }
+
+        let pila = pila.lock().unwrap();
+        assert_eq!(pila.len(), MAX_UNDO_ENTRIES);
+        assert_eq!(pila[0].kind, "k3", "se descartan las más viejas");
+        assert_eq!(
+            pila.last().unwrap().kind,
+            format!("k{}", MAX_UNDO_ENTRIES + 2)
+        );
+    }
+
+    #[test]
+    fn con_la_pila_vacia_no_hay_nada_que_hacer_y_el_mensaje_es_el_pedido() {
+        let (desde, hasta) = (pila(), pila());
+
+        let resultado = run_step(&desde, &hasta, "Nothing to redo");
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.error.as_deref(), Some("Nothing to redo"));
+        assert_eq!(resultado.undone_count, 0);
+        assert_eq!(profundidad(&hasta), 0);
+    }
+
+    #[test]
+    fn un_movimiento_se_deshace_y_se_rehace_de_verdad_en_el_disco() {
+        let dir = temp_dir("ida-y-vuelta");
+        let origen = dir.join("a.txt");
+        let destino = dir.join("b.txt");
+        fs::write(&destino, b"contenido").unwrap();
+
+        // La operación original movió a -> b; deshacerla es b -> a.
+        let (deshacer, rehacer) = (con(mover(vec![(destino.clone(), origen.clone())])), pila());
+
+        let paso = run_step(&deshacer, &rehacer, "x");
+        assert!(paso.success, "deshacer falló: {:?}", paso.error);
+        assert_eq!(paso.kind.as_deref(), Some("move"));
+        assert_eq!((paso.undone_count, paso.failed_count), (1, 0));
+        assert_eq!(paso.affected_paths, [dir.to_string_lossy().into_owned()]);
+        assert!(origen.exists() && !destino.exists());
+        assert_eq!(profundidad(&deshacer), 0);
+        match tope(&rehacer) {
+            UndoAction::MoveBack { pairs } => {
+                assert_eq!(pairs, [(origen.clone(), destino.clone())])
+            }
+            otra => panic!("se esperaba MoveBack, salió {otra:?}"),
+        }
+
+        // Rehacer es el mismo paso con las pilas al revés: a -> b otra vez.
+        let paso = run_step(&rehacer, &deshacer, "y");
+        assert!(paso.success, "rehacer falló: {:?}", paso.error);
+        assert!(destino.exists() && !origen.exists());
+        assert_eq!(fs::read(&destino).unwrap(), b"contenido");
+        assert_eq!(profundidad(&rehacer), 0);
+        match tope(&deshacer) {
+            UndoAction::MoveBack { pairs } => assert_eq!(pairs, [(destino, origen)]),
+            otra => panic!("se esperaba MoveBack, salió {otra:?}"),
+        }
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn un_paso_fallido_no_deja_su_inversa_en_la_otra_pila() {
+        let dir = temp_dir("paso-fallido");
+        let (deshacer, rehacer) = (
+            con(mover(vec![(dir.join("no-existe"), dir.join("original"))])),
+            pila(),
+        );
+
+        let paso = run_step(&deshacer, &rehacer, "x");
+
+        assert!(!paso.success);
+        assert_eq!((paso.undone_count, paso.failed_count), (0, 1));
+        assert!(paso.error.is_some());
+        assert_eq!(
+            profundidad(&rehacer),
+            0,
+            "no se ofrece rehacer lo que no pasó"
+        );
+        assert_eq!(profundidad(&deshacer), 0, "la entrada se consume igual");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn un_paso_que_no_hizo_nada_no_cuenta_como_exito_ni_apila_la_inversa() {
+        let (deshacer, rehacer) = (con(mover(vec![])), pila());
+
+        let paso = run_step(&deshacer, &rehacer, "x");
+
+        assert!(!paso.success);
+        assert_eq!((paso.undone_count, paso.failed_count), (0, 0));
+        assert_eq!(profundidad(&rehacer), 0);
+    }
+
+    #[test]
+    fn un_paso_a_medias_no_apila_la_inversa_pero_deja_hecho_lo_que_pudo() {
+        let dir = temp_dir("paso-a-medias");
+        let (bien, mal) = (dir.join("bien"), dir.join("mal"));
+        fs::write(&bien, b"1").unwrap();
+        let (deshacer, rehacer) = (
+            con(mover(vec![
+                (bien.clone(), dir.join("bien-original")),
+                (mal, dir.join("mal-original")),
+            ])),
+            pila(),
+        );
+
+        let paso = run_step(&deshacer, &rehacer, "x");
+
+        assert!(!paso.success);
+        assert_eq!((paso.undone_count, paso.failed_count), (1, 1));
+        assert!(dir.join("bien-original").exists());
+        assert_eq!(profundidad(&rehacer), 0);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn deshacer_y_rehacer_una_copia_pasa_por_la_papelera_y_vuelve() {
+        let raiz = temp_dir("copia-papelera");
+        let datos = raiz.join("datos");
+        fs::create_dir_all(&datos).unwrap();
+        let copia = raiz.join("copia.txt");
+        fs::write(&copia, b"copiado").unwrap();
+
+        let _papelera = PapeleraTemporal::nueva(&datos);
+        let (deshacer, rehacer) = (
+            con(UndoAction::RemoveCreated {
+                paths: vec![copia.clone()],
+            }),
+            pila(),
+        );
+
+        // Deshacer la copia la manda a la papelera: no se destruye.
+        let paso = run_step(&deshacer, &rehacer, "x");
+        assert!(paso.success, "deshacer falló: {:?}", paso.error);
+        assert!(!copia.exists());
+        match tope(&rehacer) {
+            UndoAction::RestoreFromTrash { paths, .. } => assert_eq!(paths, [copia.clone()]),
+            otra => panic!("se esperaba RestoreFromTrash, salió {otra:?}"),
+        }
+
+        // Rehacerla la saca de la papelera con su contenido.
+        let paso = run_step(&rehacer, &deshacer, "y");
+        assert!(paso.success, "rehacer falló: {:?}", paso.error);
+        assert_eq!(fs::read(&copia).unwrap(), b"copiado");
+        match tope(&deshacer) {
+            UndoAction::RemoveCreated { paths } => assert_eq!(paths, [copia.clone()]),
+            otra => panic!("se esperaba RemoveCreated, salió {otra:?}"),
+        }
+
+        drop(_papelera);
+        let _ = fs::remove_dir_all(&raiz);
+    }
+
+    #[test]
+    fn restaurar_algo_que_no_esta_en_la_papelera_falla_y_no_apila_nada() {
+        let raiz = temp_dir("restaurar-fantasma");
+        let datos = raiz.join("datos");
+        fs::create_dir_all(&datos).unwrap();
+
+        let _papelera = PapeleraTemporal::nueva(&datos);
+        let (rehacer, deshacer) = (
+            con(UndoAction::RestoreFromTrash {
+                paths: vec![raiz.join("fantasma.txt")],
+                deleted_after: 0,
+            }),
+            pila(),
+        );
+
+        let paso = run_step(&rehacer, &deshacer, "x");
+
+        assert!(!paso.success);
+        assert_eq!((paso.undone_count, paso.failed_count), (0, 1));
+        assert!(paso.error.is_some());
+        assert_eq!(profundidad(&deshacer), 0);
+
+        drop(_papelera);
+        let _ = fs::remove_dir_all(&raiz);
+    }
+
+    /// Las pilas globales, de punta a punta con los comandos. Es una sola prueba
+    /// y toma el candado de las pilas: son del proceso y Rust corre en paralelo.
+    #[test]
+    fn los_comandos_deshacen_rehacen_y_una_operacion_nueva_borra_el_rehacer() {
+        let _pilas = CANDADO_PILAS.lock().unwrap_or_else(|e| e.into_inner());
+        clear_undo_history();
+        assert!(get_redo_info().is_none());
+        assert!(
+            !redo_last_operation().success,
+            "sin nada deshecho no hay qué rehacer"
+        );
+
+        let dir = temp_dir("comandos");
+        let origen = dir.join("a.txt");
+        let destino = dir.join("b.txt");
+        fs::write(&destino, b"x").unwrap();
+        push(
+            "move",
+            1,
+            false,
+            mover(vec![(destino.clone(), origen.clone())]),
+        );
+
+        assert!(undo_last_operation().success);
+        assert!(get_undo_info().is_none());
+        let rehacer = get_redo_info().expect("lo deshecho se puede rehacer");
+        assert_eq!((rehacer.kind.as_str(), rehacer.item_count), ("move", 1));
+
+        assert!(redo_last_operation().success);
+        assert!(destino.exists() && !origen.exists());
+        assert!(get_redo_info().is_none());
+        assert!(get_undo_info().is_some(), "y se vuelve a poder deshacer");
+
+        // Deshacer de nuevo y hacer algo nuevo: el rehacer ya no corresponde.
+        assert!(undo_last_operation().success);
+        assert!(get_redo_info().is_some());
+        push("move", 1, false, mover(vec![(ruta("/n/a"), ruta("/n/b"))]));
+        assert!(get_redo_info().is_none());
+
+        // Una acción vacía no es una operación nueva: no invalida el rehacer.
+        clear_undo_history();
+        push(
+            "move",
+            1,
+            false,
+            mover(vec![(origen.clone(), destino.clone())]),
+        );
+        assert!(undo_last_operation().success);
+        push(
+            "copy",
+            0,
+            false,
+            UndoAction::RemoveCreated { paths: vec![] },
+        );
+        assert!(get_redo_info().is_some());
+
+        // Vaciar el historial vacía las dos pilas.
+        clear_undo_history();
+        assert!(get_undo_info().is_none() && get_redo_info().is_none());
+
         let _ = fs::remove_dir_all(&dir);
     }
 }

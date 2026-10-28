@@ -147,6 +147,7 @@ shortcuts:
   selectAllItemsInCurrentDirectory: Seleccionar Todo
   addBookmark: Anclar la carpeta actual
   undoLastOperation: Deshacer
+  redoLastOperation: Rehacer
   transferPreparedForCopying: Transferencia preparada para copiar
   transferPreparedToPane1: Transferencia preparada para panel 1
   transferPreparedToPane2: Transferencia preparada para panel 2
@@ -325,6 +326,9 @@ notifications:
   undone: Operación deshecha
   undoFailed: No se pudo deshacer la operación
   nothingToUndo: Nada para deshacer
+  redone: Operación rehecha
+  redoFailed: No se pudo rehacer la operación
+  nothingToRedo: Nada para rehacer
   restored: Restaurado de la papelera
   restoreFailed: No se pudo restaurar de la papelera
   trashEmptied: Papelera vaciada
