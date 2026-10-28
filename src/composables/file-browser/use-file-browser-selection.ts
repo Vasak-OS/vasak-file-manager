@@ -88,6 +88,11 @@ export function useFileBrowserSelection(
 		entry: null as DirEntry | null,
 	});
 
+	const batchRenameState = ref({
+		isActive: false,
+		entries: [] as DirEntry[],
+	});
+
 	type PendingFocusRequest =
 		| {
 				type: 'path';
@@ -861,6 +866,72 @@ export function useFileBrowserSelection(
 		}
 	}
 
+	function startBatchRename(entries: DirEntry[]) {
+		if (entries.length === 0) return;
+
+		batchRenameState.value = {
+			isActive: true,
+			entries: [...entries],
+		};
+	}
+
+	function cancelBatchRename() {
+		batchRenameState.value = {
+			isActive: false,
+			entries: [],
+		};
+	}
+
+	/** Aplica el lote como una sola operación (un solo deshacer en el historial). */
+	async function confirmBatchRename(
+		renames: { sourcePath: string; newName: string }[]
+	): Promise<boolean> {
+		if (renames.length === 0) {
+			cancelBatchRename();
+			return false;
+		}
+
+		try {
+			const result = await invoke<FileOperationResult>('rename_items', { renames });
+
+			if (result.success) {
+				toast.success({
+					title: 'notifications.renamedItems',
+					description: interpolar(
+						t(claveSegunCantidad('notifications.renamedCount', renames.length)),
+						renames.length
+					),
+				});
+
+				for (const { sourcePath, newName } of renames) {
+					const newPath = `${sourcePath.substring(0, sourcePath.lastIndexOf('/'))}/${newName}`;
+
+					workspacesStore.handlePathRenamed(sourcePath, newPath);
+					void userStatsStore.handlePathRenamed(sourcePath, newPath);
+				}
+
+				dirSizesStore.invalidate([...renames.map((r) => r.sourcePath), currentPathRef.value]);
+
+				cancelBatchRename();
+				clearSelection();
+				onRefresh();
+				return true;
+			}
+
+			toast.error({
+				title: 'notifications.failedToRenameItems',
+				description: result.error || '',
+			});
+			return false;
+		} catch (error) {
+			toast.error({
+				title: 'notifications.failedToRenameItems',
+				description: String(error),
+			});
+			return false;
+		}
+	}
+
 	async function createNewItem(name: string, itemType: 'directory' | 'file'): Promise<boolean> {
 		const trimmedName = name.trim();
 
@@ -932,6 +1003,12 @@ export function useFileBrowserSelection(
 			case 'rename':
 				if (entries.length === 1) {
 					startRename(entries[0]);
+				}
+
+				break;
+			case 'batch-rename':
+				if (entries.length > 1) {
+					startBatchRename(entries);
 				}
 
 				break;
@@ -1273,6 +1350,10 @@ export function useFileBrowserSelection(
 		startRename,
 		cancelRename,
 		confirmRename,
+		batchRenameState,
+		startBatchRename,
+		cancelBatchRename,
+		confirmBatchRename,
 		createNewItem,
 		pendingFocusRequest,
 		clearPendingFocusRequest,

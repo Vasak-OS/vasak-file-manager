@@ -177,6 +177,7 @@ pub fn run() {
             file_operations::ensure_directory,
             file_operations::move_items,
             file_operations::rename_item,
+            file_operations::rename_items,
             file_operations::delete_items,
             file_operations::cancel_file_operation,
             file_operations::create_item,

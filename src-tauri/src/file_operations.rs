@@ -1338,6 +1338,110 @@ pub fn rename_item(source_path: String, new_name: String) -> FileOperationResult
     }
 }
 
+/// Un renombrado del lote: el origen y su nombre final en el mismo directorio.
+/// El frontend manda `{ sourcePath, newName }`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenamePair {
+    pub source_path: String,
+    pub new_name: String,
+}
+
+#[tauri::command]
+pub fn rename_items(renames: Vec<RenamePair>) -> FileOperationResult {
+    rename_items_core(renames)
+}
+
+/// Renombra N cosas en un solo lote, cada una en el directorio de su propio
+/// origen (como `rename_item`), y agrupa todo en una sola entrada de undo para
+/// que un único deshacer revierta el lote entero.
+///
+/// Núcleo puro, sin Tauri: el renombrado es instantáneo, no lleva barra de
+/// progreso ni `operation_id`. Así se prueba sin montar Tauri.
+pub(crate) fn rename_items_core(renames: Vec<RenamePair>) -> FileOperationResult {
+    let mut renamed_pairs: Vec<(PathBuf, PathBuf)> = Vec::new();
+    let mut failed_count: u32 = 0;
+    let mut last_error: Option<String> = None;
+
+    for RenamePair {
+        source_path,
+        new_name,
+    } in renames
+    {
+        let source = Path::new(&source_path);
+
+        if !source.exists() {
+            failed_count += 1;
+            last_error = Some(format!("Source path does not exist: {}", source_path));
+            continue;
+        }
+
+        let parent = match source.parent() {
+            Some(parent) => parent,
+            None => {
+                failed_count += 1;
+                last_error = Some("Cannot determine parent directory".to_string());
+                continue;
+            }
+        };
+
+        let dest_path = parent.join(&new_name);
+
+        // No pisar nada: si el destino ya existe y no es el mismo path, es un
+        // fallo (igual que `rename_item`). La resolución de colisiones la decide
+        // quien usa el sistema en el diálogo, no este comando.
+        if dest_path.exists() && dest_path != source {
+            failed_count += 1;
+            last_error = Some(format!(
+                "A file or folder with the name '{}' already exists",
+                new_name
+            ));
+            continue;
+        }
+
+        match fs::rename(source, &dest_path) {
+            Ok(()) => renamed_pairs.push((dest_path, source.to_path_buf())),
+            Err(error) => {
+                if polkit::is_permission_denied(&error.to_string()) {
+                    match polkit::rename_with_pkexec(source, &dest_path) {
+                        Ok(()) => renamed_pairs.push((dest_path, source.to_path_buf())),
+                        Err(e) => {
+                            failed_count += 1;
+                            last_error = Some(e);
+                        }
+                    }
+                } else {
+                    failed_count += 1;
+                    last_error = Some(error.to_string());
+                }
+            }
+        }
+    }
+
+    let renamed_count = renamed_pairs.len() as u32;
+
+    // Un solo `push` con todos los pares: un deshacer revierte el lote entero.
+    // `partial` cuando hubo algún fallo.
+    if !renamed_pairs.is_empty() {
+        undo::push(
+            "rename",
+            renamed_pairs.len(),
+            failed_count > 0,
+            undo::UndoAction::MoveBack {
+                pairs: renamed_pairs,
+            },
+        );
+    }
+
+    FileOperationResult {
+        success: failed_count == 0,
+        error: last_error,
+        copied_count: Some(renamed_count),
+        failed_count: Some(failed_count),
+        skipped_count: Some(0),
+    }
+}
+
 /// Borra o manda a la papelera.
 ///
 /// `allow_elevation` por omisión es `true`, que es el comportamiento de siempre:

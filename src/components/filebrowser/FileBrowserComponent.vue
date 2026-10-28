@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RevealTransition } from '@vasakgroup/vue-libvasak';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import BatchRenameDialogComponent from '@/components/dialogs/BatchRenameDialogComponent.vue';
 import CompressDialogComponent from '@/components/dialogs/CompressDialogComponent.vue';
 import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponent.vue';
 import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.vue';
@@ -95,6 +96,11 @@ provideFileBrowserContext({
 	entryDescription: props.entryDescription,
 });
 
+// Los nombres de la carpeta, para que el lote avise de los choques.
+const existingNames = computed(
+	() => new Set(fb.dirContents.value?.entries.map((entry) => entry.name))
+);
+
 defineExpose({
 	isFilterOpen: fb.isFilterOpen,
 	selectedEntries: fb.selectedEntries,
@@ -122,6 +128,7 @@ defineExpose({
 	pasteItems: fb.pasteItems,
 	deleteItems: fb.deleteItems,
 	startRename: fb.startRename,
+	startBatchRename: fb.startBatchRename,
 	undoLastOperation: fb.undoLastOperation,
 	redoLastOperation: fb.redoLastOperation,
 	zoomIn: fb.zoomIn,
@@ -166,6 +173,10 @@ defineExpose({
 
     <RenameDialogComponent v-model:open="fb.isRenameDialogOpen.value" :entry="fb.renameState.value.entry"
       @confirm="fb.handleRenameConfirm" @cancel="fb.handleRenameCancel" />
+
+    <BatchRenameDialogComponent v-model:open="fb.isBatchRenameDialogOpen.value"
+      :entries="fb.batchRenameState.value.entries" :existing-names="existingNames"
+      @confirm="fb.handleBatchRenameConfirm" @cancel="fb.handleBatchRenameCancel" />
 
     <NewItemDialogComponent v-model:open="fb.isNewItemDialogOpen.value" :type="fb.newItemDialogState.value.type"
       @confirm="fb.handleNewItemConfirm" @cancel="fb.handleNewItemCancel" />

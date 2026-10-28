@@ -99,6 +99,7 @@ fileBrowser:
   filter: Filter
   actions:
     rename: Rename
+    batchRename: Rename Selected Items
     copy: Copy
     cut: Cut
     openWith: Open With
@@ -256,6 +257,25 @@ dialogs:
   renameDirItemDialog:
     renameItem: Rename Item
     newName: New Name
+  batchRenameDialog:
+    title: Rename Items
+    find: Find
+    replace: Replace with
+    template: Template
+    templateHelp: "Tokens: {name} name without extension, {ext} extension, {n} sequential number"
+    caseMode: Letter case
+    caseNone: Keep
+    caseUpper: UPPERCASE
+    caseLower: lowercase
+    startAt: Start at
+    padding: Digits
+    oldName: Current name
+    newName: New name
+    preview: Preview
+    apply: Rename
+    errorEmpty: The name is empty
+    errorInvalid: The name has invalid characters
+    errorCollision: Another item would have the same name
   newItemDialog:
     newDirectory: New Directory
     newFile: New File
@@ -315,6 +335,10 @@ notifications:
   errorTrashItems: Error moving items to trash
   errorDeleteItems: Error deleting items
   renamed: Item renamed
+  renamedItems: Items renamed
+  renamedCountOne: "{0} item renamed"
+  renamedCountOther: "{0} items renamed"
+  failedToRenameItems: Failed to rename items
   failedToRenameItem: Failed to rename item
   removedFromFavorites: Removed from Favorites
   addedToFavorites: Added to Favorites

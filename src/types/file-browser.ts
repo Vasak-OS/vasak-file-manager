@@ -49,6 +49,7 @@ export interface GroupedEntries {
 
 export type ContextMenuAction =
 	| 'rename'
+	| 'batch-rename'
 	| 'copy'
 	| 'cut'
 	| 'paste'

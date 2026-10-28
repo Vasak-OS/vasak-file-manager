@@ -28,6 +28,7 @@ type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
 	navigateToPath?: (path: string) => Promise<void>;
 	openFile?: (path: string) => Promise<void>;
 	startRename?: (entry: DirEntry) => void;
+	startBatchRename?: (entries: DirEntry[]) => void;
 	selectFirstEntry?: () => Promise<void>;
 	navigateUp?: () => void;
 	navigateDown?: () => void;
@@ -621,7 +622,9 @@ function registerShortcutHandlers() {
 		() => {
 			const pane = getActivePaneRef();
 
-			if (pane && selectedEntries.value.length > 0) {
+			if (pane && selectedEntries.value.length > 1) {
+				pane.startBatchRename?.(selectedEntries.value);
+			} else if (pane && selectedEntries.value.length > 0) {
 				pane.startRename(selectedEntries.value[0]);
 			}
 		},
