@@ -498,7 +498,7 @@ pub fn redo_last_operation() -> UndoResult {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     fn temp_dir(tag: &str) -> PathBuf {
@@ -562,7 +562,7 @@ mod tests {
 
     /// Los statics `UNDO_STACK`/`REDO_STACK` son del proceso: quien los toque
     /// toma este candado.
-    static CANDADO_PILAS: Mutex<()> = Mutex::new(());
+    pub(crate) static CANDADO_PILAS: Mutex<()> = Mutex::new(());
 
     impl PapeleraTemporal {
         fn nueva(datos: &Path) -> Self {

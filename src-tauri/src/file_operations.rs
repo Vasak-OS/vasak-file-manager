@@ -2850,4 +2850,607 @@ mod tests {
         );
         cleanup(&dir);
     }
+
+    // --- Progreso por bytes bajo el mock de Tauri (#146) ---
+    //
+    // `copy_items_impl`, `move_items_impl` y `delete_items_impl` corren de verdad
+    // contra un `AppHandle` de mentira; el evento del mock se entrega en el acto,
+    // en el mismo hilo, así que se puede mirar lo emitido apenas vuelven.
+
+    use tauri::test::{mock_app, MockRuntime};
+    use tauri::{App, Listener};
+
+    type Eventos = Arc<Mutex<Vec<serde_json::Value>>>;
+
+    /// Anota cada `file-operation-progress` que sale, ya como JSON.
+    fn escuchar(app: &App<MockRuntime>) -> Eventos {
+        let eventos: Eventos = Arc::new(Mutex::new(Vec::new()));
+        let guardados = eventos.clone();
+        app.listen("file-operation-progress", move |evento| {
+            let valor = serde_json::from_str(evento.payload()).unwrap();
+            guardados.lock().unwrap().push(valor);
+        });
+        eventos
+    }
+
+    fn emitidos(eventos: &Eventos) -> Vec<serde_json::Value> {
+        eventos.lock().unwrap().clone()
+    }
+
+    fn texto(ruta: &Path) -> String {
+        ruta.to_string_lossy().into_owned()
+    }
+
+    /// Las pilas de deshacer son del proceso: las pruebas de `undo` las vacían y
+    /// miran su contenido, y copiar, mover o borrar apila una entrada. Quien corra
+    /// una operación entera toma el mismo candado.
+    fn pilas() -> std::sync::MutexGuard<'static, ()> {
+        crate::undo::tests::CANDADO_PILAS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
+
+    #[test]
+    fn el_emisor_acumula_bytes_y_devuelve_el_total_parcial() {
+        let app = mock_app();
+        let handle = app.handle().clone();
+        let id = Some("emisor-acumula".to_string());
+        let progress = CopyProgress::new(&handle, &id, 2, 100);
+
+        assert_eq!(progress.bytes(), 0);
+        assert_eq!(progress.add_bytes(30), 30);
+        assert_eq!(progress.add_bytes(20), 50);
+        assert_eq!(progress.bytes(), 50);
+    }
+
+    #[test]
+    fn el_emisor_sin_id_no_emite_nada_ni_forzado() {
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let handle = app.handle().clone();
+        let id = None;
+        let progress = CopyProgress::new(&handle, &id, 1, 10);
+
+        progress.emit(0, "/a", 5, false);
+        progress.emit(1, "", 10, true);
+
+        assert!(emitidos(&eventos).is_empty());
+    }
+
+    #[test]
+    fn el_emisor_no_repite_un_evento_antes_del_intervalo_salvo_que_se_fuerce() {
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let handle = app.handle().clone();
+        let id = Some("emisor-throttle".to_string());
+        let progress = CopyProgress::new(&handle, &id, 3, 300);
+
+        // El primero siempre sale; los que siguen, dentro de los 100 ms, no.
+        progress.emit(0, "/a/uno.bin", 10, false);
+        progress.emit(0, "/a/uno.bin", 20, false);
+        progress.emit(1, "/a/dos.bin", 30, false);
+        assert_eq!(emitidos(&eventos).len(), 1);
+
+        // El forzado (el final) sale aunque no haya pasado el intervalo.
+        progress.emit(3, "", 300, true);
+        let salidos = emitidos(&eventos);
+        assert_eq!(salidos.len(), 2);
+
+        assert_eq!(salidos[0]["operation_id"], "emisor-throttle");
+        assert_eq!(salidos[0]["kind"], "copy");
+        assert_eq!(salidos[0]["processed"], 0);
+        assert_eq!(salidos[0]["total"], 3);
+        assert_eq!(salidos[0]["current"], "/a/uno.bin");
+        assert_eq!(salidos[0]["processed_bytes"], 10);
+        assert_eq!(salidos[0]["total_bytes"], 300);
+        assert_eq!(salidos[1]["processed"], 3);
+        assert_eq!(salidos[1]["processed_bytes"], 300);
+        assert_eq!(salidos[1]["current"], "");
+    }
+
+    #[test]
+    fn el_emisor_vuelve_a_emitir_pasado_el_intervalo() {
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let handle = app.handle().clone();
+        let id = Some("emisor-intervalo".to_string());
+        let progress = CopyProgress::new(&handle, &id, 1, 100);
+
+        progress.emit(0, "/a", 1, false);
+        std::thread::sleep(PROGRESS_THROTTLE + Duration::from_millis(20));
+        progress.emit(0, "/a", 2, false);
+
+        let salidos = emitidos(&eventos);
+        assert_eq!(salidos.len(), 2);
+        // Con tiempo transcurrido hay velocidad: bytes sobre segundos.
+        assert!(salidos[1]["bytes_per_second"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    fn copiar_varios_archivos_emite_el_avance_por_bytes_y_cierra_en_el_total() {
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-varios");
+        let origen = dir.join("origen");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::create_dir_all(&destino).unwrap();
+        let chico = origen.join("chico.txt");
+        let grande = origen.join("grande.bin");
+        let carpeta = source_tree(&origen, 2);
+        std::fs::write(&chico, b"hola").unwrap();
+        // Varios chunks seguidos: los primeros salen, el resto cae en el intervalo.
+        std::fs::write(&grande, patterned(3 * 1024 * 1024 + 99)).unwrap();
+        let fuentes = vec![texto(&chico), texto(&grande), texto(&carpeta)];
+        let total_bytes = total_source_bytes(&fuentes);
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = copy_items_impl(
+            fuentes,
+            texto(&destino),
+            None,
+            Some("impl-copia-varios".to_string()),
+            app.handle().clone(),
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(3));
+        assert_eq!(resultado.failed_count, Some(0));
+        assert_eq!(resultado.skipped_count, Some(0));
+        assert_eq!(
+            std::fs::read(destino.join("grande.bin")).unwrap(),
+            patterned(3 * 1024 * 1024 + 99)
+        );
+        assert!(destino.join("origen/sub/b1.txt").is_file());
+
+        let salidos = emitidos(&eventos);
+        assert!(salidos.len() >= 2, "el primero y el final, como poco");
+        for evento in &salidos {
+            assert_eq!(evento["operation_id"], "impl-copia-varios");
+            assert_eq!(evento["kind"], "copy");
+            assert_eq!(evento["total"], 3);
+            // El total se precalcula una vez y no cambia.
+            assert_eq!(evento["total_bytes"], total_bytes);
+            assert!(evento["processed_bytes"].as_u64().unwrap() <= total_bytes);
+        }
+        // Los bytes sólo avanzan.
+        let avance: Vec<u64> = salidos
+            .iter()
+            .map(|e| e["processed_bytes"].as_u64().unwrap())
+            .collect();
+        assert!(avance.windows(2).all(|par| par[0] <= par[1]), "{avance:?}");
+        // El primero sale antes de copiar nada; el último, forzado, en el total.
+        assert_eq!(salidos[0]["processed_bytes"], 0);
+        let ultimo = salidos.last().unwrap();
+        assert_eq!(ultimo["processed"], 3);
+        assert_eq!(ultimo["processed_bytes"], total_bytes);
+        assert_eq!(ultimo["current"], "");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_sin_id_de_operacion_no_emite_pero_copia() {
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-sin-id");
+        let origen = dir.join("a.txt");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&destino).unwrap();
+        std::fs::write(&origen, b"contenido").unwrap();
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = copy_items_impl(
+            vec![texto(&origen)],
+            texto(&destino),
+            None,
+            None,
+            app.handle().clone(),
+        );
+
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(std::fs::read(destino.join("a.txt")).unwrap(), b"contenido");
+        assert!(emitidos(&eventos).is_empty());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_con_reemplazar_pisa_lo_que_habia_y_cuenta_una_copia() {
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-reemplaza");
+        let origen = dir.join("origen");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::create_dir_all(&destino).unwrap();
+        std::fs::write(origen.join("a.txt"), b"nuevo y mas largo").unwrap();
+        std::fs::write(destino.join("a.txt"), b"viejo").unwrap();
+
+        let app = mock_app();
+        let resultado = copy_items_impl(
+            vec![texto(&origen.join("a.txt"))],
+            texto(&destino),
+            Some("replace".to_string()),
+            Some("impl-copia-reemplaza".to_string()),
+            app.handle().clone(),
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(
+            std::fs::read(destino.join("a.txt")).unwrap(),
+            b"nuevo y mas largo"
+        );
+        // No quedó una copia renombrada al lado.
+        assert_eq!(std::fs::read_dir(&destino).unwrap().count(), 1);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_con_omitir_deja_lo_que_habia_y_cuenta_un_omitido() {
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-omite");
+        let origen = dir.join("origen");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::create_dir_all(&destino).unwrap();
+        std::fs::write(origen.join("a.txt"), b"nuevo").unwrap();
+        std::fs::write(destino.join("a.txt"), b"viejo").unwrap();
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = copy_items_impl(
+            vec![texto(&origen.join("a.txt"))],
+            texto(&destino),
+            Some("skip".to_string()),
+            Some("impl-copia-omite".to_string()),
+            app.handle().clone(),
+        );
+
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.skipped_count, Some(1));
+        assert_eq!(std::fs::read(destino.join("a.txt")).unwrap(), b"viejo");
+        // Aunque no se copió nada, la barra cierra en el total.
+        let ultimo = emitidos(&eventos).pop().unwrap();
+        assert_eq!(ultimo["processed_bytes"], ultimo["total_bytes"]);
+        assert_eq!(ultimo["total_bytes"], 5);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_un_origen_que_no_existe_falla_y_la_barra_igual_cierra() {
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-sin-origen");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&destino).unwrap();
+        let buena = dir.join("buena.txt");
+        std::fs::write(&buena, b"1234").unwrap();
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = copy_items_impl(
+            vec![texto(&dir.join("fantasma.txt")), texto(&buena)],
+            texto(&destino),
+            None,
+            Some("impl-copia-sin-origen".to_string()),
+            app.handle().clone(),
+        );
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.failed_count, Some(1));
+        assert_eq!(resultado.copied_count, Some(1));
+        assert!(resultado.error.unwrap().contains("fantasma.txt"));
+        let ultimo = emitidos(&eventos).pop().unwrap();
+        assert_eq!(ultimo["processed"], 2);
+        assert_eq!(ultimo["processed_bytes"], 4);
+        assert_eq!(ultimo["total_bytes"], 4);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_a_un_destino_que_no_existe_o_no_es_carpeta_falla_sin_emitir() {
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-destino-malo");
+        let archivo = dir.join("a.txt");
+        std::fs::write(&archivo, b"x").unwrap();
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let no_existe = copy_items_impl(
+            vec![texto(&archivo)],
+            texto(&dir.join("no-esta")),
+            None,
+            Some("impl-copia-destino-malo".to_string()),
+            app.handle().clone(),
+        );
+        let no_es_carpeta = copy_items_impl(
+            vec![texto(&archivo)],
+            texto(&archivo),
+            None,
+            Some("impl-copia-destino-malo".to_string()),
+            app.handle().clone(),
+        );
+
+        assert!(!no_existe.success);
+        assert!(no_existe.error.unwrap().contains("does not exist"));
+        assert!(!no_es_carpeta.success);
+        assert!(no_es_carpeta.error.unwrap().contains("not a directory"));
+        assert!(emitidos(&eventos).is_empty());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn cancelar_en_pleno_avance_corta_la_copia_y_no_sigue_con_el_resto() {
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-cancelada");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&destino).unwrap();
+        let uno = dir.join("uno.bin");
+        let dos = dir.join("dos.bin");
+        std::fs::write(&uno, patterned(3 * 1024 * 1024)).unwrap();
+        std::fs::write(&dos, b"nunca llega").unwrap();
+
+        let app = mock_app();
+        // La persona cancela en cuanto ve el primer avance, como lo haría el botón
+        // de la ventana: por el id de la operación.
+        app.listen("file-operation-progress", |_| {
+            cancel_file_operation("impl-copia-cancelada".to_string());
+        });
+        let resultado = copy_items_impl(
+            vec![texto(&uno), texto(&dos)],
+            texto(&destino),
+            None,
+            Some("impl-copia-cancelada".to_string()),
+            app.handle().clone(),
+        );
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.error.as_deref(), Some("Operation cancelled"));
+        assert!(!destino.join("dos.bin").exists(), "el resto no se toca");
+        // La operación se da de baja: cancelarla de nuevo ya no encuentra nada.
+        assert!(!cancel_file_operation("impl-copia-cancelada".to_string()));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn cancelar_antes_de_elevar_no_pide_la_contrasena() {
+        if running_as_root() {
+            return;
+        }
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-cancelada-elevada");
+        let origen = dir.join("a.txt");
+        let otro = dir.join("b.txt");
+        std::fs::write(&origen, b"1").unwrap();
+        std::fs::write(&otro, b"2").unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let app = mock_app();
+        app.listen("file-operation-progress", |_| {
+            cancel_file_operation("impl-copia-cancelada-elevada".to_string());
+        });
+        let resultado = copy_items_impl(
+            vec![texto(&origen), texto(&otro)],
+            texto(&root),
+            None,
+            Some("impl-copia-cancelada-elevada".to_string()),
+            app.handle().clone(),
+        );
+
+        // El primero quedó esperando elevación y la cancelación lo descartó: sin
+        // contraseña y sin tocar el destino.
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.failed_count, Some(1));
+        assert_eq!(invocations(&log), Vec::<String>::new());
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 0);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_a_un_destino_de_root_eleva_y_suma_el_tamano_de_lo_copiado() {
+        if running_as_root() {
+            return;
+        }
+        let _pilas = pilas();
+        let dir = scratch("impl-copia-elevada");
+        let origen = dir.join("origen.bin");
+        std::fs::write(&origen, patterned(2048)).unwrap();
+        let root = dir.join("destino-de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = copy_items_impl(
+            vec![texto(&origen)],
+            texto(&root),
+            None,
+            Some("impl-copia-elevada".to_string()),
+            app.handle().clone(),
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(invocations(&log).len(), 1, "{:?}", invocations(&log));
+        assert_eq!(
+            std::fs::read(root.join("origen.bin")).unwrap(),
+            patterned(2048)
+        );
+        // Lo elevado no se mide por chunk: se suma de golpe al terminar.
+        let ultimo = emitidos(&eventos).pop().unwrap();
+        assert_eq!(ultimo["processed_bytes"], 2048);
+        assert_eq!(ultimo["total_bytes"], 2048);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn mover_emite_el_avance_por_archivos_con_los_bytes_en_cero() {
+        let _pilas = pilas();
+        let dir = scratch("impl-mueve");
+        let origen = dir.join("origen");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::create_dir_all(&destino).unwrap();
+        let uno = origen.join("uno.txt");
+        let dos = origen.join("dos.txt");
+        std::fs::write(&uno, b"1").unwrap();
+        std::fs::write(&dos, b"22").unwrap();
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = move_items_impl(
+            vec![texto(&uno), texto(&dos)],
+            texto(&destino),
+            None,
+            Some("impl-mueve".to_string()),
+            app.handle().clone(),
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(2));
+        assert!(destino.join("uno.txt").is_file() && destino.join("dos.txt").is_file());
+        assert!(!uno.exists() && !dos.exists());
+
+        let salidos = emitidos(&eventos);
+        assert_eq!(salidos.len(), 3, "uno por archivo y el final");
+        for evento in &salidos {
+            assert_eq!(evento["operation_id"], "impl-mueve");
+            assert_eq!(evento["kind"], "move");
+            assert_eq!(evento["total"], 2);
+            // El frontend cae al conteo cuando los tres vienen en 0.
+            assert_eq!(evento["processed_bytes"], 0);
+            assert_eq!(evento["total_bytes"], 0);
+            assert_eq!(evento["bytes_per_second"], 0);
+        }
+        let avance: Vec<u64> = salidos
+            .iter()
+            .map(|e| e["processed"].as_u64().unwrap())
+            .collect();
+        assert_eq!(avance, vec![0, 1, 2]);
+        assert_eq!(salidos[0]["current"], texto(&uno));
+        assert_eq!(salidos[2]["current"], "");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn mover_sin_id_de_operacion_no_emite_pero_mueve() {
+        let _pilas = pilas();
+        let dir = scratch("impl-mueve-sin-id");
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&destino).unwrap();
+        let archivo = dir.join("a.txt");
+        std::fs::write(&archivo, b"x").unwrap();
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = move_items_impl(
+            vec![texto(&archivo)],
+            texto(&destino),
+            None,
+            None,
+            app.handle().clone(),
+        );
+
+        assert_eq!(resultado.copied_count, Some(1));
+        assert!(destino.join("a.txt").is_file());
+        assert!(emitidos(&eventos).is_empty());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn mover_a_un_destino_que_no_existe_o_no_es_carpeta_falla() {
+        let _pilas = pilas();
+        let dir = scratch("impl-mueve-destino-malo");
+        let archivo = dir.join("a.txt");
+        std::fs::write(&archivo, b"x").unwrap();
+
+        let app = mock_app();
+        let no_existe = move_items_impl(
+            vec![texto(&archivo)],
+            texto(&dir.join("no-esta")),
+            None,
+            None,
+            app.handle().clone(),
+        );
+        let no_es_carpeta = move_items_impl(
+            vec![texto(&archivo)],
+            texto(&archivo),
+            None,
+            None,
+            app.handle().clone(),
+        );
+
+        assert!(!no_existe.success);
+        assert!(no_existe.error.unwrap().contains("does not exist"));
+        assert!(!no_es_carpeta.success);
+        assert!(no_es_carpeta.error.unwrap().contains("not a directory"));
+        assert!(archivo.exists(), "no se movió nada");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn borrar_emite_el_avance_por_archivos_con_los_bytes_en_cero() {
+        let _pilas = pilas();
+        let dir = scratch("impl-borra");
+        let uno = dir.join("uno.txt");
+        let carpeta = source_tree(&dir, 1);
+        std::fs::write(&uno, b"1").unwrap();
+
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let resultado = delete_items_impl(
+            vec![texto(&uno), texto(&carpeta)],
+            false,
+            Some("impl-borra".to_string()),
+            None,
+            app.handle().clone(),
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(2));
+        assert_eq!(resultado.failed_count, Some(0));
+        assert_eq!(resultado.skipped_count, Some(0));
+        assert!(!uno.exists() && !carpeta.exists());
+
+        let salidos = emitidos(&eventos);
+        assert_eq!(salidos.len(), 3, "uno por ruta y el final");
+        for evento in &salidos {
+            assert_eq!(evento["operation_id"], "impl-borra");
+            assert_eq!(evento["kind"], "delete");
+            assert_eq!(evento["total"], 2);
+            assert_eq!(evento["processed_bytes"], 0);
+            assert_eq!(evento["total_bytes"], 0);
+            assert_eq!(evento["bytes_per_second"], 0);
+        }
+        assert_eq!(salidos[2]["processed"], 2);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn borrar_una_ruta_que_no_existe_cuenta_un_fallo_y_sigue_con_las_demas() {
+        let _pilas = pilas();
+        let dir = scratch("impl-borra-fantasma");
+        let real = dir.join("real.txt");
+        std::fs::write(&real, b"x").unwrap();
+
+        let app = mock_app();
+        let resultado = delete_items_impl(
+            vec![texto(&dir.join("fantasma.txt")), texto(&real)],
+            false,
+            None,
+            Some(false),
+            app.handle().clone(),
+        );
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.failed_count, Some(1));
+        assert_eq!(resultado.copied_count, Some(1));
+        assert!(resultado.error.unwrap().contains("fantasma.txt"));
+        assert!(!real.exists());
+        cleanup(&dir);
+    }
 }
