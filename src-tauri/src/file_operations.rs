@@ -1636,6 +1636,7 @@ pub fn create_item(
 mod tests {
     use super::*;
     use crate::polkit::testing::*;
+    use std::os::unix::fs::PermissionsExt;
 
     /// Una carpeta de origen con `files` archivos y una subcarpeta con otros dos.
     fn source_tree(dir: &Path, files: usize) -> PathBuf {
@@ -2518,6 +2519,287 @@ mod tests {
         std::fs::write(dir.join("a.txt"), b"x").unwrap();
         flush_after_write(true, &dir);
         assert_eq!(std::fs::read(dir.join("a.txt")).unwrap(), b"x");
+        cleanup(&dir);
+    }
+
+    // --- Progreso por bytes de las copias (#146) ---
+
+    /// Un archivo con contenido que no se repite por chunk, para que una copia
+    /// que mezcle o corte un chunk no pase desapercibida.
+    fn patterned(len: usize) -> Vec<u8> {
+        (0..len).map(|n| (n % 251) as u8).collect()
+    }
+
+    #[test]
+    fn el_tamano_de_un_archivo_suelto_es_su_largo() {
+        let dir = scratch("tamano-archivo");
+        let file = dir.join("a.bin");
+        std::fs::write(&file, vec![7u8; 1234]).unwrap();
+        assert_eq!(path_size(&file), 1234);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_tamano_de_una_carpeta_suma_sus_archivos_y_los_de_las_subcarpetas() {
+        let dir = scratch("tamano-carpeta");
+        let source = source_tree(&dir, 3);
+        // 3 archivos de 1 byte + sub/b1 y sub/b2 de 1 byte; agrego uno anidado más hondo.
+        std::fs::create_dir_all(source.join("sub/hondo")).unwrap();
+        std::fs::write(source.join("sub/hondo/c.bin"), vec![0u8; 100]).unwrap();
+        assert_eq!(path_size(&source), 3 + 2 + 100);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_carpeta_vacia_pesa_cero() {
+        let dir = scratch("tamano-vacia");
+        assert_eq!(path_size(&dir), 0);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_tamano_no_sigue_los_symlinks_ni_los_cuenta() {
+        let dir = scratch("tamano-symlinks");
+        let real = dir.join("real");
+        std::fs::create_dir_all(&real).unwrap();
+        std::fs::write(real.join("grande.bin"), vec![0u8; 5000]).unwrap();
+        let tree = dir.join("arbol");
+        std::fs::create_dir_all(&tree).unwrap();
+        std::fs::write(tree.join("propio.bin"), vec![0u8; 10]).unwrap();
+        std::os::unix::fs::symlink(real.join("grande.bin"), tree.join("a-archivo")).unwrap();
+        std::os::unix::fs::symlink(&real, tree.join("a-carpeta")).unwrap();
+
+        // Sólo cuenta lo propio: ni el archivo ni la carpeta a los que apuntan.
+        assert_eq!(path_size(&tree), 10);
+        // Y un symlink pasado directo tampoco se sigue.
+        assert_eq!(path_size(&tree.join("a-archivo")), 0);
+        assert_eq!(path_size(&tree.join("a-carpeta")), 0);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_symlink_que_apunta_a_su_carpeta_no_cae_en_un_ciclo() {
+        let dir = scratch("tamano-ciclo");
+        let tree = dir.join("arbol");
+        std::fs::create_dir_all(&tree).unwrap();
+        std::fs::write(tree.join("a.bin"), vec![0u8; 8]).unwrap();
+        std::os::unix::fs::symlink(&tree, tree.join("yo-mismo")).unwrap();
+        assert_eq!(path_size(&tree), 8);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_ruta_que_no_existe_pesa_cero() {
+        let dir = scratch("tamano-inexistente");
+        assert_eq!(path_size(&dir.join("no-esta")), 0);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_total_de_los_origenes_suma_cada_uno() {
+        let dir = scratch("total-origenes");
+        let file = dir.join("a.bin");
+        std::fs::write(&file, vec![0u8; 300]).unwrap();
+        let tree = source_tree(&dir, 2); // 2 + 2 bytes
+        let sources = vec![
+            file.to_string_lossy().into_owned(),
+            tree.to_string_lossy().into_owned(),
+        ];
+        assert_eq!(total_source_bytes(&sources), 304);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_total_de_los_origenes_ignora_los_que_no_existen() {
+        let dir = scratch("total-con-faltantes");
+        let file = dir.join("a.bin");
+        std::fs::write(&file, vec![0u8; 50]).unwrap();
+        let sources = vec![
+            dir.join("fantasma").to_string_lossy().into_owned(),
+            file.to_string_lossy().into_owned(),
+        ];
+        assert_eq!(total_source_bytes(&sources), 50);
+        assert_eq!(total_source_bytes(&[]), 0);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn la_velocidad_es_bytes_sobre_segundos() {
+        assert_eq!(bytes_per_second(1000, 1.0), 1000);
+        assert_eq!(bytes_per_second(1000, 2.0), 500);
+        assert_eq!(bytes_per_second(10 * 1024 * 1024, 0.5), 20 * 1024 * 1024);
+        assert_eq!(bytes_per_second(0, 3.0), 0);
+    }
+
+    #[test]
+    fn la_velocidad_sin_tiempo_transcurrido_es_cero_y_no_infinita() {
+        assert_eq!(bytes_per_second(1_000_000, 0.0), 0);
+        assert_eq!(bytes_per_second(1_000_000, -1.0), 0);
+    }
+
+    #[test]
+    fn la_velocidad_se_trunca_a_un_entero_de_bytes() {
+        // 10 / 3 = 3,33…: no sale con decimales ni se va a 4.
+        assert_eq!(bytes_per_second(10, 3.0), 3);
+        assert_eq!(bytes_per_second(11, 3.0), 3);
+        assert_eq!(bytes_per_second(1, 4.0), 0);
+    }
+
+    #[test]
+    fn copiar_un_archivo_deja_el_mismo_contenido() {
+        let dir = scratch("copia-contenido");
+        let source = dir.join("origen.bin");
+        let dest = dir.join("destino.bin");
+        // Más de dos chunks de 1 MiB, con el último a medias.
+        let content = patterned(2 * 1024 * 1024 + 12_345);
+        std::fs::write(&source, &content).unwrap();
+
+        copy_file_counting(&source, &dest, None, &mut |_| {}).unwrap();
+
+        assert_eq!(std::fs::read(&dest).unwrap(), content);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn lo_que_se_reporta_por_chunk_suma_el_tamano_del_archivo() {
+        let dir = scratch("copia-bytes-reportados");
+        let source = dir.join("origen.bin");
+        let dest = dir.join("destino.bin");
+        let len = 2 * 1024 * 1024 + 12_345;
+        std::fs::write(&source, patterned(len)).unwrap();
+
+        let mut reports = Vec::new();
+        copy_file_counting(&source, &dest, None, &mut |delta| reports.push(delta)).unwrap();
+
+        assert_eq!(reports.iter().sum::<u64>(), len as u64);
+        // Reporta mientras copia, no de una sola vez al final: cada chunk es de
+        // 1 MiB como mucho.
+        assert!(reports.len() >= 3, "{reports:?}");
+        assert!(reports.iter().all(|delta| *delta <= 1024 * 1024));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_un_archivo_vacio_no_reporta_bytes_y_lo_crea() {
+        let dir = scratch("copia-vacia");
+        let source = dir.join("origen.txt");
+        let dest = dir.join("destino.txt");
+        std::fs::write(&source, b"").unwrap();
+
+        let mut calls = 0;
+        copy_file_counting(&source, &dest, None, &mut |_| calls += 1).unwrap();
+
+        assert_eq!(calls, 0);
+        assert!(dest.exists());
+        assert_eq!(std::fs::metadata(&dest).unwrap().len(), 0);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn la_copia_conserva_el_modo_del_archivo() {
+        let dir = scratch("copia-modo");
+        for mode in [0o640, 0o755, 0o400] {
+            let source = dir.join(format!("origen-{mode:o}"));
+            let dest = dir.join(format!("destino-{mode:o}"));
+            std::fs::write(&source, b"contenido").unwrap();
+            std::fs::set_permissions(&source, std::fs::Permissions::from_mode(mode)).unwrap();
+
+            copy_file_counting(&source, &dest, None, &mut |_| {}).unwrap();
+
+            let copied = std::fs::metadata(&dest).unwrap().permissions().mode() & 0o777;
+            assert_eq!(copied, mode, "el modo {mode:o} se tiene que conservar");
+        }
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn con_la_cancelacion_ya_pedida_no_se_copia_nada() {
+        let dir = scratch("copia-cancelada-de-antes");
+        let source = dir.join("origen.bin");
+        let dest = dir.join("destino.bin");
+        std::fs::write(&source, patterned(3 * 1024 * 1024)).unwrap();
+        let cancel = Arc::new(AtomicBool::new(true));
+
+        let mut reported = 0;
+        let result = copy_file_counting(&source, &dest, Some(&cancel), &mut |d| reported += d);
+
+        assert_eq!(result.unwrap_err(), "Operation cancelled");
+        assert_eq!(reported, 0);
+        // Como mucho queda el archivo recién creado, sin contenido.
+        assert_eq!(std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0), 0);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn cancelar_a_mitad_de_la_copia_corta_entre_chunks() {
+        let dir = scratch("copia-cancelada-a-mitad");
+        let source = dir.join("origen.bin");
+        let dest = dir.join("destino.bin");
+        std::fs::write(&source, patterned(3 * 1024 * 1024)).unwrap();
+        let cancel = Arc::new(AtomicBool::new(false));
+
+        let mut reported = 0;
+        let result = copy_file_counting(&source, &dest, Some(&cancel), &mut |delta| {
+            reported += delta;
+            // La persona cancela apenas llega el primer chunk.
+            cancel.store(true, Ordering::SeqCst);
+        });
+
+        assert_eq!(result.unwrap_err(), "Operation cancelled");
+        assert_eq!(
+            reported,
+            1024 * 1024,
+            "tiene que parar antes del segundo chunk"
+        );
+        assert_eq!(std::fs::metadata(&dest).unwrap().len(), 1024 * 1024);
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_origen_que_no_existe_devuelve_error_y_no_reporta() {
+        let dir = scratch("copia-sin-origen");
+        let mut reported = 0;
+        let result =
+            copy_file_counting(&dir.join("no-esta"), &dir.join("destino"), None, &mut |d| {
+                reported += d
+            });
+        assert!(result.is_err());
+        assert_eq!(reported, 0);
+        assert!(
+            !dir.join("destino").exists(),
+            "no tiene que crear el destino"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_destino_imposible_de_crear_devuelve_error() {
+        let dir = scratch("copia-sin-destino");
+        let source = dir.join("origen.bin");
+        std::fs::write(&source, b"x").unwrap();
+        let result = copy_file_counting(&source, &dir.join("no/existe/destino"), None, &mut |_| {});
+        assert!(result.is_err());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn copiar_una_carpeta_reporta_exactamente_lo_que_pesa() {
+        let dir = scratch("copia-carpeta-bytes");
+        let source = source_tree(&dir, 3);
+        std::fs::write(source.join("sub/grande.bin"), patterned(1024 * 1024 + 7)).unwrap();
+        let dest = dir.join("copia");
+
+        let mut reported = 0;
+        copy_unprivileged(&source, &dest, None, &mut |delta| reported += delta).unwrap();
+
+        // Lo que alimenta la barra (lo reportado) coincide con el total que se
+        // precalcula: por eso la barra termina en 100 y no antes ni después.
+        assert_eq!(reported, path_size(&source));
+        assert_eq!(path_size(&dest), path_size(&source));
+        assert_eq!(
+            std::fs::read(dest.join("sub/grande.bin")).unwrap(),
+            patterned(1024 * 1024 + 7)
+        );
         cleanup(&dir);
     }
 }
