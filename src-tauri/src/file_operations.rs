@@ -3557,4 +3557,322 @@ mod tests {
         assert!(!real.exists());
         cleanup(&dir);
     }
+
+    // --- Renombrado por lotes (#147) ---
+    //
+    // `rename_items_core` es el núcleo del comando `rename_items`: renombra N
+    // cosas y apila **una sola** entrada de deshacer. Apilar toca la pila global,
+    // así que todas toman el candado de las pilas.
+
+    fn par(origen: &Path, nuevo: &str) -> RenamePair {
+        RenamePair {
+            source_path: texto(origen),
+            new_name: nuevo.to_string(),
+        }
+    }
+
+    /// Los archivos `nombres` en `dir`, cada uno con su propio nombre de contenido.
+    fn crear_archivos(dir: &Path, nombres: &[&str]) {
+        for nombre in nombres {
+            std::fs::write(dir.join(nombre), nombre.as_bytes()).unwrap();
+        }
+    }
+
+    #[test]
+    fn el_lote_renombra_todas_las_entradas_y_cuenta_los_renombrados() {
+        let _pilas = pilas();
+        let dir = scratch("lote-renombra-todo");
+        crear_archivos(&dir, &["a.txt", "b.txt"]);
+        std::fs::create_dir_all(dir.join("carpeta")).unwrap();
+
+        let resultado = rename_items_core(vec![
+            par(&dir.join("a.txt"), "uno.txt"),
+            par(&dir.join("b.txt"), "dos.txt"),
+            par(&dir.join("carpeta"), "directorio"),
+        ]);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.error, None);
+        assert_eq!(resultado.copied_count, Some(3));
+        assert_eq!(resultado.failed_count, Some(0));
+        assert_eq!(resultado.skipped_count, Some(0));
+        // El destino tiene el nombre nuevo y con su contenido; el viejo ya no está.
+        assert_eq!(std::fs::read(dir.join("uno.txt")).unwrap(), b"a.txt");
+        assert_eq!(std::fs::read(dir.join("dos.txt")).unwrap(), b"b.txt");
+        assert!(dir.join("directorio").is_dir());
+        for viejo in ["a.txt", "b.txt", "carpeta"] {
+            assert!(!dir.join(viejo).exists(), "{viejo} no debería seguir");
+        }
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn cada_entrada_se_renombra_en_su_propia_carpeta() {
+        let _pilas = pilas();
+        let dir = scratch("lote-carpetas-distintas");
+        std::fs::create_dir_all(dir.join("uno")).unwrap();
+        std::fs::create_dir_all(dir.join("dos")).unwrap();
+        crear_archivos(&dir.join("uno"), &["a.txt"]);
+        crear_archivos(&dir.join("dos"), &["b.txt"]);
+
+        let resultado = rename_items_core(vec![
+            par(&dir.join("uno/a.txt"), "x.txt"),
+            par(&dir.join("dos/b.txt"), "x.txt"),
+        ]);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert!(dir.join("uno/x.txt").exists());
+        assert!(dir.join("dos/x.txt").exists());
+        assert!(!dir.join("x.txt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_origen_que_no_existe_es_un_fallo_y_el_lote_sigue_con_los_demas() {
+        let _pilas = pilas();
+        let dir = scratch("lote-origen-fantasma");
+        crear_archivos(&dir, &["a.txt", "b.txt"]);
+
+        let resultado = rename_items_core(vec![
+            par(&dir.join("a.txt"), "uno.txt"),
+            par(&dir.join("fantasma.txt"), "nada.txt"),
+            par(&dir.join("b.txt"), "dos.txt"),
+        ]);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(2));
+        assert_eq!(resultado.failed_count, Some(1));
+        let error = resultado.error.unwrap();
+        assert!(error.contains("does not exist"), "{error}");
+        assert!(error.contains("fantasma.txt"), "{error}");
+        assert!(dir.join("uno.txt").exists());
+        assert!(dir.join("dos.txt").exists());
+        assert!(!dir.join("nada.txt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_destino_que_ya_existe_es_un_fallo_y_no_se_pisa() {
+        let _pilas = pilas();
+        let dir = scratch("lote-destino-existe");
+        crear_archivos(&dir, &["a.txt", "b.txt", "ocupado.txt"]);
+
+        let resultado = rename_items_core(vec![
+            par(&dir.join("a.txt"), "ocupado.txt"),
+            par(&dir.join("b.txt"), "libre.txt"),
+        ]);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(resultado.failed_count, Some(1));
+        assert!(resultado
+            .error
+            .unwrap()
+            .contains("'ocupado.txt' already exists"));
+        // El que ya estaba conserva su contenido y el origen sigue donde estaba.
+        assert_eq!(
+            std::fs::read(dir.join("ocupado.txt")).unwrap(),
+            b"ocupado.txt"
+        );
+        assert_eq!(std::fs::read(dir.join("a.txt")).unwrap(), b"a.txt");
+        assert_eq!(std::fs::read(dir.join("libre.txt")).unwrap(), b"b.txt");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn renombrar_una_entrada_a_su_mismo_nombre_no_es_un_fallo() {
+        let _pilas = pilas();
+        let dir = scratch("lote-mismo-nombre");
+        crear_archivos(&dir, &["a.txt"]);
+
+        let resultado = rename_items_core(vec![par(&dir.join("a.txt"), "a.txt")]);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.failed_count, Some(0));
+        assert!(dir.join("a.txt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_lote_vacio_sale_bien_y_no_apila_nada_para_deshacer() {
+        let _pilas = pilas();
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items_core(Vec::new());
+
+        assert!(resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.failed_count, Some(0));
+        assert!(crate::undo::get_undo_info().is_none());
+    }
+
+    #[test]
+    fn el_lote_se_apila_como_una_sola_entrada_de_deshacer() {
+        let _pilas = pilas();
+        let dir = scratch("lote-una-entrada");
+        crear_archivos(&dir, &["a.txt", "b.txt", "c.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items_core(vec![
+            par(&dir.join("a.txt"), "uno.txt"),
+            par(&dir.join("b.txt"), "dos.txt"),
+            par(&dir.join("c.txt"), "tres.txt"),
+        ]);
+        assert!(resultado.success, "{:?}", resultado.error);
+
+        // Una entrada para los tres, no tres entradas.
+        let info = crate::undo::get_undo_info().expect("el lote tiene que poder deshacerse");
+        assert_eq!(info.kind, "rename");
+        assert_eq!(info.item_count, 3);
+        assert!(!info.partial);
+
+        // Un solo deshacer devuelve los tres nombres.
+        let deshecho = crate::undo::undo_last_operation();
+        assert!(deshecho.success, "{:?}", deshecho.error);
+        assert_eq!(deshecho.undone_count, 3);
+        for viejo in ["a.txt", "b.txt", "c.txt"] {
+            assert_eq!(std::fs::read(dir.join(viejo)).unwrap(), viejo.as_bytes());
+        }
+        for nuevo in ["uno.txt", "dos.txt", "tres.txt"] {
+            assert!(!dir.join(nuevo).exists(), "{nuevo} no debería seguir");
+        }
+        // Y no quedó otra entrada debajo.
+        assert!(crate::undo::get_undo_info().is_none());
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_lote_con_fallos_se_apila_parcial_y_solo_con_lo_que_se_renombro() {
+        let _pilas = pilas();
+        let dir = scratch("lote-parcial");
+        crear_archivos(&dir, &["a.txt", "b.txt", "ocupado.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items_core(vec![
+            par(&dir.join("a.txt"), "uno.txt"),
+            par(&dir.join("b.txt"), "ocupado.txt"),
+        ]);
+        assert!(!resultado.success);
+
+        let info = crate::undo::get_undo_info().expect("lo renombrado tiene que poder deshacerse");
+        assert_eq!(info.kind, "rename");
+        assert_eq!(info.item_count, 1);
+        assert!(info.partial);
+
+        let deshecho = crate::undo::undo_last_operation();
+        assert!(deshecho.success, "{:?}", deshecho.error);
+        assert!(dir.join("a.txt").exists());
+        assert!(!dir.join("uno.txt").exists());
+        // Lo que había fallado no se toca al deshacer.
+        assert!(dir.join("b.txt").exists());
+        assert_eq!(
+            std::fs::read(dir.join("ocupado.txt")).unwrap(),
+            b"ocupado.txt"
+        );
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn si_no_se_renombro_nada_no_se_apila_nada() {
+        let _pilas = pilas();
+        let dir = scratch("lote-todo-falla");
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items_core(vec![
+            par(&dir.join("fantasma.txt"), "x.txt"),
+            par(&dir.join("otro-fantasma.txt"), "y.txt"),
+        ]);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.failed_count, Some(2));
+        assert!(crate::undo::get_undo_info().is_none());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_comando_rename_items_delega_en_el_nucleo() {
+        let _pilas = pilas();
+        let dir = scratch("lote-comando");
+        crear_archivos(&dir, &["a.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items(vec![par(&dir.join("a.txt"), "uno.txt")]);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert!(dir.join("uno.txt").exists());
+        assert_eq!(crate::undo::get_undo_info().unwrap().item_count, 1);
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn el_frontend_manda_las_claves_en_camel_case() {
+        // `invoke('rename_items', { renames: [{ sourcePath, newName }] })`.
+        let pares: Vec<RenamePair> =
+            serde_json::from_str(r#"[{"sourcePath":"/casa/a.txt","newName":"uno.txt"}]"#).unwrap();
+
+        assert_eq!(pares.len(), 1);
+        assert_eq!(pares[0].source_path, "/casa/a.txt");
+        assert_eq!(pares[0].new_name, "uno.txt");
+    }
+
+    #[test]
+    fn en_una_carpeta_sin_permiso_el_lote_pide_la_elevacion_una_vez_por_entrada() {
+        if running_as_root() {
+            return;
+        }
+        let _pilas = pilas();
+        let dir = scratch("lote-elevacion");
+        let root = dir.join("de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        crear_archivos(&root, &["a.txt", "b.txt"]);
+        make_read_only(&root);
+        let log = install_authorizing(&dir, &root);
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items_core(vec![
+            par(&root.join("a.txt"), "uno.txt"),
+            par(&root.join("b.txt"), "dos.txt"),
+        ]);
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(2));
+        assert_eq!(invocations(&log).len(), 2);
+        assert!(root.join("uno.txt").exists());
+        assert!(root.join("dos.txt").exists());
+        // Lo renombrado con elevación también se puede deshacer en bloque.
+        assert_eq!(crate::undo::get_undo_info().unwrap().item_count, 2);
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn si_se_rechaza_la_elevacion_el_renombrado_falla_y_el_origen_queda_donde_estaba() {
+        if running_as_root() {
+            return;
+        }
+        let _pilas = pilas();
+        let dir = scratch("lote-elevacion-rechazada");
+        let root = dir.join("de-root");
+        std::fs::create_dir_all(&root).unwrap();
+        crear_archivos(&root, &["a.txt"]);
+        make_read_only(&root);
+        let log = install_refusing(&dir, 126);
+        crate::undo::clear_undo_history();
+
+        let resultado = rename_items_core(vec![par(&root.join("a.txt"), "uno.txt")]);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.failed_count, Some(1));
+        assert!(resultado.error.is_some());
+        assert_eq!(invocations(&log).len(), 1);
+        assert!(root.join("a.txt").exists());
+        assert!(!root.join("uno.txt").exists());
+        assert!(crate::undo::get_undo_info().is_none());
+        cleanup(&dir);
+    }
 }
