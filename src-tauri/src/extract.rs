@@ -140,7 +140,11 @@ fn extract_with_7z(archive_path: &str, dest: &Path, password: Option<&str>) -> R
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    if let Some(sentinel) = classify_crypto_error(&stderr, password.is_some()) {
+    // El «Enter password:» de 7z sale por stdout (y por stderr sólo queda «Break
+    // signaled» al cerrarse stdin), así que se mira todo lo que escribió.
+    let diagnostico = format!("{}{}", String::from_utf8_lossy(&output.stdout), stderr);
+
+    if let Some(sentinel) = classify_crypto_error(&diagnostico, password.is_some()) {
         return Err(sentinel.to_string());
     }
 
@@ -422,7 +426,11 @@ fn list_7z(archive_path: &str, password: Option<&str>) -> Result<Vec<String>, St
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    if let Some(sentinel) = classify_crypto_error(&stderr, password.is_some()) {
+    // El «Enter password:» de 7z sale por stdout (y por stderr sólo queda «Break
+    // signaled» al cerrarse stdin), así que se mira todo lo que escribió.
+    let diagnostico = format!("{}{}", String::from_utf8_lossy(&output.stdout), stderr);
+
+    if let Some(sentinel) = classify_crypto_error(&diagnostico, password.is_some()) {
         return Err(sentinel.to_string());
     }
 
