@@ -326,7 +326,11 @@ export function useFileBrowserDrag(options: {
 			const outside = isCursorOutsideViewport(event.clientX, event.clientY);
 
 			if (outside || nearEdge || dragDist > 200) {
-				initiateOutboundDrag();
+				// Dispara-y-olvida: el arrastre saliente maneja sus propios errores;
+				// el `.catch` cubre lo que pueda rechazar antes del try (el ícono).
+				initiateOutboundDrag().catch((error) => {
+					console.error('Outbound drag failed:', error);
+				});
 				return;
 			}
 		}
