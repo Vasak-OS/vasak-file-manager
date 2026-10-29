@@ -49,3 +49,9 @@ export function isPdfFile(entry: DirEntry): boolean {
 	const extension = entry.ext?.toLowerCase();
 	return extension ? FILE_EXTENSIONS.PDF.includes(extension) : false;
 }
+
+export function isFontFile(entry: DirEntry): boolean {
+	if (entry.is_dir) return false;
+	const extension = entry.ext?.toLowerCase();
+	return extension ? FILE_EXTENSIONS.FONT.includes(extension) : false;
+}

@@ -1,5 +1,6 @@
-//! Miniaturas de video (ffmpeg) y de imagen (crate `image`), guardadas en la
-//! **caché de miniaturas de freedesktop** (`~/.cache/thumbnails/`).
+//! Miniaturas de video (ffmpeg), de imagen (crate `image`), de PDF (pdftoppm) y
+//! de fuentes (ab_glyph), guardadas en la **caché de miniaturas de freedesktop**
+//! (`~/.cache/thumbnails/`).
 //!
 //! Antes las generaba el frontend: creaba un `<video>`, lo buscaba al 10 % y
 //! dibujaba el cuadro en un `<canvas>` **del tamaño del video**
@@ -41,6 +42,9 @@ const PLAZO: Duration = Duration::from_secs(20);
 
 /// Corre un comando con plazo, matándolo si se pasa.
 fn con_plazo(mut orden: Command) -> Result<std::process::Output, String> {
+    // El nombre real del programa (ffmpeg, ffprobe o pdftoppm): el mensaje de
+    // «no instalado» lo nombra en vez de suponer ffmpeg.
+    let programa = orden.get_program().to_string_lossy().into_owned();
     let mut hijo = orden
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
@@ -48,7 +52,7 @@ fn con_plazo(mut orden: Command) -> Result<std::process::Output, String> {
         .spawn()
         .map_err(|error| {
             if error.kind() == std::io::ErrorKind::NotFound {
-                "ffmpeg no está instalado: no se pueden generar miniaturas de video".to_string()
+                format!("{programa} no está instalado")
             } else {
                 format!("No se pudo ejecutar: {error}")
             }
@@ -299,6 +303,10 @@ fn miniatura_en(base: &Path, archivo: &Path) -> Result<PathBuf, String> {
 
     let imagen = if es_imagen(archivo) {
         imagen_reducida(archivo)?
+    } else if es_pdf(archivo) {
+        miniatura_pdf(archivo, &dir)?
+    } else if es_fuente(archivo) {
+        miniatura_fuente(archivo)?
     } else {
         cuadro_de_video(archivo, &dir)?
     };
@@ -440,6 +448,185 @@ fn duracion(video: &Path) -> Option<f64> {
     let salida = con_plazo(orden).ok()?;
 
     String::from_utf8_lossy(&salida.stdout).trim().parse().ok()
+}
+
+/// Un PDF por la extensión.
+pub(crate) fn es_pdf(ruta: &Path) -> bool {
+    ruta.extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+}
+
+/// Miniatura de la primera página de un PDF (≤ [`LADO`]), vía `pdftoppm`.
+///
+/// `pdftoppm` escribe un PNG temporal en `dir_tmp` (el bucket de la caché) y acá
+/// se lee, igual que [`cuadro_de_video`], para que el encoder de
+/// [`escribir_png_freedesktop`] le ponga los chunks `Thumb::*`. Si `pdftoppm` no
+/// está (`poppler`, un `optdepends`) o el PDF no abre, devuelve `Err` y la vista
+/// se queda con el icono genérico.
+fn miniatura_pdf(pdf: &Path, dir_tmp: &Path) -> Result<image::DynamicImage, String> {
+    static NONCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let base = format!("vasak-pdftoppm-{}-{nonce}", std::process::id());
+
+    let mut orden = Command::new("pdftoppm");
+    orden
+        .args(["-f", "1", "-l", "1", "-png", "-scale-to", &LADO.to_string()])
+        .arg(pdf)
+        .arg(dir_tmp.join(&base));
+
+    let salida = con_plazo(orden);
+
+    // `pdftoppm` nombra la salida `<base>-<página>.png`, con el número de página
+    // rellenado con ceros según la cantidad de páginas del documento (`-1.png`,
+    // `-01.png`, `-001.png`…). Se busca por prefijo en vez de asumir un patrón.
+    let generado = png_generado(dir_tmp, &base);
+
+    let salida = match salida {
+        Ok(salida) => salida,
+        Err(error) => {
+            if let Some(ruta) = generado {
+                let _ = std::fs::remove_file(ruta);
+            }
+            return Err(error);
+        }
+    };
+
+    let Some(generado) = generado else {
+        let detalle = String::from_utf8_lossy(&salida.stderr).trim().to_string();
+        return Err(if detalle.is_empty() {
+            "pdftoppm no pudo renderizar la primera página".to_string()
+        } else {
+            detalle
+        });
+    };
+
+    if !salida.status.success() {
+        let _ = std::fs::remove_file(&generado);
+        let detalle = String::from_utf8_lossy(&salida.stderr).trim().to_string();
+        return Err(if detalle.is_empty() {
+            "pdftoppm no pudo renderizar la primera página".to_string()
+        } else {
+            detalle
+        });
+    }
+
+    // Mismo motivo que en `cuadro_de_video`: `pdftoppm` crea el temporal con el
+    // umask del proceso y se acota a `0o600` apenas termina.
+    let _ = fijar_modo(&generado, 0o600);
+
+    let imagen =
+        image::open(&generado).map_err(|error| format!("no se pudo decodificar el PDF: {error}"));
+    let _ = std::fs::remove_file(&generado);
+    imagen
+}
+
+/// Primer PNG de `dir` cuyo nombre empieza con `base`, si hay alguno.
+pub(crate) fn png_generado(dir: &Path, base: &str) -> Option<PathBuf> {
+    std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|entrada| entrada.path())
+        .find(|ruta| {
+            ruta.file_name()
+                .and_then(std::ffi::OsStr::to_str)
+                .is_some_and(|nombre| nombre.starts_with(base) && nombre.ends_with(".png"))
+        })
+}
+
+/// Pangram de la miniatura de una fuente, en dos líneas para que entre más grande.
+const PANGRAM: [&str; 2] = ["The quick brown fox", "jumps over the lazy dog"];
+
+/// Una fuente por la extensión.
+pub(crate) fn es_fuente(ruta: &Path) -> bool {
+    // shortcut: sólo ttf/otf, no woff2/woff ni .ttc por índice; sumar cuando haga falta.
+    ruta.extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|e| ["ttf", "otf"].iter().any(|c| e.eq_ignore_ascii_case(c)))
+}
+
+/// Escala en px para que un texto que mide `ancho_a_1px` (con `PxScale` 1.0) entre
+/// en `objetivo` de ancho, sin pasar de `maxima`.
+///
+/// El avance de un glifo es lineal con la escala, así que basta medir a 1 px y
+/// dividir. Puro para poder probarlo sin leer una fuente.
+pub(crate) fn escala_para_ancho(ancho_a_1px: f32, objetivo: f32, maxima: f32) -> f32 {
+    if ancho_a_1px <= 0.0 {
+        return maxima;
+    }
+    (objetivo / ancho_a_1px).min(maxima)
+}
+
+/// Miniatura de una fuente (≤ [`LADO`]): el pangram rasterizado con `ab_glyph`.
+///
+/// La fuente es un archivo de entrada no confiable: `FontVec::try_from_vec`
+/// valida y devuelve `Err` ante una fuente corrupta, nunca entra en pánico. El
+/// layout es a propósito simple (una escala uniforme por líneas, sin shaping ni
+/// kerning): es una vista previa, no composición tipográfica.
+fn miniatura_fuente(archivo: &Path) -> Result<image::DynamicImage, String> {
+    use ab_glyph::{point, Font, FontVec, PxScale, ScaleFont};
+
+    let bytes =
+        std::fs::read(archivo).map_err(|error| format!("no se pudo leer la fuente: {error}"))?;
+    let font = FontVec::try_from_vec(bytes).map_err(|_| "la fuente no es válida".to_string())?;
+
+    // Ancho de cada línea a 1 px, para elegir la escala que entra en la caja.
+    let a_1px = font.as_scaled(1.0_f32);
+    let ancho_1 = |linea: &str| {
+        linea
+            .chars()
+            .map(|c| a_1px.h_advance(font.glyph_id(c)))
+            .sum::<f32>()
+    };
+    let ancho_max = PANGRAM.iter().map(|l| ancho_1(l)).fold(0.0_f32, f32::max);
+
+    let margen = 12.0_f32;
+    let objetivo = LADO as f32 - 2.0 * margen;
+    let escala = escala_para_ancho(ancho_max, objetivo, 64.0);
+    let fuente = font.as_scaled(PxScale::from(escala));
+    let alto_linea = fuente.height() + fuente.line_gap();
+
+    let ancho_img = ((ancho_max * escala).ceil() as u32 + 2 * margen as u32).clamp(1, LADO);
+    let alto_img =
+        ((alto_linea * PANGRAM.len() as f32).ceil() as u32 + 2 * margen as u32).clamp(1, LADO);
+
+    // Fondo claro, glifos oscuros.
+    let mut lienzo =
+        image::RgbaImage::from_pixel(ancho_img, alto_img, image::Rgba([246, 246, 246, 255]));
+
+    for (i, linea) in PANGRAM.iter().enumerate() {
+        let base_y = margen + fuente.ascent() + i as f32 * alto_linea;
+        let mut x = margen;
+        for c in linea.chars() {
+            let id = font.glyph_id(c);
+            let glifo = id.with_scale_and_position(PxScale::from(escala), point(x, base_y));
+            if let Some(contorno) = font.outline_glyph(glifo) {
+                let caja = contorno.px_bounds();
+                contorno.draw(|gx, gy, cobertura| {
+                    let px = caja.min.x as i32 + gx as i32;
+                    let py = caja.min.y as i32 + gy as i32;
+                    if px >= 0 && py >= 0 && (px as u32) < ancho_img && (py as u32) < alto_img {
+                        let fondo = lienzo.get_pixel(px as u32, py as u32).0;
+                        let mezcla =
+                            |f: u8| (f as f32 * (1.0 - cobertura) + 32.0 * cobertura) as u8;
+                        lienzo.put_pixel(
+                            px as u32,
+                            py as u32,
+                            image::Rgba([
+                                mezcla(fondo[0]),
+                                mezcla(fondo[1]),
+                                mezcla(fondo[2]),
+                                255,
+                            ]),
+                        );
+                    }
+                });
+            }
+            x += fuente.h_advance(id);
+        }
+    }
+
+    Ok(image::DynamicImage::ImageRgba8(lienzo))
 }
 
 #[cfg(test)]
