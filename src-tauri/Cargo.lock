@@ -5637,7 +5637,7 @@ dependencies = [
 
 [[package]]
 name = "vasak-file-manager"
-version = "0.42.0"
+version = "0.43.0"
 dependencies = [
  "ab_glyph",
  "base64 0.23.1",
