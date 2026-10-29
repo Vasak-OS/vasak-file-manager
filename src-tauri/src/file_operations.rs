@@ -4311,6 +4311,76 @@ mod tests {
     }
 
     #[test]
+    fn un_origen_relativo_es_un_fallo_y_no_deja_un_enlace_roto() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-origen-relativo");
+        let (_origen, destino) = origen_y_destino(&dir, &[]);
+        crate::undo::clear_undo_history();
+
+        // «Cargo.toml» existe relativo al directorio de las pruebas: sin el
+        // chequeo, el origen pasaba por válido y el enlace quedaba apuntando a
+        // «Cargo.toml» resuelto contra el destino, o sea, roto y contado como éxito.
+        let resultado = enlazar(&[Path::new("Cargo.toml"), Path::new("a.txt")], &destino);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(0));
+        assert_eq!(resultado.failed_count, Some(2));
+        let error = resultado.error.unwrap();
+        assert!(error.contains("Source path must be absolute"), "{error}");
+        assert_eq!(std::fs::read_dir(&destino).unwrap().count(), 0);
+        assert!(crate::undo::get_undo_info().is_none());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_origen_relativo_no_impide_enlazar_los_absolutos_del_mismo_lote() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-relativo-y-absoluto");
+        let (origen, destino) = origen_y_destino(&dir, &["b.txt"]);
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[Path::new("Cargo.toml"), &origen.join("b.txt")], &destino);
+
+        assert!(!resultado.success);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(resultado.failed_count, Some(1));
+        assert!(resultado
+            .error
+            .unwrap()
+            .contains("Source path must be absolute: Cargo.toml"));
+        assert_eq!(apunta_a(&destino.join("b.txt")), origen.join("b.txt"));
+        assert!(std::fs::symlink_metadata(destino.join("Cargo.toml")).is_err());
+        // Lo enlazado igual se puede deshacer.
+        let info = crate::undo::get_undo_info().expect("lo enlazado tiene que poder deshacerse");
+        assert_eq!(info.item_count, 1);
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_enlace_colgante_en_el_destino_ocupa_el_nombre_y_se_auto_renombra() {
+        let _pilas = pilas();
+        let dir = scratch("enlace-nombre-colgante");
+        let (origen, destino) = origen_y_destino(&dir, &["a.txt"]);
+        // Un symlink roto con el mismo nombre: `exists()` lo sigue y diría «libre».
+        let colgante = dir.join("no-existe-en-ningun-lado");
+        std::os::unix::fs::symlink(&colgante, destino.join("a.txt")).unwrap();
+        assert!(!destino.join("a.txt").exists());
+        crate::undo::clear_undo_history();
+
+        let resultado = enlazar(&[&origen.join("a.txt")], &destino);
+
+        // No falla con «ya existe»: se queda con «a (1).txt»...
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(resultado.copied_count, Some(1));
+        assert_eq!(apunta_a(&destino.join("a (1).txt")), origen.join("a.txt"));
+        // ...y el enlace colgante que ya estaba queda como estaba.
+        assert_eq!(apunta_a(&destino.join("a.txt")), colgante);
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
     fn un_destino_que_no_existe_es_un_error_y_no_apila_nada() {
         let _pilas = pilas();
         let dir = scratch("enlace-destino-fantasma");

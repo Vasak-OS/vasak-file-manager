@@ -172,6 +172,50 @@ describe('linkItems cuando sale mal', () => {
 		expect(pedidos('invalidate_dir_size_cache')).toHaveLength(0);
 	});
 
+	test('ante un fallo parcial refresca igual: los enlaces que sí se crearon no quedan ocultos', async () => {
+		responder('link_items', {
+			success: false,
+			copied_count: 1,
+			failed_count: 1,
+			error: 'Source path does not exist: /casa/b.txt',
+		});
+		const a = archivo('a.txt');
+		const { selectAll, linkItems, selectedEntries, avisos, refrescos } = montar([a]);
+		selectAll();
+
+		const resultado = await linkItems([a, archivo('b.txt')], '/casa/destino');
+
+		// Sigue siendo un fallo para quien llama y se avisa el error...
+		expect(resultado).toBe(false);
+		expect(avisosDeToast()).toEqual([
+			{
+				kind: 'error',
+				title: 'notifications.failedToLinkItems',
+				description: 'Source path does not exist: /casa/b.txt',
+			},
+		]);
+		// ...pero la lista se refresca, se limpia la selección y se invalidan los tamaños.
+		expect(refrescos()).toBe(1);
+		expect(selectedEntries.value).toEqual([]);
+		expect(avisos.at(-1)).toEqual([]);
+		expect(pedidos('invalidate_dir_size_cache')[0].argumentos).toEqual({
+			paths: ['/casa/destino', '/casa'],
+		});
+	});
+
+	test('un fallo con cero enlaces creados no refresca', async () => {
+		responder('link_items', { success: false, copied_count: 0, failed_count: 2, error: 'x' });
+		const a = archivo('a.txt');
+		const { selectAll, linkItems, selectedEntries, refrescos } = montar([a]);
+		selectAll();
+
+		await linkItems([a], '/casa/destino');
+
+		expect(refrescos()).toBe(0);
+		expect(selectedEntries.value).toEqual([a]);
+		expect(pedidos('invalidate_dir_size_cache')).toHaveLength(0);
+	});
+
 	test('un fallo sin mensaje avisa con la descripción vacía', async () => {
 		responder('link_items', { success: false });
 		const { linkItems } = montar([]);
