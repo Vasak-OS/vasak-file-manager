@@ -24,7 +24,7 @@ import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
 import type { GroupedEntries } from '@/types/file-browser';
 import { formatBytes } from '@/utils/byte-parser';
-import { isImageFile, isVideoFile, needsThumbnail } from '@/utils/files';
+import { isFontFile, isImageFile, isPdfFile, isVideoFile, needsThumbnail } from '@/utils/files';
 import { getImageSrc } from '@/utils/images';
 
 interface Props {
@@ -109,6 +109,12 @@ function shouldShowSizeSkeleton(entry: DirEntry): boolean {
 function isDirLoadingWithProgress(entry: DirEntry): boolean {
 	const sizeInfo = dirSizesStore.getSize(entry.path);
 	return !!(sizeInfo && sizeInfo.status === 'Loading' && sizeInfo.size > 0);
+}
+
+// PDF y fuentes se quedan en «otros» pero dibujan la miniatura que genera el
+// backend; si no se puede generar, la tarjeta conserva el icono.
+function hasGeneratedThumbnail(entry: DirEntry): boolean {
+	return isPdfFile(entry) || isFontFile(entry);
 }
 
 const groupedEntries = computed<GroupedEntries>(() => {
@@ -491,7 +497,16 @@ watchEffect(() => {
             <div class="absolute inset-0 rounded-corner-m pointer-events-none opacity-0 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/5 group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_40%,transparent)] group-data-[in-clipboard]:group-data-[clipboard-type='move']:opacity-100 group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/5 group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_40%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:bg-status-success/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='copy']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-success)_60%,transparent)] group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:bg-status-warning/10 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-status-warning)_60%,transparent)]" />
             <div class="absolute inset-0 rounded-corner-m pointer-events-none bg-tx-main/5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-hover:duration-0 group-data-[drag-over]:bg-primary/15 group-data-[drag-over]:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-primary)_60%,transparent)] group-data-[drag-over]:opacity-100 group-data-[drag-over]:duration-0" />
           </div>
-          <div class="absolute top-2 left-2 bg-transparent" :style="{ width: conEscala(48) + 'px', height: conEscala(48) + 'px' }">
+          <VideoThumbnailComponent v-if="hasGeneratedThumbnail(entry)" :entry="entry" v-slot="{ thumbnail }">
+            <template v-if="thumbnail">
+              <img :src="thumbnail" :alt="entry.name" class="absolute inset-0 w-full h-full object-cover pointer-events-none">
+              <div class="absolute z-1 inset-x-0 bottom-0 h-16 bg-linear-to-t from-ui-overlay to-transparent pointer-events-none" />
+            </template>
+            <div v-else class="absolute top-2 left-2 bg-transparent" :style="{ width: conEscala(48) + 'px', height: conEscala(48) + 'px' }">
+              <EntryIconComponent :entry="entry" :size="conEscala(48)" class="text-tx-muted" />
+            </div>
+          </VideoThumbnailComponent>
+          <div v-else class="absolute top-2 left-2 bg-transparent" :style="{ width: conEscala(48) + 'px', height: conEscala(48) + 'px' }">
             <EntryIconComponent :entry="entry" :size="conEscala(48)" class="text-tx-muted" />
           </div>
           <div class="absolute z-2 inset-x-0 bottom-0 py-2 px-2.5 text-tx-main flex flex-col gap-0.5 group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">

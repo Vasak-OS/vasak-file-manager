@@ -39,4 +39,6 @@ export const FILE_EXTENSIONS: Record<string, readonly string[]> = {
 	ARCHIVE: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'zst', 'cpio', 'iso'],
 	TEXT: ['txt', 'log', 'ini', 'cfg', 'conf', 'env'],
 	PDF: ['pdf'],
+	// Debe coincidir con las que el backend sabe dibujar (`video_thumbnail`).
+	FONT: ['ttf', 'otf'],
 };

@@ -1,5 +1,6 @@
-//! Miniaturas de video (ffmpeg) y de imagen (crate `image`), guardadas en la
-//! **caché de miniaturas de freedesktop** (`~/.cache/thumbnails/`).
+//! Miniaturas de video (ffmpeg), de imagen (crate `image`), de PDF (pdftoppm) y
+//! de fuentes (ab_glyph), guardadas en la **caché de miniaturas de freedesktop**
+//! (`~/.cache/thumbnails/`).
 //!
 //! Antes las generaba el frontend: creaba un `<video>`, lo buscaba al 10 % y
 //! dibujaba el cuadro en un `<canvas>` **del tamaño del video**
@@ -41,6 +42,9 @@ const PLAZO: Duration = Duration::from_secs(20);
 
 /// Corre un comando con plazo, matándolo si se pasa.
 fn con_plazo(mut orden: Command) -> Result<std::process::Output, String> {
+    // El nombre real del programa (ffmpeg, ffprobe o pdftoppm): el mensaje de
+    // «no instalado» lo nombra en vez de suponer ffmpeg.
+    let programa = orden.get_program().to_string_lossy().into_owned();
     let mut hijo = orden
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
@@ -48,7 +52,7 @@ fn con_plazo(mut orden: Command) -> Result<std::process::Output, String> {
         .spawn()
         .map_err(|error| {
             if error.kind() == std::io::ErrorKind::NotFound {
-                "ffmpeg no está instalado: no se pueden generar miniaturas de video".to_string()
+                format!("{programa} no está instalado")
             } else {
                 format!("No se pudo ejecutar: {error}")
             }
@@ -299,6 +303,10 @@ fn miniatura_en(base: &Path, archivo: &Path) -> Result<PathBuf, String> {
 
     let imagen = if es_imagen(archivo) {
         imagen_reducida(archivo)?
+    } else if es_pdf(archivo) {
+        miniatura_pdf(archivo, &dir)?
+    } else if es_fuente(archivo) {
+        miniatura_fuente(archivo)?
     } else {
         cuadro_de_video(archivo, &dir)?
     };
@@ -440,6 +448,185 @@ fn duracion(video: &Path) -> Option<f64> {
     let salida = con_plazo(orden).ok()?;
 
     String::from_utf8_lossy(&salida.stdout).trim().parse().ok()
+}
+
+/// Un PDF por la extensión.
+pub(crate) fn es_pdf(ruta: &Path) -> bool {
+    ruta.extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+}
+
+/// Miniatura de la primera página de un PDF (≤ [`LADO`]), vía `pdftoppm`.
+///
+/// `pdftoppm` escribe un PNG temporal en `dir_tmp` (el bucket de la caché) y acá
+/// se lee, igual que [`cuadro_de_video`], para que el encoder de
+/// [`escribir_png_freedesktop`] le ponga los chunks `Thumb::*`. Si `pdftoppm` no
+/// está (`poppler`, un `optdepends`) o el PDF no abre, devuelve `Err` y la vista
+/// se queda con el icono genérico.
+fn miniatura_pdf(pdf: &Path, dir_tmp: &Path) -> Result<image::DynamicImage, String> {
+    static NONCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let base = format!("vasak-pdftoppm-{}-{nonce}", std::process::id());
+
+    let mut orden = Command::new("pdftoppm");
+    orden
+        .args(["-f", "1", "-l", "1", "-png", "-scale-to", &LADO.to_string()])
+        .arg(pdf)
+        .arg(dir_tmp.join(&base));
+
+    let salida = con_plazo(orden);
+
+    // `pdftoppm` nombra la salida `<base>-<página>.png`, con el número de página
+    // rellenado con ceros según la cantidad de páginas del documento (`-1.png`,
+    // `-01.png`, `-001.png`…). Se busca por prefijo en vez de asumir un patrón.
+    let generado = png_generado(dir_tmp, &base);
+
+    let salida = match salida {
+        Ok(salida) => salida,
+        Err(error) => {
+            if let Some(ruta) = generado {
+                let _ = std::fs::remove_file(ruta);
+            }
+            return Err(error);
+        }
+    };
+
+    let Some(generado) = generado else {
+        let detalle = String::from_utf8_lossy(&salida.stderr).trim().to_string();
+        return Err(if detalle.is_empty() {
+            "pdftoppm no pudo renderizar la primera página".to_string()
+        } else {
+            detalle
+        });
+    };
+
+    if !salida.status.success() {
+        let _ = std::fs::remove_file(&generado);
+        let detalle = String::from_utf8_lossy(&salida.stderr).trim().to_string();
+        return Err(if detalle.is_empty() {
+            "pdftoppm no pudo renderizar la primera página".to_string()
+        } else {
+            detalle
+        });
+    }
+
+    // Mismo motivo que en `cuadro_de_video`: `pdftoppm` crea el temporal con el
+    // umask del proceso y se acota a `0o600` apenas termina.
+    let _ = fijar_modo(&generado, 0o600);
+
+    let imagen =
+        image::open(&generado).map_err(|error| format!("no se pudo decodificar el PDF: {error}"));
+    let _ = std::fs::remove_file(&generado);
+    imagen
+}
+
+/// Primer PNG de `dir` cuyo nombre empieza con `base`, si hay alguno.
+pub(crate) fn png_generado(dir: &Path, base: &str) -> Option<PathBuf> {
+    std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|entrada| entrada.path())
+        .find(|ruta| {
+            ruta.file_name()
+                .and_then(std::ffi::OsStr::to_str)
+                .is_some_and(|nombre| nombre.starts_with(base) && nombre.ends_with(".png"))
+        })
+}
+
+/// Pangram de la miniatura de una fuente, en dos líneas para que entre más grande.
+const PANGRAM: [&str; 2] = ["The quick brown fox", "jumps over the lazy dog"];
+
+/// Una fuente por la extensión.
+pub(crate) fn es_fuente(ruta: &Path) -> bool {
+    // shortcut: sólo ttf/otf, no woff2/woff ni .ttc por índice; sumar cuando haga falta.
+    ruta.extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|e| ["ttf", "otf"].iter().any(|c| e.eq_ignore_ascii_case(c)))
+}
+
+/// Escala en px para que un texto que mide `ancho_a_1px` (con `PxScale` 1.0) entre
+/// en `objetivo` de ancho, sin pasar de `maxima`.
+///
+/// El avance de un glifo es lineal con la escala, así que basta medir a 1 px y
+/// dividir. Puro para poder probarlo sin leer una fuente.
+pub(crate) fn escala_para_ancho(ancho_a_1px: f32, objetivo: f32, maxima: f32) -> f32 {
+    if ancho_a_1px <= 0.0 {
+        return maxima;
+    }
+    (objetivo / ancho_a_1px).min(maxima)
+}
+
+/// Miniatura de una fuente (≤ [`LADO`]): el pangram rasterizado con `ab_glyph`.
+///
+/// La fuente es un archivo de entrada no confiable: `FontVec::try_from_vec`
+/// valida y devuelve `Err` ante una fuente corrupta, nunca entra en pánico. El
+/// layout es a propósito simple (una escala uniforme por líneas, sin shaping ni
+/// kerning): es una vista previa, no composición tipográfica.
+fn miniatura_fuente(archivo: &Path) -> Result<image::DynamicImage, String> {
+    use ab_glyph::{point, Font, FontVec, PxScale, ScaleFont};
+
+    let bytes =
+        std::fs::read(archivo).map_err(|error| format!("no se pudo leer la fuente: {error}"))?;
+    let font = FontVec::try_from_vec(bytes).map_err(|_| "la fuente no es válida".to_string())?;
+
+    // Ancho de cada línea a 1 px, para elegir la escala que entra en la caja.
+    let a_1px = font.as_scaled(1.0_f32);
+    let ancho_1 = |linea: &str| {
+        linea
+            .chars()
+            .map(|c| a_1px.h_advance(font.glyph_id(c)))
+            .sum::<f32>()
+    };
+    let ancho_max = PANGRAM.iter().map(|l| ancho_1(l)).fold(0.0_f32, f32::max);
+
+    let margen = 12.0_f32;
+    let objetivo = LADO as f32 - 2.0 * margen;
+    let escala = escala_para_ancho(ancho_max, objetivo, 64.0);
+    let fuente = font.as_scaled(PxScale::from(escala));
+    let alto_linea = fuente.height() + fuente.line_gap();
+
+    let ancho_img = ((ancho_max * escala).ceil() as u32 + 2 * margen as u32).clamp(1, LADO);
+    let alto_img =
+        ((alto_linea * PANGRAM.len() as f32).ceil() as u32 + 2 * margen as u32).clamp(1, LADO);
+
+    // Fondo claro, glifos oscuros.
+    let mut lienzo =
+        image::RgbaImage::from_pixel(ancho_img, alto_img, image::Rgba([246, 246, 246, 255]));
+
+    for (i, linea) in PANGRAM.iter().enumerate() {
+        let base_y = margen + fuente.ascent() + i as f32 * alto_linea;
+        let mut x = margen;
+        for c in linea.chars() {
+            let id = font.glyph_id(c);
+            let glifo = id.with_scale_and_position(PxScale::from(escala), point(x, base_y));
+            if let Some(contorno) = font.outline_glyph(glifo) {
+                let caja = contorno.px_bounds();
+                contorno.draw(|gx, gy, cobertura| {
+                    let px = caja.min.x as i32 + gx as i32;
+                    let py = caja.min.y as i32 + gy as i32;
+                    if px >= 0 && py >= 0 && (px as u32) < ancho_img && (py as u32) < alto_img {
+                        let fondo = lienzo.get_pixel(px as u32, py as u32).0;
+                        let mezcla =
+                            |f: u8| (f as f32 * (1.0 - cobertura) + 32.0 * cobertura) as u8;
+                        lienzo.put_pixel(
+                            px as u32,
+                            py as u32,
+                            image::Rgba([
+                                mezcla(fondo[0]),
+                                mezcla(fondo[1]),
+                                mezcla(fondo[2]),
+                                255,
+                            ]),
+                        );
+                    }
+                });
+            }
+            x += fuente.h_advance(id);
+        }
+    }
+
+    Ok(image::DynamicImage::ImageRgba8(lienzo))
 }
 
 #[cfg(test)]
@@ -642,5 +829,339 @@ mod tests {
         let tmp = Tmp::nuevo("sin-archivo");
         let base = tmp.0.join("cache");
         assert!(miniatura_en(&base, &tmp.0.join("no-existe.png")).is_err());
+    }
+
+    // ---- PDF y fuentes (#151) ----
+
+    #[test]
+    fn es_pdf_mira_la_extension_sin_distinguir_mayusculas() {
+        assert!(es_pdf(Path::new("/x/manual.pdf")));
+        assert!(es_pdf(Path::new("/x/MANUAL.PDF")));
+        assert!(!es_pdf(Path::new("/x/manual.txt")));
+        assert!(!es_pdf(Path::new("/x/manual.pdf.bak")));
+        assert!(!es_pdf(Path::new("/x/pdf")));
+        assert!(!es_pdf(Path::new("/x/manual")));
+    }
+
+    #[test]
+    fn es_fuente_acepta_ttf_y_otf_y_deja_afuera_lo_demas() {
+        assert!(es_fuente(Path::new("/x/letra.ttf")));
+        assert!(es_fuente(Path::new("/x/letra.otf")));
+        assert!(es_fuente(Path::new("/x/LETRA.TTF")));
+        assert!(es_fuente(Path::new("/x/LETRA.OTF")));
+        // Límite declarado: sin woff/woff2 ni colecciones .ttc.
+        assert!(!es_fuente(Path::new("/x/letra.woff")));
+        assert!(!es_fuente(Path::new("/x/letra.woff2")));
+        assert!(!es_fuente(Path::new("/x/letra.ttc")));
+        assert!(!es_fuente(Path::new("/x/letra.txt")));
+        assert!(!es_fuente(Path::new("/x/letra")));
+    }
+
+    #[test]
+    fn la_escala_sale_de_dividir_el_objetivo_por_el_ancho_a_un_pixel() {
+        assert_eq!(escala_para_ancho(10.0, 200.0, 64.0), 20.0);
+        assert_eq!(escala_para_ancho(100.0, 50.0, 64.0), 0.5);
+    }
+
+    #[test]
+    fn la_escala_no_pasa_de_la_maxima() {
+        // Un texto muy corto daría una escala enorme: se satura.
+        assert_eq!(escala_para_ancho(1.0, 232.0, 64.0), 64.0);
+        assert_eq!(escala_para_ancho(0.001, 232.0, 64.0), 64.0);
+    }
+
+    #[test]
+    fn la_escala_sin_ancho_medible_es_la_maxima() {
+        // Una fuente sin los glifos del pangram mide cero: no se divide por cero.
+        assert_eq!(escala_para_ancho(0.0, 232.0, 64.0), 64.0);
+        assert_eq!(escala_para_ancho(-3.0, 232.0, 64.0), 64.0);
+    }
+
+    fn con_archivos(etiqueta: &str, nombres: &[&str]) -> Tmp {
+        let tmp = Tmp::nuevo(etiqueta);
+        for nombre in nombres {
+            std::fs::write(tmp.0.join(nombre), b"x").unwrap();
+        }
+        tmp
+    }
+
+    #[test]
+    fn png_generado_encuentra_el_png_sea_cual_sea_el_relleno_de_pdftoppm() {
+        // `pdftoppm` rellena el número de página con ceros según las páginas del PDF.
+        for sufijo in ["base-1.png", "base-01.png", "base-001.png"] {
+            let tmp = con_archivos("png-sufijo", &[sufijo]);
+            assert_eq!(
+                png_generado(&tmp.0, "base"),
+                Some(tmp.0.join(sufijo)),
+                "no encontró {sufijo}"
+            );
+        }
+    }
+
+    #[test]
+    fn png_generado_ignora_lo_que_no_es_suyo() {
+        let tmp = con_archivos(
+            "png-ajenos",
+            &["otro-1.png", "xbase-1.png", "base-1.txt", "base-1.png.tmp"],
+        );
+        assert_eq!(png_generado(&tmp.0, "base"), None);
+
+        std::fs::write(tmp.0.join("base-1.png"), b"x").unwrap();
+        assert_eq!(png_generado(&tmp.0, "base"), Some(tmp.0.join("base-1.png")));
+    }
+
+    #[test]
+    fn png_generado_sin_ninguno_o_sin_directorio_es_none() {
+        let tmp = Tmp::nuevo("png-vacio");
+        assert_eq!(png_generado(&tmp.0, "base"), None);
+        assert_eq!(png_generado(&tmp.0.join("no-existe"), "base"), None);
+    }
+
+    /// Una fuente TrueType mínima armada a mano: dos glifos (el `.notdef` vacío y
+    /// un cuadrado) y un `cmap` que sólo mapea la «T». Sin tablas opcionales; sirve
+    /// para no depender de qué fuentes tenga el runner.
+    fn fuente_minima() -> Vec<u8> {
+        fn u16s(valores: &[u16]) -> Vec<u8> {
+            valores.iter().flat_map(|v| v.to_be_bytes()).collect()
+        }
+        fn i16s(valores: &[i16]) -> Vec<u8> {
+            valores.iter().flat_map(|v| v.to_be_bytes()).collect()
+        }
+
+        let mut head = vec![0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0x5F, 0x0F, 0x3C, 0xF5];
+        head.extend(u16s(&[0, 1000])); // flags, unitsPerEm
+        head.extend([0u8; 16]); // created, modified
+        head.extend(i16s(&[0, 0, 500, 700])); // caja de la fuente
+        head.extend(u16s(&[0, 8]));
+        head.extend(i16s(&[2, 0, 0])); // dirección, loca corto, formato de glifo
+
+        let mut hhea = vec![0, 1, 0, 0];
+        hhea.extend(i16s(&[800, -200, 0]));
+        hhea.extend(u16s(&[600, 0, 0, 500, 1, 0, 0, 0, 0, 0, 0, 0, 2]));
+
+        let hmtx = [u16s(&[600, 0]), u16s(&[600, 0])].concat();
+
+        let mut maxp = vec![0, 1, 0, 0];
+        maxp.extend(u16s(&[2, 4, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]));
+
+        // Segmentos: «T» -> glifo 1, y el 0xFFFF de cierre.
+        let mut cmap = u16s(&[0, 1, 3, 1, 0, 12]);
+        cmap.extend(u16s(&[4, 32, 0, 4, 4, 1, 0]));
+        cmap.extend(u16s(&[0x54, 0xFFFF, 0]));
+        cmap.extend(u16s(&[0x54, 0xFFFF]));
+        cmap.extend(u16s(&[1u16.wrapping_sub(0x54), 1]));
+        cmap.extend(u16s(&[0, 0]));
+
+        // Glifo 1: un cuadrado de 500 x 700 con los cuatro puntos en la curva.
+        let mut glyf = i16s(&[1, 0, 0, 500, 700]);
+        glyf.extend(u16s(&[3, 0]));
+        glyf.extend([1, 1, 1, 1]);
+        glyf.extend(i16s(&[0, 500, 0, -500, 0, 0, 700, 0]));
+        let loca = u16s(&[0, 0, (glyf.len() / 2) as u16]);
+
+        let tablas: [(&[u8; 4], Vec<u8>); 7] = [
+            (b"cmap", cmap),
+            (b"glyf", glyf),
+            (b"head", head),
+            (b"hhea", hhea),
+            (b"hmtx", hmtx),
+            (b"loca", loca),
+            (b"maxp", maxp),
+        ];
+        let mut salida = vec![0, 1, 0, 0];
+        salida.extend(u16s(&[7, 64, 2, 48]));
+        let mut offset = 12 + 16 * tablas.len();
+        let mut cuerpo = Vec::new();
+        for (tag, datos) in &tablas {
+            salida.extend(*tag);
+            salida.extend([0u8; 4]); // el checksum no se valida
+            salida.extend((offset as u32).to_be_bytes());
+            salida.extend((datos.len() as u32).to_be_bytes());
+            cuerpo.extend(datos);
+            while cuerpo.len() % 4 != 0 {
+                cuerpo.push(0);
+            }
+            offset = 12 + 16 * tablas.len() + cuerpo.len();
+        }
+        salida.extend(cuerpo);
+        salida
+    }
+
+    #[test]
+    fn una_fuente_corrupta_da_error_y_no_entra_en_panico() {
+        let tmp = Tmp::nuevo("fuente-corrupta");
+        let basura = tmp.0.join("rota.ttf");
+        std::fs::write(&basura, b"esto no es una fuente").unwrap();
+
+        assert_eq!(
+            miniatura_fuente(&basura).err().as_deref(),
+            Some("la fuente no es válida")
+        );
+        // Una fuente cortada a la mitad tampoco.
+        let entera = fuente_minima();
+        std::fs::write(&basura, &entera[..entera.len() / 2]).unwrap();
+        assert!(miniatura_fuente(&basura).is_err());
+    }
+
+    #[test]
+    fn una_fuente_que_no_existe_da_error() {
+        let tmp = Tmp::nuevo("fuente-ausente");
+        let error = miniatura_fuente(&tmp.0.join("no-existe.ttf")).unwrap_err();
+        assert!(error.starts_with("no se pudo leer la fuente"), "{error}");
+    }
+
+    #[test]
+    fn la_miniatura_de_una_fuente_valida_entra_en_el_lado_y_dibuja_glifos() {
+        let tmp = Tmp::nuevo("fuente-valida");
+        let ruta = tmp.0.join("minima.ttf");
+        std::fs::write(&ruta, fuente_minima()).unwrap();
+
+        let imagen = miniatura_fuente(&ruta).unwrap();
+
+        assert!(imagen.width() >= 1 && imagen.width() <= LADO);
+        assert!(imagen.height() >= 1 && imagen.height() <= LADO);
+        // El fondo es claro (246): si hay un píxel oscuro, se rasterizó la «T».
+        let dibujo = imagen
+            .to_rgba8()
+            .pixels()
+            .filter(|pixel| pixel.0[0] < 128)
+            .count();
+        assert!(dibujo > 0, "la miniatura quedó en blanco");
+    }
+
+    #[test]
+    fn la_miniatura_de_una_fuente_se_guarda_en_la_cache_con_permisos_600() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = Tmp::nuevo("fuente-cache");
+        let origen = tmp.0.join("minima.otf");
+        std::fs::write(&origen, fuente_minima()).unwrap();
+        let base = tmp.0.join("cache");
+
+        let destino = miniatura_en(&base, &origen).unwrap();
+
+        assert!(destino.starts_with(bucket_en(&base, "large")));
+        let mini = image::open(&destino).unwrap();
+        assert!(mini.width() <= LADO && mini.height() <= LADO);
+        assert_eq!(mtime_de_png(&destino), mtime_segundos(&origen));
+        assert_eq!(
+            std::fs::metadata(&destino).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
+
+    #[test]
+    fn una_fuente_corrupta_no_deja_miniatura_en_la_cache() {
+        let tmp = Tmp::nuevo("fuente-rota-cache");
+        let origen = tmp.0.join("rota.ttf");
+        std::fs::write(&origen, b"basura").unwrap();
+        let base = tmp.0.join("cache");
+
+        assert!(miniatura_en(&base, &origen).is_err());
+        let destino = bucket_en(&base, "large").join(nombre_de_miniatura(&uri_de_archivo(&origen)));
+        assert!(!destino.exists());
+    }
+
+    /// Un PDF de una página (300 x 400) con un rectángulo azul, con el `xref` calculado.
+    fn pdf_minimo() -> Vec<u8> {
+        let flujo = "0 0 1 rg 50 50 200 300 re f";
+        let objetos = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Contents 4 0 R >>".to_string(),
+            format!("<< /Length {} >>\nstream\n{flujo}\nendstream", flujo.len()),
+        ];
+        let mut pdf = b"%PDF-1.4\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, objeto) in objetos.iter().enumerate() {
+            offsets.push(pdf.len());
+            pdf.extend(format!("{} 0 obj\n{objeto}\nendobj\n", i + 1).bytes());
+        }
+        let xref = pdf.len();
+        pdf.extend(format!("xref\n0 {}\n0000000000 65535 f \n", objetos.len() + 1).bytes());
+        for offset in offsets {
+            pdf.extend(format!("{offset:010} 00000 n \n").bytes());
+        }
+        pdf.extend(
+            format!(
+                "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+                objetos.len() + 1
+            )
+            .bytes(),
+        );
+        pdf
+    }
+
+    /// `pdftoppm` es de `poppler`, un `optdepends`: sin él no hay nada que probar.
+    fn hay_pdftoppm() -> bool {
+        Command::new("pdftoppm").arg("-v").output().is_ok()
+    }
+
+    #[test]
+    fn la_miniatura_de_un_pdf_es_la_primera_pagina_y_no_deja_temporales() {
+        if !hay_pdftoppm() {
+            eprintln!("pdftoppm no está instalado: se omite la prueba");
+            return;
+        }
+        let tmp = Tmp::nuevo("pdf-valido");
+        let pdf = tmp.0.join("manual.pdf");
+        std::fs::write(&pdf, pdf_minimo()).unwrap();
+        let dir_tmp = tmp.0.join("tmp");
+        std::fs::create_dir_all(&dir_tmp).unwrap();
+
+        let imagen = miniatura_pdf(&pdf, &dir_tmp).unwrap();
+
+        // Página de 300 x 400 con `-scale-to 256`: el lado mayor es `LADO`.
+        assert_eq!(imagen.height(), LADO);
+        assert!(imagen.width() > 0 && imagen.width() < LADO);
+        // Se dibujó el rectángulo azul: hay píxeles que no son blancos.
+        assert!(imagen.to_rgba8().pixels().any(|pixel| pixel.0[0] < 128));
+        assert_eq!(std::fs::read_dir(&dir_tmp).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn un_pdf_roto_da_error_y_no_deja_temporales() {
+        if !hay_pdftoppm() {
+            eprintln!("pdftoppm no está instalado: se omite la prueba");
+            return;
+        }
+        let tmp = Tmp::nuevo("pdf-roto");
+        let pdf = tmp.0.join("roto.pdf");
+        std::fs::write(&pdf, b"%PDF-1.4\nesto no es un pdf").unwrap();
+        let dir_tmp = tmp.0.join("tmp");
+        std::fs::create_dir_all(&dir_tmp).unwrap();
+
+        assert!(miniatura_pdf(&pdf, &dir_tmp).is_err());
+        assert_eq!(std::fs::read_dir(&dir_tmp).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn la_miniatura_de_un_pdf_se_guarda_en_la_cache_con_permisos_600() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if !hay_pdftoppm() {
+            eprintln!("pdftoppm no está instalado: se omite la prueba");
+            return;
+        }
+        let tmp = Tmp::nuevo("pdf-cache");
+        let origen = tmp.0.join("manual.pdf");
+        std::fs::write(&origen, pdf_minimo()).unwrap();
+        let base = tmp.0.join("cache");
+
+        let destino = miniatura_en(&base, &origen).unwrap();
+
+        assert!(destino.starts_with(bucket_en(&base, "large")));
+        let mini = image::open(&destino).unwrap();
+        assert!(mini.width() <= LADO && mini.height() <= LADO);
+        assert_eq!(mtime_de_png(&destino), mtime_segundos(&origen));
+        assert_eq!(
+            std::fs::metadata(&destino).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        // El PNG temporal de `pdftoppm` no queda en el bucket.
+        let pngs = std::fs::read_dir(bucket_en(&base, "large"))
+            .unwrap()
+            .count();
+        assert_eq!(pngs, 1);
     }
 }

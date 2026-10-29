@@ -48,6 +48,8 @@ jobs:
       #   zstd, cpio             corren de verdad (sin ellas la prueba que
       #                          cierra la escritura fuera del destino de un
       #                          .cpio, con `bsdtar`, no podría ejecutarse)
+      #   poppler-utils          `pdftoppm`, que `video_thumbnail` lanza para la
+      #                          miniatura de un PDF; sin él esas pruebas se omiten
       paquetes_rust: >-
         libwebkit2gtk-4.1-dev
         lld
@@ -58,3 +60,4 @@ jobs:
         p7zip-full
         zstd
         cpio
+        poppler-utils
