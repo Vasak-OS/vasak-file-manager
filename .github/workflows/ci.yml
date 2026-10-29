@@ -42,7 +42,19 @@ jobs:
       #   lld                    `src-tauri/.cargo/config.toml` enlaza con
       #                          `-fuse-ld=lld`, y la imagen del runner no lo trae
       #   build-essential        el compilador de C de los `-sys`
+      #
+      #   libarchive-tools,      las herramientas de archivos que lanzan
+      #   zip, unzip, p7zip-full, `compress.rs` y `extract.rs` y que sus pruebas
+      #   zstd, cpio             corren de verdad (sin ellas la prueba que
+      #                          cierra la escritura fuera del destino de un
+      #                          .cpio, con `bsdtar`, no podría ejecutarse)
       paquetes_rust: >-
         libwebkit2gtk-4.1-dev
         lld
         build-essential
+        libarchive-tools
+        zip
+        unzip
+        p7zip-full
+        zstd
+        cpio

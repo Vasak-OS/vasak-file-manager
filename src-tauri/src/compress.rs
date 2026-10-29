@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use walkdir::WalkDir;
 
 use crate::file_operations::{
@@ -187,12 +187,12 @@ fn kill_and_reap(child: &mut Child) {
 // Son los datos mínimos del proceso y de la operación; agruparlos en un struct
 // sólo movería los mismos campos sin aclarar nada.
 #[allow(clippy::too_many_arguments)]
-fn supervise_compression(
+fn supervise_compression<R: Runtime>(
     mut child: Child,
     counter: Arc<AtomicUsize>,
     token: Option<Arc<AtomicBool>>,
     operation_id: &Option<String>,
-    app: &AppHandle,
+    app: &AppHandle<R>,
     archive_path: &Path,
     total_entries: usize,
     program: &str,
@@ -292,14 +292,14 @@ fn supervise_compression(
 
 /// Camino propio de cpio: lee la lista de rutas por stdin y escribe el archivo
 /// por stdout, así que no pasa por el `FormatSpec` genérico.
-fn compress_cpio(
+fn compress_cpio<R: Runtime>(
     parent: &Path,
     names: &[String],
     destination: &Path,
     stem: &str,
     total_entries: usize,
     operation_id: Option<String>,
-    app: &AppHandle,
+    app: &AppHandle<R>,
 ) -> CompressResult {
     let archive_path = unique_archive_path(destination, stem, "cpio");
 
@@ -374,6 +374,28 @@ pub fn compress_items(
     operation_id: Option<String>,
     app: AppHandle,
 ) -> CompressResult {
+    compress_items_impl(
+        source_paths,
+        destination_dir,
+        archive_name,
+        format,
+        password,
+        operation_id,
+        &app,
+    )
+}
+
+/// El comando de verdad, genérico en el runtime para poder correrlo contra
+/// `tauri::test::mock_app()` en las pruebas.
+pub(crate) fn compress_items_impl<R: Runtime>(
+    source_paths: Vec<String>,
+    destination_dir: String,
+    archive_name: String,
+    format: String,
+    password: Option<String>,
+    operation_id: Option<String>,
+    app: &AppHandle<R>,
+) -> CompressResult {
     if source_paths.is_empty() {
         return failure("No items to compress");
     }
@@ -446,7 +468,7 @@ pub fn compress_items(
             stem,
             total_entries,
             operation_id,
-            &app,
+            app,
         );
     }
 
@@ -514,9 +536,638 @@ pub fn compress_items(
         counter,
         token,
         &operation_id,
-        &app,
+        app,
         &archive_path,
         total_entries,
         spec.program,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extract::{extract_archive, list_archive};
+    use crate::polkit::testing::{cleanup, running_as_root, scratch};
+    use std::collections::BTreeMap;
+    use std::sync::Mutex;
+    use tauri::test::{mock_app, MockRuntime};
+    use tauri::{App, Listener};
+
+    type Eventos = Arc<Mutex<Vec<serde_json::Value>>>;
+
+    fn texto(ruta: &Path) -> String {
+        ruta.to_string_lossy().into_owned()
+    }
+
+    /// Comprimir apila una entrada de deshacer, y esa pila es del proceso: quien
+    /// corra una compresión entera toma el mismo candado que las pruebas de `undo`.
+    fn pilas() -> std::sync::MutexGuard<'static, ()> {
+        crate::undo::tests::CANDADO_PILAS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn escuchar(app: &App<MockRuntime>) -> Eventos {
+        let eventos: Eventos = Arc::new(Mutex::new(Vec::new()));
+        let guardados = eventos.clone();
+        app.listen("file-operation-progress", move |evento| {
+            guardados
+                .lock()
+                .unwrap()
+                .push(serde_json::from_str(evento.payload()).unwrap());
+        });
+        eventos
+    }
+
+    /// Todo lo que cuelga de `raiz`: ruta relativa → contenido de cada archivo.
+    fn arbol(raiz: &Path) -> BTreeMap<String, String> {
+        walkdir::WalkDir::new(raiz)
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|entrada| entrada.file_type().is_file())
+            .map(|entrada| {
+                (
+                    texto(entrada.path().strip_prefix(raiz).unwrap()),
+                    std::fs::read_to_string(entrada.path()).unwrap(),
+                )
+            })
+            .collect()
+    }
+
+    /// `origen/` con un archivo suelto y una carpeta con una subcarpeta.
+    fn origen_de_ejemplo(base: &Path) -> PathBuf {
+        let origen = base.join("origen");
+        std::fs::create_dir_all(origen.join("carpeta/sub")).unwrap();
+        std::fs::write(origen.join("suelto.txt"), "archivo suelto").unwrap();
+        std::fs::write(origen.join("carpeta/uno.txt"), "uno").unwrap();
+        std::fs::write(origen.join("carpeta/sub/dos.txt"), "dos con ñ y tildes áé").unwrap();
+        origen
+    }
+
+    fn comprimir(
+        app: &App<MockRuntime>,
+        origen: &Path,
+        nombres: &[&str],
+        destino: &Path,
+        formato: &str,
+        clave: Option<&str>,
+    ) -> CompressResult {
+        compress_items_impl(
+            nombres.iter().map(|n| texto(&origen.join(n))).collect(),
+            texto(destino),
+            "paquete".into(),
+            formato.into(),
+            clave.map(String::from),
+            None,
+            app.handle(),
+        )
+    }
+
+    // --- collect_relative_entries ---------------------------------------------
+
+    #[test]
+    fn la_seleccion_se_expande_a_rutas_relativas_recursivas() {
+        let base = scratch("comp-recolectar-expande");
+        let origen = origen_de_ejemplo(&base);
+
+        let mut rutas =
+            collect_relative_entries(&origen, &["carpeta".to_string(), "suelto.txt".to_string()]);
+
+        rutas.sort();
+        assert_eq!(
+            rutas,
+            vec![
+                "carpeta",
+                "carpeta/sub",
+                "carpeta/sub/dos.txt",
+                "carpeta/uno.txt",
+                "suelto.txt",
+            ]
+        );
+        cleanup(&base);
+    }
+
+    #[test]
+    fn la_expansion_incluye_las_carpetas_vacias_y_no_sigue_enlaces() {
+        let base = scratch("comp-recolectar-vacias");
+        let origen = base.join("origen");
+        std::fs::create_dir_all(origen.join("carpeta/vacia")).unwrap();
+        std::fs::create_dir_all(base.join("afuera")).unwrap();
+        std::fs::write(base.join("afuera/secreto.txt"), "x").unwrap();
+        std::os::unix::fs::symlink(base.join("afuera"), origen.join("carpeta/enlace")).unwrap();
+
+        let mut rutas = collect_relative_entries(&origen, &["carpeta".into()]);
+
+        rutas.sort();
+        // El enlace va como entrada propia; lo que hay detrás no se recorre.
+        assert_eq!(rutas, vec!["carpeta", "carpeta/enlace", "carpeta/vacia"]);
+        cleanup(&base);
+    }
+
+    #[test]
+    fn una_seleccion_que_no_existe_no_aporta_rutas() {
+        let base = scratch("comp-recolectar-inexistente");
+
+        let rutas = collect_relative_entries(&base, &["no-esta".to_string()]);
+
+        assert!(rutas.is_empty());
+        cleanup(&base);
+    }
+
+    // --- Ida y vuelta de cada formato ----------------------------------------------
+
+    #[test]
+    fn todos_los_formatos_vuelven_con_los_mismos_contenidos() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-ida-y-vuelta");
+        let origen = origen_de_ejemplo(&base);
+        let esperado = BTreeMap::from([
+            (
+                "carpeta/sub/dos.txt".to_string(),
+                "dos con ñ y tildes áé".to_string(),
+            ),
+            ("carpeta/uno.txt".to_string(), "uno".to_string()),
+            ("suelto.txt".to_string(), "archivo suelto".to_string()),
+        ]);
+
+        for formato in [
+            "zip", "tar.gz", "tar.xz", "tar.bz2", "tar", "tar.zst", "7z", "cpio",
+        ] {
+            let salida = base.join(format!("salida-{formato}"));
+            let destino = base.join(format!("extraido-{formato}"));
+            std::fs::create_dir_all(&salida).unwrap();
+            std::fs::create_dir_all(&destino).unwrap();
+
+            let resultado = comprimir(
+                &app,
+                &origen,
+                &["carpeta", "suelto.txt"],
+                &salida,
+                formato,
+                None,
+            );
+
+            assert!(resultado.success, "{formato}: {:?}", resultado.error);
+            let archivo = resultado.archive_path.expect("ruta del archivo creado");
+            assert!(
+                archivo.ends_with(&format!("paquete.{formato}")),
+                "{archivo}"
+            );
+
+            let extraido = extract_archive(archivo, texto(&destino), None);
+
+            assert!(extraido.is_ok(), "{formato}: {extraido:?}");
+            assert_eq!(arbol(&destino), esperado, "{formato}");
+        }
+        cleanup(&base);
+    }
+
+    #[test]
+    fn un_tar_zst_comprimido_se_lista_con_sus_nombres() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-zst-lista");
+        let origen = origen_de_ejemplo(&base);
+
+        let resultado = comprimir(&app, &origen, &["suelto.txt"], &base, "tar.zst", None);
+
+        let archivo = resultado.archive_path.expect("archivo creado");
+        assert!(archivo.ends_with(".tar.zst"));
+        assert_eq!(list_archive(archivo, None).unwrap(), vec!["suelto.txt"]);
+        cleanup(&base);
+    }
+
+    #[test]
+    fn un_cpio_comprimido_se_lista_con_todas_sus_rutas() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-cpio-lista");
+        let origen = origen_de_ejemplo(&base);
+
+        let resultado = comprimir(&app, &origen, &["carpeta"], &base, "cpio", None);
+
+        let mut nombres =
+            list_archive(resultado.archive_path.expect("archivo creado"), None).unwrap();
+        nombres.sort();
+        assert_eq!(
+            nombres,
+            vec![
+                "carpeta",
+                "carpeta/sub",
+                "carpeta/sub/dos.txt",
+                "carpeta/uno.txt"
+            ]
+        );
+        cleanup(&base);
+    }
+
+    #[test]
+    fn un_cpio_archiva_un_nombre_con_salto_de_linea_entero() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-cpio-salto-de-linea");
+        let origen = base.join("origen");
+        let destino = base.join("destino");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::create_dir_all(&destino).unwrap();
+        // Con la lista separada por `\n` este nombre se partía en dos rutas que no
+        // existen y el archivo se perdía sin avisar.
+        std::fs::write(origen.join("raro\nnombre.txt"), "no se pierde").unwrap();
+        std::fs::write(origen.join("normal.txt"), "normal").unwrap();
+
+        let resultado = comprimir(
+            &app,
+            &origen,
+            &["raro\nnombre.txt", "normal.txt"],
+            &base,
+            "cpio",
+            None,
+        );
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        let extraido = extract_archive(resultado.archive_path.unwrap(), texto(&destino), None);
+        assert!(extraido.is_ok(), "{extraido:?}");
+        assert_eq!(
+            arbol(&destino),
+            BTreeMap::from([
+                ("normal.txt".to_string(), "normal".to_string()),
+                ("raro\nnombre.txt".to_string(), "no se pierde".to_string()),
+            ])
+        );
+        cleanup(&base);
+    }
+
+    #[test]
+    fn un_nombre_que_empieza_con_guion_no_se_confunde_con_una_opcion() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-nombre-con-guion");
+        let origen = base.join("origen");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::write(origen.join("-r"), "no soy una opción").unwrap();
+
+        for formato in ["zip", "tar.gz", "tar.zst", "7z"] {
+            let salida = base.join(format!("salida-{formato}"));
+            let destino = base.join(format!("extraido-{formato}"));
+            std::fs::create_dir_all(&salida).unwrap();
+            std::fs::create_dir_all(&destino).unwrap();
+
+            let resultado = comprimir(&app, &origen, &["-r"], &salida, formato, None);
+
+            assert!(resultado.success, "{formato}: {:?}", resultado.error);
+            extract_archive(resultado.archive_path.unwrap(), texto(&destino), None).unwrap();
+            assert_eq!(
+                arbol(&destino),
+                BTreeMap::from([("-r".to_string(), "no soy una opción".to_string())]),
+                "{formato}"
+            );
+        }
+        cleanup(&base);
+    }
+
+    #[test]
+    fn el_nombre_del_archivo_no_pisa_uno_existente() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-nombre-ocupado");
+        let origen = origen_de_ejemplo(&base);
+        let salida = base.join("salida");
+        std::fs::create_dir_all(&salida).unwrap();
+        std::fs::write(salida.join("paquete.tar.zst"), "otro").unwrap();
+
+        let resultado = comprimir(&app, &origen, &["suelto.txt"], &salida, "tar.zst", None);
+
+        assert!(resultado
+            .archive_path
+            .unwrap()
+            .ends_with("paquete (1).tar.zst"));
+        assert_eq!(
+            std::fs::read_to_string(salida.join("paquete.tar.zst")).unwrap(),
+            "otro"
+        );
+        cleanup(&base);
+    }
+
+    // --- Contraseña (7z) ---------------------------------------------------------------
+
+    #[test]
+    fn un_7z_con_clave_no_se_lista_ni_se_extrae_sin_ella() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-7z-clave");
+        let origen = origen_de_ejemplo(&base);
+        let destino = base.join("destino");
+        std::fs::create_dir_all(&destino).unwrap();
+
+        let resultado = comprimir(&app, &origen, &["carpeta"], &base, "7z", Some("clave"));
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        let archivo = resultado.archive_path.unwrap();
+
+        // Sin clave: ni siquiera los nombres se ven (`-mhe=on`).
+        assert_eq!(
+            list_archive(archivo.clone(), None).unwrap_err(),
+            "ENCRYPTED"
+        );
+        assert_eq!(
+            extract_archive(archivo.clone(), texto(&destino), None).unwrap_err(),
+            "ENCRYPTED"
+        );
+        // Con una clave que no es: se distingue de «falta la clave».
+        assert_eq!(
+            list_archive(archivo.clone(), Some("otra".into())).unwrap_err(),
+            "WRONG_PASSWORD"
+        );
+        assert_eq!(
+            extract_archive(archivo.clone(), texto(&destino), Some("otra".into())).unwrap_err(),
+            "WRONG_PASSWORD"
+        );
+        assert!(arbol(&destino).is_empty(), "no debía extraerse nada");
+
+        // Con la correcta, lista y extrae.
+        let mut nombres = list_archive(archivo.clone(), Some("clave".into())).unwrap();
+        nombres.sort();
+        assert_eq!(
+            nombres,
+            vec![
+                "carpeta",
+                "carpeta/sub",
+                "carpeta/sub/dos.txt",
+                "carpeta/uno.txt"
+            ]
+        );
+        extract_archive(archivo, texto(&destino), Some("clave".into())).unwrap();
+        assert_eq!(
+            arbol(&destino).keys().cloned().collect::<Vec<_>>(),
+            vec!["carpeta/sub/dos.txt", "carpeta/uno.txt"]
+        );
+        cleanup(&base);
+    }
+
+    #[test]
+    fn el_contenido_de_un_7z_con_clave_no_se_lee_en_claro() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-7z-cifrado-de-verdad");
+        let origen = base.join("origen");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::write(
+            origen.join("nota.txt"),
+            "TEXTO-RECONOCIBLE-EN-CLARO".repeat(20),
+        )
+        .unwrap();
+
+        let resultado = comprimir(&app, &origen, &["nota.txt"], &base, "7z", Some("clave"));
+
+        let bytes = std::fs::read(resultado.archive_path.unwrap()).unwrap();
+        assert!(!bytes.windows(10).any(|ventana| ventana == b"TEXTO-RECO"));
+        assert!(!bytes.windows(8).any(|ventana| ventana == b"nota.txt"));
+        cleanup(&base);
+    }
+
+    #[test]
+    fn un_7z_con_clave_vacia_sale_sin_cifrar() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-7z-clave-vacia");
+        let origen = origen_de_ejemplo(&base);
+
+        let resultado = comprimir(&app, &origen, &["suelto.txt"], &base, "7z", Some(""));
+
+        assert!(resultado.success, "{:?}", resultado.error);
+        assert_eq!(
+            list_archive(resultado.archive_path.unwrap(), None).unwrap(),
+            vec!["suelto.txt"]
+        );
+        cleanup(&base);
+    }
+
+    #[test]
+    fn la_clave_se_ignora_en_los_formatos_que_no_cifran() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-clave-ignorada");
+        let origen = origen_de_ejemplo(&base);
+
+        for formato in ["zip", "tar.gz", "tar.zst", "cpio"] {
+            let salida = base.join(format!("salida-{formato}"));
+            std::fs::create_dir_all(&salida).unwrap();
+
+            let resultado = comprimir(
+                &app,
+                &origen,
+                &["suelto.txt"],
+                &salida,
+                formato,
+                Some("clave"),
+            );
+
+            assert!(resultado.success, "{formato}: {:?}", resultado.error);
+            // Si la clave se hubiera tomado por un argumento de más, no se listaría sin ella.
+            assert_eq!(
+                list_archive(resultado.archive_path.unwrap(), None).unwrap(),
+                vec!["suelto.txt"],
+                "{formato}"
+            );
+        }
+        cleanup(&base);
+    }
+
+    // --- Validaciones de entrada ---------------------------------------------------------
+
+    #[test]
+    fn comprimir_valida_la_entrada_antes_de_lanzar_nada() {
+        let app = mock_app();
+        let base = scratch("comp-validaciones");
+        let origen = origen_de_ejemplo(&base);
+        let otra = base.join("otra");
+        std::fs::create_dir_all(&otra).unwrap();
+        std::fs::write(otra.join("x.txt"), "x").unwrap();
+        let suelto = texto(&origen.join("suelto.txt"));
+        let pedir = |fuentes: Vec<String>, destino: &Path, nombre: &str, formato: &str| {
+            compress_items_impl(
+                fuentes,
+                texto(destino),
+                nombre.into(),
+                formato.into(),
+                None,
+                None,
+                app.handle(),
+            )
+        };
+
+        let sin_nada = pedir(vec![], &base, "x", "zip");
+        let nombre_vacio = pedir(vec![suelto.clone()], &base, "   ", "zip");
+        let nombre_con_barra = pedir(vec![suelto.clone()], &base, "a/b", "zip");
+        let nombre_con_punto_punto = pedir(vec![suelto.clone()], &base, "..", "zip");
+        let destino_no_es_carpeta =
+            pedir(vec![suelto.clone()], &origen.join("suelto.txt"), "x", "zip");
+        let fuente_inexistente = pedir(vec![texto(&base.join("no-esta"))], &base, "x", "zip");
+        let padres_distintos = pedir(
+            vec![suelto.clone(), texto(&otra.join("x.txt"))],
+            &base,
+            "x",
+            "zip",
+        );
+        let formato_raro = pedir(vec![suelto], &base, "x", "rar");
+
+        assert_eq!(sin_nada.error.as_deref(), Some("No items to compress"));
+        assert_eq!(
+            nombre_vacio.error.as_deref(),
+            Some("Archive name cannot be empty")
+        );
+        for resultado in [&nombre_con_barra, &nombre_con_punto_punto] {
+            assert_eq!(
+                resultado.error.as_deref(),
+                Some("Archive name contains invalid path separators")
+            );
+        }
+        assert!(destino_no_es_carpeta
+            .error
+            .unwrap()
+            .starts_with("Destination is not a directory"));
+        assert!(fuente_inexistente
+            .error
+            .unwrap()
+            .starts_with("Source does not exist"));
+        assert_eq!(
+            padres_distintos.error.as_deref(),
+            Some("All selected items must be in the same directory to compress")
+        );
+        assert_eq!(
+            formato_raro.error.as_deref(),
+            Some("Unsupported archive format: rar")
+        );
+        for resultado in [sin_nada, nombre_vacio, nombre_con_barra, formato_raro] {
+            assert!(!resultado.success && resultado.archive_path.is_none() && !resultado.cancelled);
+        }
+        cleanup(&base);
+    }
+
+    // --- Avance, cancelación y fallo ---------------------------------------------------------
+
+    #[test]
+    fn comprimir_con_id_emite_el_avance_y_cierra_en_el_total() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let eventos = escuchar(&app);
+        let base = scratch("comp-avance");
+        let origen = origen_de_ejemplo(&base);
+
+        for formato in ["tar.zst", "cpio"] {
+            eventos.lock().unwrap().clear();
+
+            let resultado = compress_items_impl(
+                vec![texto(&origen.join("carpeta"))],
+                texto(&base),
+                format!("avance-{formato}"),
+                formato.into(),
+                None,
+                Some(format!("op-{formato}")),
+                app.handle(),
+            );
+
+            assert!(resultado.success, "{formato}: {:?}", resultado.error);
+            let emitidos = eventos.lock().unwrap().clone();
+            let ultimo = emitidos.last().expect("al menos el evento final");
+            assert_eq!(ultimo["operation_id"], format!("op-{formato}"));
+            assert_eq!(ultimo["kind"], "compress");
+            // `carpeta`, `carpeta/sub`, y los dos archivos.
+            assert_eq!(ultimo["total"], 4, "{formato}");
+            assert_eq!(ultimo["processed"], 4, "{formato}");
+        }
+        cleanup(&base);
+    }
+
+    /// Bytes que no comprimen, para que el compresor tarde lo suficiente.
+    fn incomprimible(bytes: usize) -> Vec<u8> {
+        let mut estado: u64 = 0x9E37_79B9_7F4A_7C15;
+        (0..bytes)
+            .map(|_| {
+                estado ^= estado << 13;
+                estado ^= estado >> 7;
+                estado ^= estado << 17;
+                (estado >> 24) as u8
+            })
+            .collect()
+    }
+
+    #[test]
+    fn cancelar_a_mitad_de_la_compresion_no_deja_un_archivo_a_medio_escribir() {
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-cancelar");
+        let origen = base.join("origen");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::write(origen.join("grande.bin"), incomprimible(24 * 1024 * 1024)).unwrap();
+        let id = "compresion-a-cancelar";
+
+        // `compress_items_impl` registra el id al arrancar: quien cancela insiste
+        // hasta que el comando ya lo conoce.
+        let cancelador = thread::spawn(move || {
+            let limite = std::time::Instant::now() + Duration::from_secs(20);
+            while std::time::Instant::now() < limite {
+                if crate::file_operations::cancel_file_operation(id.to_string()) {
+                    return true;
+                }
+                thread::sleep(Duration::from_millis(1));
+            }
+            false
+        });
+
+        let resultado = compress_items_impl(
+            vec![texto(&origen.join("grande.bin"))],
+            texto(&base),
+            "cancelada".into(),
+            "tar.xz".into(),
+            None,
+            Some(id.into()),
+            app.handle(),
+        );
+
+        assert!(
+            cancelador.join().unwrap(),
+            "el comando nunca registró la operación"
+        );
+        assert!(resultado.cancelled, "{:?}", resultado.error);
+        assert!(!resultado.success);
+        assert!(resultado.archive_path.is_none());
+        assert!(!base.join("cancelada.tar.xz").exists());
+        cleanup(&base);
+    }
+
+    #[test]
+    fn si_el_archivador_falla_se_avisa_y_se_borra_el_archivo_parcial() {
+        if running_as_root() {
+            // Como root nada es ilegible: no hay forma de hacer fallar a `tar`.
+            return;
+        }
+        let _pilas = pilas();
+        let app = mock_app();
+        let base = scratch("comp-archivador-falla");
+        let origen = base.join("origen");
+        std::fs::create_dir_all(&origen).unwrap();
+        std::fs::write(origen.join("cerrado.txt"), "x").unwrap();
+        std::fs::set_permissions(
+            origen.join("cerrado.txt"),
+            std::os::unix::fs::PermissionsExt::from_mode(0o000),
+        )
+        .unwrap();
+
+        let resultado = comprimir(&app, &origen, &["cerrado.txt"], &base, "tar", None);
+
+        assert!(!resultado.success);
+        assert!(!resultado.cancelled);
+        assert!(resultado.archive_path.is_none());
+        assert!(resultado
+            .error
+            .unwrap()
+            .starts_with("tar exited with status"),);
+        assert!(
+            !base.join("paquete.tar").exists(),
+            "no debía quedar el parcial"
+        );
+        cleanup(&base);
+    }
 }
