@@ -840,6 +840,16 @@ export function useFileBrowserSelection(
 				return true;
 			}
 
+			// Fallo parcial: `link_items_core` sigue tras un fallo y devuelve
+			// `success:false` con `copied_count>0` cuando creó algunos enlaces (y los
+			// apila para deshacer). Sin refrescar quedarían ocultos y seleccionados,
+			// igual que en `deleteItems`. Se refresca cuando hubo algún éxito.
+			if ((result.copied_count ?? 0) > 0) {
+				dirSizesStore.invalidate([destinationPath, currentPathRef.value]);
+				clearSelection();
+				onRefresh();
+			}
+
 			toast.error({
 				title: 'notifications.failedToLinkItems',
 				description: result.error || '',

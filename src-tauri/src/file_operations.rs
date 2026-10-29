@@ -448,7 +448,14 @@ fn unique_destination_avoiding(
     name: &str,
     reserved: &[PendingCopy],
 ) -> std::path::PathBuf {
-    let taken = |path: &Path| path.exists() || reserved.iter().any(|item| item.dest_path == path);
+    // `symlink_metadata` y no `exists()`: `exists()` sigue el enlace y da `false`
+    // para un symlink colgante, así que un nombre ocupado por uno se tomaría como
+    // libre y después `symlink`/`copy` fallaría con «ya existe». Un enlace roto
+    // ocupa el nombre igual.
+    let taken = |path: &Path| {
+        std::fs::symlink_metadata(path).is_ok()
+            || reserved.iter().any(|item| item.dest_path == path)
+    };
     let mut dest_path = destination.join(name);
     let mut counter = 1;
 
@@ -1506,6 +1513,16 @@ pub(crate) fn link_items_core(
 
     for source_path in &source_paths {
         let source = Path::new(source_path);
+
+        // El origen tiene que ser absoluto: `symlink` guarda la cadena tal cual
+        // como destino del enlace, y el SO la resuelve contra el directorio del
+        // enlace. Una ruta relativa dejaría un enlace que apunta a otro lado (roto)
+        // y la operación lo contaría como éxito. `link_items` es frontera de IPC.
+        if !source.is_absolute() {
+            failed_count += 1;
+            last_error = Some(format!("Source path must be absolute: {}", source_path));
+            continue;
+        }
 
         if !source.exists() {
             failed_count += 1;

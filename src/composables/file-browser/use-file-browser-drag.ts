@@ -244,16 +244,20 @@ export function useFileBrowserDrag(options: {
 		if (isOutboundDragActive || dragItems.value.length === 0) return;
 
 		isOutboundDragActive = true;
-		// Se guardan **antes** de limpiar: `cleanup()` vacía `dragItems`, y sin la
-		// copia no queda qué mover si el destino pide el borrado.
-		const items = [...dragItems.value];
-		const filePaths = items.map((item) => item.path);
-		const dragMode = operationType.value;
-		const iconPath = await getDragIconPath();
 
-		cleanup();
-
+		// Todo va adentro del try/finally: `getDragIconPath()` puede rechazar, y sin
+		// esto `isOutboundDragActive` quedaba en `true` para siempre, bloqueando los
+		// arrastres salientes siguientes. El `finally` lo baja pase lo que pase.
 		try {
+			// Se guardan **antes** de limpiar: `cleanup()` vacía `dragItems`, y sin la
+			// copia no queda qué mover si el destino pide el borrado.
+			const items = [...dragItems.value];
+			const filePaths = items.map((item) => item.path);
+			const dragMode = operationType.value;
+			const iconPath = await getDragIconPath();
+
+			cleanup();
+
 			await tauriStartDrag(filePaths, iconPath, { mode: dragMode }, (payload) => {
 				// Quien decide la acción de un arrastre externo es la aplicación de
 				// destino, no la tecla que se tuvo apretada acá. Así que el resultado
@@ -264,9 +268,9 @@ export function useFileBrowserDrag(options: {
 			});
 		} catch (error) {
 			console.error('Outbound drag failed:', error);
+		} finally {
+			isOutboundDragActive = false;
 		}
-
-		isOutboundDragActive = false;
 	}
 
 	/** Apaga el menú del clic derecho mientras se arrastra con ese botón: en
@@ -326,11 +330,9 @@ export function useFileBrowserDrag(options: {
 			const outside = isCursorOutsideViewport(event.clientX, event.clientY);
 
 			if (outside || nearEdge || dragDist > 200) {
-				// Dispara-y-olvida: el arrastre saliente maneja sus propios errores;
-				// el `.catch` cubre lo que pueda rechazar antes del try (el ícono).
-				initiateOutboundDrag().catch((error) => {
-					console.error('Outbound drag failed:', error);
-				});
+				// Dispara-y-olvida: `initiateOutboundDrag` maneja sus propios errores
+				// en un try/catch/finally, así que nunca rechaza; `void` lo marca.
+				void initiateOutboundDrag();
 				return;
 			}
 		}
