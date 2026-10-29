@@ -64,9 +64,18 @@ export type ContextMenuAction =
 	| 'copy-path'
 	| 'properties'
 	| 'extract-here'
+	| 'list-archive'
 	| 'compress';
 
-export type ArchiveFormat = 'zip' | 'tar.gz' | 'tar.xz' | 'tar.bz2' | 'tar' | '7z';
+export type ArchiveFormat =
+	| 'zip'
+	| 'tar.gz'
+	| 'tar.xz'
+	| 'tar.bz2'
+	| 'tar.zst'
+	| 'tar'
+	| 'cpio'
+	| '7z';
 
 export type SelectionType = 'single' | 'multiple';
 export type EntryType = 'file' | 'directory';

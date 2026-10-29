@@ -112,6 +112,7 @@ fileBrowser:
     pasteToPane1: Paste to Pane 1
     pasteToPane2: Paste to Pane 2
     extractHere: Extract Here
+    listArchive: View contents
     compress: Compress...
     deletePermanently: Delete from drive
     tags: Tags
@@ -288,6 +289,17 @@ dialogs:
     format: Format
     compress: Compress
     summary: "Compressing {0} item(s) into {1}"
+    password: Password (7-Zip only)
+    passwordHint: Leave empty to skip encryption
+  archivePasswordDialog:
+    title: Protected archive
+    label: Archive password
+    confirm: Open
+  archiveContentDialog:
+    title: "Contents of {0}"
+    count: "{0} item(s)"
+    empty: The archive is empty
+    andMore: "and {0} more"
   newDirItemDialog:
     newDirectoryCreated: Directory created
     newFileCreated: File created
@@ -357,6 +369,8 @@ notifications:
   quickViewFileIsNotSupported: File type not supported in Quick View
   archiveExtracted: Archive extracted successfully
   archiveExtractFailed: Failed to extract archive
+  archiveWrongPassword: Wrong password
+  archiveListFailed: Failed to read the archive contents
   archiveCreated: Archive created
   archiveCreateFailed: Failed to create archive
   undone: Operation undone

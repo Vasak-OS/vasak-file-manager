@@ -383,7 +383,7 @@ export function useFileBrowserSelection(
 		compressDialogState.value.entries = [];
 	}
 
-	async function handleCompressConfirm(name: string, format: ArchiveFormat) {
+	async function handleCompressConfirm(name: string, format: ArchiveFormat, password?: string) {
 		const entries = [...compressDialogState.value.entries];
 		closeCompressDialog();
 
@@ -395,6 +395,8 @@ export function useFileBrowserSelection(
 				destinationDir: currentPathRef.value,
 				archiveName: name,
 				format,
+				// Sólo 7z cifra; la clave va al backend y no se registra en ningún lado.
+				...(format === '7z' && password ? { password } : {}),
 			},
 			{
 				type: 'compress',
@@ -1114,6 +1116,12 @@ export function useFileBrowserSelection(
 				}
 
 				break;
+			case 'list-archive':
+				if (entries.length === 1) {
+					void listArchive(entries[0]);
+				}
+
+				break;
 			case 'compress':
 				if (entries.length > 0) {
 					openCompressDialog(entries);
@@ -1154,19 +1162,120 @@ export function useFileBrowserSelection(
 		});
 	}
 
-	async function extractArchive(entry: DirEntry, destDir: string) {
+	/** Qué dijo el backend de la clave: los centinelas `ENCRYPTED` / `WRONG_PASSWORD`. */
+	function archivePasswordIssue(error: unknown): 'ENCRYPTED' | 'WRONG_PASSWORD' | null {
+		const message = error instanceof Error ? error.message : String(error);
+
+		if (message.includes('WRONG_PASSWORD')) return 'WRONG_PASSWORD';
+		if (message.includes('ENCRYPTED')) return 'ENCRYPTED';
+
+		return null;
+	}
+
+	/** Diálogo de clave de un archivo cifrado, para extraerlo o para listarlo. */
+	const archivePasswordState = ref({
+		isOpen: false,
+		mode: 'extract' as 'extract' | 'list',
+		entry: null as DirEntry | null,
+		destDir: '',
+		password: '',
+	});
+
+	function askArchivePassword(mode: 'extract' | 'list', entry: DirEntry, destDir: string) {
+		archivePasswordState.value = { isOpen: true, mode, entry, destDir, password: '' };
+	}
+
+	function closeArchivePasswordDialog() {
+		archivePasswordState.value = {
+			isOpen: false,
+			mode: 'extract',
+			entry: null,
+			destDir: '',
+			password: '',
+		};
+	}
+
+	async function handleArchivePasswordConfirm(password: string) {
+		const { mode, entry, destDir } = archivePasswordState.value;
+		// La clave no queda en el estado mientras corre el backend.
+		closeArchivePasswordDialog();
+
+		if (!entry) return;
+
+		if (mode === 'extract') {
+			await extractArchive(entry, destDir, password);
+		} else {
+			await listArchive(entry, password);
+		}
+	}
+
+	function handleArchivePasswordCancel() {
+		closeArchivePasswordDialog();
+	}
+
+	/**
+	 * Resuelve el error de un archivo cifrado: pide la clave (una vez más si la
+	 * dada no sirvió). Devuelve `false` si el error era otro y lo maneja quien llama.
+	 */
+	function handleArchivePasswordError(
+		error: unknown,
+		mode: 'extract' | 'list',
+		entry: DirEntry,
+		destDir: string
+	): boolean {
+		const issue = archivePasswordIssue(error);
+
+		if (!issue) return false;
+
+		if (issue === 'WRONG_PASSWORD') {
+			toast.error({ title: 'notifications.archiveWrongPassword', description: '' });
+		}
+
+		askArchivePassword(mode, entry, destDir);
+
+		return true;
+	}
+
+	async function extractArchive(entry: DirEntry, destDir: string, password?: string) {
 		try {
 			await invoke('extract_archive', {
 				archivePath: entry.path,
 				destDir,
+				...(password ? { password } : {}),
 			});
 			toast.success({
 				title: 'notifications.archiveExtracted',
 				description: '',
 			});
 		} catch (error) {
+			if (handleArchivePasswordError(error, 'extract', entry, destDir)) return;
+
 			toast.error({
 				title: 'notifications.archiveExtractFailed',
+				description: String(error),
+			});
+		}
+	}
+
+	/** Contenido de un archivo, para verlo antes de extraer. */
+	const archiveContentState = ref({
+		isOpen: false,
+		name: '',
+		items: [] as string[],
+	});
+
+	async function listArchive(entry: DirEntry, password?: string) {
+		try {
+			const items = await invoke<string[]>('list_archive', {
+				archivePath: entry.path,
+				...(password ? { password } : {}),
+			});
+			archiveContentState.value = { isOpen: true, name: entry.name, items };
+		} catch (error) {
+			if (handleArchivePasswordError(error, 'list', entry, '')) return;
+
+			toast.error({
+				title: 'notifications.archiveListFailed',
 				description: String(error),
 			});
 		}
@@ -1418,6 +1527,10 @@ export function useFileBrowserSelection(
 		openCompressDialog,
 		handleCompressConfirm,
 		handleCompressCancel,
+		archivePasswordState,
+		handleArchivePasswordConfirm,
+		handleArchivePasswordCancel,
+		archiveContentState,
 		undoLastOperation,
 		redoLastOperation,
 	};

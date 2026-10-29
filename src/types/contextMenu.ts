@@ -19,4 +19,5 @@ export type ContextMenuAction =
 	| 'toggle-favorite'
 	| 'edit-tags'
 	| 'extract-here'
+	| 'list-archive'
 	| 'compress';

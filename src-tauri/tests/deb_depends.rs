@@ -159,6 +159,8 @@ const ARCHIVE_TOOLS: &[(&str, &str, Declared)] = &[
     // transición que sólo depende de él.
     ("7z", "7zip", Declared::Depends),
     ("unrar", "unrar", Declared::Recommends),
+    // `cpio` no es Essential en Debian (Priority: important), así que se declara.
+    ("cpio", "cpio", Declared::Depends),
 ];
 
 #[derive(Debug, PartialEq)]

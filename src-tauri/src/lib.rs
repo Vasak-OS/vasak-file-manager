@@ -197,6 +197,7 @@ pub fn run() {
             dir_watcher::unwatch_directory,
             dir_watcher::get_watched_directories,
             extract::extract_archive,
+            extract::list_archive,
             compress::compress_items,
             undo::undo_last_operation,
             undo::redo_last_operation,

@@ -36,7 +36,7 @@ export const FILE_EXTENSIONS: Record<string, readonly string[]> = {
 		'ps1',
 		'sql',
 	],
-	ARCHIVE: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso'],
+	ARCHIVE: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'zst', 'cpio', 'iso'],
 	TEXT: ['txt', 'log', 'ini', 'cfg', 'conf', 'env'],
 	PDF: ['pdf'],
 };

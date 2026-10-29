@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { RevealTransition } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
+import ArchiveContentDialogComponent from '@/components/dialogs/ArchiveContentDialogComponent.vue';
 import BatchRenameDialogComponent from '@/components/dialogs/BatchRenameDialogComponent.vue';
 import CompressDialogComponent from '@/components/dialogs/CompressDialogComponent.vue';
 import ConflictDialogComponent from '@/components/dialogs/ConflictDialogComponent.vue';
 import NewItemDialogComponent from '@/components/dialogs/NewItemDialogComponent.vue';
 import OpenWithDialogComponent from '@/components/dialogs/OpenWithDialogComponent.vue';
+import PromptDialogComponent from '@/components/dialogs/PromptDialogComponent.vue';
 import RenameDialogComponent from '@/components/dialogs/RenameDialogComponent.vue';
 import DragOverlayComponent from '@/components/drag/DragOverlayComponent.vue';
 import InboundDragOverlayComponent from '@/components/drag/InboundDragOverlayComponent.vue';
@@ -45,6 +48,8 @@ const emit = defineEmits<{
 	'update:currentDirEntry': [entry: DirEntry | null];
 	openEntry: [entry: DirEntry];
 }>();
+
+const { t } = useI18n();
 
 const fileBrowserRef = ref<HTMLElement | null>(null);
 
@@ -188,6 +193,15 @@ defineExpose({
       :default-name="fb.compressDialogState.value.defaultName"
       :item-count="fb.compressDialogState.value.entries.length"
       @confirm="fb.handleCompressConfirm" @cancel="fb.handleCompressCancel" />
+
+    <PromptDialogComponent v-model:open="fb.archivePasswordState.value.isOpen"
+      v-model:value="fb.archivePasswordState.value.password" password
+      :title="t('dialogs.archivePasswordDialog.title')" :label="t('dialogs.archivePasswordDialog.label')"
+      :confirm-label="t('dialogs.archivePasswordDialog.confirm')"
+      @confirm="fb.handleArchivePasswordConfirm" @cancel="fb.handleArchivePasswordCancel" />
+
+    <ArchiveContentDialogComponent v-model:open="fb.archiveContentState.value.isOpen"
+      :archive-name="fb.archiveContentState.value.name" :items="fb.archiveContentState.value.items" />
 
     <DragOverlayComponent :is-active="fb.isDragging.value" :item-count="fb.dragItems.value.length"
       :operation-type="fb.dragOperationType.value" :cursor-x="fb.dragCursorX.value" :cursor-y="fb.dragCursorY.value"

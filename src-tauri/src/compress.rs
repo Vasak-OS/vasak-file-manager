@@ -1,8 +1,8 @@
 use serde::Serialize;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -78,6 +78,12 @@ fn format_spec(format: &str) -> Option<FormatSpec> {
             leading_args: &["-cvf"],
             package_hint: "tar",
         }),
+        "tar.zst" => Some(FormatSpec {
+            extension: "tar.zst",
+            program: "tar",
+            leading_args: &["--zstd", "-cvf"],
+            package_hint: "zstd",
+        }),
         "7z" => Some(FormatSpec {
             extension: "7z",
             program: "7z",
@@ -121,6 +127,29 @@ fn count_entries(sources: &[PathBuf]) -> usize {
         .max(1)
 }
 
+/// Expande la selección a todas sus rutas (directorios y archivos), relativas
+/// a `parent` y en orden de recorrido. cpio archiva exactamente lo que recibe
+/// por stdin —no recursa solo—, así que necesita la lista completa.
+pub(crate) fn collect_relative_entries(parent: &Path, names: &[String]) -> Vec<String> {
+    let mut entries = Vec::new();
+
+    for name in names {
+        let root = parent.join(name);
+
+        for entry in WalkDir::new(&root)
+            .follow_links(false)
+            .into_iter()
+            .filter_map(Result::ok)
+        {
+            if let Ok(relative) = entry.path().strip_prefix(parent) {
+                entries.push(relative.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    entries
+}
+
 /// Consumes a child's pipe on a background thread, counting the per-entry lines
 /// the archiver prints so the supervisor loop can report progress.
 fn spawn_line_counter<R: std::io::Read + Send + 'static>(
@@ -150,22 +179,200 @@ fn kill_and_reap(child: &mut Child) {
     let _ = child.wait();
 }
 
+/// Supervisa un `child` ya lanzado: reporta progreso contando las líneas que
+/// el archivador imprime, atiende la cancelación y arma el `CompressResult`.
+/// Es el tramo común a todos los formatos; `program` sólo nombra la herramienta
+/// en los mensajes de error. En caso de fallo o cancelación borra el archivo a
+/// medio escribir.
+// Son los datos mínimos del proceso y de la operación; agruparlos en un struct
+// sólo movería los mismos campos sin aclarar nada.
+#[allow(clippy::too_many_arguments)]
+fn supervise_compression(
+    mut child: Child,
+    counter: Arc<AtomicUsize>,
+    token: Option<Arc<AtomicBool>>,
+    operation_id: &Option<String>,
+    app: &AppHandle,
+    archive_path: &Path,
+    total_entries: usize,
+    program: &str,
+) -> CompressResult {
+    let mut cancelled = false;
+
+    let status = loop {
+        if is_cancelled(&token) {
+            kill_and_reap(&mut child);
+            cancelled = true;
+            break None;
+        }
+
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) => {
+                let processed = counter.load(Ordering::Relaxed).min(total_entries);
+                emit_progress(
+                    app,
+                    operation_id,
+                    "compress",
+                    processed,
+                    total_entries,
+                    &archive_path.to_string_lossy(),
+                );
+                thread::sleep(POLL_INTERVAL);
+            }
+            Err(error) => {
+                kill_and_reap(&mut child);
+
+                if let Some(id) = operation_id {
+                    unregister_operation(id);
+                }
+
+                let _ = std::fs::remove_file(archive_path);
+
+                return failure(format!("Failed while waiting for {}: {}", program, error));
+            }
+        }
+    };
+
+    emit_progress(
+        app,
+        operation_id,
+        "compress",
+        total_entries,
+        total_entries,
+        "",
+    );
+
+    if let Some(id) = operation_id {
+        unregister_operation(id);
+    }
+
+    if cancelled {
+        // A killed archiver leaves a truncated file behind; don't keep it.
+        let _ = std::fs::remove_file(archive_path);
+
+        return CompressResult {
+            success: false,
+            error: None,
+            archive_path: None,
+            cancelled: true,
+        };
+    }
+
+    match status {
+        Some(status) if status.success() => {
+            undo::push(
+                "compress",
+                1,
+                false,
+                undo::UndoAction::RemoveCreated {
+                    paths: vec![archive_path.to_path_buf()],
+                },
+            );
+
+            CompressResult {
+                success: true,
+                error: None,
+                archive_path: Some(archive_path.to_string_lossy().to_string()),
+                cancelled: false,
+            }
+        }
+        Some(status) => {
+            let _ = std::fs::remove_file(archive_path);
+
+            failure(format!(
+                "{} exited with status {}",
+                program,
+                status.code().unwrap_or(-1)
+            ))
+        }
+        None => failure(format!("{} did not complete", program)),
+    }
+}
+
+/// Camino propio de cpio: lee la lista de rutas por stdin y escribe el archivo
+/// por stdout, así que no pasa por el `FormatSpec` genérico.
+fn compress_cpio(
+    parent: &Path,
+    names: &[String],
+    destination: &Path,
+    stem: &str,
+    total_entries: usize,
+    operation_id: Option<String>,
+    app: &AppHandle,
+) -> CompressResult {
+    let archive_path = unique_archive_path(destination, stem, "cpio");
+
+    let file = match std::fs::File::create(&archive_path) {
+        Ok(file) => file,
+        Err(error) => return failure(format!("Failed to create archive file: {}", error)),
+    };
+
+    let token = operation_id.as_ref().map(|id| register_operation(id));
+
+    let mut command = Command::new("cpio");
+    command
+        .current_dir(parent)
+        .args(["-o", "-H", "newc"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::from(file))
+        .stderr(Stdio::piped());
+
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            if let Some(id) = &operation_id {
+                unregister_operation(id);
+            }
+
+            let _ = std::fs::remove_file(&archive_path);
+
+            return failure(format!("Failed to run cpio: {}. Is cpio installed?", error));
+        }
+    };
+
+    // Alimenta las rutas (una por línea) en un hilo para no trabar el pipe si la
+    // selección es grande, y cierra stdin al terminar para que cpio finalice.
+    if let Some(mut stdin) = child.stdin.take() {
+        let entries = collect_relative_entries(parent, names);
+
+        thread::spawn(move || {
+            for entry in entries {
+                if stdin.write_all(entry.as_bytes()).is_err() || stdin.write_all(b"\n").is_err() {
+                    break;
+                }
+            }
+        });
+    }
+
+    let counter = Arc::new(AtomicUsize::new(0));
+    spawn_line_counter(child.stderr.take(), Arc::clone(&counter));
+
+    supervise_compression(
+        child,
+        counter,
+        token,
+        &operation_id,
+        app,
+        &archive_path,
+        total_entries,
+        "cpio",
+    )
+}
+
 #[tauri::command]
 pub fn compress_items(
     source_paths: Vec<String>,
     destination_dir: String,
     archive_name: String,
     format: String,
+    password: Option<String>,
     operation_id: Option<String>,
     app: AppHandle,
 ) -> CompressResult {
     if source_paths.is_empty() {
         return failure("No items to compress");
     }
-
-    let Some(spec) = format_spec(&format) else {
-        return failure(format!("Unsupported archive format: {}", format));
-    };
 
     let stem = archive_name.trim();
 
@@ -221,18 +428,53 @@ pub fn compress_items(
         None => return failure("Invalid item name in selection"),
     };
 
-    let archive_path = unique_archive_path(destination, stem, spec.extension);
     let total_entries = count_entries(&sources);
+
+    // Una clave vacía es como no traer clave. Sólo cifra 7z; el frontend no la
+    // ofrece para los demás formatos, pero si llegara igual, se ignora.
+    let password = password.filter(|value| !value.is_empty());
+
+    if format == "cpio" {
+        return compress_cpio(
+            &parent,
+            &names,
+            destination,
+            stem,
+            total_entries,
+            operation_id,
+            &app,
+        );
+    }
+
+    let Some(spec) = format_spec(&format) else {
+        return failure(format!("Unsupported archive format: {}", format));
+    };
+
+    let archive_path = unique_archive_path(destination, stem, spec.extension);
+
+    let encrypt_7z = format == "7z" && password.is_some();
 
     let token = operation_id.as_ref().map(|id| register_operation(id));
 
     let mut command = Command::new(spec.program);
+    command.current_dir(&parent).args(spec.leading_args);
+
+    if encrypt_7z {
+        // Cifra contenido y encabezados; la clave NUNCA va en argv, va por stdin.
+        command.arg("-mhe=on").arg("-p");
+    }
+
+    // El `--` corta el análisis de flags: un nombre que empieza con `-` no se
+    // confunde con una opción. zip, tar y 7z lo aceptan en esta posición.
     command
-        .current_dir(&parent)
-        .args(spec.leading_args)
         .arg(&archive_path)
+        .arg("--")
         .args(&names)
-        .stdin(Stdio::null())
+        .stdin(if encrypt_7z {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
@@ -250,100 +492,27 @@ pub fn compress_items(
         }
     };
 
+    if encrypt_7z {
+        // 7z pide la clave una sola vez al crear. Un error de escritura no es
+        // fatal: el proceso lo reportará y la supervisión lo recoge.
+        if let (Some(mut stdin), Some(pass)) = (child.stdin.take(), password.as_ref()) {
+            let _ = stdin.write_all(pass.as_bytes());
+            let _ = stdin.write_all(b"\n");
+        }
+    }
+
     let counter = Arc::new(AtomicUsize::new(0));
     spawn_line_counter(child.stdout.take(), Arc::clone(&counter));
     spawn_line_counter(child.stderr.take(), Arc::clone(&counter));
 
-    let mut cancelled = false;
-
-    let status = loop {
-        if is_cancelled(&token) {
-            kill_and_reap(&mut child);
-            cancelled = true;
-            break None;
-        }
-
-        match child.try_wait() {
-            Ok(Some(status)) => break Some(status),
-            Ok(None) => {
-                let processed = counter.load(Ordering::Relaxed).min(total_entries);
-                emit_progress(
-                    &app,
-                    &operation_id,
-                    "compress",
-                    processed,
-                    total_entries,
-                    &archive_path.to_string_lossy(),
-                );
-                thread::sleep(POLL_INTERVAL);
-            }
-            Err(error) => {
-                kill_and_reap(&mut child);
-
-                if let Some(id) = &operation_id {
-                    unregister_operation(id);
-                }
-
-                return failure(format!(
-                    "Failed while waiting for {}: {}",
-                    spec.program, error
-                ));
-            }
-        }
-    };
-
-    emit_progress(
-        &app,
+    supervise_compression(
+        child,
+        counter,
+        token,
         &operation_id,
-        "compress",
+        &app,
+        &archive_path,
         total_entries,
-        total_entries,
-        "",
-    );
-
-    if let Some(id) = &operation_id {
-        unregister_operation(id);
-    }
-
-    if cancelled {
-        // A killed archiver leaves a truncated file behind; don't keep it.
-        let _ = std::fs::remove_file(&archive_path);
-
-        return CompressResult {
-            success: false,
-            error: None,
-            archive_path: None,
-            cancelled: true,
-        };
-    }
-
-    match status {
-        Some(status) if status.success() => {
-            undo::push(
-                "compress",
-                1,
-                false,
-                undo::UndoAction::RemoveCreated {
-                    paths: vec![archive_path.clone()],
-                },
-            );
-
-            CompressResult {
-                success: true,
-                error: None,
-                archive_path: Some(archive_path.to_string_lossy().to_string()),
-                cancelled: false,
-            }
-        }
-        Some(status) => {
-            let _ = std::fs::remove_file(&archive_path);
-
-            failure(format!(
-                "{} exited with status {}",
-                spec.program,
-                status.code().unwrap_or(-1)
-            ))
-        }
-        None => failure(format!("{} did not complete", spec.program)),
-    }
+        spec.program,
+    )
 }

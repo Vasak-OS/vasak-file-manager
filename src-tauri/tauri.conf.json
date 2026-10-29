@@ -73,6 +73,8 @@
           "unzip",
           "bzip2",
           "xz-utils",
+          "zstd",
+          "cpio",
           "7zip",
           "libglib2.0-bin",
           "mount",

@@ -84,6 +84,12 @@ const CONTEXT_MENU_ITEMS: ContextMenuItemConfig[] = [
 		extensions: FILE_EXTENSIONS.ARCHIVE as unknown as string[],
 	},
 	{
+		action: 'list-archive',
+		selectionTypes: ['single'],
+		entryTypes: ['file'],
+		extensions: FILE_EXTENSIONS.ARCHIVE as unknown as string[],
+	},
+	{
 		action: 'compress',
 		selectionTypes: ['single', 'multiple'],
 		entryTypes: ['file', 'directory'],

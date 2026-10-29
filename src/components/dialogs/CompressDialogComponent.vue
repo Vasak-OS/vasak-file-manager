@@ -8,6 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	FormGroup,
+	PasswordField,
 	SelectField,
 	TextInput,
 } from '@vasakgroup/vue-libvasak';
@@ -20,7 +21,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	confirm: [name: string, format: ArchiveFormat];
+	confirm: [name: string, format: ArchiveFormat, password?: string];
 	cancel: [];
 }>();
 
@@ -33,7 +34,9 @@ const FORMATS: { value: ArchiveFormat; label: string }[] = [
 	{ value: 'tar.gz', label: 'Gzip (.tar.gz)' },
 	{ value: 'tar.xz', label: 'XZ (.tar.xz)' },
 	{ value: 'tar.bz2', label: 'Bzip2 (.tar.bz2)' },
+	{ value: 'tar.zst', label: 'Zstandard (.tar.zst)' },
 	{ value: 'tar', label: 'Tar (.tar)' },
+	{ value: 'cpio', label: 'CPIO (.cpio)' },
 	{ value: '7z', label: '7-Zip (.7z)' },
 ];
 
@@ -45,7 +48,11 @@ const field = ref<InstanceType<typeof TextInput> | null>(null);
 const inputRef = computed(() => (field.value?.$el as HTMLInputElement | undefined) ?? null);
 const name = ref('');
 const format = ref<ArchiveFormat>('zip');
+const password = ref('');
 const isSubmitting = ref(false);
+
+// 7z es el único formato de la lista que cifra.
+const canEncrypt = computed(() => format.value === '7z');
 
 const trimmedName = computed(() => name.value.trim());
 
@@ -73,6 +80,7 @@ watch(name, () => {
 watch(isOpen, (open) => {
 	if (open) {
 		name.value = props.defaultName;
+		password.value = '';
 		isSubmitting.value = false;
 
 		nextTick(() => {
@@ -80,6 +88,8 @@ watch(isOpen, (open) => {
 			inputRef.value?.select();
 		});
 	} else {
+		// La clave no se queda en memoria del diálogo al cerrarlo.
+		password.value = '';
 		emit('cancel');
 	}
 });
@@ -88,7 +98,13 @@ function handleSubmit() {
 	if (!isValid.value || isSubmitting.value) return;
 
 	isSubmitting.value = true;
-	emit('confirm', trimmedName.value, format.value);
+	// Sólo viaja si el formato cifra y se escribió una; sin trim, los espacios cuentan.
+	emit(
+		'confirm',
+		trimmedName.value,
+		format.value,
+		canEncrypt.value && password.value ? password.value : undefined
+	);
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -116,6 +132,11 @@ function handleKeydown(event: KeyboardEvent) {
           v-model="format"
           :label="t('dialogs.compressDialog.format')"
           :options="FORMATS" />
+
+        <FormGroup v-if="canEncrypt" :label="t('dialogs.compressDialog.password')" html-for="compress-password-input">
+          <PasswordField id="compress-password-input" v-model="password" autocomplete="new-password" revealable
+            :placeholder="t('dialogs.compressDialog.passwordHint')" @keydown="handleKeydown" />
+        </FormGroup>
 
         <p class="m-0 truncate text-body-xs text-tx-muted" :title="previewName">
           {{ t('dialogs.compressDialog.summary').replace('{0}', String(props.itemCount)).replace('{1}', previewName) }}
