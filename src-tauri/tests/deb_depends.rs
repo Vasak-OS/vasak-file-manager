@@ -161,6 +161,9 @@ const ARCHIVE_TOOLS: &[(&str, &str, Declared)] = &[
     ("unrar", "unrar", Declared::Recommends),
     // `cpio` no es Essential en Debian (Priority: important), así que se declara.
     ("cpio", "cpio", Declared::Depends),
+    // `bsdtar` (libarchive-tools) extrae cpio de forma segura, sin el path
+    // traversal de GNU cpio.
+    ("bsdtar", "libarchive-tools", Declared::Depends),
 ];
 
 #[derive(Debug, PartialEq)]

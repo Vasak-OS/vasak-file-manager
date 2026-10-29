@@ -300,23 +300,26 @@ pub fn extract_archive(
             extract_with_7z(&archive_path, dest, password.as_deref())?;
         }
         "cpio" => {
-            // cpio lee el archivo por stdin y extrae en el directorio actual.
-            let file = std::fs::File::open(&archive_path)
-                .map_err(|e| format!("Failed to open archive: {}", e))?;
-            let child = Command::new("cpio")
-                .arg("-idv")
-                .current_dir(dest)
-                .stdin(Stdio::from(file))
+            // Se extrae con `bsdtar` (libarchive), NO con GNU cpio: cpio honra las
+            // rutas absolutas y los `..` por omisión —sin flag que lo cierre del
+            // todo—, así que un `.cpio` malicioso escribiría FUERA del destino
+            // (`~/.bashrc`, autostart…) → escritura arbitraria. bsdtar sanitiza los
+            // `..` y las rutas absolutas por omisión, igual que ya hace con tar/zip.
+            // `-f` y stdin nulo: lee el archivo por ruta, no espera nada del TTY.
+            let output = Command::new("bsdtar")
+                .arg("-x")
+                .arg("-f")
+                .arg(&archive_path)
+                .arg("-C")
+                .arg(dest)
+                .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
-                .spawn()
-                .map_err(|e| format!("Failed to run cpio: {}. Is cpio installed?", e))?;
-            let output = child
-                .wait_with_output()
-                .map_err(|e| format!("Failed while waiting for cpio: {}", e))?;
+                .output()
+                .map_err(|e| format!("Failed to run bsdtar: {}. Is libarchive installed?", e))?;
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                return Err(format!("cpio failed: {}", stderr));
+                return Err(format!("bsdtar failed: {}", stderr));
             }
         }
         "rar" => {

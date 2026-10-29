@@ -75,6 +75,7 @@
           "xz-utils",
           "zstd",
           "cpio",
+          "libarchive-tools",
           "7zip",
           "libglib2.0-bin",
           "mount",

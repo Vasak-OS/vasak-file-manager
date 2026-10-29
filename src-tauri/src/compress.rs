@@ -313,7 +313,10 @@ fn compress_cpio(
     let mut command = Command::new("cpio");
     command
         .current_dir(parent)
-        .args(["-o", "-H", "newc"])
+        // `--null`: la lista de rutas entra NUL-separada, no por líneas. Un nombre
+        // de archivo con un `\n` partiría la línea y ese archivo quedaría sin
+        // archivar (pérdida silenciosa); con NUL cualquier nombre va entero.
+        .args(["-o", "-H", "newc", "--null"])
         .stdin(Stdio::piped())
         .stdout(Stdio::from(file))
         .stderr(Stdio::piped());
@@ -331,14 +334,15 @@ fn compress_cpio(
         }
     };
 
-    // Alimenta las rutas (una por línea) en un hilo para no trabar el pipe si la
-    // selección es grande, y cierra stdin al terminar para que cpio finalice.
+    // Alimenta las rutas (NUL-separadas, ver `--null`) en un hilo para no trabar el
+    // pipe si la selección es grande, y cierra stdin al terminar para que cpio
+    // finalice.
     if let Some(mut stdin) = child.stdin.take() {
         let entries = collect_relative_entries(parent, names);
 
         thread::spawn(move || {
             for entry in entries {
-                if stdin.write_all(entry.as_bytes()).is_err() || stdin.write_all(b"\n").is_err() {
+                if stdin.write_all(entry.as_bytes()).is_err() || stdin.write_all(b"\0").is_err() {
                     break;
                 }
             }
