@@ -297,6 +297,9 @@ let vista: VueWrapper | null = null;
 afterEach(() => {
 	vista?.unmount();
 	vista = null;
+	// El doble de `show` es de todo el proceso (`mock.module`): si queda un
+	// `elegir`, el menú real de las pruebas de otros archivos nunca se dibuja.
+	elegir = null;
 });
 
 interface Montado {

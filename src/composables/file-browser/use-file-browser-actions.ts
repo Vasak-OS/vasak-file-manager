@@ -58,7 +58,7 @@ export function useFileBrowserActions(options: {
 	function onEntryMouseDown(entry: DirEntry, event: MouseEvent) {
 		options.handleEntryMouseDown(entry, event);
 
-		if (options.handleDragMouseDown && event.button === 0) {
+		if (options.handleDragMouseDown && (event.button === 0 || event.button === 2)) {
 			options.handleDragMouseDown(entry, event);
 		}
 	}

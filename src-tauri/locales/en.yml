@@ -306,6 +306,11 @@ drag:
   dropToMoveItemsOther: Drop to move {0} items
   holdShiftToChangeMode: Hold Shift to change drag mode
   holdCtrlForCurrentDirDrop: Hold Ctrl to drop in current directory
+  dropMenu:
+    copyHere: Copy here
+    moveHere: Move here
+    linkHere: Link here
+    cancel: Cancel
   dragging: Dragging
   dropping: Dropping
 conflictDialog:
@@ -334,6 +339,10 @@ notifications:
   deleted: Items deleted
   errorTrashItems: Error moving items to trash
   errorDeleteItems: Error deleting items
+  linkedItems: Links created
+  linkedCountOne: "{0} link created"
+  linkedCountOther: "{0} links created"
+  failedToLinkItems: Failed to create links
   renamed: Item renamed
   renamedItems: Items renamed
   renamedCountOne: "{0} item renamed"

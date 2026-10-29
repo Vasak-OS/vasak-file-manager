@@ -321,6 +321,11 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		entriesContainerRef,
 		disableBackgroundDrop: isExternalMode,
 		onDrop: async (items, destinationPath, operation) => {
+			if (operation === 'link') {
+				await selection.linkItems(items, destinationPath);
+				return;
+			}
+
 			clipboardStore.isToolbarSuppressed = true;
 
 			if (operation === 'copy') {
@@ -503,6 +508,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		copyItems: selection.copyItems,
 		cutItems: selection.cutItems,
 		pasteItems: selection.pasteItems,
+		linkItems: selection.linkItems,
 		deleteItems: selection.deleteItems,
 		startRename: selection.startRename,
 		startBatchRename: selection.startBatchRename,
