@@ -24,9 +24,11 @@ const props = withDefaults(
 		confirmLabel: string;
 		selectOnOpen?: boolean;
 		loading?: boolean;
+		/** Enmascara el campo y no recorta el valor: una clave puede llevar espacios. */
+		password?: boolean;
 		validate?: (value: string) => boolean;
 	}>(),
-	{ selectOnOpen: false, loading: false }
+	{ selectOnOpen: false, loading: false, password: false }
 );
 
 const isOpen = defineModel<boolean>('open', { required: true });
@@ -45,7 +47,7 @@ const emit = defineEmits<{
 const field = ref<InstanceType<typeof TextInput> | null>(null);
 const inputRef = computed(() => (field.value?.$el as HTMLInputElement | undefined) ?? null);
 
-const trimmed = computed(() => value.value.trim());
+const trimmed = computed(() => (props.password ? value.value : value.value.trim()));
 const isValid = computed(() =>
 	props.validate ? props.validate(trimmed.value) : trimmed.value.length > 0
 );
@@ -85,7 +87,7 @@ function handleKeydown(event: KeyboardEvent) {
         <FormGroup :label="label" html-for="prompt-dialog-input">
           <div class="flex w-full min-w-0 items-center gap-2">
             <TextInput id="prompt-dialog-input" ref="field" v-model="value" class="min-w-0 flex-1"
-              :invalid="Boolean(value) && !isValid" @keydown="handleKeydown" />
+              :type="password ? 'password' : 'text'" :invalid="Boolean(value) && !isValid" @keydown="handleKeydown" />
             <ActionButton :label="confirmLabel" :disabled="!isValid" :loading="loading" @click="handleSubmit" />
           </div>
         </FormGroup>

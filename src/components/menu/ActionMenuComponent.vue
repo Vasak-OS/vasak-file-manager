@@ -228,6 +228,11 @@ function handleDeleteClick() {
     <ThemeIcon name="application-x-archive" :size="16" />
     <span>{{ t('fileBrowser.actions.extractHere') }}</span>
   </component>
+  <component :is="menuItemComponent" v-if="isActionVisible('list-archive')"
+    @select="emitAction('list-archive')" class="flex items-center gap-2">
+    <ThemeIcon name="view-list-details" :size="16" />
+    <span>{{ t('fileBrowser.actions.listArchive') }}</span>
+  </component>
   <component :is="menuItemComponent" v-if="isActionVisible('compress')"
     @select="emitAction('compress')" class="flex items-center gap-2">
     <ThemeIcon name="application-x-archive" :size="16" />

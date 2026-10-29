@@ -519,6 +519,10 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		openCompressDialog: selection.openCompressDialog,
 		handleCompressConfirm: selection.handleCompressConfirm,
 		handleCompressCancel: selection.handleCompressCancel,
+		archivePasswordState: selection.archivePasswordState,
+		handleArchivePasswordConfirm: selection.handleArchivePasswordConfirm,
+		handleArchivePasswordCancel: selection.handleArchivePasswordCancel,
+		archiveContentState: selection.archiveContentState,
 		undoLastOperation: selection.undoLastOperation,
 		redoLastOperation: selection.redoLastOperation,
 

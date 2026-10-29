@@ -420,6 +420,66 @@ describe('el menú de un archivo', () => {
 		expect(ids(mostrados[0])).toContain('action:extract-here');
 	});
 
+	test('un archivo comprimido ofrece ver su contenido', async () => {
+		prepararSistema();
+		elegir = () => null;
+		const zip = archivo('a.zip', { ext: 'zip' });
+		const { abrir } = montar([zip]);
+
+		await abrir(zip);
+
+		expect(ids(mostrados[0])).toContain('action:list-archive');
+	});
+
+	test('un archivo que no es comprimido no ofrece extraer ni ver el contenido', async () => {
+		prepararSistema();
+		elegir = () => null;
+		const texto = archivo('a.txt', { ext: 'txt' });
+		const { abrir } = montar([texto]);
+
+		await abrir(texto);
+
+		expect(ids(mostrados[0])).not.toContain('action:list-archive');
+		expect(ids(mostrados[0])).not.toContain('action:extract-here');
+	});
+
+	test('los .zst y los .cpio también ofrecen extraer y ver el contenido', async () => {
+		prepararSistema();
+		elegir = () => null;
+
+		for (const entrada of [
+			archivo('a.tar.zst', { ext: 'zst' }),
+			archivo('a.cpio', { ext: 'cpio' }),
+		]) {
+			vista?.unmount();
+			const { abrir } = montar([entrada]);
+			await abrir(entrada);
+		}
+
+		expect(mostrados).toHaveLength(2);
+		for (const menu of mostrados) {
+			expect(ids(menu)).toContain('action:extract-here');
+			expect(ids(menu)).toContain('action:list-archive');
+		}
+	});
+
+	test('ver el contenido no se ofrece sobre varias entradas ni sobre una carpeta', async () => {
+		prepararSistema();
+		elegir = () => null;
+		const a = archivo('a.zip', { ext: 'zip' });
+		const b = archivo('b.zip', { ext: 'zip' });
+		const una = montar([a, b]);
+		await una.abrir(a);
+		vista?.unmount();
+		const otra = montar([carpeta('docs')]);
+		await otra.abrir(carpeta('docs'));
+
+		expect(mostrados).toHaveLength(2);
+		for (const menu of mostrados) {
+			expect(ids(menu)).not.toContain('action:list-archive');
+		}
+	});
+
 	test('con algo para pegar y una carpeta seleccionada ofrece pegar', async () => {
 		prepararSistema();
 		elegir = () => null;

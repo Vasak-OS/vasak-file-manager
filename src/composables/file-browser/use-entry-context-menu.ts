@@ -438,6 +438,7 @@ export function useEntryContextMenu(options: UseEntryContextMenuOptions) {
 			'fileBrowser.actions.extractHere',
 			'application-x-archive'
 		);
+		agregarAccion(items, 'list-archive', 'fileBrowser.actions.listArchive', 'view-list-details');
 		agregarAccion(items, 'compress', 'fileBrowser.actions.compress', 'application-x-archive');
 
 		items.push({ type: 'separator' });

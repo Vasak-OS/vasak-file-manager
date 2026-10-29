@@ -112,6 +112,7 @@ fileBrowser:
     pasteToPane1: Pegar en Panel 1
     pasteToPane2: Pegar en Panel 2
     extractHere: Extraer aquí
+    listArchive: Ver contenido
     compress: Comprimir...
     deletePermanently: Eliminar del disco
     tags: Etiquetas
@@ -258,6 +259,17 @@ dialogs:
     format: Formato
     compress: Comprimir
     summary: "Comprimiendo {0} elemento(s) en {1}"
+    password: Contraseña (solo 7-Zip)
+    passwordHint: Déjala vacía para no cifrar
+  archivePasswordDialog:
+    title: Archivo protegido
+    label: Contraseña del archivo
+    confirm: Abrir
+  archiveContentDialog:
+    title: "Contenido de {0}"
+    count: "{0} elemento(s)"
+    empty: El archivo está vacío
+    andMore: "y {0} más"
   newDirItemDialog:
     newDirectoryCreated: Carpeta creada
     newFileCreated: Archivo creado
@@ -357,6 +369,8 @@ notifications:
   quickViewFileIsNotSupported: Tipo de archivo no soportado en Vista Rápida
   archiveExtracted: Archivo extraído correctamente
   archiveExtractFailed: Error al extraer el archivo
+  archiveWrongPassword: Contraseña incorrecta
+  archiveListFailed: Error al leer el contenido del archivo
   archiveCreated: Archivo comprimido creado
   archiveCreateFailed: Error al crear el archivo comprimido
   undone: Operación deshecha
