@@ -473,6 +473,18 @@ mod tests {
         ruta.to_string_lossy().into_owned()
     }
 
+    /// ¿El programa está en el PATH? Para saltear los casos que dependen de una
+    /// herramienta opcional (unrar) que el runner de CI no instala.
+    fn herramienta_instalada(nombre: &str) -> bool {
+        std::process::Command::new(nombre)
+            .arg("--help")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok()
+    }
+
     /// Arma a mano un `.cpio` en formato `newc` con los miembros dados, tal cual
     /// vienen (nombre y contenido): así se puede escribir un miembro con ruta
     /// absoluta o con `..`, cosa que `cpio -o` no se presta a hacer a gusto.
@@ -1209,7 +1221,10 @@ Comment = Path = esto no es un nombre
         let destino = base.join("destino");
         std::fs::create_dir_all(&destino).unwrap();
 
-        for (extension, herramienta) in [
+        // `rar` va aparte: `unrar` es opcional (non-free) y el runner de CI no lo
+        // trae, así que un archivo roto .rar daría «Failed to run unrar… Is unrar
+        // installed?» en vez de «unrar failed:». Sólo se prueba donde está.
+        let mut casos = vec![
             ("zip", "unzip failed:"),
             ("tar", "tar failed:"),
             ("tar.gz", "tar failed:"),
@@ -1220,8 +1235,12 @@ Comment = Path = esto no es un nombre
             ("bz2", "bunzip2 failed:"),
             ("xz", "unxz failed:"),
             ("7z", "7z failed:"),
-            ("rar", "unrar failed:"),
-        ] {
+        ];
+        if herramienta_instalada("unrar") {
+            casos.push(("rar", "unrar failed:"));
+        }
+
+        for (extension, herramienta) in casos {
             let archivo = base.join(format!("roto.{extension}"));
             std::fs::write(&archivo, b"esto no es un archivo comprimido, ni de cerca").unwrap();
 

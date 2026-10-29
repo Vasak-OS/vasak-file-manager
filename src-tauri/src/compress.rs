@@ -130,24 +130,27 @@ fn count_entries(sources: &[PathBuf]) -> usize {
 /// Expande la selección a todas sus rutas (directorios y archivos), relativas
 /// a `parent` y en orden de recorrido. cpio archiva exactamente lo que recibe
 /// por stdin —no recursa solo—, así que necesita la lista completa.
-pub(crate) fn collect_relative_entries(parent: &Path, names: &[String]) -> Vec<String> {
+pub(crate) fn collect_relative_entries(
+    parent: &Path,
+    names: &[String],
+) -> Result<Vec<String>, walkdir::Error> {
     let mut entries = Vec::new();
 
     for name in names {
         let root = parent.join(name);
 
-        for entry in WalkDir::new(&root)
-            .follow_links(false)
-            .into_iter()
-            .filter_map(Result::ok)
-        {
+        // Se propaga el error de recorrido en vez de descartarlo: una subcarpeta
+        // ilegible dejaría afuera su contenido y cpio igual saldría 0, reportando
+        // un éxito con un archivo incompleto (pérdida de datos silenciosa).
+        for entry in WalkDir::new(&root).follow_links(false) {
+            let entry = entry?;
             if let Ok(relative) = entry.path().strip_prefix(parent) {
                 entries.push(relative.to_string_lossy().to_string());
             }
         }
     }
 
-    entries
+    Ok(entries)
 }
 
 /// Consumes a child's pipe on a background thread, counting the per-entry lines
@@ -301,6 +304,13 @@ fn compress_cpio<R: Runtime>(
     operation_id: Option<String>,
     app: &AppHandle<R>,
 ) -> CompressResult {
+    // La lista completa se arma ANTES de crear nada: si una subcarpeta no se puede
+    // leer, se aborta sin dejar un archivo a medias.
+    let entries = match collect_relative_entries(parent, names) {
+        Ok(entries) => entries,
+        Err(error) => return failure(format!("Failed to read a directory: {}", error)),
+    };
+
     let archive_path = unique_archive_path(destination, stem, "cpio");
 
     let file = match std::fs::File::create(&archive_path) {
@@ -338,8 +348,6 @@ fn compress_cpio<R: Runtime>(
     // pipe si la selección es grande, y cierra stdin al terminar para que cpio
     // finalice.
     if let Some(mut stdin) = child.stdin.take() {
-        let entries = collect_relative_entries(parent, names);
-
         thread::spawn(move || {
             for entry in entries {
                 if stdin.write_all(entry.as_bytes()).is_err() || stdin.write_all(b"\0").is_err() {
@@ -631,7 +639,8 @@ mod tests {
         let origen = origen_de_ejemplo(&base);
 
         let mut rutas =
-            collect_relative_entries(&origen, &["carpeta".to_string(), "suelto.txt".to_string()]);
+            collect_relative_entries(&origen, &["carpeta".to_string(), "suelto.txt".to_string()])
+                .unwrap();
 
         rutas.sort();
         assert_eq!(
@@ -656,7 +665,7 @@ mod tests {
         std::fs::write(base.join("afuera/secreto.txt"), "x").unwrap();
         std::os::unix::fs::symlink(base.join("afuera"), origen.join("carpeta/enlace")).unwrap();
 
-        let mut rutas = collect_relative_entries(&origen, &["carpeta".into()]);
+        let mut rutas = collect_relative_entries(&origen, &["carpeta".into()]).unwrap();
 
         rutas.sort();
         // El enlace va como entrada propia; lo que hay detrás no se recorre.
@@ -665,12 +674,14 @@ mod tests {
     }
 
     #[test]
-    fn una_seleccion_que_no_existe_no_aporta_rutas() {
+    fn una_seleccion_que_no_existe_da_error_en_vez_de_un_archivo_a_medias() {
         let base = scratch("comp-recolectar-inexistente");
 
-        let rutas = collect_relative_entries(&base, &["no-esta".to_string()]);
+        // Antes el error de recorrido se tragaba y volvía una lista vacía: cpio
+        // habría salido 0 con un archivo incompleto. Ahora el error se propaga.
+        let resultado = collect_relative_entries(&base, &["no-esta".to_string()]);
 
-        assert!(rutas.is_empty());
+        assert!(resultado.is_err());
         cleanup(&base);
     }
 
