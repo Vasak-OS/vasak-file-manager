@@ -4593,6 +4593,7 @@ mod tests {
 
     #[test]
     fn crear_desde_una_plantilla_copia_su_contenido() {
+        let _pilas = pilas();
         let dir = scratch("plantilla-copia");
         let plantilla = dir.join("Plantilla.odt");
         std::fs::write(&plantilla, b"contenido de la plantilla").unwrap();
@@ -4659,6 +4660,7 @@ mod tests {
 
     #[test]
     fn sin_plantilla_o_con_ruta_vacia_crea_un_archivo_vacio() {
+        let _pilas = pilas();
         let dir = scratch("plantilla-vacia");
         for (nombre, plantilla) in [("a.txt", None), ("b.txt", Some(String::new()))] {
             let result = create_item(
@@ -4698,6 +4700,7 @@ mod tests {
 
     #[test]
     fn para_una_carpeta_la_plantilla_se_ignora() {
+        let _pilas = pilas();
         let dir = scratch("plantilla-carpeta-nueva");
         let plantilla = dir.join("Plantilla.txt");
         std::fs::write(&plantilla, b"plantilla").unwrap();
@@ -4711,6 +4714,52 @@ mod tests {
 
         assert!(result.success, "{:?}", result.error);
         assert!(dir.join("nueva").is_dir());
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_symlink_colgante_en_el_destino_no_deja_escribir_afuera() {
+        let _pilas = pilas();
+        let dir = scratch("plantilla-symlink");
+        let afuera = scratch("plantilla-symlink-afuera");
+        let testigo = afuera.join("testigo.txt");
+        let plantilla = dir.join("Plantilla.txt");
+        std::fs::write(&plantilla, b"no debe filtrarse").unwrap();
+        std::os::unix::fs::symlink(&testigo, dir.join("Informe.txt")).unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.txt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert!(!testigo.exists(), "la copia siguió el symlink hacia afuera");
+        cleanup(&dir);
+        cleanup(&afuera);
+    }
+
+    #[test]
+    fn la_ruta_de_la_plantilla_se_usa_tal_cual_sin_recortar_espacios() {
+        let _pilas = pilas();
+        let dir = scratch("plantilla-espacio");
+        let plantilla = dir.join(" Plantilla con espacio.txt ");
+        std::fs::write(&plantilla, b"con espacios al borde").unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.txt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(result.success, "{:?}", result.error);
+        assert_eq!(
+            std::fs::read(dir.join("Informe.txt")).unwrap(),
+            b"con espacios al borde"
+        );
         crate::undo::clear_undo_history();
         cleanup(&dir);
     }
