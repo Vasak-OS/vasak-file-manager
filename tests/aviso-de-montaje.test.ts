@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { avisoDeFallo } from '@/tools/aviso-de-montaje';
+import { avisoDeFallo, CLAVES_DE_RENOMBRE } from '@/tools/aviso-de-montaje';
 
 describe('avisoDeFallo', () => {
 	test('cerrar el diálogo de la contraseña no muestra nada', () => {
@@ -46,5 +46,41 @@ describe('avisoDeFallo', () => {
 
 	test('ni siquiera un error vacío desaparece en silencio', () => {
 		expect(avisoDeFallo(null)?.claveDelTitulo).toBe('drive.mountFailed');
+	});
+});
+
+describe('avisoDeFallo al renombrar la etiqueta', () => {
+	test('cada motivo usa el texto de renombrar y no el de montar', () => {
+		expect(
+			avisoDeFallo({ codigo: 'notAuthorized', detalle: '' }, CLAVES_DE_RENOMBRE)?.claveDelTitulo
+		).toBe('drive.renameNotAuthorized');
+		expect(
+			avisoDeFallo({ codigo: 'failed', detalle: '' }, CLAVES_DE_RENOMBRE)?.claveDelTitulo
+		).toBe('drive.renameFailed');
+	});
+
+	test('un motivo que sólo existe al montar cae en el fallo genérico de renombrar', () => {
+		// La frase de paso no interviene al renombrar: si llegara, no puede
+		// mostrar «frase incorrecta».
+		expect(
+			avisoDeFallo({ codigo: 'wrongPassphrase', detalle: '' }, CLAVES_DE_RENOMBRE)?.claveDelTitulo
+		).toBe('drive.renameFailed');
+	});
+
+	test('cancelar tampoco se muestra', () => {
+		expect(avisoDeFallo({ codigo: 'cancelled', detalle: '' }, CLAVES_DE_RENOMBRE)).toBeNull();
+	});
+
+	test('un error que no tiene esa forma no se traga y el detalle viaja', () => {
+		const aviso = avisoDeFallo('boom', CLAVES_DE_RENOMBRE);
+
+		expect(aviso?.claveDelTitulo).toBe('drive.renameFailed');
+		expect(aviso?.detalle).toBe('boom');
+	});
+
+	test('sin claves propias sigue usando los textos de montar', () => {
+		expect(avisoDeFallo({ codigo: 'failed', detalle: '' })?.claveDelTitulo).toBe(
+			'drive.mountFailed'
+		);
 	});
 });

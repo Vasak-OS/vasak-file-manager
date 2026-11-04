@@ -463,6 +463,12 @@ drive:
   mountFailed: The drive could not be mounted
   mountNotAuthorized: The mount was not authorized
   mountWrongPassphrase: That passphrase did not open the drive
+  rename: Rename label
+  renameLabelTitle: Rename volume label
+  renamePlaceholder: New label
+  labelChanged: The volume label was changed
+  renameFailed: The volume label could not be changed
+  renameNotAuthorized: The label change was not authorized
 progress:
   completed: Completed
 operations:

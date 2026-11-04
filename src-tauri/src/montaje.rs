@@ -36,7 +36,7 @@ use zvariant::{OwnedObjectPath, OwnedValue, Value};
 const DESTINO_DEL_AGENTE: &str = "ar.net.vasak.os.DeviceUnlock";
 const RUTA_DEL_AGENTE: &str = "/ar/net/vasak/os/DeviceUnlock";
 
-const UDISKS: &str = "org.freedesktop.UDisks2";
+pub(crate) const UDISKS: &str = "org.freedesktop.UDisks2";
 const UDISKS_GESTOR: &str = "/org/freedesktop/UDisks2/Manager";
 
 /// Por qué no se pudo montar, en términos que la ventana pueda traducir.
@@ -51,7 +51,7 @@ pub struct FalloDeMontaje {
 }
 
 impl FalloDeMontaje {
-    fn nuevo(codigo: &str, detalle: impl Into<String>) -> Self {
+    pub(crate) fn nuevo(codigo: &str, detalle: impl Into<String>) -> Self {
         Self {
             codigo: codigo.to_string(),
             detalle: detalle.into(),
@@ -240,7 +240,10 @@ pub async fn cerrar_volumen_cifrado(dispositivo: &str) {
 }
 
 /// El objeto de `udisks2` para una ruta de dispositivo.
-async fn resolver(conexion: &zbus::Connection, dispositivo: &str) -> Option<OwnedObjectPath> {
+pub(crate) async fn resolver(
+    conexion: &zbus::Connection,
+    dispositivo: &str,
+) -> Option<OwnedObjectPath> {
     if !dispositivo.starts_with("/dev/") {
         return None;
     }

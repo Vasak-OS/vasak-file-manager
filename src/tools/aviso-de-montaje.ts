@@ -22,10 +22,18 @@ export interface AvisoDeFallo {
 	detalle: string;
 }
 
-const CLAVES: Record<string, string> = {
+type ClavesDeAviso = Record<string, string> & { failed: string };
+
+const CLAVES: ClavesDeAviso = {
 	notAuthorized: 'drive.mountNotAuthorized',
 	wrongPassphrase: 'drive.mountWrongPassphrase',
 	failed: 'drive.mountFailed',
+};
+
+/** Los mismos códigos, con los textos de renombrar la etiqueta de un volumen. */
+export const CLAVES_DE_RENOMBRE: ClavesDeAviso = {
+	notAuthorized: 'drive.renameNotAuthorized',
+	failed: 'drive.renameFailed',
 };
 
 /**
@@ -51,10 +59,10 @@ function esFalloDeMontaje(valor: unknown): valor is FalloDeMontaje {
  * más viejo que devolvía texto— no se descarta: se muestra como fallo genérico
  * con lo que haya. Tragárselo sería volver al clic que no hace nada.
  */
-export function avisoDeFallo(error: unknown): AvisoDeFallo | null {
+export function avisoDeFallo(error: unknown, claves: ClavesDeAviso = CLAVES): AvisoDeFallo | null {
 	if (!esFalloDeMontaje(error)) {
 		return {
-			claveDelTitulo: CLAVES.failed,
+			claveDelTitulo: claves.failed,
 			detalle: typeof error === 'string' ? error : String(error ?? ''),
 		};
 	}
@@ -64,7 +72,7 @@ export function avisoDeFallo(error: unknown): AvisoDeFallo | null {
 	}
 
 	return {
-		claveDelTitulo: CLAVES[error.codigo] ?? CLAVES.failed,
+		claveDelTitulo: claves[error.codigo] ?? claves.failed,
 		detalle: error.detalle ?? '',
 	};
 }
