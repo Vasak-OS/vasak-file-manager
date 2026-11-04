@@ -225,4 +225,15 @@ describe('el clic derecho sobre la tarjeta de la unidad', () => {
 		expect(renglonDeRenombrar()).toBeUndefined();
 		expect(isOpen.value).toBe(false);
 	}, 60000);
+
+	test('un volumen cifrado sin abrir no ofrece renombrar: no es un sistema de archivos', async () => {
+		const { isOpen } = useRenameVolumeLabel();
+		isOpen.value = false;
+		await clicDerechoSobre(
+			unDisco({ name: 'Cifrado', device_path: '/dev/sda3', is_encrypted: true })
+		);
+
+		expect(renglonDeRenombrar()).toBeUndefined();
+		expect(isOpen.value).toBe(false);
+	}, 60000);
 });

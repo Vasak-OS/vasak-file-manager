@@ -84,10 +84,10 @@ async function navigateToDrive(drivePath: string) {
  * está dentro de un tooltip, que se desmonta apenas el puntero se va al menú.
  */
 async function handleContextMenu(event: MouseEvent) {
-	// `SetLabel` sólo vale para un bloque real (/dev/…): el backend lo resuelve
-	// por esa ruta y una unidad de red (device_path no-/dev/) siempre fallaría,
-	// así que ahí no se ofrece renombrar.
-	if (!props.drive.device_path.startsWith('/dev/')) return;
+	// `SetLabel` sólo vale sobre un sistema de archivos montable. Una unidad de red
+	// (device_path no-/dev/) y un volumen LUKS cifrado sin abrir (su bloque es
+	// `Encrypted`, no `Filesystem`) siempre fallarían, así que no se ofrece renombrar.
+	if (!props.drive.device_path.startsWith('/dev/') || props.drive.is_encrypted) return;
 
 	const chosen = await show(
 		[{ id: 'rename-label', label: t('drive.rename'), icon: 'edit-rename' }],

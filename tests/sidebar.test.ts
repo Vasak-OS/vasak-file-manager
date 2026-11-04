@@ -252,12 +252,18 @@ describe('los discos', () => {
 		test('elegir «renombrar» y confirmar manda la etiqueta escrita al disco elegido', async () => {
 			responder('set_volume_label', () => undefined);
 			const { vista } = await abrirLaBarra({
-				discos: [unDisco({ device_path: '/dev/sdc2' })],
+				discos: [
+					unDisco({ device_path: '/dev/sdb1' }),
+					unDisco({ name: 'Fotos', path: '/run/media/pato/FOTOS', device_path: '/dev/sdc2' }),
+				],
 			});
 			document.body.appendChild(vista.element);
 
-			// El menú del clic derecho de la tarjeta.
-			await vista.findComponent(DriveCard).trigger('contextmenu', { clientX: 10, clientY: 10 });
+			// El menú del clic derecho de la SEGUNDA tarjeta: un manejador que usara
+			// siempre el primer disco mandaría /dev/sdb1.
+			await vista
+				.findAllComponents(DriveCard)[1]
+				.trigger('contextmenu', { clientX: 10, clientY: 10 });
 			await clic();
 			const renglon = [...document.body.querySelectorAll('*')].find(
 				(el) => el.children.length === 0 && el.textContent === 'drive.rename'
