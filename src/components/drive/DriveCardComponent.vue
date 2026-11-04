@@ -84,6 +84,11 @@ async function navigateToDrive(drivePath: string) {
  * está dentro de un tooltip, que se desmonta apenas el puntero se va al menú.
  */
 async function handleContextMenu(event: MouseEvent) {
+	// `SetLabel` sólo vale para un bloque real (/dev/…): el backend lo resuelve
+	// por esa ruta y una unidad de red (device_path no-/dev/) siempre fallaría,
+	// así que ahí no se ofrece renombrar.
+	if (!props.drive.device_path.startsWith('/dev/')) return;
+
 	const chosen = await show(
 		[{ id: 'rename-label', label: t('drive.rename'), icon: 'edit-rename' }],
 		{

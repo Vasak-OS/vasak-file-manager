@@ -17,10 +17,16 @@ const isOpen = ref(false);
 const value = ref('');
 let devicePath = '';
 
-/** Abre el diálogo precargado con el nombre actual (aproximado: `DriveInfo.name`). */
+/**
+ * Abre el diálogo de renombre, vacío.
+ *
+ * No se precarga `DriveInfo.name`: ese nombre es el del punto de montaje, no la
+ * etiqueta del sistema de archivos, y confirmarlo sin tocar lo mandaría a
+ * `SetLabel` pisando la etiqueta real con el nombre de la carpeta de montaje.
+ */
 export function requestRename(drive: DriveInfo) {
 	devicePath = drive.device_path;
-	value.value = drive.name;
+	value.value = '';
 	isOpen.value = true;
 }
 

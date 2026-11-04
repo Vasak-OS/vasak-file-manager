@@ -1,8 +1,9 @@
 /**
  * Renombrar la etiqueta de un volumen (issue #152).
  *
- * Se comprueba lo que la persona nota: el diálogo abre con el nombre actual,
- * un renombre que sale refresca la lista, y uno que no sale se dice con el
+ * Se comprueba lo que la persona nota: el diálogo abre vacío (el nombre de la
+ * unidad es el del punto de montaje, no su etiqueta), una unidad de red no
+ * ofrece renombrar, un renombre que sale refresca la lista, y uno que no sale se dice con el
  * texto de «renombrar» —no con el de «montar»—, salvo cancelar, que no es un
  * fallo.
  */
@@ -62,13 +63,16 @@ afterEach(() => {
 });
 
 describe('pedir el renombre', () => {
-	test('abre el diálogo con el nombre actual de la unidad', () => {
+	test('abre el diálogo vacío y no con el nombre de la unidad', () => {
 		const { isOpen, value } = useRenameVolumeLabel();
+		value.value = 'resto de otra vez';
 
 		requestRename(unDisco({ name: 'Fotos' }));
 
 		expect(isOpen.value).toBe(true);
-		expect(value.value).toBe('Fotos');
+		// `name` es el del punto de montaje, no la etiqueta del sistema de
+		// archivos: precargarlo y confirmar sin editar pisaría la etiqueta real.
+		expect(value.value).toBe('');
 	});
 });
 
@@ -82,6 +86,15 @@ describe('confirmar el renombre', () => {
 		expect(pedidos('set_volume_label')).toHaveLength(0);
 		expect(isOpen.value).toBe(false);
 		expect(avisos()).toHaveLength(0);
+	});
+
+	test('confirmar el diálogo recién abierto, sin escribir, no pisa la etiqueta', async () => {
+		const { value, confirm } = useRenameVolumeLabel();
+		requestRename(unDisco({ name: 'Datos' }));
+
+		await confirm(value.value);
+
+		expect(pedidos('set_volume_label')).toHaveLength(0);
 	});
 
 	test('con éxito: renombra una vez, cierra, avisa y vuelve a leer las unidades', async () => {
@@ -174,26 +187,42 @@ describe('el clic derecho sobre la tarjeta de la unidad', () => {
 		document.body.innerHTML = '';
 	});
 
-	test('ofrece renombrar y elegirlo abre el diálogo con el nombre de esa unidad', async () => {
-		const { isOpen, value } = useRenameVolumeLabel();
-		isOpen.value = false;
-		vista = mount(DriveCardComponent, {
-			attachTo: document.body,
-			props: { drive: unDisco({ name: 'Respaldo' }) },
-		});
-
-		await vista.trigger('contextmenu', { clientX: 10, clientY: 10 });
-		await new Promise((sigue) => setTimeout(sigue, 0));
-
-		const renglon = [...document.body.querySelectorAll('*')].find(
+	/** El renglón «renombrar» del menú, si el menú está en pantalla. */
+	function renglonDeRenombrar() {
+		return [...document.body.querySelectorAll('*')].find(
 			(el) => el.children.length === 0 && el.textContent === 'drive.rename'
 		) as HTMLElement | undefined;
+	}
+
+	async function clicDerechoSobre(drive: DriveInfo) {
+		vista = mount(DriveCardComponent, { attachTo: document.body, props: { drive } });
+		await vista.trigger('contextmenu', { clientX: 10, clientY: 10 });
+		await new Promise((sigue) => setTimeout(sigue, 0));
+	}
+
+	test('ofrece renombrar y elegirlo abre el diálogo vacío', async () => {
+		const { isOpen, value } = useRenameVolumeLabel();
+		isOpen.value = false;
+		await clicDerechoSobre(unDisco({ name: 'Respaldo', device_path: '/dev/sdb1' }));
+
+		const renglon = renglonDeRenombrar();
 		expect(renglon).toBeDefined();
 
 		renglon?.click();
 		await new Promise((sigue) => setTimeout(sigue, 0));
 
 		expect(isOpen.value).toBe(true);
-		expect(value.value).toBe('Respaldo');
+		expect(value.value).toBe('');
+	}, 60000);
+
+	test('una unidad de red no ofrece renombrar: el backend la rechazaría', async () => {
+		const { isOpen } = useRenameVolumeLabel();
+		isOpen.value = false;
+		await clicDerechoSobre(
+			unDisco({ name: 'Compartida', drive_type: 'Network', device_path: '//server/share' })
+		);
+
+		expect(renglonDeRenombrar()).toBeUndefined();
+		expect(isOpen.value).toBe(false);
 	}, 60000);
 });

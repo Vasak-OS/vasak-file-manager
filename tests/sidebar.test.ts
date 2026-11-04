@@ -242,6 +242,48 @@ describe('los discos', () => {
 		expect(workspaces.currentTab?.path).toBe('/run/media/pato/KINGSTON');
 	});
 
+	describe('renombrar la etiqueta', () => {
+		const clic = () => new Promise((sigue) => setTimeout(sigue, 0));
+
+		afterEach(() => {
+			document.body.innerHTML = '';
+		});
+
+		test('elegir «renombrar» y confirmar manda la etiqueta escrita al disco elegido', async () => {
+			responder('set_volume_label', () => undefined);
+			const { vista } = await abrirLaBarra({
+				discos: [unDisco({ device_path: '/dev/sdc2' })],
+			});
+			document.body.appendChild(vista.element);
+
+			// El menú del clic derecho de la tarjeta.
+			await vista.findComponent(DriveCard).trigger('contextmenu', { clientX: 10, clientY: 10 });
+			await clic();
+			const renglon = [...document.body.querySelectorAll('*')].find(
+				(el) => el.children.length === 0 && el.textContent === 'drive.rename'
+			) as HTMLElement | undefined;
+			expect(renglon).toBeDefined();
+			renglon?.click();
+			await asentar();
+
+			// El diálogo lo pone la barra, no la tarjeta, y se escribe en él.
+			const campo = document.body.querySelector('#prompt-dialog-input') as HTMLInputElement | null;
+			expect(campo).not.toBeNull();
+			expect(campo?.value).toBe('');
+			if (!campo) return;
+			campo.value = 'FOTOS';
+			campo.dispatchEvent(new Event('input', { bubbles: true }));
+			await asentar(2);
+			campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+			await asentar();
+
+			expect(pedidos('set_volume_label').map((p) => p.argumentos)).toEqual([
+				{ devicePath: '/dev/sdc2', label: 'FOTOS' },
+			]);
+			expect(document.body.querySelector('#prompt-dialog-input')).toBeNull();
+		}, 60000);
+	});
+
 	describe('sin montar', () => {
 		const sinMontar = () => unDisco({ is_mounted: false, path: '', device_path: '/dev/nvme0n1p3' });
 
