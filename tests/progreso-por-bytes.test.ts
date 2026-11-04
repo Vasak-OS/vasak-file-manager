@@ -151,7 +151,7 @@ describe('el porcentaje de la barra', () => {
 });
 
 describe('el mensaje de la operación', () => {
-	test('lleva el nombre del archivo y la velocidad cuando se conoce', async () => {
+	test('lleva el nombre del archivo, la velocidad y el tiempo restante', async () => {
 		const vistos = await seguir('copy_items', [
 			{
 				current: '/home/pato/Videos/pelicula.mkv',
@@ -160,13 +160,14 @@ describe('el mensaje de la operación', () => {
 				bytes_per_second: 5 * MIB,
 			},
 		]);
-		expect(vistos[0].message).toBe('pelicula.mkv · 5.0 MB/s');
+		expect(vistos[0].message).toBe('pelicula.mkv · 5.0 MB/s · ~2 s');
 	});
 
 	test('la velocidad usa la unidad que corresponde', async () => {
 		const vistos = await seguir('copy_items', [
-			{ current: '/a/b.bin', processed_bytes: 1, total_bytes: 2, bytes_per_second: 512 },
-			{ current: '/a/b.bin', processed_bytes: 1, total_bytes: 2, bytes_per_second: 1536 },
+			// Sin bytes pendientes no hay ETA: sólo se mira la unidad de la velocidad.
+			{ current: '/a/b.bin', processed_bytes: 2, total_bytes: 2, bytes_per_second: 512 },
+			{ current: '/a/b.bin', processed_bytes: 2, total_bytes: 2, bytes_per_second: 1536 },
 		]);
 		expect(vistos.map((visto) => visto.message)).toEqual(['b.bin · 512 B/s', 'b.bin · 1.5 KB/s']);
 	});
@@ -189,5 +190,43 @@ describe('el mensaje de la operación', () => {
 	test('sin nombre ni velocidad no hay mensaje', async () => {
 		const vistos = await seguir('copy_items', [{ processed_bytes: 1, total_bytes: 2 }]);
 		expect(vistos[0].message).toBeUndefined();
+	});
+});
+
+describe('el tiempo restante en el mensaje', () => {
+	test('en una copia se estima con los bytes que faltan y la velocidad', async () => {
+		// Faltan 600 MiB a 10 MiB/s: 60 s, o sea ~1 min.
+		const vistos = await seguir('copy_items', [
+			{
+				current: '/a/disco.iso',
+				processed_bytes: 400 * MIB,
+				total_bytes: 1000 * MIB,
+				bytes_per_second: 10 * MIB,
+			},
+		]);
+		expect(vistos[0].message).toBe('disco.iso · 10.0 MB/s · ~1 min');
+	});
+
+	test('la estimación baja a medida que avanza la copia', async () => {
+		const vistos = await seguir('copy_items', [
+			{ processed_bytes: 0, total_bytes: 100 * MIB, bytes_per_second: MIB },
+			{ processed_bytes: 50 * MIB, total_bytes: 100 * MIB, bytes_per_second: MIB },
+		]);
+		expect(vistos.map((visto) => visto.message)).toEqual(['1.0 MB/s · ~2 min', '1.0 MB/s · ~50 s']);
+	});
+
+	test('sin velocidad (mover, borrar) no hay tiempo restante', async () => {
+		const vistos = await seguir('move_items', [
+			{ current: '/a/b/', processed: 1, total: 4, processed_bytes: 0, total_bytes: 100 },
+		]);
+		expect(vistos[0].message).toBe('b');
+	});
+
+	test('sin bytes pendientes no hay tiempo restante', async () => {
+		const vistos = await seguir('copy_items', [
+			{ current: '/a/b.bin', processed_bytes: 100, total_bytes: 100, bytes_per_second: MIB },
+			{ current: '/a/b.bin', processed_bytes: 150, total_bytes: 100, bytes_per_second: MIB },
+		]);
+		expect(vistos.map((visto) => visto.message)).toEqual(['b.bin · 1.0 MB/s', 'b.bin · 1.0 MB/s']);
 	});
 });
