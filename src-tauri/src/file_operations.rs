@@ -4568,4 +4568,128 @@ mod tests {
         crate::undo::clear_undo_history();
         cleanup(&dir);
     }
+
+    #[test]
+    fn crear_desde_una_plantilla_copia_su_contenido() {
+        let dir = scratch("plantilla-copia");
+        let plantilla = dir.join("Plantilla.odt");
+        std::fs::write(&plantilla, b"contenido de la plantilla").unwrap();
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&destino).unwrap();
+
+        let result = create_item(
+            destino.to_string_lossy().into_owned(),
+            "Informe.odt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(result.success, "{:?}", result.error);
+        assert_eq!(
+            std::fs::read(destino.join("Informe.odt")).unwrap(),
+            b"contenido de la plantilla"
+        );
+        // La plantilla queda intacta.
+        assert_eq!(
+            std::fs::read(&plantilla).unwrap(),
+            b"contenido de la plantilla"
+        );
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_plantilla_inexistente_da_error_y_no_crea_nada() {
+        let dir = scratch("plantilla-falta");
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.odt".to_string(),
+            false,
+            Some(dir.join("no-esta.odt").to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert!(result
+            .error
+            .unwrap()
+            .starts_with("Template does not exist:"));
+        assert!(!dir.join("Informe.odt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_carpeta_no_es_una_plantilla() {
+        let dir = scratch("plantilla-carpeta");
+        let carpeta = dir.join("una-carpeta");
+        std::fs::create_dir_all(&carpeta).unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.odt".to_string(),
+            false,
+            Some(carpeta.to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert!(!dir.join("Informe.odt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn sin_plantilla_o_con_ruta_vacia_crea_un_archivo_vacio() {
+        let dir = scratch("plantilla-vacia");
+        for (nombre, plantilla) in [("a.txt", None), ("b.txt", Some(String::new()))] {
+            let result = create_item(
+                dir.to_string_lossy().into_owned(),
+                nombre.to_string(),
+                false,
+                plantilla,
+            );
+            assert!(result.success, "{:?}", result.error);
+            assert_eq!(std::fs::read(dir.join(nombre)).unwrap(), b"");
+        }
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_plantilla_no_pisa_un_destino_que_ya_existe() {
+        let dir = scratch("plantilla-colision");
+        let plantilla = dir.join("Plantilla.txt");
+        std::fs::write(&plantilla, b"plantilla").unwrap();
+        std::fs::write(dir.join("Informe.txt"), b"el de antes").unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.txt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert_eq!(
+            std::fs::read(dir.join("Informe.txt")).unwrap(),
+            b"el de antes"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn para_una_carpeta_la_plantilla_se_ignora() {
+        let dir = scratch("plantilla-carpeta-nueva");
+        let plantilla = dir.join("Plantilla.txt");
+        std::fs::write(&plantilla, b"plantilla").unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "nueva".to_string(),
+            true,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(result.success, "{:?}", result.error);
+        assert!(dir.join("nueva").is_dir());
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
 }
