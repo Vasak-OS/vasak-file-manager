@@ -17,7 +17,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
 import { type TemplateFile, useTemplates } from '@/composables/file-browser/use-templates';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
@@ -74,10 +74,15 @@ function handleAddressBarNavigate(path: string) {
 
 function handleCreateMenuOpenChange(value: boolean) {
 	isCreateMenuOpen.value = value;
-	// Al abrir el menú se relee `~/Templates`: la carpeta pudo cambiar, y al
-	// montar la barra la ruta todavía podía no estar resuelta.
-	if (value) loadTemplates();
 }
+
+// Al abrir el menú se relee `~/Templates`: la carpeta pudo cambiar, y al montar
+// la barra la ruta todavía podía no estar resuelta. Va sobre `isCreateMenuOpen`
+// —no sobre `update:open`— porque el menú lo abre el `@click` del botón (su
+// trigger está deshabilitado), así que `update:open` no dispara al abrir.
+watch(isCreateMenuOpen, (open) => {
+	if (open) loadTemplates();
+});
 </script>
 
 <template>
