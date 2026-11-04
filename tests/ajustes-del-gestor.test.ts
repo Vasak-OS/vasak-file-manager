@@ -10,13 +10,14 @@
  * `invoke`.
  */
 
-import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { SegmentedControl, SideButton, SwitchRow } from '@vasakgroup/vue-libvasak';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, getActivePinia, type Pinia, setActivePinia } from 'pinia';
-import { nextTick } from 'vue';
+import { defineComponent, nextTick, ref } from 'vue';
 import NavigatorBarComponent from '@/components/navigator/NavigatorBarComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
+import { WINDOW_COLUMNS_KEY, type WindowColumns } from '@/composables/use-window-columns';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTrashStore } from '@/stores/runtime/trash';
@@ -97,6 +98,46 @@ describe('el store de ajustes', () => {
 
 		expect(store.settings).toEqual({ reduceMotion: false, lowPower: true, textSize: 'medium' });
 		expect(raiz().style.fontSize).toBe('16px');
+	});
+
+	test('un valor guardado con el tipo equivocado cae al valor por omisión', async () => {
+		disco.set('settings', { reduceMotion: 'false', textSize: 'huge', lowPower: 1 });
+		const store = nuevoStore();
+
+		await store.init();
+
+		expect(store.settings).toEqual({ reduceMotion: false, lowPower: false, textSize: 'medium' });
+		expect(raiz().classList.contains('reduce-motion')).toBe(false);
+		expect(raiz().classList.contains('low-power')).toBe(false);
+		expect(raiz().style.fontSize).toBe('16px');
+	});
+
+	test('apply deja en localStorage la caché que lee el script de arranque', async () => {
+		const guardado: Record<string, string> = {};
+		const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+		Object.defineProperty(globalThis, 'localStorage', {
+			configurable: true,
+			value: {
+				getItem: (k: string) => guardado[k] ?? null,
+				setItem: (k: string, v: string) => {
+					guardado[k] = v;
+				},
+			},
+		});
+		try {
+			const store = nuevoStore();
+			await store.init();
+			await store.update({ lowPower: true, textSize: 'large' });
+
+			expect(JSON.parse(guardado['vsk-settings'])).toEqual({
+				reduceMotion: false,
+				lowPower: true,
+				textSize: 'large',
+			});
+		} finally {
+			if (original) Object.defineProperty(globalThis, 'localStorage', original);
+			else Reflect.deleteProperty(globalThis, 'localStorage');
+		}
 	});
 
 	test('sin nada guardado se queda con los valores por omisión', async () => {
@@ -254,15 +295,49 @@ describe('el sidebar', () => {
 	});
 });
 
+describe('el sidebar en una ventana compacta', () => {
+	test('el botón Ajustes cierra el cajón y abre la vista', async () => {
+		const pinia = createPinia();
+		setActivePinia(pinia);
+		const settings = useUserSettingsStore();
+		const columnas: WindowColumns = {
+			width: ref(300),
+			isOneColumn: ref(true),
+			isCompact: ref(true),
+			column: ref('files'),
+			isSidebarOpen: ref(true),
+		};
+		const vista = mount(SidebarComponent, {
+			global: { plugins: [pinia], provide: { [WINDOW_COLUMNS_KEY as symbol]: columnas } },
+		});
+		montadas.push(vista);
+		await asentar();
+
+		await vista
+			.findAllComponents(SideButton)
+			.find((b) => b.props('label') === 'settings.title')
+			?.trigger('click');
+
+		expect(columnas.isSidebarOpen.value).toBe(false);
+		expect(settings.isOpen).toBe(true);
+	});
+});
+
 describe('la barra del navegador', () => {
-	function barra() {
+	function barra(panel: Record<string, unknown> = {}) {
 		const pinia = createPinia();
 		setActivePinia(pinia);
 		const vista = mount(NavigatorBarComponent, {
 			global: {
 				plugins: [pinia],
 				stubs: {
-					FileBrowserComponent: true,
+					FileBrowserComponent: panel.deleteItems
+						? defineComponent({
+								name: 'PanelDoble',
+								template: '<div />',
+								methods: { deleteItems: panel.deleteItems as () => void },
+							})
+						: true,
 					GlobalSearchView: true,
 					ClipboardToolbarComponent: true,
 				},
@@ -342,5 +417,43 @@ describe('la barra del navegador', () => {
 		await asentar(2);
 
 		expect(store.isOpen).toBe(false);
+	});
+
+	describe('Supr y Mayús+Supr', () => {
+		async function conSeleccion() {
+			const deleteItems = mock(async () => {});
+			const vista = barra({ deleteItems });
+			// La selección llega como la manda el panel: por su evento.
+			vista
+				.findComponent({ name: 'PanelDoble' })
+				.vm.$emit('update:selected-entries', [{ name: 'a.txt', path: '/a.txt' }]);
+			await asentar(2);
+
+			return deleteItems;
+		}
+		const supr = async (shiftKey: boolean) =>
+			await useShortcutsStore().handleKeydown(
+				new KeyboardEvent('keydown', { key: 'Delete', shiftKey })
+			);
+
+		test('con los ajustes cerrados siguen borrando la selección', async () => {
+			const deleteItems = await conSeleccion();
+
+			await supr(false);
+			await supr(true);
+
+			expect(deleteItems.mock.calls.map((c) => (c as unknown[])[1])).toEqual([true, false]);
+		});
+
+		test('con los ajustes abiertos no borran la selección oculta', async () => {
+			const deleteItems = await conSeleccion();
+			useUserSettingsStore().open();
+			await asentar(2);
+
+			await supr(false);
+			await supr(true);
+
+			expect(deleteItems).not.toHaveBeenCalled();
+		});
 	});
 });
