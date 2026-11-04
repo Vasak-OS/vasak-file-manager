@@ -17,11 +17,13 @@ import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useTerminalsStore } from '@/stores/runtime/terminals';
 import { useTrashStore } from '@/stores/runtime/trash';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
+import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import type { Layout } from '@/types/navigator';
 import GlobalSearchView from '@/views/GlobalSearchView.vue';
+import SettingsView from '@/views/SettingsView.vue';
 import TrashView from '@/views/TrashView.vue';
 
 type FileBrowserInstance = InstanceType<typeof FileBrowserComponent> & {
@@ -60,6 +62,7 @@ const quickViewStore = useQuickViewStore();
 const shortcutsStore = useShortcutsStore();
 const userStatsStore = useUserStatsStore();
 const trashStore = useTrashStore();
+const userSettingsStore = useUserSettingsStore();
 const isSelectByPatternOpen = ref(false);
 const terminalsStore = useTerminalsStore();
 const dirSizesStore = useDirSizesStore();
@@ -111,8 +114,9 @@ watch(
 	() => globalSearchStore.isOpen,
 	(isOpen) => {
 		if (isOpen) {
-			// Las dos vistas overlay no conviven: abrir la búsqueda cierra la papelera.
+			// Las vistas overlay no conviven: abrir la búsqueda cierra las otras.
 			trashStore.close();
+			userSettingsStore.close();
 			wasSplitViewBeforeSearch.value = isSplitView.value;
 
 			if (isSplitView.value) {
@@ -137,6 +141,18 @@ watch(
 	(isOpen) => {
 		if (isOpen) {
 			globalSearchStore.close();
+			userSettingsStore.close();
+		}
+	}
+);
+
+// Abrir los ajustes cierra la búsqueda y la papelera: son el mismo overlay.
+watch(
+	() => userSettingsStore.isOpen,
+	(isOpen) => {
+		if (isOpen) {
+			globalSearchStore.close();
+			trashStore.close();
 		}
 	}
 );
@@ -466,6 +482,11 @@ function handleEscapeKey(): boolean {
 	// selección hecha dentro de la búsqueda tiene que poder limpiarse sin que
 	// el panel se cierre de paso. Va acá porque el panel tapa el contenido
 	// entero y salir tenía una sola puerta, la cruz de adentro.
+	if (userSettingsStore.isOpen) {
+		userSettingsStore.close();
+		return true;
+	}
+
 	if (trashStore.isOpen) {
 		trashStore.close();
 		return true;
@@ -702,6 +723,7 @@ onMounted(() => {
 					class="flex-1" @close="globalSearchStore.close()"
 					@open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
 				<TrashView v-show="trashStore.isOpen" class="flex-1" @close="trashStore.close()" />
+				<SettingsView v-show="userSettingsStore.isOpen" class="flex-1" @close="userSettingsStore.close()" />
 				<ResizablePanelGroup :direction="panesDirection" class="navigator-page__panes">
 					<template v-if="workspacesStore.currentTabGroup && isSplitView">
 						<template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">

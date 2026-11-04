@@ -317,3 +317,36 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Lo mismo, pero por preferencia de la persona (Ajustes), no del SO: la clase
+ * `reduce-motion` sobre la raíz, y el modo bajo consumo que la incluye. Mantiene
+ * la duración mínima en lugar de `none` por lo mismo que la media query: hay
+ * código que espera los eventos `transitionend`/`animationend`.
+ */
+:root.reduce-motion *,
+:root.reduce-motion *::before,
+:root.reduce-motion *::after,
+:root.low-power *,
+:root.low-power *::before,
+:root.low-power *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: igual que la media query de arriba, tiene que ganarle a las animaciones y transiciones de las utilidades y los componentes */
+  animation-duration: 0.01ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: igual que la media query de arriba, tiene que ganarle a las animaciones y transiciones de las utilidades y los componentes */
+  animation-iteration-count: 1 !important;
+  /* biome-ignore lint/complexity/noImportantStyles: igual que la media query de arriba, tiene que ganarle a las animaciones y transiciones de las utilidades y los componentes */
+  transition-duration: 0.01ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: igual que la media query de arriba, tiene que ganarle a las animaciones y transiciones de las utilidades y los componentes */
+  scroll-behavior: auto !important;
+}
+
+/*
+ * Bajo consumo, además: sin filtros de composición. El `backdrop-filter` obliga
+ * al WebKit a recomponer la capa en cada repintado, caro en equipos sin GPU.
+ */
+:root.low-power *,
+:root.low-power *::before,
+:root.low-power *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: tiene que ganarle a los `backdrop-filter` de las utilidades y los componentes */
+  backdrop-filter: none !important;
+}
