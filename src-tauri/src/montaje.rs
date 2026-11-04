@@ -426,4 +426,41 @@ mod tests {
         assert_eq!(punto_de_montaje_de("Mounted /dev/sdb1"), "");
         assert_eq!(punto_de_montaje_de(""), "");
     }
+
+    #[test]
+    fn una_etiqueta_con_contenido_es_valida() {
+        assert_eq!(validar_etiqueta("DATOS"), Ok(()));
+        // Los espacios de los costados no la vuelven vacía.
+        assert_eq!(validar_etiqueta("  Mis fotos "), Ok(()));
+    }
+
+    #[test]
+    fn una_etiqueta_vacia_o_de_espacios_es_un_fallo_con_detalle() {
+        for etiqueta in ["", " ", "   \t\n"] {
+            let fallo = validar_etiqueta(etiqueta).expect_err("no es un renombre");
+
+            assert_eq!(fallo.codigo, FALLO);
+            assert!(!fallo.detalle.trim().is_empty());
+        }
+    }
+
+    #[test]
+    fn etiquetar_con_una_etiqueta_vacia_corta_antes_de_tocar_el_bus() {
+        // Si llegara al bus, el detalle sería el del error de conexión o el de
+        // «no se encontró el dispositivo», no el de la validación.
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("runtime");
+
+        let fallo = runtime
+            .block_on(etiquetar("/dev/no-existe", "  "))
+            .expect_err("una etiqueta vacía no se manda");
+
+        assert_eq!(fallo.codigo, FALLO);
+        assert_eq!(
+            Some(fallo),
+            validar_etiqueta("  ").err(),
+            "tiene que ser el fallo de la validación, no uno del bus"
+        );
+    }
 }
