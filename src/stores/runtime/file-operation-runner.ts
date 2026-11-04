@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { type OperationType, useStatusCenterStore } from '@/stores/runtime/status-center';
-import { formatBytes } from '@/utils/byte-parser';
+import { formatBytes, formatEta } from '@/utils/byte-parser';
 
 export interface FileOperationResult {
 	success: boolean;
@@ -81,7 +81,14 @@ async function track<T extends { success: boolean; error?: string }>(
 		// La velocidad es número + unidad, sin palabras que traducir.
 		const speed =
 			payload.bytes_per_second > 0 ? `${formatBytes(payload.bytes_per_second)}/s` : undefined;
-		const message = [name, speed].filter(Boolean).join(' · ') || undefined;
+		// Y el tiempo restante estimado, del mismo dato: sólo cuando faltan bytes y
+		// la velocidad es positiva (en mover/borrar no hay bytes, así que no aparece).
+		const remainingBytes = payload.total_bytes - payload.processed_bytes;
+		const eta =
+			payload.bytes_per_second > 0 && remainingBytes > 0
+				? formatEta(remainingBytes / payload.bytes_per_second)
+				: undefined;
+		const message = [name, speed, eta].filter(Boolean).join(' · ') || undefined;
 		statusCenter.updateOperation(operationId, { progress: pct, message });
 	});
 
