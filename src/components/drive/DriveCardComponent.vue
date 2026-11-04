@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { useContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ProgressBar, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import { useMountDrive } from '@/composables/use-mount-drive';
+import { requestRename } from '@/composables/use-rename-volume-label';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
 import toReadableBytes from '@/utils/byte-parser';
@@ -16,6 +18,7 @@ const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const isMounting = ref(false);
 const { mountDrive } = useMountDrive();
+const { show } = useContextMenu();
 const LOW_SPACE_THRESHOLD = 15;
 
 const isLowSpace = computed(() => props.drive.percent_used >= 100 - LOW_SPACE_THRESHOLD);
@@ -75,6 +78,23 @@ async function navigateToDrive(drivePath: string) {
 	}
 }
 
+/**
+ * Menú del clic derecho de la unidad. Hoy sólo renombra la etiqueta; el diálogo
+ * vive en la barra lateral (ver `use-rename-volume-label`) porque esta tarjeta
+ * está dentro de un tooltip, que se desmonta apenas el puntero se va al menú.
+ */
+async function handleContextMenu(event: MouseEvent) {
+	const chosen = await show(
+		[{ id: 'rename-label', label: t('drive.rename'), icon: 'edit-rename' }],
+		{
+			x: event.clientX,
+			y: event.clientY,
+		}
+	);
+
+	if (chosen?.id === 'rename-label') requestRename(props.drive);
+}
+
 async function handleUnmount(clickEvent?: Event) {
 	clickEvent?.stopPropagation();
 
@@ -92,7 +112,7 @@ async function handleUnmount(clickEvent?: Event) {
 <template>
   <button type="button" class="relative grid overflow-hidden w-full h-full items-center gap-0 pr-2 cursor-pointer rounded-corner-m [grid-template-columns:56px_1fr_auto] text-left text-tx-main transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed focus-visible:outline-2 focus-visible:outline-ui-focus focus-visible:outline-offset-2" :class="{
     'opacity-60 hover:opacity-100': !drive.is_mounted,
-  }" @click="handleClick">
+  }" @click="handleClick" @contextmenu.prevent="handleContextMenu">
     <div class="relative flex w-14 h-14 flex-col shrink-0 items-center justify-center gap-0.5">
         <ThemeIcon :name="driveIcon" :size="20" class="text-tx-muted" />
         <!-- El candado dice que ese clic va a pedir una frase de paso. Sin él,

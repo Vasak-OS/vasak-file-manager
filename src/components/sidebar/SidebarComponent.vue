@@ -34,10 +34,12 @@ import {
 	TooltipTrigger,
 } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted } from 'vue';
+import PromptDialogComponent from '@/components/dialogs/PromptDialogComponent.vue';
 import DriveCard from '@/components/drive/DriveCardComponent.vue';
 import { type CloudDrive, useCloudDrives } from '@/composables/use-cloud-drives';
 import { useDrives } from '@/composables/use-drives';
 import { useMountDrive } from '@/composables/use-mount-drive';
+import { useRenameVolumeLabel } from '@/composables/use-rename-volume-label';
 import { useWindowColumns } from '@/composables/use-window-columns';
 import { useTrashStore } from '@/stores/runtime/trash';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
@@ -51,6 +53,7 @@ import { basename } from '@/utils/path';
 const RECENTS_IN_SIDEBAR = 15;
 
 const { drives, refresh } = useDrives();
+const { isOpen: isRenameOpen, value: renameValue, confirm: confirmRename } = useRenameVolumeLabel();
 const {
 	drives: cloudDrives,
 	error: cloudError,
@@ -221,6 +224,16 @@ onMounted(async () => {
         </Tooltip>
       </SideGroup>
 
+      <!-- Renombrar la etiqueta de un disco (menú del clic derecho de su tarjeta).
+           Se monta acá y no en la tarjeta: la tarjeta vive en un tooltip. -->
+      <PromptDialogComponent
+        v-model:open="isRenameOpen"
+        v-model:value="renameValue"
+        :title="t('drive.renameLabelTitle')"
+        :label="t('drive.renamePlaceholder')"
+        :confirm-label="t('drive.rename')"
+        select-on-open
+        @confirm="confirmRename" />
     </template>
 
     <!-- Si un montaje falló hay que decirlo. Antes el error se guardaba y no

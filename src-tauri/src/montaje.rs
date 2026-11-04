@@ -239,6 +239,67 @@ pub async fn cerrar_volumen_cifrado(dispositivo: &str) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Renombrar la etiqueta
+// ---------------------------------------------------------------------------
+
+/// Rechaza las etiquetas que no tiene sentido mandar al bus.
+///
+/// Una etiqueta vacía no es un renombre: según el sistema de archivos `SetLabel`
+/// la borra o la rechaza, y en ningún caso es lo que la persona pidió. Se corta
+/// antes de tocar el bus, así la ventana lo muestra igual que cualquier fallo.
+pub(crate) fn validar_etiqueta(label: &str) -> Result<(), FalloDeMontaje> {
+    if label.trim().is_empty() {
+        return Err(FalloDeMontaje::nuevo(
+            FALLO,
+            "la etiqueta no puede estar vacía",
+        ));
+    }
+    Ok(())
+}
+
+/// Cambia la etiqueta de un volumen con `Filesystem.SetLabel`.
+///
+/// No desmonta nada: si el sistema de archivos está montado y no acepta el
+/// cambio en caliente (FAT, NTFS), `udisks2` devuelve «device is mounted» y ese
+/// error se propaga tal cual (cae en `FALLO`) para que la ventana lo muestre.
+pub async fn etiquetar(device_path: &str, label: &str) -> Result<(), FalloDeMontaje> {
+    validar_etiqueta(label)?;
+
+    let conexion = zbus::Connection::system()
+        .await
+        .map_err(|error| FalloDeMontaje::nuevo(FALLO, error.to_string()))?;
+
+    let objeto = resolver(&conexion, device_path).await.ok_or_else(|| {
+        FalloDeMontaje::nuevo(
+            FALLO,
+            format!("no se encontró el dispositivo {device_path}"),
+        )
+    })?;
+
+    let opciones: HashMap<&str, Value<'_>> = HashMap::new();
+    conexion
+        .call_method(
+            Some(UDISKS),
+            &objeto,
+            Some("org.freedesktop.UDisks2.Filesystem"),
+            "SetLabel",
+            &(label, opciones),
+        )
+        .await
+        .map_err(|error| match &error {
+            zbus::Error::MethodError(nombre, detalle, _) => {
+                // Acá no hay respaldo por «no hay agente» como en el montaje: un
+                // error de método de `udisks2` siempre es un fallo que mostrar.
+                clasificar(nombre.as_str(), detalle.as_deref().unwrap_or_default())
+                    .unwrap_or_else(|SinAgente| FalloDeMontaje::nuevo(FALLO, nombre.as_str()))
+            }
+            _ => FalloDeMontaje::nuevo(FALLO, error.to_string()),
+        })?;
+
+    Ok(())
+}
+
 /// El objeto de `udisks2` para una ruta de dispositivo.
 async fn resolver(conexion: &zbus::Connection, dispositivo: &str) -> Option<OwnedObjectPath> {
     if !dispositivo.starts_with("/dev/") {

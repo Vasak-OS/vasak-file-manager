@@ -463,6 +463,12 @@ drive:
   mountFailed: No se pudo montar la unidad
   mountNotAuthorized: No se autorizó el montaje
   mountWrongPassphrase: La frase de paso no abrió la unidad
+  rename: Renombrar etiqueta
+  renameLabelTitle: Renombrar la etiqueta del volumen
+  renamePlaceholder: Nueva etiqueta
+  labelChanged: Se cambió la etiqueta del volumen
+  renameFailed: No se pudo cambiar la etiqueta del volumen
+  renameNotAuthorized: No se autorizó el cambio de etiqueta
 progress:
   completed: Completado
 operations:

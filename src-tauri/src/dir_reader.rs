@@ -797,6 +797,18 @@ pub async fn unmount_drive(device_path: String, mount_point: String) -> Result<(
     Ok(())
 }
 
+/// Cambia la etiqueta (nombre) de un volumen.
+///
+/// El trabajo está en `montaje::etiquetar`: valida la etiqueta y llama a
+/// `Filesystem.SetLabel`. Acá sólo queda el comando.
+#[tauri::command]
+pub async fn set_volume_label(
+    device_path: String,
+    label: String,
+) -> Result<(), crate::montaje::FalloDeMontaje> {
+    crate::montaje::etiquetar(&device_path, &label).await
+}
+
 fn linux_unmount(device_path: &str, mount_point: &str) -> Result<(), String> {
     if device_path.starts_with("/dev/") {
         if let Ok(output) = std::process::Command::new("udisksctl")
