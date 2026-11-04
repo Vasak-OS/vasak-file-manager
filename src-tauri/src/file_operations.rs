@@ -1800,7 +1800,9 @@ pub fn ensure_directory(directory_path: String) -> FileOperationResult {
     }
 }
 
-#[tauri::command]
+// `async` para que Tauri lo corra fuera del hilo principal: copiar una plantilla
+// grande, o esperar el diálogo de `pkexec`, bloquearía la ventana si no.
+#[tauri::command(async)]
 pub fn create_item(
     directory_path: String,
     name: String,
@@ -1866,11 +1868,12 @@ pub fn create_item(
         };
     }
 
-    // La plantilla sólo cuenta para archivos y si trae ruta no vacía.
+    // La plantilla sólo cuenta para archivos y si trae ruta no vacía. Se usa la
+    // ruta tal cual, sin recortar: un archivo puede tener espacios al borde del
+    // nombre, y recortarlos apuntaría a otra ruta (o a ninguna).
     let template = template_path
         .as_deref()
-        .map(str::trim)
-        .filter(|path| !path.is_empty() && !is_directory);
+        .filter(|path| !path.trim().is_empty() && !is_directory);
 
     let result = if is_directory {
         match fs::create_dir(&dest_path) {
@@ -1890,8 +1893,27 @@ pub fn create_item(
         if !origin.is_file() {
             Err(format!("Template does not exist: {}", template))
         } else {
-            match fs::copy(origin, &dest_path) {
-                Ok(_) => Ok(()),
+            // El destino se crea con `create_new`, igual que el archivo vacío:
+            // falla si ya existe —incluido un symlink colgante, que `exists()` no
+            // ve—, así `io::copy` nunca escribe a través de un enlace a una ruta
+            // fuera de la carpeta. Y como lo creó esta llamada, si la copia falla
+            // a medias se puede borrar el archivo propio sin tocar lo ajeno.
+            match fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&dest_path)
+            {
+                Ok(mut destination) => {
+                    match fs::File::open(origin)
+                        .and_then(|mut source| std::io::copy(&mut source, &mut destination))
+                    {
+                        Ok(_) => Ok(()),
+                        Err(error) => {
+                            let _ = fs::remove_file(&dest_path);
+                            Err(error.to_string())
+                        }
+                    }
+                }
                 Err(error) => {
                     if polkit::is_permission_denied(&error.to_string()) {
                         polkit::copy_with_pkexec(origin, &dest_path)
