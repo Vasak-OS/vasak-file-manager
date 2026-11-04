@@ -4,7 +4,9 @@ import { computed, ref, watch } from 'vue';
 import PromptDialogComponent from '@/components/dialogs/PromptDialogComponent.vue';
 
 const props = defineProps<{
-	type: 'directory' | 'file';
+	type: 'directory' | 'file' | 'template';
+	// Nombre con el que abre el campo (editable). Para una plantilla, su nombre.
+	defaultName?: string;
 }>();
 
 const emit = defineEmits<{
@@ -19,13 +21,14 @@ const isOpen = defineModel<boolean>('open', { required: true });
 const name = ref('');
 const isSubmitting = ref(false);
 
-const dialogTitle = computed(() =>
-	t(
+const dialogTitle = computed(() => {
+	if (props.type === 'template') return t('fileBrowser.newDocument');
+	return t(
 		props.type === 'directory'
 			? 'dialogs.newItemDialog.newDirectory'
 			: 'dialogs.newItemDialog.newFile'
-	)
-);
+	);
+});
 
 function isValidName(trimmedName: string): boolean {
 	if (!trimmedName) return false;
@@ -46,7 +49,8 @@ watch(name, () => {
 
 watch(isOpen, (open) => {
 	if (open) {
-		name.value = '';
+		// Una plantilla abre con su nombre precargado (editable); lo demás, vacío.
+		name.value = props.defaultName ?? '';
 		isSubmitting.value = false;
 	}
 });

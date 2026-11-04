@@ -20,7 +20,11 @@ export function useFileBrowserDialogs(options: {
 	cancelBatchRename: () => void;
 	confirmBatchRename: (renames: BatchRename[]) => Promise<boolean>;
 	confirmRename: (newName: string) => Promise<boolean>;
-	createNewItem: (name: string, itemType: 'directory' | 'file') => Promise<boolean>;
+	createNewItem: (
+		name: string,
+		itemType: 'directory' | 'file',
+		templatePath?: string
+	) => Promise<boolean>;
 }) {
 	const openWithState = ref({
 		isOpen: false,
@@ -29,7 +33,9 @@ export function useFileBrowserDialogs(options: {
 
 	const newItemDialogState = ref({
 		isOpen: false,
-		type: 'directory' as 'directory' | 'file',
+		type: 'directory' as 'directory' | 'file' | 'template',
+		templatePath: undefined as string | undefined,
+		defaultName: undefined as string | undefined,
 	});
 
 	const isRenameDialogOpen = computed({
@@ -79,6 +85,18 @@ export function useFileBrowserDialogs(options: {
 		newItemDialogState.value = {
 			isOpen: true,
 			type,
+			templatePath: undefined,
+			defaultName: undefined,
+		};
+	}
+
+	/** Abre el diálogo para copiar una plantilla de `~/Templates` con nombre editable. */
+	function openTemplateDialog(template: { path: string; name: string }) {
+		newItemDialogState.value = {
+			isOpen: true,
+			type: 'template',
+			templatePath: template.path,
+			defaultName: template.name,
 		};
 	}
 
@@ -103,7 +121,10 @@ export function useFileBrowserDialogs(options: {
 	}
 
 	async function handleNewItemConfirm(name: string) {
-		const success = await options.createNewItem(name, newItemDialogState.value.type);
+		const { type, templatePath } = newItemDialogState.value;
+		// Una plantilla crea un archivo (copiándola); el resto, lo de siempre.
+		const itemType = type === 'directory' ? 'directory' : 'file';
+		const success = await options.createNewItem(name, itemType, templatePath);
 
 		if (success) {
 			closeNewItemDialog();
@@ -123,6 +144,7 @@ export function useFileBrowserDialogs(options: {
 		openOpenWithDialog,
 		closeOpenWithDialog,
 		openNewItemDialog,
+		openTemplateDialog,
 		closeNewItemDialog,
 		handleRenameConfirm,
 		handleRenameCancel,

@@ -540,6 +540,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		openOpenWithDialog: dialogs.openOpenWithDialog,
 		closeOpenWithDialog: dialogs.closeOpenWithDialog,
 		openNewItemDialog: dialogs.openNewItemDialog,
+		openTemplateDialog: dialogs.openTemplateDialog,
 		handleRenameConfirm: dialogs.handleRenameConfirm,
 		handleRenameCancel: dialogs.handleRenameCancel,
 		handleBatchRenameConfirm: dialogs.handleBatchRenameConfirm,

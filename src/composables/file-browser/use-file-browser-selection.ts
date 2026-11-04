@@ -987,7 +987,11 @@ export function useFileBrowserSelection(
 		}
 	}
 
-	async function createNewItem(name: string, itemType: 'directory' | 'file'): Promise<boolean> {
+	async function createNewItem(
+		name: string,
+		itemType: 'directory' | 'file',
+		templatePath?: string
+	): Promise<boolean> {
 		const trimmedName = name.trim();
 
 		if (!trimmedName) {
@@ -1010,6 +1014,8 @@ export function useFileBrowserSelection(
 				directoryPath: currentPathRef.value,
 				name: trimmedName,
 				isDirectory: itemType === 'directory',
+				// Cuando hay plantilla, el backend copia ese archivo en vez de crear vacío.
+				templatePath: templatePath ?? null,
 			});
 
 			if (result.success) {

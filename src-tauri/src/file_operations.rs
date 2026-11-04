@@ -1800,11 +1800,17 @@ pub fn ensure_directory(directory_path: String) -> FileOperationResult {
     }
 }
 
-#[tauri::command]
+// `async` para que Tauri lo corra fuera del hilo principal: copiar una plantilla
+// grande, o esperar el diálogo de `pkexec`, bloquearía la ventana si no.
+#[tauri::command(async)]
 pub fn create_item(
     directory_path: String,
     name: String,
     is_directory: bool,
+    // Cuando viene una plantilla (submenú «Nuevo documento»), el archivo se crea
+    // copiando esa plantilla en vez de vacío. `None` o vacío = comportamiento de
+    // siempre. Sólo aplica a archivos; para carpetas se ignora.
+    template_path: Option<String>,
 ) -> FileOperationResult {
     let trimmed_name = name.trim();
 
@@ -1862,6 +1868,13 @@ pub fn create_item(
         };
     }
 
+    // La plantilla sólo cuenta para archivos y si trae ruta no vacía. Se usa la
+    // ruta tal cual, sin recortar: un archivo puede tener espacios al borde del
+    // nombre, y recortarlos apuntaría a otra ruta (o a ninguna).
+    let template = template_path
+        .as_deref()
+        .filter(|path| !path.trim().is_empty() && !is_directory);
+
     let result = if is_directory {
         match fs::create_dir(&dest_path) {
             Ok(()) => Ok(()),
@@ -1870,6 +1883,43 @@ pub fn create_item(
                     polkit::create_dir_with_pkexec(&dest_path)
                 } else {
                     Err(error.to_string())
+                }
+            }
+        }
+    } else if let Some(template) = template {
+        // Copiar la plantilla elegida. Si no es un archivo, se corta antes de
+        // tocar el disco: una carpeta o una ruta inexistente no es una plantilla.
+        let origin = Path::new(template);
+        if !origin.is_file() {
+            Err(format!("Template does not exist: {}", template))
+        } else {
+            // El destino se crea con `create_new`, igual que el archivo vacío:
+            // falla si ya existe —incluido un symlink colgante, que `exists()` no
+            // ve—, así `io::copy` nunca escribe a través de un enlace a una ruta
+            // fuera de la carpeta. Y como lo creó esta llamada, si la copia falla
+            // a medias se puede borrar el archivo propio sin tocar lo ajeno.
+            match fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&dest_path)
+            {
+                Ok(mut destination) => {
+                    match fs::File::open(origin)
+                        .and_then(|mut source| std::io::copy(&mut source, &mut destination))
+                    {
+                        Ok(_) => Ok(()),
+                        Err(error) => {
+                            let _ = fs::remove_file(&dest_path);
+                            Err(error.to_string())
+                        }
+                    }
+                }
+                Err(error) => {
+                    if polkit::is_permission_denied(&error.to_string()) {
+                        polkit::copy_with_pkexec(origin, &dest_path)
+                    } else {
+                        Err(error.to_string())
+                    }
                 }
             }
         }
@@ -4537,6 +4587,179 @@ mod tests {
         // La entrada se consumió y quedó disponible para rehacer.
         assert!(crate::undo::get_undo_info().is_none());
         assert_eq!(crate::undo::get_redo_info().unwrap().kind, "link");
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn crear_desde_una_plantilla_copia_su_contenido() {
+        let _pilas = pilas();
+        let dir = scratch("plantilla-copia");
+        let plantilla = dir.join("Plantilla.odt");
+        std::fs::write(&plantilla, b"contenido de la plantilla").unwrap();
+        let destino = dir.join("destino");
+        std::fs::create_dir_all(&destino).unwrap();
+
+        let result = create_item(
+            destino.to_string_lossy().into_owned(),
+            "Informe.odt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(result.success, "{:?}", result.error);
+        assert_eq!(
+            std::fs::read(destino.join("Informe.odt")).unwrap(),
+            b"contenido de la plantilla"
+        );
+        // La plantilla queda intacta.
+        assert_eq!(
+            std::fs::read(&plantilla).unwrap(),
+            b"contenido de la plantilla"
+        );
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_plantilla_inexistente_da_error_y_no_crea_nada() {
+        let dir = scratch("plantilla-falta");
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.odt".to_string(),
+            false,
+            Some(dir.join("no-esta.odt").to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert!(result
+            .error
+            .unwrap()
+            .starts_with("Template does not exist:"));
+        assert!(!dir.join("Informe.odt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_carpeta_no_es_una_plantilla() {
+        let dir = scratch("plantilla-carpeta");
+        let carpeta = dir.join("una-carpeta");
+        std::fs::create_dir_all(&carpeta).unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.odt".to_string(),
+            false,
+            Some(carpeta.to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert!(!dir.join("Informe.odt").exists());
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn sin_plantilla_o_con_ruta_vacia_crea_un_archivo_vacio() {
+        let _pilas = pilas();
+        let dir = scratch("plantilla-vacia");
+        for (nombre, plantilla) in [("a.txt", None), ("b.txt", Some(String::new()))] {
+            let result = create_item(
+                dir.to_string_lossy().into_owned(),
+                nombre.to_string(),
+                false,
+                plantilla,
+            );
+            assert!(result.success, "{:?}", result.error);
+            assert_eq!(std::fs::read(dir.join(nombre)).unwrap(), b"");
+        }
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn una_plantilla_no_pisa_un_destino_que_ya_existe() {
+        let dir = scratch("plantilla-colision");
+        let plantilla = dir.join("Plantilla.txt");
+        std::fs::write(&plantilla, b"plantilla").unwrap();
+        std::fs::write(dir.join("Informe.txt"), b"el de antes").unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.txt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert_eq!(
+            std::fs::read(dir.join("Informe.txt")).unwrap(),
+            b"el de antes"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn para_una_carpeta_la_plantilla_se_ignora() {
+        let _pilas = pilas();
+        let dir = scratch("plantilla-carpeta-nueva");
+        let plantilla = dir.join("Plantilla.txt");
+        std::fs::write(&plantilla, b"plantilla").unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "nueva".to_string(),
+            true,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(result.success, "{:?}", result.error);
+        assert!(dir.join("nueva").is_dir());
+        crate::undo::clear_undo_history();
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn un_symlink_colgante_en_el_destino_no_deja_escribir_afuera() {
+        let _pilas = pilas();
+        let dir = scratch("plantilla-symlink");
+        let afuera = scratch("plantilla-symlink-afuera");
+        let testigo = afuera.join("testigo.txt");
+        let plantilla = dir.join("Plantilla.txt");
+        std::fs::write(&plantilla, b"no debe filtrarse").unwrap();
+        std::os::unix::fs::symlink(&testigo, dir.join("Informe.txt")).unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.txt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(!result.success);
+        assert!(!testigo.exists(), "la copia siguió el symlink hacia afuera");
+        cleanup(&dir);
+        cleanup(&afuera);
+    }
+
+    #[test]
+    fn la_ruta_de_la_plantilla_se_usa_tal_cual_sin_recortar_espacios() {
+        let _pilas = pilas();
+        let dir = scratch("plantilla-espacio");
+        let plantilla = dir.join(" Plantilla con espacio.txt ");
+        std::fs::write(&plantilla, b"con espacios al borde").unwrap();
+
+        let result = create_item(
+            dir.to_string_lossy().into_owned(),
+            "Informe.txt".to_string(),
+            false,
+            Some(plantilla.to_string_lossy().into_owned()),
+        );
+
+        assert!(result.success, "{:?}", result.error);
+        assert_eq!(
+            std::fs::read(dir.join("Informe.txt")).unwrap(),
+            b"con espacios al borde"
+        );
         crate::undo::clear_undo_history();
         cleanup(&dir);
     }

@@ -166,7 +166,7 @@ defineExpose({
       :is-loading="fb.isLoading.value || fb.isRefreshing.value" @go-back="fb.goBack" @go-forward="fb.goForward"
       @go-up="fb.navigateToParent" @go-home="fb.navigateToHome" @refresh="fb.refresh" @submit-path="fb.handlePathSubmit"
       @navigate-to="fb.navigateToPath" @create-new-directory="fb.openNewItemDialog('directory')"
-      @create-new-file="fb.openNewItemDialog('file')" />
+      @create-new-file="fb.openNewItemDialog('file')" @create-from-template="fb.openTemplateDialog" />
     </Teleport>
 
     <FileBrowserContentComponent :layout="props.layout" />
@@ -184,6 +184,7 @@ defineExpose({
       @confirm="fb.handleBatchRenameConfirm" @cancel="fb.handleBatchRenameCancel" />
 
     <NewItemDialogComponent v-model:open="fb.isNewItemDialogOpen.value" :type="fb.newItemDialogState.value.type"
+      :default-name="fb.newItemDialogState.value.defaultName"
       @confirm="fb.handleNewItemConfirm" @cancel="fb.handleNewItemCancel" />
 
     <OpenWithDialogComponent v-model:open="fb.openWithState.value.isOpen" :entries="fb.openWithState.value.entries"
