@@ -10,6 +10,7 @@ import { useGlobalSearchStore } from '@/stores/runtime/global-search';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
+import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import { saveTheme } from '@/tools/theme-cache';
 
@@ -74,10 +75,15 @@ onMounted(async () => {
 	try {
 		const userPathsStore = useUserPathsStore();
 		const userLayoutStore = useUserLayoutStore();
+		const userSettingsStore = useUserSettingsStore();
 		const workspacesStore = useWorkspacesStore();
 
 		await userPathsStore.init();
 		await userLayoutStore.init();
+		// Después de las rutas: guarda en `appUserDataSettingsPath`. Aplica las
+		// preferencias (movimiento, bajo consumo, tamaño de texto) antes de que la
+		// ventana se muestre, así no hay salto al abrir.
+		await userSettingsStore.init();
 		await workspacesStore.init();
 
 		// Si nos abrieron con una ruta —«abrir carpeta contenedora» de una

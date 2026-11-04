@@ -1,5 +1,18 @@
 _version: 1
 settings:
+  title: Ajustes
+  close: Cerrar ajustes
+  appearance:
+    title: Apariencia y rendimiento
+    reduceMotion: Reducir el movimiento
+    reduceMotionDesc: Acorta las animaciones y transiciones de la interfaz.
+    lowPower: Modo bajo consumo
+    lowPowerDesc: Apaga animaciones y efectos de composición para equipos sin aceleración.
+    textSize: Tamaño del texto
+    textSizeDesc: Escala el texto de toda la aplicación.
+    textSizeSmall: Pequeño
+    textSizeMedium: Mediano
+    textSizeLarge: Grande
   navigator:
     navigatorOptions: Opciones del Navegador
     navigatorViewLayout: Diseño de Vista

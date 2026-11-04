@@ -43,6 +43,7 @@ import { useRenameVolumeLabel } from '@/composables/use-rename-volume-label';
 import { useWindowColumns } from '@/composables/use-window-columns';
 import { useTrashStore } from '@/stores/runtime/trash';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
+import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DriveInfo } from '@/types/drive-info';
@@ -65,12 +66,20 @@ const workspacesStore = useWorkspacesStore();
 const userPathsStore = useUserPathsStore();
 const userStatsStore = useUserStatsStore();
 const trashStore = useTrashStore();
+const userSettingsStore = useUserSettingsStore();
 const { t } = useI18n();
 
 const recentItems = computed(() => userStatsStore.sortedHistory.slice(0, RECENTS_IN_SIDEBAR));
 
 /** En una ventana compacta la barra es un cajón: elegir un lugar lo cierra. */
 const { isSidebarOpen } = useWindowColumns();
+
+function openSettings() {
+	// En compacto, cerrar el cajón antes de abrir el overlay: si no, los ajustes
+	// quedan debajo del cajón y su velo. Igual que `openDrive`.
+	isSidebarOpen.value = false;
+	userSettingsStore.open();
+}
 
 async function openDrive(path: string) {
 	isSidebarOpen.value = false;
@@ -158,6 +167,12 @@ onMounted(async () => {
           icon="user-trash"
           :collapsed="collapsed"
           @click="trashStore.open()" />
+        <!-- Ajustes no es una carpeta: abre la vista overlay, igual que la papelera. -->
+        <SideButton
+          :label="t('settings.title')"
+          icon="preferences-system"
+          :collapsed="collapsed"
+          @click="openSettings" />
       </SideGroup>
 
       <SideGroup

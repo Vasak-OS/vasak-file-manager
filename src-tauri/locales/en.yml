@@ -1,5 +1,18 @@
 _version: 1
 settings:
+  title: Settings
+  close: Close settings
+  appearance:
+    title: Appearance and performance
+    reduceMotion: Reduce motion
+    reduceMotionDesc: Shortens the interface's animations and transitions.
+    lowPower: Low-power mode
+    lowPowerDesc: Turns off animations and compositing effects for machines without acceleration.
+    textSize: Text size
+    textSizeDesc: Scales the text across the whole application.
+    textSizeSmall: Small
+    textSizeMedium: Medium
+    textSizeLarge: Large
   navigator:
     navigatorOptions: Navigator Settings
     navigatorViewLayout: View Layout
