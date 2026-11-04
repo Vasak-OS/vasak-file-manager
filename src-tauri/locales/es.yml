@@ -106,6 +106,7 @@ fileBrowser:
   newDirectoryFile: Nueva Carpeta/Archivo
   newDirectory: Nueva Carpeta
   newFile: Nuevo Archivo
+  newDocument: Nuevo Documento
   quickSearch: Búsqueda Rápida
   searchThisDirectory: Buscar en este directorio
   clearFilter: Limpiar Filtro

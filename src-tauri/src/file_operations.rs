@@ -1805,6 +1805,10 @@ pub fn create_item(
     directory_path: String,
     name: String,
     is_directory: bool,
+    // Cuando viene una plantilla (submenú «Nuevo documento»), el archivo se crea
+    // copiando esa plantilla en vez de vacío. `None` o vacío = comportamiento de
+    // siempre. Sólo aplica a archivos; para carpetas se ignora.
+    template_path: Option<String>,
 ) -> FileOperationResult {
     let trimmed_name = name.trim();
 
@@ -1862,6 +1866,12 @@ pub fn create_item(
         };
     }
 
+    // La plantilla sólo cuenta para archivos y si trae ruta no vacía.
+    let template = template_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|path| !path.is_empty() && !is_directory);
+
     let result = if is_directory {
         match fs::create_dir(&dest_path) {
             Ok(()) => Ok(()),
@@ -1870,6 +1880,24 @@ pub fn create_item(
                     polkit::create_dir_with_pkexec(&dest_path)
                 } else {
                     Err(error.to_string())
+                }
+            }
+        }
+    } else if let Some(template) = template {
+        // Copiar la plantilla elegida. Si no es un archivo, se corta antes de
+        // tocar el disco: una carpeta o una ruta inexistente no es una plantilla.
+        let origin = Path::new(template);
+        if !origin.is_file() {
+            Err(format!("Template does not exist: {}", template))
+        } else {
+            match fs::copy(origin, &dest_path) {
+                Ok(_) => Ok(()),
+                Err(error) => {
+                    if polkit::is_permission_denied(&error.to_string()) {
+                        polkit::copy_with_pkexec(origin, &dest_path)
+                    } else {
+                        Err(error.to_string())
+                    }
                 }
             }
         }

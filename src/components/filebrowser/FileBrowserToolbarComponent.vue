@@ -5,6 +5,8 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	Kbd,
 	Popover,
@@ -17,6 +19,7 @@ import {
 } from '@vasakgroup/vue-libvasak';
 import { ref } from 'vue';
 import AddressBarComponent from '@/components/AddressBarComponent.vue';
+import { type TemplateFile, useTemplates } from '@/composables/file-browser/use-templates';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 
 const props = defineProps<{
@@ -51,10 +54,12 @@ const emit = defineEmits<{
 	(event: 'navigateTo', path: string): void;
 	(event: 'createNewDirectory'): void;
 	(event: 'createNewFile'): void;
+	(event: 'createFromTemplate', template: TemplateFile): void;
 }>();
 
 const shortcutsStore = useShortcutsStore();
 const { t } = useI18n();
+const { templates, loadTemplates } = useTemplates();
 
 const isCreateMenuOpen = ref(false);
 
@@ -69,6 +74,9 @@ function handleAddressBarNavigate(path: string) {
 
 function handleCreateMenuOpenChange(value: boolean) {
 	isCreateMenuOpen.value = value;
+	// Al abrir el menú se relee `~/Templates`: la carpeta pudo cambiar, y al
+	// montar la barra la ruta todavía podía no estar resuelta.
+	if (value) loadTemplates();
 }
 </script>
 
@@ -171,6 +179,16 @@ function handleCreateMenuOpenChange(value: boolean) {
           <DropdownMenuItem icon="document-new" @click="emit('createNewFile')">
             {{ t('fileBrowser.newFile') }}
           </DropdownMenuItem>
+          <!-- Las plantillas de ~/Templates, sólo si hay. No hay submenú en el
+               menú de la casa, así que van como sección etiquetada. -->
+          <template v-if="templates.length">
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{{ t('fileBrowser.newDocument') }}</DropdownMenuLabel>
+            <DropdownMenuItem v-for="template in templates" :key="template.path" icon="document-new"
+              @click="emit('createFromTemplate', template)">
+              {{ template.name }}
+            </DropdownMenuItem>
+          </template>
         </DropdownMenuContent>
       </DropdownMenu>
       <Popover :open="isFilterOpen" @update:open="emit('update:isFilterOpen', $event)">

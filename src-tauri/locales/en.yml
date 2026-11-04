@@ -106,6 +106,7 @@ fileBrowser:
   newDirectoryFile: New Directory/File
   newDirectory: New Directory
   newFile: New File
+  newDocument: New Document
   quickSearch: Quick Search
   searchThisDirectory: Search this directory
   clearFilter: Clear Filter
