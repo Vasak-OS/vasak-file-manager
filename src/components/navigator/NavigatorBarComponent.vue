@@ -429,6 +429,10 @@ async function handleRedoShortcut() {
 }
 
 async function handleDeleteShortcut() {
+	// Con los ajustes abiertos el overlay tapa los paneles: Supr no debe ir a la
+	// selección oculta de abajo (mandarla a la papelera es destructivo).
+	if (userSettingsStore.isOpen) return;
+
 	const pane = getActivePaneRef();
 	if (!pane) return;
 
@@ -438,6 +442,10 @@ async function handleDeleteShortcut() {
 }
 
 async function handleDeletePermanentlyShortcut() {
+	// Igual que arriba, y acá el borrado es permanente: más razón para no tocar
+	// la selección oculta mientras los ajustes tapan los paneles.
+	if (userSettingsStore.isOpen) return;
+
 	const pane = getActivePaneRef();
 	if (!pane) return;
 

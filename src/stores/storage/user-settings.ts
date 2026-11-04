@@ -51,6 +51,15 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 		root.classList.toggle('reduce-motion', settings.value.reduceMotion);
 		root.classList.toggle('low-power', settings.value.lowPower);
 		root.style.fontSize = FONT_SIZE_PX[settings.value.textSize];
+		// Caché para el script pre-boot de `index.html`: reaplica estas
+		// preferencias antes de que monte Vue, así la ventana no abre con la
+		// tipografía y el movimiento por omisión y salta al cargar (igual que el
+		// tema). Si falla, se aplica igual al terminar `init`.
+		try {
+			localStorage.setItem('vsk-settings', JSON.stringify(settings.value));
+		} catch {
+			// localStorage puede no estar disponible; no es crítico.
+		}
 	}
 
 	async function initStorage() {
@@ -68,7 +77,22 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 		try {
 			const stored = await storage.value?.get<Partial<UserSettingsState>>('settings');
 			if (stored) {
-				settings.value = { ...DEFAULTS, ...stored };
+				// Se valida campo por campo, no con un spread: un archivo corrupto
+				// con `"reduceMotion": "false"` (string) sería truthy en
+				// `classList.toggle` y prendería la clase, y un `textSize` fuera del
+				// enum dejaría `FONT_SIZE_PX[...]` en `undefined`. El disco es una
+				// frontera: lo que no es válido cae al default.
+				settings.value = {
+					reduceMotion:
+						typeof stored.reduceMotion === 'boolean' ? stored.reduceMotion : DEFAULTS.reduceMotion,
+					lowPower: typeof stored.lowPower === 'boolean' ? stored.lowPower : DEFAULTS.lowPower,
+					textSize:
+						stored.textSize === 'small' ||
+						stored.textSize === 'medium' ||
+						stored.textSize === 'large'
+							? stored.textSize
+							: DEFAULTS.textSize,
+				};
 			}
 		} catch (error) {
 			console.error('Failed to load user settings:', error);

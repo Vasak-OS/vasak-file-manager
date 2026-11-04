@@ -21,6 +21,22 @@
       } catch (e) {
         /* localStorage puede no estar disponible: sin cache, arranca como antes. */
       }
+      // Lo mismo para los ajustes de apariencia (reduce-motion, bajo consumo,
+      // tamaño de texto) que guarda user-settings: se reaplican antes de montar
+      // para que la ventana no abra con la tipografía y el movimiento por
+      // omisión y salte cuando el store termina de cargar.
+      try {
+        var ajustes = JSON.parse(localStorage.getItem("vsk-settings") || "null");
+        if (ajustes) {
+          var raiz = document.documentElement;
+          raiz.classList.toggle("reduce-motion", !!ajustes.reduceMotion);
+          raiz.classList.toggle("low-power", !!ajustes.lowPower);
+          var px = { small: "14px", medium: "16px", large: "18px" }[ajustes.textSize];
+          if (px) raiz.style.fontSize = px;
+        }
+      } catch (e) {
+        /* sin cache, arranca con el tamaño y el movimiento por omisión. */
+      }
     </script>
   </head>
 

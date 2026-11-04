@@ -74,6 +74,13 @@ const recentItems = computed(() => userStatsStore.sortedHistory.slice(0, RECENTS
 /** En una ventana compacta la barra es un cajón: elegir un lugar lo cierra. */
 const { isSidebarOpen } = useWindowColumns();
 
+function openSettings() {
+	// En compacto, cerrar el cajón antes de abrir el overlay: si no, los ajustes
+	// quedan debajo del cajón y su velo. Igual que `openDrive`.
+	isSidebarOpen.value = false;
+	userSettingsStore.open();
+}
+
 async function openDrive(path: string) {
 	isSidebarOpen.value = false;
 	await workspacesStore.openNewTabGroup(path);
@@ -165,7 +172,7 @@ onMounted(async () => {
           :label="t('settings.title')"
           icon="preferences-system"
           :collapsed="collapsed"
-          @click="userSettingsStore.open()" />
+          @click="openSettings" />
       </SideGroup>
 
       <SideGroup

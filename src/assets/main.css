@@ -169,7 +169,9 @@
   right: 0;
   z-index: 9999;
   padding: 6px 16px;
-  font-size: 13px;
+  /* En `rem` para que siga el tamaño de texto de Ajustes; 0.8125rem = 13px con la
+     raíz por omisión (16px). */
+  font-size: 0.8125rem;
   text-align: center;
 }
 
@@ -349,4 +351,20 @@
 :root.low-power *::after {
   /* biome-ignore lint/complexity/noImportantStyles: tiene que ganarle a los `backdrop-filter` de las utilidades y los componentes */
   backdrop-filter: none !important;
+}
+
+/*
+ * Las pseudo-elementos de la transición de vista (el `startViewTransition` del
+ * cambio de tema, arriba) no son descendientes de la raíz, así que las reglas de
+ * `*` no las alcanzan: se apagan aparte cuando el movimiento está reducido, o si
+ * no la transición del tema seguiría animando los 500 ms del círculo.
+ */
+:root.reduce-motion::view-transition-old(root),
+:root.reduce-motion::view-transition-new(root),
+:root.low-power::view-transition-old(root),
+:root.low-power::view-transition-new(root) {
+  /* biome-ignore lint/complexity/noImportantStyles: tiene que ganarle a la animación de `::view-transition-*` */
+  animation-delay: 0ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: tiene que ganarle a la animación de `::view-transition-*` */
+  animation-duration: 0.01ms !important;
 }
