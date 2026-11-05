@@ -1916,7 +1916,11 @@ pub fn create_item(
                 }
                 Err(error) => {
                     if polkit::is_permission_denied(&error.to_string()) {
-                        polkit::copy_with_pkexec(origin, &dest_path)
+                        // Variante auto-limpiante: si el `cp` elevado falla a
+                        // mitad, borra el destino a medias que dejaría (la ruta
+                        // normal ya lo hace con `remove_file`). `dest_path` lo crea
+                        // esta llamada, así que es seguro.
+                        polkit::copy_file_with_pkexec_cleanup(origin, &dest_path)
                     } else {
                         Err(error.to_string())
                     }
