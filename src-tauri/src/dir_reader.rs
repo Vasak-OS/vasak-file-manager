@@ -97,7 +97,7 @@ fn get_extension(path: &Path) -> Option<String> {
 /// Los puntos de montaje de sistemas de archivos de red, de `/proc/mounts`.
 ///
 /// Abrir una carpeta ahí es un viaje de ida y vuelta por la red, así que no se
-/// abre sólo para contar lo que tiene adentro (ver `read_entry`).
+/// abre sólo para contar lo que tiene adentro (ver `count_dir_items`).
 fn network_mount_points(mounts: &str) -> Vec<PathBuf> {
     mounts
         .lines()
@@ -142,7 +142,7 @@ fn is_on_network_mount(path: &Path, network_mounts: &[PathBuf]) -> bool {
     network_mounts.iter().any(|mount| path.starts_with(mount))
 }
 
-fn read_entry(path: &Path, network_mounts: &[PathBuf]) -> Option<DirEntry> {
+fn read_entry(path: &Path) -> Option<DirEntry> {
     // Un solo `stat` por entrada en el caso común.
     //
     // `symlink_metadata` no sigue el enlace y coincide con `metadata` para todo
@@ -193,16 +193,13 @@ fn read_entry(path: &Path, network_mounts: &[PathBuf]) -> Option<DirEntry> {
 
     let size = if is_file { metadata.len() } else { 0 };
 
-    // En un sistema de archivos de red no se cuenta: el conteo abre cada
-    // subcarpeta y ahí cada una es un viaje por la red. `None` ya es un valor
-    // que toda la interfaz sabe mostrar («—», sin ordenar por él).
-    let item_count = if is_dir && !is_on_network_mount(path, network_mounts) {
-        fs::read_dir(path)
-            .ok()
-            .map(|entries| entries.count() as u32)
-    } else {
-        None
-    };
+    // El conteo de hijos ya no se hace al listar. Abrir cada subcarpeta para
+    // contarlos era el costo dominante de listar una carpeta con muchas
+    // subcarpetas (medido en `/usr/share/man`: ~27 ms con el conteo contra
+    // ~0,4 ms sin él). Ahora lo pide la ventana sólo para las entradas visibles,
+    // con `count_dir_items`. `None` lo muestra la interfaz como «—» hasta que
+    // llega el conteo.
+    let item_count = None;
 
     // Sólo lo que sale del nombre, que no toca el disco. Mirar adentro cuesta
     // 150 µs por archivo y no se puede repartir entre los núcleos, así que eso lo
@@ -248,20 +245,9 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
     // se pierda no importa: abajo se ordena igual.
     let rutas: Vec<std::path::PathBuf> = read_result.flatten().map(|entry| entry.path()).collect();
 
-    // Se mira una vez por carpeta, no por entrada. Si la carpeta se alcanzó por
-    // un enlace, la ruta cruda no dice dónde está de verdad: se busca la real.
-    let mut network_mounts = fs::read_to_string("/proc/mounts")
-        .map(|mounts| network_mount_points(&mounts))
-        .unwrap_or_default();
-    if let Ok(real) = fs::canonicalize(directory) {
-        if is_on_network_mount(&real, &network_mounts) {
-            network_mounts.push(directory.to_path_buf());
-        }
-    }
-
     let mut entries: Vec<DirEntry> = rutas
         .par_iter()
-        .filter_map(|ruta| read_entry(ruta, &network_mounts))
+        .filter_map(|ruta| read_entry(ruta))
         .collect();
 
     let dir_count = entries.iter().filter(|entrada| entrada.is_dir).count();
@@ -291,6 +277,46 @@ pub fn read_dir(path: String) -> Result<DirContents, String> {
         dir_count,
         file_count,
     })
+}
+
+#[derive(Debug, Serialize)]
+pub struct DirItemCount {
+    pub path: String,
+    pub count: Option<u32>,
+}
+
+/// Cuenta los hijos inmediatos de varias carpetas. Lo pide la ventana para las
+/// entradas visibles, porque listar ya no abre cada subcarpeta para contarlas
+/// (ver `read_entry`). En un sistema de archivos de red no se cuenta —cada
+/// carpeta es un viaje por la red—: devuelve `None`, que la interfaz muestra
+/// como «—». Un error al abrir una carpeta también da `None`.
+#[tauri::command(async)]
+pub fn count_dir_items(paths: Vec<String>) -> Vec<DirItemCount> {
+    let network_mounts = fs::read_to_string("/proc/mounts")
+        .map(|mounts| network_mount_points(&mounts))
+        .unwrap_or_default();
+
+    paths
+        .par_iter()
+        .map(|path| {
+            let p = Path::new(path);
+            // La ruta real y no la cruda: una subcarpeta alcanzada por un enlace
+            // a un montaje de red no lo delata por su nombre.
+            let on_network = is_on_network_mount(p, &network_mounts)
+                || fs::canonicalize(p)
+                    .map(|real| is_on_network_mount(&real, &network_mounts))
+                    .unwrap_or(false);
+            let count = if on_network {
+                None
+            } else {
+                fs::read_dir(p).ok().map(|entries| entries.count() as u32)
+            };
+            DirItemCount {
+                path: path.clone(),
+                count,
+            }
+        })
+        .collect()
 }
 
 fn is_virtual_filesystem(file_system: &str) -> bool {
@@ -1157,20 +1183,18 @@ tmpfs /run tmpfs rw 0 0
     }
 
     #[test]
-    fn un_directorio_local_se_cuenta_y_uno_de_red_no() {
+    fn un_directorio_local_se_cuenta_con_count_dir_items() {
         let base = std::env::temp_dir().join(format!("vasak-fm-conteo-{}", std::process::id()));
         let carpeta = base.join("carpeta");
         fs::create_dir_all(&carpeta).unwrap();
         fs::write(carpeta.join("a"), b"").unwrap();
         fs::write(carpeta.join("b"), b"").unwrap();
 
-        let local = read_entry(&carpeta, &[]).unwrap();
-        let en_red = read_entry(&carpeta, &[base.clone()]).unwrap();
+        let conteos = count_dir_items(vec![carpeta.to_string_lossy().to_string()]);
         fs::remove_dir_all(&base).unwrap();
 
-        assert_eq!(local.item_count, Some(2));
-        assert_eq!(en_red.item_count, None);
-        assert!(en_red.is_dir);
+        assert_eq!(conteos.len(), 1);
+        assert_eq!(conteos[0].count, Some(2));
     }
 
     #[test]
@@ -1325,6 +1349,55 @@ tmpfs /run tmpfs rw 0 0
     }
 
     #[test]
+    fn listar_no_cuenta_los_hijos_de_una_subcarpeta_no_vacia() {
+        let dir = TestDir::new("sin-conteo");
+        let sub = dir.0.join("llena");
+        std::fs::create_dir(&sub).unwrap();
+        std::fs::write(sub.join("uno"), b"").unwrap();
+        std::fs::write(sub.join("dos"), b"").unwrap();
+
+        let contenido = read_dir(dir.0.to_string_lossy().to_string()).unwrap();
+        let llena = contenido
+            .entries
+            .iter()
+            .find(|entrada| entrada.name == "llena")
+            .expect("la subcarpeta tiene que aparecer");
+
+        assert!(llena.is_dir);
+        assert_eq!(
+            llena.item_count, None,
+            "el conteo lo pide la ventana aparte"
+        );
+    }
+
+    #[test]
+    fn count_dir_items_empareja_cada_ruta_con_su_conteo() {
+        let dir = TestDir::new("conteo-lote");
+        let tres = dir.0.join("tres");
+        let vacia = dir.0.join("vacia");
+        std::fs::create_dir(&tres).unwrap();
+        std::fs::create_dir(&vacia).unwrap();
+        for n in ["a", "b", "c"] {
+            std::fs::write(tres.join(n), b"").unwrap();
+        }
+        let inexistente = dir.0.join("no-existe");
+        let rutas: Vec<String> = [&tres, &inexistente, &vacia]
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+
+        let conteos = count_dir_items(rutas.clone());
+
+        assert_eq!(conteos.len(), 3);
+        for (conteo, ruta) in conteos.iter().zip(&rutas) {
+            assert_eq!(&conteo.path, ruta, "se conserva el orden pedido");
+        }
+        assert_eq!(conteos[0].count, Some(3));
+        assert_eq!(conteos[1].count, None, "una ruta inexistente no se cuenta");
+        assert_eq!(conteos[2].count, Some(0));
+    }
+
+    #[test]
     fn un_archivo_y_una_carpeta_comunes_conservan_sus_datos() {
         let dir = TestDir::new("comunes");
         std::fs::write(dir.0.join("nota.txt"), b"abc").unwrap();
@@ -1348,7 +1421,7 @@ tmpfs /run tmpfs rw 0 0
             .expect("la carpeta común tiene que aparecer");
         assert!(carpeta.is_dir && !carpeta.is_file && !carpeta.is_symlink);
         assert_eq!(carpeta.size, 0);
-        assert_eq!(carpeta.item_count, Some(0));
+        assert_eq!(carpeta.item_count, None, "listar ya no cuenta los hijos");
     }
 
     #[test]

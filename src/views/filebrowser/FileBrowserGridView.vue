@@ -19,6 +19,7 @@ import {
 import { DEFAULT_ICON_SCALE } from '@/composables/file-browser/icon-scale';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
+import { useDirItemCountsStore } from '@/stores/runtime/dir-item-counts';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
@@ -43,6 +44,7 @@ function conEscala(base: number): number {
 const ctx = useFileBrowserContext();
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
+const dirItemCountsStore = useDirItemCountsStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
 
 const clipboardPathsMap = computed(() => {
@@ -71,12 +73,13 @@ function getDirSizeDisplay(entry: DirEntry): string | null {
 	// cuadrícula mostraba literalmente «fileBrowser.itemCount 3» en lugar de
 	// «3 elementos». Y con la clave según la cantidad, porque una carpeta con
 	// un solo archivo decía «1 elementos».
+	//
+	// El conteo lo trae el store de forma perezosa. Mientras no llega se omite
+	// y queda el tamaño (que tiene su propio esqueleto); al llegar aparece.
+	const storedCount = dirItemCountsStore.getCount(entry.path);
 	const itemCountStr =
-		entry.item_count !== null
-			? interpolar(
-					t(claveSegunCantidad('fileBrowser.itemCount', entry.item_count)),
-					entry.item_count
-				)
+		typeof storedCount === 'number'
+			? interpolar(t(claveSegunCantidad('fileBrowser.itemCount', storedCount)), storedCount)
 			: null;
 
 	if (!sizeInfo) {
@@ -349,7 +352,7 @@ watchEffect(() => {
               <span class="inline-flex items-center">
                 <template v-if="getDirSizeDisplay(entry)">{{ getDirSizeDisplay(entry) }}</template>
                 <template v-if="shouldShowSizeSkeleton(entry)">
-                  <span v-if="entry.item_count !== null" class="after:content-['_\·_']" />
+                  <span v-if="getDirSizeDisplay(entry)" class="after:content-['_\·_']" />
                   <Skeleton :width="40" :height="11" />
                 </template>
               </span>

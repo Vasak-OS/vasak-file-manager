@@ -14,6 +14,7 @@ import { DEFAULT_ICON_SCALE } from '@/composables/file-browser/icon-scale';
 import type { ListColumnVisibility } from '@/composables/file-browser/list-columns';
 import { useFileBrowserContext } from '@/composables/file-browser/use-file-browser-context';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
+import { useDirItemCountsStore } from '@/stores/runtime/dir-item-counts';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
 import { formatBytes } from '@/utils/byte-parser';
@@ -40,6 +41,7 @@ const iconSize = computed(() => Math.round(16 * props.iconScale));
 const ctx = useFileBrowserContext();
 const clipboardStore = useClipboardStore();
 const dirSizesStore = useDirSizesStore();
+const dirItemCountsStore = useDirItemCountsStore();
 const { clipboardItems, clipboardType, isToolbarSuppressed } = storeToRefs(clipboardStore);
 
 const showItemsColumn = computed(() => props.columnVisibility.items);
@@ -82,12 +84,21 @@ function getSizeDisplay(entry: DirEntry): string | null {
 	return formatBytes(sizeInfo.size);
 }
 
-function getItemsDisplay(entry: DirEntry): string {
+function getItemsDisplay(entry: DirEntry): string | null {
 	if (entry.is_file) {
 		return '—';
 	}
 
-	return entry.item_count !== null ? `${entry.item_count} items` : '—';
+	const count = dirItemCountsStore.getCount(entry.path);
+
+	// `null` del display pide el esqueleto de carga, igual que el tamaño. Sin
+	// conteo todavía (ausente del store) y en curso: carga. Ausente y no en
+	// curso, o `null` del store (red/error): «—».
+	if (count === undefined) {
+		return dirItemCountsStore.isLoading(entry.path) ? null : '—';
+	}
+
+	return count === null ? '—' : `${count} items`;
 }
 
 function isDirLoadingWithProgress(entry: DirEntry): boolean {
@@ -220,7 +231,8 @@ function handleEntryKeydown(event: KeyboardEvent): void {
           </div>
         </div>
         <span v-if="showItemsColumn" class="relative z-10 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-tx-muted text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
-          {{ getItemsDisplay(entry) }}
+          <Skeleton v-if="getItemsDisplay(entry) === null" :width="40" :height="12" />
+          <template v-else>{{ getItemsDisplay(entry) }}</template>
         </span>
         <span v-if="showSizeColumn" class="relative z-10 flex items-center gap-1.5 overflow-hidden pr-[var(--file-browser-list-cell-padding-right)] text-tx-muted text-xs text-ellipsis whitespace-nowrap group-data-[selected]:group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning group-data-[in-clipboard]:group-data-[clipboard-type='copy']:text-status-success group-data-[in-clipboard]:group-data-[clipboard-type='move']:text-status-warning">
           <ThemeIcon v-if="isDirLoadingWithProgress(entry)" name="content-loading-symbolic" type="symbol" :size="16" :alt="t('operations.calculatingSize')" class="animate-spin text-tx-muted" />

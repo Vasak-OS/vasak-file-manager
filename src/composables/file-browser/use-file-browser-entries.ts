@@ -1,4 +1,5 @@
 import { computed, type Ref } from 'vue';
+import { useDirItemCountsStore } from '@/stores/runtime/dir-item-counts';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import type { DirEntry } from '@/types/dir-entry';
 import type { ListSortColumn, ListSortDirection } from '@/types/file-browser';
@@ -16,6 +17,7 @@ export function useFileBrowserEntries(
 	sortDirection: Ref<ListSortDirection>
 ) {
 	const dirSizesStore = useDirSizesStore();
+	const dirItemCountsStore = useDirItemCountsStore();
 
 	function isHiddenFile(entry: DirEntry): boolean {
 		return entry.is_hidden || entry.name.startsWith('.');
@@ -41,7 +43,13 @@ export function useFileBrowserEntries(
 		// primero y después el criterio de la columna. Lo leen la vista y el
 		// teclado, así que no hay un orden dibujado y otro para las flechas.
 		const column = sortColumn.value ?? 'name';
-		items = sortFileBrowserEntries(items, column, sortDirection.value, dirSizesStore);
+		items = sortFileBrowserEntries(
+			items,
+			column,
+			sortDirection.value,
+			dirSizesStore,
+			dirItemCountsStore
+		);
 
 		return items;
 	});

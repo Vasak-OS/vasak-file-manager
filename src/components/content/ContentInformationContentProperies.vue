@@ -7,6 +7,7 @@ import {
 	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
 import { computed, watch } from 'vue';
+import { useDirItemCountsStore } from '@/stores/runtime/dir-item-counts';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { claveSegunCantidad, interpolar } from '@/tools/interpolar';
 import type { DirEntry } from '@/types/dir-entry';
@@ -20,6 +21,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const dirSizesStore = useDirSizesStore();
+const dirItemCountsStore = useDirItemCountsStore();
 
 const dirSizeInfo = computed(() => {
 	if (!props.selectedEntry?.is_dir) return null;
@@ -80,10 +82,16 @@ async function handleCancelSize() {
 	await dirSizesStore.cancelSize(props.selectedEntry.path);
 }
 
+// Pide el conteo de hijos de la carpeta seleccionada. Listar ya no lo trae
+// (`dir-item-counts`), y la carpeta puede estar fuera de las primeras que la
+// ventana pidió, así que acá se asegura que la ficha lo muestre.
 watch(
 	() => props.selectedEntry?.path,
 	() => {
-		// Reset state when entry changes
+		const entry = props.selectedEntry;
+		if (entry?.is_dir && entry.item_count === null) {
+			void dirItemCountsStore.requestCountsBatch([entry.path]);
+		}
 	},
 	{ immediate: true }
 );
@@ -115,14 +123,18 @@ const properties = computed<PropertyItem[]>(() => {
 		});
 	}
 
-	if (entry.is_dir && entry.item_count !== null) {
-		items.push({
-			title: t('items'),
-			value: interpolar(
-				t(claveSegunCantidad('fileBrowser.itemCount', entry.item_count)),
-				entry.item_count
-			),
-		});
+	if (entry.is_dir) {
+		// La carpeta abierta ya trae su propio conteo (sus entradas); una carpeta
+		// seleccionada lo toma del store, que lo calcula de forma perezosa.
+		const stored = dirItemCountsStore.getCount(entry.path);
+		const count = entry.item_count ?? (typeof stored === 'number' ? stored : null);
+
+		if (count !== null) {
+			items.push({
+				title: t('items'),
+				value: interpolar(t(claveSegunCantidad('fileBrowser.itemCount', count)), count),
+			});
+		}
 	}
 
 	if (entry.ext) {
