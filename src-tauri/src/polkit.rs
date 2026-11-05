@@ -536,4 +536,62 @@ mod tests {
         );
         testing::cleanup(&dir);
     }
+
+    /// Un `pkexec` «pasa-manos»: corre el comando tal cual, sin elevar.
+    fn install_passthrough(dir: &Path) {
+        use std::os::unix::fs::PermissionsExt;
+        let program = dir.join("pkexec-pasamanos");
+        std::fs::write(&program, "#!/bin/sh\nexec \"$@\"\n").unwrap();
+        std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+        testing::PKEXEC.with(|p| *p.borrow_mut() = Some(program));
+    }
+
+    #[test]
+    fn la_copia_de_un_archivo_con_limpieza_devuelve_el_fallo_de_pkexec() {
+        let a = Path::new("/no/existe/a");
+        let b = Path::new("/no/existe/b");
+        assert!(copy_file_with_pkexec_cleanup(a, b).is_err());
+    }
+
+    #[test]
+    fn la_copia_con_limpieza_deja_el_archivo_con_el_mismo_contenido() {
+        let dir = testing::scratch("copia-limpieza-feliz");
+        install_passthrough(&dir);
+        let (src, dest) = (
+            dir.join("origen con espacios.txt"),
+            dir.join("destino 'raro'.txt"),
+        );
+        std::fs::write(&src, "contenido de la plantilla").unwrap();
+
+        assert_eq!(copy_file_with_pkexec_cleanup(&src, &dest), Ok(()));
+        assert_eq!(
+            std::fs::read_to_string(&dest).unwrap(),
+            "contenido de la plantilla"
+        );
+        testing::cleanup(&dir);
+    }
+
+    #[test]
+    fn si_la_copia_falla_se_borra_el_destino_a_medias() {
+        let dir = testing::scratch("copia-limpieza-falla");
+        install_passthrough(&dir);
+        let (src, dest) = (dir.join("no-existe"), dir.join("parcial.txt"));
+        std::fs::write(&dest, "a medias").unwrap();
+
+        assert!(copy_file_with_pkexec_cleanup(&src, &dest).is_err());
+        assert!(!dest.exists(), "el parcial debía borrarse");
+        testing::cleanup(&dir);
+    }
+
+    #[test]
+    fn la_copia_generica_en_el_mismo_fallo_no_borra_el_destino() {
+        let dir = testing::scratch("copia-generica-falla");
+        install_passthrough(&dir);
+        let (src, dest) = (dir.join("no-existe"), dir.join("previo.txt"));
+        std::fs::write(&dest, "ya existia").unwrap();
+
+        assert!(copy_with_pkexec(&src, &dest).is_err());
+        assert_eq!(std::fs::read_to_string(&dest).unwrap(), "ya existia");
+        testing::cleanup(&dir);
+    }
 }
