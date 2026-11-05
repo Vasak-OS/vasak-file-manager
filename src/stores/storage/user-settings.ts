@@ -39,6 +39,11 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 	const storage = ref<LazyStore | null>(null);
 	const settings = ref<UserSettingsState>({ ...DEFAULTS });
 	const isOpen = ref(false);
+	// El usuario cambió un ajuste. La vista se abre desde la barra lateral, que se
+	// dibuja antes de que `init()` termine (corre en onMounted tras los stores de
+	// rutas y layout): un cambio en esa ventana de milisegundos no debe perderse
+	// ni ser pisado por lo que `load()` lee del disco.
+	let touched = false;
 
 	const reduceMotion = computed(() => settings.value.reduceMotion);
 	const lowPower = computed(() => settings.value.lowPower);
@@ -74,6 +79,9 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 	}
 
 	async function load() {
+		// Si el usuario ya tocó un ajuste antes de que esto corra, su cambio manda:
+		// no lo pisamos con lo guardado.
+		if (touched) return;
 		try {
 			const stored = await storage.value?.get<Partial<UserSettingsState>>('settings');
 			if (stored) {
@@ -111,6 +119,7 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 	}
 
 	async function update(patch: Partial<UserSettingsState>) {
+		touched = true;
 		settings.value = { ...settings.value, ...patch };
 		apply();
 		await save();
@@ -119,6 +128,9 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 	async function init() {
 		await initStorage();
 		await load();
+		// Si el usuario cambió algo antes de que el almacén estuviera listo, su
+		// `save()` no pudo persistir (storage era null): se guarda ahora.
+		if (touched) await save();
 		apply();
 	}
 
