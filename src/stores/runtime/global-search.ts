@@ -283,7 +283,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	}
 
 	async function executeSearch(searchQuery: string) {
-		if (!searchQuery.trim()) {
+		if (searchQuery.trim().length < SEARCH_CONSTANTS.MIN_QUERY_LENGTH) {
 			results.value = [];
 			return;
 		}
