@@ -19,6 +19,7 @@ import { useFileBrowserNavigation } from '@/composables/file-browser/use-file-br
 import { useFileBrowserSelection } from '@/composables/file-browser/use-file-browser-selection';
 import { useVideoThumbnails } from '@/composables/file-browser/use-video-thumbnails';
 import { useClipboardStore } from '@/stores/runtime/clipboard';
+import { useDirItemCountsStore } from '@/stores/runtime/dir-item-counts';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useDismissalLayerStore } from '@/stores/runtime/dismissal-layer';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
@@ -183,6 +184,7 @@ function setupNavigationDataSource(
 function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 	const globalSearchStore = useGlobalSearchStore();
 	const dirSizesStore = useDirSizesStore();
+	const dirItemCountsStore = useDirItemCountsStore();
 	const getEntries = options.externalEntries ?? (() => []);
 	const getBasePath = options.basePath ?? (() => '');
 
@@ -199,7 +201,13 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 		}
 
 		const column = listSortColumn.value ?? 'name';
-		return sortFileBrowserEntries(rawEntries, column, listSortDirection.value, dirSizesStore);
+		return sortFileBrowserEntries(
+			rawEntries,
+			column,
+			listSortDirection.value,
+			dirSizesStore,
+			dirItemCountsStore
+		);
 	});
 
 	return {

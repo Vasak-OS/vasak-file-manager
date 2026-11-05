@@ -108,15 +108,18 @@ describe('dentro de cada grupo manda la columna elegida', () => {
 	});
 
 	test('items, por la cantidad que tiene cada carpeta', () => {
+		// El conteo ya no viene en la entrada: lo da el store de conteos.
+		const conteos: Record<string, number> = {
+			'/casa/llena': 9,
+			'/casa/vacia': 0,
+			'/casa/media': 4,
+		};
 		const resultado = sortFileBrowserEntries(
-			[
-				carpeta('llena', { item_count: 9 }),
-				carpeta('vacia', { item_count: 0 }),
-				carpeta('media', { item_count: 4 }),
-			],
+			[carpeta('llena'), carpeta('vacia'), carpeta('media')],
 			'items',
 			'asc',
-			sinTamanos
+			sinTamanos,
+			{ getCount: (path: string) => conteos[path] } as never
 		);
 
 		expect(nombres(resultado)).toEqual(['vacia', 'media', 'llena']);

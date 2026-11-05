@@ -155,6 +155,7 @@ pub fn run() {
             clipboard::clipboard_read_text,
             clipboard::clipboard_write_text,
             dir_reader::read_dir,
+            dir_reader::count_dir_items,
             tipo_de_contenido::iconos_de_tipo,
             tipo_de_contenido::mirando_adentro,
             startup_path::startup_path,

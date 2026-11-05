@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { basename, homeDir } from '@tauri-apps/api/path';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+import { useDirItemCountsStore } from '@/stores/runtime/dir-item-counts';
 import { useDirSizesStore } from '@/stores/runtime/dir-sizes';
 import { useUserStatsStore } from '@/stores/storage/user-stats';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
@@ -36,6 +37,7 @@ export function useFileBrowserNavigation(
 	const workspacesStore = useWorkspacesStore();
 	const userStatsStore = useUserStatsStore();
 	const dirSizesStore = useDirSizesStore();
+	const dirItemCountsStore = useDirItemCountsStore();
 	const currentPath = ref('');
 	const dirContents = ref<DirContents | null>(null);
 	const isLoading = ref(false);
@@ -177,6 +179,7 @@ export function useFileBrowserNavigation(
 
 			if (dirPaths.length > 0) {
 				void dirSizesStore.requestSizesBatch(dirPaths);
+				void dirItemCountsStore.requestCountsBatch(dirPaths);
 			}
 		} catch {
 			await navigateToNearestExistingAncestor();
@@ -305,6 +308,7 @@ export function useFileBrowserNavigation(
 
 			if (dirPaths.length > 0) {
 				void dirSizesStore.requestSizesBatch(dirPaths);
+				void dirItemCountsStore.requestCountsBatch(dirPaths);
 			}
 
 			await startWatching(result.path);
