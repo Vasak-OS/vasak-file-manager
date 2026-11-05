@@ -5,30 +5,22 @@
  * guarda en el store. El orden por la columna «items» lee de ese store.
  */
 
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import { createPinia, setActivePinia } from 'pinia';
+import { useDirItemCountsStore } from '@/stores/runtime/dir-item-counts';
+import { sortFileBrowserEntries } from '@/utils/file-browser-sort';
+import { olvidarTodo, pedidos, responder } from './dobles';
+import { archivo, carpeta, nombres } from './support/dir-entry';
 
-const llamadas: string[][] = [];
-let respuesta: (paths: string[]) => Promise<{ path: string; count: number | null }[]>;
+type Conteo = { path: string; count: number | null };
 
-mock.module('@tauri-apps/api/core', () => ({
-	invoke: (cmd: string, args: { paths: string[] }) => {
-		if (cmd !== 'count_dir_items') {
-			return Promise.reject(new Error(`comando inesperado: ${cmd}`));
-		}
-		llamadas.push(args.paths);
-		return respuesta(args.paths);
-	},
-}));
-
-const { useDirItemCountsStore } = await import('@/stores/runtime/dir-item-counts');
-const { sortFileBrowserEntries } = await import('@/utils/file-browser-sort');
-const { carpeta, archivo, nombres } = await import('./support/dir-entry');
+const responderConteos = (hacer: (paths: string[]) => Conteo[] | Promise<Conteo[]>) =>
+	responder('count_dir_items', (args: Record<string, unknown>) => hacer(args.paths as string[]));
 
 beforeEach(() => {
+	olvidarTodo();
 	setActivePinia(createPinia());
-	llamadas.length = 0;
-	respuesta = async (paths) => paths.map((path) => ({ path, count: path.length }));
+	responderConteos((paths) => paths.map((path) => ({ path, count: path.length })));
 });
 
 describe('store de conteos de carpetas', () => {
@@ -40,8 +32,8 @@ describe('store de conteos de carpetas', () => {
 
 	test('mientras llega la respuesta la ruta figura como cargando', async () => {
 		const store = useDirItemCountsStore();
-		let soltar: (v: { path: string; count: number | null }[]) => void = () => {};
-		respuesta = () => new Promise((resolve) => (soltar = resolve));
+		let soltar: (v: Conteo[]) => void = () => {};
+		responderConteos(() => new Promise((resolve) => (soltar = resolve)));
 
 		const espera = store.requestCountsBatch(['/a']);
 		expect(store.isLoading('/a')).toBe(true);
@@ -55,7 +47,7 @@ describe('store de conteos de carpetas', () => {
 
 	test('un conteo nulo (red o error) se guarda como null, no como indefinido', async () => {
 		const store = useDirItemCountsStore();
-		respuesta = async (paths) => paths.map((path) => ({ path, count: null }));
+		responderConteos((paths) => paths.map((path) => ({ path, count: null })));
 		await store.requestCountsBatch(['/red']);
 		expect(store.getCount('/red')).toBeNull();
 	});
@@ -63,22 +55,24 @@ describe('store de conteos de carpetas', () => {
 	test('no vuelve a pedir lo ya resuelto ni lo que está pendiente', async () => {
 		const store = useDirItemCountsStore();
 		await store.requestCountsBatch(['/a', '/b']);
-		expect(llamadas).toEqual([['/a', '/b']]);
+		expect(pedidos('count_dir_items').map((p) => p.argumentos.paths)).toEqual([['/a', '/b']]);
 
 		await store.requestCountsBatch(['/a', '/b']);
-		expect(llamadas).toHaveLength(1);
+		expect(pedidos('count_dir_items')).toHaveLength(1);
 
 		await store.requestCountsBatch(['/a', '/c']);
-		expect(llamadas[1]).toEqual(['/c']);
+		expect(pedidos('count_dir_items')[1].argumentos.paths).toEqual(['/c']);
 
 		let soltar: () => void = () => {};
-		respuesta = (paths) =>
-			new Promise((resolve) => {
-				soltar = () => resolve(paths.map((path) => ({ path, count: 1 })));
-			});
+		responderConteos(
+			(paths) =>
+				new Promise((resolve) => {
+					soltar = () => resolve(paths.map((path) => ({ path, count: 1 })));
+				})
+		);
 		const primera = store.requestCountsBatch(['/d']);
 		const segunda = store.requestCountsBatch(['/d']);
-		expect(llamadas).toHaveLength(3);
+		expect(pedidos('count_dir_items')).toHaveLength(3);
 		soltar();
 		await Promise.all([primera, segunda]);
 	});
@@ -87,9 +81,14 @@ describe('store de conteos de carpetas', () => {
 		const store = useDirItemCountsStore();
 		const log = console.error;
 		console.error = () => {};
-		respuesta = () => Promise.reject(new Error('boom'));
-		await store.requestCountsBatch(['/a']);
-		console.error = log;
+		responder('count_dir_items', () => {
+			throw new Error('boom');
+		});
+		try {
+			await store.requestCountsBatch(['/a']);
+		} finally {
+			console.error = log;
+		}
 
 		expect(store.isLoading('/a')).toBe(false);
 		expect(store.getCount('/a')).toBeUndefined();
@@ -101,7 +100,7 @@ describe('store de conteos de carpetas', () => {
 		store.clearLocalCache();
 		expect(store.getCount('/a')).toBeUndefined();
 		await store.requestCountsBatch(['/a']);
-		expect(llamadas).toHaveLength(2);
+		expect(pedidos('count_dir_items')).toHaveLength(2);
 	});
 });
 
@@ -110,11 +109,11 @@ describe('orden por la columna «items»', () => {
 
 	test('ordena las carpetas por su conteo conocido y deja las desconocidas al principio (-1)', async () => {
 		const store = useDirItemCountsStore();
-		respuesta = async () => [
+		responderConteos(() => [
 			{ path: '/casa/grande', count: 30 },
 			{ path: '/casa/chica', count: 2 },
 			{ path: '/casa/red', count: null },
-		];
+		]);
 		await store.requestCountsBatch(['/casa/grande', '/casa/chica', '/casa/red']);
 
 		const entradas = [
@@ -139,10 +138,10 @@ describe('orden por la columna «items»', () => {
 		const antes = sortFileBrowserEntries(entradas, 'items', 'asc', sinTamanos, store);
 		expect(nombres(antes)).toEqual(['a', 'b']);
 
-		respuesta = async () => [
+		responderConteos(() => [
 			{ path: '/casa/a', count: 9 },
 			{ path: '/casa/b', count: 1 },
-		];
+		]);
 		await store.requestCountsBatch(['/casa/a', '/casa/b']);
 		const despues = sortFileBrowserEntries(entradas, 'items', 'asc', sinTamanos, store);
 		expect(nombres(despues)).toEqual(['b', 'a']);
