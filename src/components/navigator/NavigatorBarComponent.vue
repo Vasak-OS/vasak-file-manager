@@ -104,6 +104,13 @@ const isSplitView = computed(() => {
 const { isOneColumn } = useWindowColumns();
 const panesDirection = computed(() => (isOneColumn.value ? 'vertical' : 'horizontal'));
 
+// Cuando una vista overlay (búsqueda, papelera, ajustes) tapa los paneles, se
+// los marca `inert`: así el Tab desde el overlay no se cuela a los paneles
+// ocultos de abajo y los lectores de pantalla no los anuncian.
+const anyOverlayOpen = computed(
+	() => globalSearchStore.isOpen || trashStore.isOpen || userSettingsStore.isOpen
+);
+
 const currentActivePath = computed(() => {
 	return currentDirEntry.value?.path;
 });
@@ -732,7 +739,8 @@ onMounted(() => {
 					@open-entry="handleGlobalSearchOpenEntry" @update:selected-entries="handleSearchSelectionChange" />
 				<TrashView v-show="trashStore.isOpen" class="flex-1" @close="trashStore.close()" />
 				<SettingsView v-show="userSettingsStore.isOpen" class="flex-1" @close="userSettingsStore.close()" />
-				<ResizablePanelGroup :direction="panesDirection" class="navigator-page__panes">
+				<ResizablePanelGroup :direction="panesDirection" class="navigator-page__panes"
+					:inert="anyOverlayOpen">
 					<template v-if="workspacesStore.currentTabGroup && isSplitView">
 						<template v-for="(tab, index) in workspacesStore.currentTabGroup" :key="tab.id">
 							<ResizablePanel :default-size="50" :min-size="15" @mousedown="handlePaneFocus(tab.id)">

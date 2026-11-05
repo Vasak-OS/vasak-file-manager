@@ -10,6 +10,8 @@ interface Panel {
 interface Props {
 	direction?: 'horizontal' | 'vertical';
 	class?: string;
+	/** Inerte: sin foco ni lectura por AT (p. ej. cuando un overlay tapa el grupo). */
+	inert?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -120,7 +122,7 @@ provide('resizable-panel-group', {
 </script>
 
 <template>
-  <div :class="containerClass" data-resizable-panel-group>
+  <div :class="containerClass" :inert="inert || undefined" data-resizable-panel-group>
     <slot />
   </div>
 </template>
