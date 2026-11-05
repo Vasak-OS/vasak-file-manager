@@ -39,11 +39,13 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 	const storage = ref<LazyStore | null>(null);
 	const settings = ref<UserSettingsState>({ ...DEFAULTS });
 	const isOpen = ref(false);
-	// El usuario cambió un ajuste. La vista se abre desde la barra lateral, que se
-	// dibuja antes de que `init()` termine (corre en onMounted tras los stores de
-	// rutas y layout): un cambio en esa ventana de milisegundos no debe perderse
-	// ni ser pisado por lo que `load()` lee del disco.
-	let touched = false;
+	// Los cambios que el usuario hizo antes de que `init()` terminara. La vista se
+	// abre desde la barra lateral, que se dibuja antes de que `init()` corra (en
+	// onMounted, tras los stores de rutas y layout): un cambio en esa ventana de
+	// milisegundos no debe perderse ni ser pisado por lo que `load()` lee del
+	// disco. Se guardan por campo y se reaplican sobre lo cargado, así el resto de
+	// lo guardado —los campos que el usuario no tocó— sobrevive.
+	let pendientes: Partial<UserSettingsState> = {};
 
 	const reduceMotion = computed(() => settings.value.reduceMotion);
 	const lowPower = computed(() => settings.value.lowPower);
@@ -79,9 +81,6 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 	}
 
 	async function load() {
-		// Si el usuario ya tocó un ajuste antes de que esto corra, su cambio manda:
-		// no lo pisamos con lo guardado.
-		if (touched) return;
 		try {
 			const stored = await storage.value?.get<Partial<UserSettingsState>>('settings');
 			if (stored) {
@@ -105,6 +104,12 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 		} catch (error) {
 			console.error('Failed to load user settings:', error);
 		}
+		// Lo que el usuario cambió antes de que esto cargara manda sobre lo guardado,
+		// pero sólo en sus campos: se reaplica encima para no perder su cambio ni
+		// pisar el resto del disco.
+		if (Object.keys(pendientes).length > 0) {
+			settings.value = { ...settings.value, ...pendientes };
+		}
 	}
 
 	async function save() {
@@ -119,7 +124,7 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 	}
 
 	async function update(patch: Partial<UserSettingsState>) {
-		touched = true;
+		pendientes = { ...pendientes, ...patch };
 		settings.value = { ...settings.value, ...patch };
 		apply();
 		await save();
@@ -129,8 +134,9 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
 		await initStorage();
 		await load();
 		// Si el usuario cambió algo antes de que el almacén estuviera listo, su
-		// `save()` no pudo persistir (storage era null): se guarda ahora.
-		if (touched) await save();
+		// `save()` no pudo persistir (storage era null): se guarda ahora el estado
+		// ya combinado (lo cargado + sus cambios).
+		if (Object.keys(pendientes).length > 0) await save();
 		apply();
 	}
 
