@@ -15,7 +15,7 @@
  */
 import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, markRaw, ref, watch } from 'vue';
 import { SEARCH_CONSTANTS } from '@/constants/search';
 import { indiceEstaIncompleto } from '@/stores/runtime/global-search-estado';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
@@ -293,7 +293,10 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		// pone en null y una búsqueda posterior la reemplaza por la suya, así que
 		// una respuesta vieja que leyera la ref no se vería cancelada y pisaría
 		// los resultados de la búsqueda nueva.
-		const controller = new AbortController();
+		// `markRaw` para que el ref no envuelva el controlador en un proxy
+		// reactivo: no necesitamos reaccionar a él, y con el proxy la comparación
+		// de identidad del `finally` (`.value === controller`) fallaría.
+		const controller = markRaw(new AbortController());
 		searchAbortController.value = controller;
 		isSearching.value = true;
 
