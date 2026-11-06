@@ -283,7 +283,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 	}
 
 	async function executeSearch(searchQuery: string) {
-		if (searchQuery.trim().length < SEARCH_CONSTANTS.MIN_QUERY_LENGTH) {
+		if (!searchQuery.trim()) {
 			results.value = [];
 			return;
 		}
@@ -305,7 +305,13 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			const searchPromises: Promise<Array<DirEntry & { score?: number }>>[] = [];
 
-			if (indexedItemCount.value > 0) {
+			// El piso aplica sólo al índice, que es lo que una consulta de un
+			// carácter satura. La búsqueda por rutas prioritarias recorre un nivel
+			// de un puñado de carpetas, así que es barata a cualquier largo y sigue
+			// mostrando el match exacto en una carpeta anclada.
+			const consultaAlcanzaElPiso = searchQuery.trim().length >= SEARCH_CONSTANTS.MIN_QUERY_LENGTH;
+
+			if (indexedItemCount.value > 0 && consultaAlcanzaElPiso) {
 				searchPromises.push(
 					invoke<Array<DirEntry & { score?: number }>>('global_search_query', {
 						query: searchQuery.trim(),
