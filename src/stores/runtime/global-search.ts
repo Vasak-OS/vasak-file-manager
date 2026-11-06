@@ -15,7 +15,7 @@
  */
 import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, markRaw, ref, watch } from 'vue';
 import { SEARCH_CONSTANTS } from '@/constants/search';
 import { indiceEstaIncompleto } from '@/stores/runtime/global-search-estado';
 import { useUserPathsStore } from '@/stores/storage/user-paths';
@@ -260,6 +260,11 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		if (searchAbortController.value) {
 			searchAbortController.value.abort();
 			searchAbortController.value = null;
+			// Quien cancela apaga el «buscando»: con la guarda de identidad, el
+			// finally de la búsqueda abortada ya no lo hace (la ref dejó de
+			// apuntar a su controlador). Sin esto, limpiar la consulta o cerrar
+			// el panel en pleno vuelo deja el indicador girando para siempre.
+			isSearching.value = false;
 		}
 	}
 
@@ -288,7 +293,16 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			return;
 		}
 
-		searchAbortController.value = new AbortController();
+		// El controlador se guarda en una variable local y es contra ella que se
+		// mira el aborto, no contra la ref compartida. Al cancelar, esa ref se
+		// pone en null y una búsqueda posterior la reemplaza por la suya, así que
+		// una respuesta vieja que leyera la ref no se vería cancelada y pisaría
+		// los resultados de la búsqueda nueva.
+		// `markRaw` para que el ref no envuelva el controlador en un proxy
+		// reactivo: no necesitamos reaccionar a él, y con el proxy la comparación
+		// de identidad del `finally` (`.value === controller`) fallaría.
+		const controller = markRaw(new AbortController());
+		searchAbortController.value = controller;
 		isSearching.value = true;
 
 		try {
@@ -336,7 +350,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			const [indexedResults, priorityResults] = await Promise.all(searchPromises);
 
-			if (searchAbortController.value?.signal.aborted) {
+			if (controller.signal.aborted) {
 				return;
 			}
 
@@ -360,13 +374,18 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			olvidarError('busqueda');
 		} catch (error) {
-			if (!searchAbortController.value?.signal.aborted) {
+			if (!controller.signal.aborted) {
 				anotarError('busqueda', error);
 				results.value = [];
 			}
 		} finally {
-			isSearching.value = false;
-			searchAbortController.value = null;
+			// Sólo esta invocación limpia su propio estado: si otra búsqueda ya
+			// puso su controlador, esta terminó tarde y no debe apagar el
+			// «buscando» de la nueva ni borrar su controlador.
+			if (searchAbortController.value === controller) {
+				isSearching.value = false;
+				searchAbortController.value = null;
+			}
 		}
 	}
 
