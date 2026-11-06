@@ -260,6 +260,11 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 		if (searchAbortController.value) {
 			searchAbortController.value.abort();
 			searchAbortController.value = null;
+			// Quien cancela apaga el «buscando»: con la guarda de identidad, el
+			// finally de la búsqueda abortada ya no lo hace (la ref dejó de
+			// apuntar a su controlador). Sin esto, limpiar la consulta o cerrar
+			// el panel en pleno vuelo deja el indicador girando para siempre.
+			isSearching.value = false;
 		}
 	}
 
