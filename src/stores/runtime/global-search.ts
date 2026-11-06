@@ -288,7 +288,13 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 			return;
 		}
 
-		searchAbortController.value = new AbortController();
+		// El controlador se guarda en una variable local y es contra ella que se
+		// mira el aborto, no contra la ref compartida. Al cancelar, esa ref se
+		// pone en null y una búsqueda posterior la reemplaza por la suya, así que
+		// una respuesta vieja que leyera la ref no se vería cancelada y pisaría
+		// los resultados de la búsqueda nueva.
+		const controller = new AbortController();
+		searchAbortController.value = controller;
 		isSearching.value = true;
 
 		try {
@@ -336,7 +342,7 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			const [indexedResults, priorityResults] = await Promise.all(searchPromises);
 
-			if (searchAbortController.value?.signal.aborted) {
+			if (controller.signal.aborted) {
 				return;
 			}
 
@@ -360,13 +366,18 @@ export const useGlobalSearchStore = defineStore('globalSearch', () => {
 
 			olvidarError('busqueda');
 		} catch (error) {
-			if (!searchAbortController.value?.signal.aborted) {
+			if (!controller.signal.aborted) {
 				anotarError('busqueda', error);
 				results.value = [];
 			}
 		} finally {
-			isSearching.value = false;
-			searchAbortController.value = null;
+			// Sólo esta invocación limpia su propio estado: si otra búsqueda ya
+			// puso su controlador, esta terminó tarde y no debe apagar el
+			// «buscando» de la nueva ni borrar su controlador.
+			if (searchAbortController.value === controller) {
+				isSearching.value = false;
+				searchAbortController.value = null;
+			}
 		}
 	}
 
