@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test';
 import { createPinia, setActivePinia } from 'pinia';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
+import { useUserPathsStore } from '@/stores/storage/user-paths';
 import { olvidarTodo, pedidos, responder } from './dobles';
 
 async function storeConIndice() {
@@ -40,8 +41,15 @@ describe('piso de longitud de la búsqueda global', () => {
 		const store = await storeConIndice();
 		await escribir(store, 'e');
 		expect(pedidos('global_search_query')).toHaveLength(0);
-		expect(pedidos('global_search_query_paths')).toHaveLength(0);
 		expect(store.results).toEqual([]);
+	});
+
+	test('una consulta de un carácter sí recorre las rutas prioritarias, sin tocar el índice', async () => {
+		const store = await storeConIndice();
+		useUserPathsStore().userPaths.downloadDir = '/home/u/Descargas';
+		await escribir(store, 'e');
+		expect(pedidos('global_search_query')).toHaveLength(0);
+		expect(pedidos('global_search_query_paths')).toHaveLength(1);
 	});
 
 	test('una consulta de dos caracteres sí le pregunta al índice', async () => {
