@@ -90,4 +90,19 @@ describe('carrera de cancelación de la búsqueda global', () => {
 		expect(store.results.map((r) => r.name)).toEqual(['nueva']);
 		expect(store.isSearching).toBe(false);
 	});
+	test.each([
+		['limpiar la consulta', (s: ReturnType<typeof useGlobalSearchStore>) => s.clearQuery()],
+		['cerrar el panel', (s: ReturnType<typeof useGlobalSearchStore>) => s.close()],
+	])('%s en pleno vuelo apaga el indicador de búsqueda', async (_, cancelar) => {
+		responder('global_search_query', () => diferida().promesa);
+		const store = useGlobalSearchStore();
+		await store.refreshStatus();
+
+		await escribir(store, 'ab');
+		expect(store.isSearching).toBe(true);
+
+		cancelar(store);
+
+		expect(store.isSearching).toBe(false);
+	});
 });
