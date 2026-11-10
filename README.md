@@ -370,6 +370,10 @@ Y para apps Tauri+Vue: features del `tauri.conf.json` → `bundle` / `plugins` /
 
 ## Licencia
 
-`GPL-3.0` — Copyright © 2026 **Vasak-OS Contributors**
+`GPL-3.0-or-later` (GNU GPLv3 o posterior) — Copyright © 2026 **Joaquin Decima / VasakOS / Vasak Group** y contribuidores.
 
 [Ver licencia completa](LICENSE)
+
+### Créditos
+
+Partes de este proyecto derivan de [Sigma File Manager](https://github.com/aleksey-hoffman/sigma-file-manager) de Aleksey Hoffman, bajo GPLv3 o posterior. Los archivos derivados conservan su aviso de copyright original junto al nuestro.

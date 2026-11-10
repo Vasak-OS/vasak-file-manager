@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// License: GNU GPLv3 or later. See the license file in the project root for more information.
+// Copyright © 2021 - present Aleksey Hoffman. All rights reserved.
+// Copyright © 2026 - present Joaquin Decima / VasakOS / Vasak Group. All rights reserved.
+
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { getAllWindows, getCurrentWindow, type Window } from '@tauri-apps/api/window';
@@ -93,7 +98,7 @@ export const useQuickViewStore = defineStore('quickView', () => {
 		const quickWindow = await getQuickViewWindow();
 
 		if (quickWindow) {
-			const title = `Sigma File Manager | Quick View - ${getFileName(path)}`;
+			const title = `Vasak File Manager | Quick View - ${getFileName(path)}`;
 			await quickWindow.setTitle(title);
 
 			await emit('quick-view:load-file', { path });
