@@ -376,4 +376,4 @@ Y para apps Tauri+Vue: features del `tauri.conf.json` → `bundle` / `plugins` /
 
 ### Créditos
 
-Partes de este proyecto derivan de [Sigma File Manager](https://github.com/aleksey-hoffman/sigma-file-manager) de Aleksey Hoffman, bajo GPLv3 o posterior. Los archivos derivados conservan su aviso de copyright original junto al nuestro.
+Partes de este proyecto derivan de [Sigma File Manager](https://github.com/aleksey-hoffman/sigma-file-manager) de Aleksey Hoffman, bajo GPLv3 o posterior. Los archivos derivados conservan su aviso de copyright original junto al nuestro, y parte de las traducciones (`src-tauri/locales/`) reutiliza sus cadenas.

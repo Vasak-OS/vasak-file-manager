@@ -61,6 +61,10 @@ function setTextSize(value: TextSize | null) {
             @update:model-value="setTextSize" />
         </SettingRow>
       </ConfigSection>
+
+      <ConfigSection :title="t('about.title')" icon="help-about" icon-type="symbol">
+        <p class="px-2 py-1 text-body-m text-tx-muted">{{ t('about.credit') }}</p>
+      </ConfigSection>
     </div>
   </div>
 </template>

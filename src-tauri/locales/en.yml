@@ -1,3 +1,5 @@
+# Parte de estas traducciones deriva de Sigma File Manager, de Aleksey Hoffman,
+# bajo GPLv3 o posterior. https://github.com/aleksey-hoffman/sigma-file-manager
 _version: 1
 settings:
   title: Settings
@@ -508,3 +510,6 @@ operationLabels:
   copying: Copying
   moving: Moving
   deleting: Deleting
+about:
+  title: About
+  credit: Includes code from Sigma File Manager by Aleksey Hoffman, licensed under GPLv3 or later.
