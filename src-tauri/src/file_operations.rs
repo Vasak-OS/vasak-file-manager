@@ -637,7 +637,7 @@ fn remove_dir_or_file(path: &Path) -> Result<(), String> {
 /// `spawn_blocking` lleva el trabajo a un hilo aparte y la ventana sigue
 /// respondiendo; el progreso y la cancelación, que ya eran thread-safe, siguen
 /// llegando igual. Un `Err` sólo aparece si el trabajo entra en pánico.
-async fn run_off_main<F>(work: F) -> FileOperationResult
+pub(crate) async fn run_off_main<F>(work: F) -> FileOperationResult
 where
     F: FnOnce() -> FileOperationResult + Send + 'static,
 {
@@ -650,26 +650,6 @@ where
             failed_count: None,
             skipped_count: None,
         })
-}
-
-#[tauri::command]
-pub async fn copy_items(
-    source_paths: Vec<String>,
-    destination_path: String,
-    conflict_resolution: Option<String>,
-    operation_id: Option<String>,
-    app: AppHandle,
-) -> FileOperationResult {
-    run_off_main(move || {
-        copy_items_impl(
-            source_paths,
-            destination_path,
-            conflict_resolution,
-            operation_id,
-            app,
-        )
-    })
-    .await
 }
 
 /// Núcleo genérico sobre el runtime para poder ejercitar la copia bajo el mock de
@@ -881,26 +861,6 @@ pub(crate) fn copy_items_impl<R: Runtime>(
         failed_count: Some(failed_count),
         skipped_count: Some(skipped_count),
     }
-}
-
-#[tauri::command]
-pub async fn move_items(
-    source_paths: Vec<String>,
-    destination_path: String,
-    conflict_resolution: Option<String>,
-    operation_id: Option<String>,
-    app: AppHandle,
-) -> FileOperationResult {
-    run_off_main(move || {
-        move_items_impl(
-            source_paths,
-            destination_path,
-            conflict_resolution,
-            operation_id,
-            app,
-        )
-    })
-    .await
 }
 
 /// Núcleo genérico sobre el runtime; el comando concreto sólo delega (ver
@@ -1608,27 +1568,6 @@ pub(crate) fn link_items_core(
         failed_count: Some(failed_count),
         skipped_count: Some(0),
     }
-}
-
-/// Borra o manda a la papelera.
-///
-/// `allow_elevation` por omisión es `true`, que es el comportamiento de siempre:
-/// si la papelera falla por permisos, se pide autenticación y se borra definitivo.
-/// Se pasa `false` cuando el borrado **no lo pidió la persona explícitamente** —el
-/// caso concreto es un arrastre a otra aplicación que negoció mover—, porque ahí un
-/// borrado no recuperable sería perder un archivo por una decisión que tomó el
-/// programa de destino y no quien arrastró. Sin elevación, si no entra en la
-/// papelera el original se queda donde está y se informa el fallo.
-#[tauri::command]
-pub async fn delete_items(
-    paths: Vec<String>,
-    use_trash: bool,
-    operation_id: Option<String>,
-    allow_elevation: Option<bool>,
-    app: AppHandle,
-) -> FileOperationResult {
-    run_off_main(move || delete_items_impl(paths, use_trash, operation_id, allow_elevation, app))
-        .await
 }
 
 /// Núcleo genérico sobre el runtime; el comando concreto sólo delega (ver
