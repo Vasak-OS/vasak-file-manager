@@ -106,6 +106,18 @@ export function useVideoThumbnails() {
 		return cached;
 	}
 
+	/**
+	 * La miniatura se generó pero el `<img>` no la pudo cargar (el PNG de la
+	 * caché ya no está, quedó a medio escribir o no es legible). Sin esto la
+	 * tarjeta se queda con la imagen rota; marcándola como fallada,
+	 * `getVideoThumbnail` devuelve `undefined` y la vista cae al icono, sin
+	 * volver a pedirla.
+	 */
+	function onThumbnailError(entry: DirEntry) {
+		delete videoThumbnails.value[entry.path];
+		fallados.add(entry.path);
+	}
+
 	function clearThumbnails() {
 		videoThumbnails.value = {};
 		cola.length = 0;
@@ -118,6 +130,7 @@ export function useVideoThumbnails() {
 		videoThumbnails,
 		getVideoThumbnail,
 		generateVideoThumbnail,
+		onThumbnailError,
 		clearThumbnails,
 	};
 }

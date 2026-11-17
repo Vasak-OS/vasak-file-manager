@@ -404,7 +404,7 @@ watchEffect(() => {
             <!-- Las grandes van por miniatura: el WebView decodifica la imagen entera
                  aunque se dibuje a 120 px. Mientras llega, el icono. -->
             <VideoThumbnailComponent v-else :entry="entry" v-slot="{ thumbnail }">
-              <img v-if="thumbnail" :src="thumbnail" :alt="entry.name" class="w-full h-full object-cover pointer-events-none">
+              <img v-if="thumbnail" :src="thumbnail" :alt="entry.name" class="w-full h-full object-cover pointer-events-none" @error="ctx.onThumbnailError(entry)">
               <ThemeIcon v-else name="image-x-generic" :size="conEscala(48)" class="text-tx-muted" />
             </VideoThumbnailComponent>
           </div>
@@ -460,7 +460,7 @@ watchEffect(() => {
               thumbnail ? 'relative z-1 flex w-full h-full items-center justify-center' : 'absolute top-2 left-2 bg-transparent'
             ]" :style="thumbnail ? undefined : { width: conEscala(48) + 'px', height: conEscala(48) + 'px' }">
               <img v-if="thumbnail" :src="thumbnail" :alt="entry.name"
-                class="w-full h-full object-cover pointer-events-none">
+                class="w-full h-full object-cover pointer-events-none" @error="ctx.onThumbnailError(entry)">
               <ThemeIcon v-else name="video-x-generic" :size="conEscala(48)" class="text-tx-muted" />
             </div>
           </VideoThumbnailComponent>
@@ -508,7 +508,7 @@ watchEffect(() => {
           </div>
           <VideoThumbnailComponent v-if="hasGeneratedThumbnail(entry)" :entry="entry" v-slot="{ thumbnail }">
             <template v-if="thumbnail">
-              <img :src="thumbnail" :alt="entry.name" class="absolute inset-0 w-full h-full object-cover pointer-events-none">
+              <img :src="thumbnail" :alt="entry.name" class="absolute inset-0 w-full h-full object-cover pointer-events-none" @error="ctx.onThumbnailError(entry)">
               <div class="absolute z-1 inset-x-0 bottom-0 h-16 bg-linear-to-t from-ui-overlay to-transparent pointer-events-none" />
             </template>
             <div v-else class="absolute top-2 left-2 bg-transparent" :style="{ width: conEscala(48) + 'px', height: conEscala(48) + 'px' }">

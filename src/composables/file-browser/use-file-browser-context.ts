@@ -43,6 +43,7 @@ export interface FileBrowserContext {
 	contextMenu: Ref<ContextMenuState>;
 
 	getVideoThumbnail: (entry: DirEntry) => string | undefined;
+	onThumbnailError: (entry: DirEntry) => void;
 	setEntriesContainerRef: (element: Element | ComponentPublicInstance | null) => void;
 
 	/** La escala discreta de íconos y tarjetas, y cómo moverla (Ctrl+rueda). */
