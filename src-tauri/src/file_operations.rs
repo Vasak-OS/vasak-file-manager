@@ -55,8 +55,8 @@ pub fn cancel_file_operation(operation_id: String) -> bool {
     false
 }
 
-#[derive(Serialize, Clone)]
-struct OperationProgress {
+#[derive(Serialize, Deserialize, Clone)]
+pub(crate) struct OperationProgress {
     operation_id: String,
     kind: String,
     processed: usize,
@@ -68,6 +68,26 @@ struct OperationProgress {
     total_bytes: u64,
     /// Velocidad promedio (0 cuando no se sabe); el frontend calcula la ETA.
     bytes_per_second: u64,
+}
+
+impl OperationProgress {
+    /// El avance para `com.canonical.Unity.LauncherEntry`: la fracción de 0 a 1 y
+    /// si todavía hay que mostrarla. Prefiere los bytes (copia) y cae al conteo de
+    /// ítems (mover, borrar); `None` cuando no hay nada que medir.
+    ///
+    /// Visible mientras no terminó: el evento terminal llega con
+    /// `processed == total`, da fracción 1 y `false`, que es lo que apaga el aro.
+    pub(crate) fn launcher_progress(&self) -> Option<(f64, bool)> {
+        let (done, total) = if self.total_bytes > 0 {
+            (self.processed_bytes, self.total_bytes)
+        } else if self.total > 0 {
+            (self.processed as u64, self.total as u64)
+        } else {
+            return None;
+        };
+        let fraction = (done as f64 / total as f64).clamp(0.0, 1.0);
+        Some((fraction, done < total))
+    }
 }
 
 /// Progreso por archivos, sin información de bytes: los tres campos nuevos van en
@@ -4762,5 +4782,54 @@ mod tests {
         );
         crate::undo::clear_undo_history();
         cleanup(&dir);
+    }
+
+    fn progress(processed: usize, total: usize, pb: u64, tb: u64) -> OperationProgress {
+        OperationProgress {
+            operation_id: "op".into(),
+            kind: "copy".into(),
+            processed,
+            total,
+            current: String::new(),
+            processed_bytes: pb,
+            total_bytes: tb,
+            bytes_per_second: 0,
+        }
+    }
+
+    #[test]
+    fn el_avance_por_bytes_es_la_fraccion_y_sigue_visible_a_mitad() {
+        // los ítems dicen 9/10 pero los bytes mandan: 250/1000
+        assert_eq!(
+            progress(9, 10, 250, 1000).launcher_progress(),
+            Some((0.25, true))
+        );
+    }
+
+    #[test]
+    fn sin_bytes_el_avance_cae_al_conteo_de_items() {
+        assert_eq!(progress(1, 4, 0, 0).launcher_progress(), Some((0.25, true)));
+    }
+
+    #[test]
+    fn sin_nada_que_medir_no_hay_avance() {
+        assert_eq!(progress(0, 0, 0, 0).launcher_progress(), None);
+    }
+
+    #[test]
+    fn los_bytes_de_mas_se_recortan_a_uno_y_se_apaga() {
+        assert_eq!(
+            progress(0, 1, 2000, 1000).launcher_progress(),
+            Some((1.0, false))
+        );
+    }
+
+    #[test]
+    fn el_evento_terminal_da_uno_y_apaga_el_aro() {
+        assert_eq!(progress(5, 5, 0, 0).launcher_progress(), Some((1.0, false)));
+        assert_eq!(
+            progress(1, 1, 1000, 1000).launcher_progress(),
+            Some((1.0, false))
+        );
     }
 }

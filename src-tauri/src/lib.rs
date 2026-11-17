@@ -116,6 +116,11 @@ pub fn run() {
                 }
             });
 
+            // Publica el avance de copiar/mover/borrar como
+            // `com.canonical.Unity.LauncherEntry`, para que el panel lo muestre en
+            // su cápsula de actividad (#190). Best-effort, igual que FileManager1.
+            commands::launcher_entry::start(app.handle());
+
             Ok(())
         })
         // Instancia única: va de primero (antes de window-state, o la segunda
