@@ -78,15 +78,22 @@ impl OperationProgress {
     /// Visible mientras no terminó: el evento terminal llega con
     /// `processed == total`, da fracción 1 y `false`, que es lo que apaga el aro.
     pub(crate) fn launcher_progress(&self) -> Option<(f64, bool)> {
-        let (done, total) = if self.total_bytes > 0 {
-            (self.processed_bytes, self.total_bytes)
+        let fraction = if self.total_bytes > 0 {
+            (self.processed_bytes as f64 / self.total_bytes as f64).clamp(0.0, 1.0)
         } else if self.total > 0 {
-            (self.processed as u64, self.total as u64)
+            (self.processed as f64 / self.total as f64).clamp(0.0, 1.0)
         } else {
             return None;
         };
-        let fraction = (done as f64 / total as f64).clamp(0.0, 1.0);
-        Some((fraction, done < total))
+        // La visibilidad la manda el conteo de ítems, no los bytes: en una copia
+        // de un archivo grande seguido de muchos vacíos los bytes llegan al total
+        // antes de terminar. El evento terminal llega con `processed == total`.
+        let visible = if self.total > 0 {
+            self.processed < self.total
+        } else {
+            self.processed_bytes < self.total_bytes
+        };
+        Some((fraction, visible))
     }
 }
 
@@ -4817,10 +4824,12 @@ mod tests {
     }
 
     #[test]
-    fn los_bytes_de_mas_se_recortan_a_uno_y_se_apaga() {
+    fn los_bytes_de_mas_se_recortan_pero_el_aro_sigue_si_faltan_items() {
+        // Bytes al 200 % pero el ítem todavía no terminó (0 de 1): la fracción se
+        // recorta a 1, y el aro sigue visible porque manda el conteo de ítems.
         assert_eq!(
             progress(0, 1, 2000, 1000).launcher_progress(),
-            Some((1.0, false))
+            Some((1.0, true))
         );
     }
 
