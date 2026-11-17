@@ -313,7 +313,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 
 	const videoThumbnails = !isExternalMode
 		? useVideoThumbnails()
-		: { getVideoThumbnail: () => undefined };
+		: { getVideoThumbnail: () => undefined, onThumbnailError: () => {} };
 
 	const dialogs = useFileBrowserDialogs({
 		renameState: selection.renameState,
@@ -540,6 +540,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
 		redoLastOperation: selection.redoLastOperation,
 
 		getVideoThumbnail: videoThumbnails.getVideoThumbnail,
+		onThumbnailError: videoThumbnails.onThumbnailError,
 		entriesContainerRef,
 		setEntriesContainerRef,
 		registrarSeccionesVisuales,

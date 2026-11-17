@@ -91,6 +91,7 @@ provideFileBrowserContext({
 	isEntrySelected: fb.isEntrySelected,
 	contextMenu: fb.contextMenu,
 	getVideoThumbnail: fb.getVideoThumbnail,
+	onThumbnailError: fb.onThumbnailError,
 	setEntriesContainerRef: fb.setEntriesContainerRef,
 	iconScale: fb.iconScale,
 	zoomIn: fb.zoomIn,
