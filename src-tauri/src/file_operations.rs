@@ -630,21 +630,46 @@ fn remove_dir_or_file(path: &Path) -> Result<(), String> {
     }
 }
 
+/// Corre una operación de archivo fuera del hilo principal.
+///
+/// Los comandos síncronos de Tauri se ejecutan en el hilo principal, así que una
+/// copia o un borrado largos congelaban el webview entero hasta terminar (#191).
+/// `spawn_blocking` lleva el trabajo a un hilo aparte y la ventana sigue
+/// respondiendo; el progreso y la cancelación, que ya eran thread-safe, siguen
+/// llegando igual. Un `Err` sólo aparece si el trabajo entra en pánico.
+async fn run_off_main<F>(work: F) -> FileOperationResult
+where
+    F: FnOnce() -> FileOperationResult + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .unwrap_or_else(|_| FileOperationResult {
+            success: false,
+            error: Some("La operación se interrumpió inesperadamente.".to_string()),
+            copied_count: None,
+            failed_count: None,
+            skipped_count: None,
+        })
+}
+
 #[tauri::command]
-pub fn copy_items(
+pub async fn copy_items(
     source_paths: Vec<String>,
     destination_path: String,
     conflict_resolution: Option<String>,
     operation_id: Option<String>,
     app: AppHandle,
 ) -> FileOperationResult {
-    copy_items_impl(
-        source_paths,
-        destination_path,
-        conflict_resolution,
-        operation_id,
-        app,
-    )
+    run_off_main(move || {
+        copy_items_impl(
+            source_paths,
+            destination_path,
+            conflict_resolution,
+            operation_id,
+            app,
+        )
+    })
+    .await
 }
 
 /// Núcleo genérico sobre el runtime para poder ejercitar la copia bajo el mock de
@@ -859,20 +884,23 @@ pub(crate) fn copy_items_impl<R: Runtime>(
 }
 
 #[tauri::command]
-pub fn move_items(
+pub async fn move_items(
     source_paths: Vec<String>,
     destination_path: String,
     conflict_resolution: Option<String>,
     operation_id: Option<String>,
     app: AppHandle,
 ) -> FileOperationResult {
-    move_items_impl(
-        source_paths,
-        destination_path,
-        conflict_resolution,
-        operation_id,
-        app,
-    )
+    run_off_main(move || {
+        move_items_impl(
+            source_paths,
+            destination_path,
+            conflict_resolution,
+            operation_id,
+            app,
+        )
+    })
+    .await
 }
 
 /// Núcleo genérico sobre el runtime; el comando concreto sólo delega (ver
@@ -1592,14 +1620,15 @@ pub(crate) fn link_items_core(
 /// programa de destino y no quien arrastró. Sin elevación, si no entra en la
 /// papelera el original se queda donde está y se informa el fallo.
 #[tauri::command]
-pub fn delete_items(
+pub async fn delete_items(
     paths: Vec<String>,
     use_trash: bool,
     operation_id: Option<String>,
     allow_elevation: Option<bool>,
     app: AppHandle,
 ) -> FileOperationResult {
-    delete_items_impl(paths, use_trash, operation_id, allow_elevation, app)
+    run_off_main(move || delete_items_impl(paths, use_trash, operation_id, allow_elevation, app))
+        .await
 }
 
 /// Núcleo genérico sobre el runtime; el comando concreto sólo delega (ver
@@ -1983,6 +2012,29 @@ mod tests {
     use super::*;
     use crate::polkit::testing::*;
     use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn la_operacion_corre_fuera_del_hilo_que_la_pide() {
+        let caller = std::thread::current().id();
+        let result = tauri::async_runtime::block_on(run_off_main(move || FileOperationResult {
+            success: std::thread::current().id() != caller,
+            error: None,
+            copied_count: None,
+            failed_count: None,
+            skipped_count: None,
+        }));
+        assert!(
+            result.success,
+            "el trabajo corrió en el hilo que llama (congela el webview)"
+        );
+    }
+
+    #[test]
+    fn un_panico_en_la_operacion_devuelve_error_en_vez_de_caer() {
+        let result = tauri::async_runtime::block_on(run_off_main(|| panic!("falla simulada")));
+        assert!(!result.success);
+        assert!(result.error.is_some());
+    }
 
     /// Una carpeta de origen con `files` archivos y una subcarpeta con otros dos.
     fn source_tree(dir: &Path, files: usize) -> PathBuf {
