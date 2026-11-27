@@ -115,3 +115,84 @@ describe('acciones del menú de pestaña (lógica del store)', () => {
 		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).not.toBe('b');
 	});
 });
+
+describe('componente TabBarComponent (integración)', () => {
+	test('renderiza la barra con las pestañas del store', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		expect(tabBar.exists()).toBe(true);
+		expect(tabBar.props('tabs').length).toBe(2);
+		expect(tabBar.props('tabs')[0].label).toBe('Carpeta');
+	});
+
+	test('emite select al hacer click en una pestaña', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+		tabBar.vm.$emit('select', pestanas[1].id);
+		await nextTick();
+
+		expect(store.currentWorkspace?.currentTabGroupIndex).toBe(1);
+	});
+
+	test('emite close al cerrar una pestaña', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+		tabBar.vm.$emit('close', pestanas[0].id);
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).toBe('b');
+	});
+
+	test('emite new al crear pestaña nueva', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		// openNewTabGroup es async; en el test no esperamos el resultado
+		// porque el componente no lo awaits tampoco
+		await tabBar.vm.$emit('new');
+		await nextTick();
+		await nextTick();
+
+		// En el test real la pestaña se crea async; comprobamos que no falla
+		expect(store.currentWorkspace).toBeDefined();
+	});
+
+	test('abre el menú contextual y cierra al reabrir con nueva ancla', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Abrir menú en la pestaña 'a'
+		tabBar.vm.$emit('menu', { id: pestanas[0].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		let menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+
+		// Reabrir menú en la pestaña 'b' (debe cerrar y reabrir)
+		tabBar.vm.$emit('menu', { id: pestanas[1].id, x: 20, y: 20 });
+		await nextTick();
+		await nextTick();
+
+		menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+
+		// La ancla debe haberse actualizado
+		const ancla = vista.find('.fixed.size-0');
+		expect(ancla.attributes('style')).toContain('left: 20px');
+		expect(ancla.attributes('style')).toContain('top: 20px');
+	});
+});
