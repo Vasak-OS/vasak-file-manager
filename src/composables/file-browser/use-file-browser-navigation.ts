@@ -302,9 +302,8 @@ export function useFileBrowserNavigation(
 				historyIndex.value = history.value.length - 1;
 			}
 
-			void nextTick(() => {
-				onNavigationComplete?.(currentDirEntry.value);
-			});
+			await nextTick();
+			onNavigationComplete?.(currentDirEntry.value);
 
 			const dirPaths = result.entries
 				.filter((entry) => entry.is_dir)

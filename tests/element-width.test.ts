@@ -91,8 +91,8 @@ describe('el ancho de un elemento', () => {
 	});
 
 	test('sin `ResizeObserver` no rompe: se queda en el formato ancho', async () => {
-		// biome-ignore lint/suspicious/noExplicitAny: se borra a propósito para la prueba
-		(globalThis as any).ResizeObserver = undefined;
+		const _any = globalThis as any;
+		_any.ResizeObserver = undefined;
 		const { width, view } = mountProbe();
 		await nextTick();
 

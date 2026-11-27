@@ -52,12 +52,11 @@ const isValid = computed(() =>
 	props.validate ? props.validate(trimmed.value) : trimmed.value.length > 0
 );
 
-watch(isOpen, (open) => {
+watch(isOpen, async (open) => {
 	if (open) {
-		nextTick(() => {
-			inputRef.value?.focus();
-			if (props.selectOnOpen) inputRef.value?.select();
-		});
+		await nextTick();
+		inputRef.value?.focus();
+		if (props.selectOnOpen) inputRef.value?.select();
 	} else {
 		emit('cancel');
 	}

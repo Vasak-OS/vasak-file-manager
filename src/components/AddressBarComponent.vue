@@ -91,10 +91,9 @@ const addressParts = computed(() => {
 
 watch(
 	() => props.currentPath,
-	() => {
-		nextTick(() => {
-			scrollBreadcrumbsToEnd();
-		});
+	async () => {
+		await nextTick();
+		scrollBreadcrumbsToEnd();
 	}
 );
 
@@ -149,22 +148,21 @@ async function openSeparatorMenu(index: number) {
 	openSeparatorIndex.value = index;
 }
 
-function scrollSelectedIntoView() {
-	nextTick(() => {
-		try {
-			const selectedElement = document.querySelector('.address-bar__suggestion--selected');
+async function scrollSelectedIntoView() {
+	await nextTick();
+	try {
+		const selectedElement = document.querySelector('.address-bar__suggestion--selected');
 
-			if (selectedElement?.parentElement) {
-				selectedElement.scrollIntoView({
-					block: 'nearest',
-					behavior: 'smooth',
-				});
-			}
-		} catch (error) {
-			// Silently ignore DOM manipulation errors during scroll
-			console.debug('Scroll error:', error);
+		if (selectedElement?.parentElement) {
+			selectedElement.scrollIntoView({
+				block: 'nearest',
+				behavior: 'smooth',
+			});
 		}
-	});
+	} catch (error) {
+		// Silently ignore DOM manipulation errors during scroll
+		console.debug('Scroll error:', error);
+	}
 }
 
 function handleBreadcrumbsWheel(event: WheelEvent) {
@@ -351,9 +349,8 @@ function handleGlobalKeydown(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
-	nextTick(() => {
-		scrollBreadcrumbsToEnd();
-	});
+	await nextTick();
+	scrollBreadcrumbsToEnd();
 	window.addEventListener('keydown', handleGlobalKeydown);
 });
 
