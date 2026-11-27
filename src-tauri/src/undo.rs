@@ -270,7 +270,7 @@ fn trash_entries(items: Vec<trash::TrashItem>) -> Vec<TrashEntry> {
         })
         .collect();
 
-    entries.sort_by(|a, b| b.deleted_time.cmp(&a.deleted_time));
+    entries.sort_by_key(|a| std::cmp::Reverse(a.deleted_time));
     entries
 }
 
@@ -1055,7 +1055,7 @@ pub(crate) mod tests {
         assert!(paso.success, "deshacer falló: {:?}", paso.error);
         assert!(!copia.exists());
         match tope(&rehacer) {
-            UndoAction::RestoreFromTrash { paths, .. } => assert_eq!(paths, [copia.clone()]),
+            UndoAction::RestoreFromTrash { paths, .. } => assert_eq!(paths, [&copia]),
             otra => panic!("se esperaba RestoreFromTrash, salió {otra:?}"),
         }
 
@@ -1064,7 +1064,7 @@ pub(crate) mod tests {
         assert!(paso.success, "rehacer falló: {:?}", paso.error);
         assert_eq!(fs::read(&copia).unwrap(), b"copiado");
         match tope(&deshacer) {
-            UndoAction::RemoveCreated { paths } => assert_eq!(paths, [copia.clone()]),
+            UndoAction::RemoveCreated { paths } => assert_eq!(paths, [&copia]),
             otra => panic!("se esperaba RemoveCreated, salió {otra:?}"),
         }
 
