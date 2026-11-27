@@ -24,8 +24,8 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	type ElementoDePestana,
 	TabBar,
+	type TabEntry,
 } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
@@ -69,7 +69,7 @@ function etiquetaDelGrupo(grupo: TabGroup): string {
 	return nombres.join(' | ');
 }
 
-const pestanas = computed<ElementoDePestana[]>(() =>
+const pestanas = computed<TabEntry[]>(() =>
 	grupos.value.map((grupo) => ({
 		id: grupo[0]?.id ?? '',
 		label: etiquetaDelGrupo(grupo),
@@ -88,14 +88,14 @@ function grupoDe(id: string): TabGroup | undefined {
 	return grupos.value.find((grupo) => grupo[0]?.id === id);
 }
 
-function elegir(id: string) {
+async function elegir(id: string) {
 	const grupo = grupoDe(id);
-	if (grupo) openTabGroup(grupo);
+	if (grupo) await openTabGroup(grupo);
 }
 
-function cerrar(id: string) {
+async function cerrar(id: string) {
 	const grupo = grupoDe(id);
-	if (grupo) closeTabGroup(grupo);
+	if (grupo) await closeTabGroup(grupo);
 }
 
 function abrirElMenu(carga: { id: string; x: number; y: number }) {
@@ -118,12 +118,12 @@ async function cerrarTodas() {
 }
 
 /** La lista nueva llega entera: se guarda tal cual. */
-function reordenar(nuevas: ElementoDePestana[]) {
+async function reordenar(nuevas: TabEntry[]) {
 	const porId = new Map(grupos.value.map((grupo) => [grupo[0]?.id ?? '', grupo]));
 	const ordenados = nuevas
 		.map((pestana) => porId.get(pestana.id))
 		.filter((grupo): grupo is TabGroup => Boolean(grupo));
-	setTabs(ordenados);
+	await setTabs(ordenados);
 }
 </script>
 
