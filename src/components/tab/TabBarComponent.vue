@@ -24,8 +24,8 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	type TabEntry,
 	TabBar,
+	type TabEntry,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
@@ -98,16 +98,15 @@ async function cerrar(id: string) {
 	if (grupo) await closeTabGroup(grupo);
 }
 
-function abrirElMenu(carga: { id: string; x: number; y: number }) {
+async function abrirElMenu(carga: { id: string; x: number; y: number }) {
 	idDelMenu.value = carga.id;
 	anclaDelMenu.value = { x: carga.x, y: carga.y };
 	// Si el menú ya está abierto, hay que cerrarlo y reabrirlo para que
 	// DropdownMenuContent recalcule la posición con la nueva ancla.
 	if (menuAbierto.value) {
 		menuAbierto.value = false;
-		nextTick(() => {
-			menuAbierto.value = true;
-		});
+		await nextTick();
+		menuAbierto.value = true;
 	} else {
 		menuAbierto.value = true;
 	}

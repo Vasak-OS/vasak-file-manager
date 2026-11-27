@@ -267,7 +267,7 @@ describe('cobertura de funciones internas del TabBarComponent', () => {
 		const menuItems = vista.findAllComponents({ name: 'DropdownMenuItem' });
 		await menuItems[1].vm.$emit('select');
 		// closeAllTabGroups es async y crea un grupo nuevo; esperar un poco más
-		await new Promise(r => setTimeout(r, 50));
+		await new Promise((r) => setTimeout(r, 50));
 		await nextTick();
 
 		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
