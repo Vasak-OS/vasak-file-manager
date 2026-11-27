@@ -1055,7 +1055,7 @@ pub(crate) mod tests {
         assert!(paso.success, "deshacer falló: {:?}", paso.error);
         assert!(!copia.exists());
         match tope(&rehacer) {
-            UndoAction::RestoreFromTrash { paths, .. } => assert_eq!(paths, vec![copia.clone()]),
+            UndoAction::RestoreFromTrash { paths, .. } => assert_eq!(paths.as_slice(), std::slice::from_ref(&copia)),
             otra => panic!("se esperaba RestoreFromTrash, salió {otra:?}"),
         }
 
@@ -1064,7 +1064,7 @@ pub(crate) mod tests {
         assert!(paso.success, "rehacer falló: {:?}", paso.error);
         assert_eq!(fs::read(&copia).unwrap(), b"copiado");
         match tope(&deshacer) {
-            UndoAction::RemoveCreated { paths } => assert_eq!(paths, vec![copia.clone()]),
+            UndoAction::RemoveCreated { paths } => assert_eq!(paths.as_slice(), std::slice::from_ref(&copia)),
             otra => panic!("se esperaba RemoveCreated, salió {otra:?}"),
         }
 
