@@ -1,21 +1,13 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later
-License: GNU GPLv3 or later. See the license file in the project root for more information.
-Copyright © 2021 - present Aleksey Hoffman. All rights reserved.
-Copyright © 2026 - present Joaquin Decima / VasakOS / Vasak Group. All rights reserved.
--->
-
 <script lang="ts" setup>
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ActionButton, WindowFrame } from '@vasakgroup/vue-libvasak';
-import { computed, provide, ref, watch } from 'vue';
+import { computed, provide, ref } from 'vue';
 import NavigatorBarComponent from '@/components/navigator/NavigatorBarComponent.vue';
 import NavigatorToolbarActionsComponent from '@/components/navigator/NavigatorToolbarActionsComponent.vue';
 import SidebarComponent from '@/components/sidebar/SidebarComponent.vue';
 import TabBarComponent from '@/components/tab/TabBarComponent.vue';
 import { createWindowColumns, WINDOW_COLUMNS_KEY } from '@/composables/use-window-columns';
 import { useGlobalSearchStore } from '@/stores/runtime/global-search';
-import { useNavigatorStore } from '@/stores/runtime/navigator';
-import { useUserLayoutStore } from '@/stores/storage/user-layout';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
 import type { DirEntry } from '@/types/dir-entry';
 import ContentInformation from '../components/content/ContentInformation.vue';
@@ -23,11 +15,10 @@ import ContentInformation from '../components/content/ContentInformation.vue';
 const { t } = useI18n();
 const workspacesStore = useWorkspacesStore();
 const globalSearchStore = useGlobalSearchStore();
-const userLayoutStore = useUserLayoutStore();
-const navigatorStore = useNavigatorStore();
 
 const selectedEntries = ref<DirEntry[]>([]);
 const currentDirEntry = ref<DirEntry | null>(null);
+const isInfoPanelVisible = ref(true);
 
 /**
  * El formato de la ventana: el de siempre, o una columna por vez cuando no
@@ -41,7 +32,7 @@ const { isOneColumn, isCompact, column, isSidebarOpen } = columns;
 
 /** Si se ve la información: en su columna, o en lugar de los archivos. */
 const isInfoShown = computed(() =>
-	isOneColumn.value ? column.value === 'info' : userLayoutStore.infoPanelVisible
+	isOneColumn.value ? column.value === 'info' : isInfoPanelVisible.value
 );
 
 const isSplitView = computed(() => {
@@ -68,26 +59,12 @@ function handleToggleInfoPanel() {
 		column.value = column.value === 'info' ? 'files' : 'info';
 		return;
 	}
-	userLayoutStore.setInfoPanelVisible(!userLayoutStore.infoPanelVisible);
+	isInfoPanelVisible.value = !isInfoPanelVisible.value;
 }
 
 function handleToggleSidebar() {
 	isSidebarOpen.value = !isSidebarOpen.value;
 }
-
-// «Propiedades» (Alt+Enter o el menú contextual) abre el panel sin alternarlo:
-// en una columna por vez cambia a la columna de información, y en varias enciende
-// el panel persistido.
-watch(
-	() => navigatorStore.infoPanelOpenRequests,
-	() => {
-		if (isOneColumn.value) {
-			column.value = 'info';
-		} else {
-			userLayoutStore.setInfoPanelVisible(true);
-		}
-	}
-);
 </script>
 <template>
   <!-- La barra cruza la ventana entera. La lateral va **abajo** de ella y no a
@@ -101,7 +78,7 @@ watch(
     :maximize-label="t('window.maximize')"
     :close-label="t('window.close')">
     <template #barra>
-      <TabBarComponent teleport-target="" />
+      <TabBarComponent />
     </template>
 
     <!-- Los botones de la ventana —búsqueda global, dividir, panel de
