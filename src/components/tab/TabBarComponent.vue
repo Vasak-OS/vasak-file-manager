@@ -45,7 +45,7 @@ const {
 
 /** El menú de una pestaña, con el grupo sobre el que se abrió. */
 const menuAbierto = ref(false);
-const grupoDelMenu = ref<TabGroup | null>(null);
+const idDelMenu = ref<string | null>(null);
 /**
  * Dónde se apretó, para que el menú salga ahí.
  *
@@ -99,7 +99,7 @@ function cerrar(id: string) {
 }
 
 function abrirElMenu(carga: { id: string; x: number; y: number }) {
-	grupoDelMenu.value = grupoDe(carga.id) ?? null;
+	idDelMenu.value = carga.id;
 	anclaDelMenu.value = { x: carga.x, y: carga.y };
 	menuAbierto.value = true;
 }
@@ -107,7 +107,10 @@ function abrirElMenu(carga: { id: string; x: number; y: number }) {
 // Sin cerrar el menú a mano: el ítem lo cierra al elegirse, y además devuelve
 // el foco a donde estaba. Cerrarlo acá encima se lo saltea.
 async function cerrarLasDemas() {
-	if (grupoDelMenu.value) await closeOtherTabGroups(grupoDelMenu.value);
+	if (idDelMenu.value) {
+		const grupo = grupoDe(idDelMenu.value);
+		if (grupo) await closeOtherTabGroups(grupo);
+	}
 }
 
 async function cerrarTodas() {
@@ -139,7 +142,7 @@ function reordenar(nuevas: ElementoDePestana[]) {
   <DropdownMenu v-model:open="menuAbierto">
     <!-- El ancla: cero por cero, en el punto donde se abrió el menú. Es lo que
          el desplegable mide para ubicarse. -->
-    <DropdownMenuTrigger>
+    <DropdownMenuTrigger as-child>
       <span
         class="pointer-events-none fixed size-0"
         :style="{ left: `${anclaDelMenu.x}px`, top: `${anclaDelMenu.y}px` }"
