@@ -5,101 +5,149 @@ Copyright © 2026 - present Joaquin Decima / VasakOS / Vasak Group. All rights r
 -->
 
 <script setup lang="ts">
+/**
+ * Las pestañas del gestor de archivos, sobre la barra compartida.
+ *
+ * Lo que dibuja y cómo se comporta una pestaña —elegir, cerrar, reordenar, el
+ * menú, el teclado, amoldarse a una barra vertical— es de
+ * `@vasakgroup/vue-libvasak`: tres aplicaciones del escritorio tenían su propia
+ * versión y ninguna hacía exactamente lo mismo. El desplegable del menú también:
+ * el que había acá era un `div` por opción, sin `role` ni teclado.
+ *
+ * Lo que queda acá es lo que **sí** es del gestor: cómo se llama un grupo de
+ * pestañas. Un grupo puede tener una o dos pestañas (vista dividida), y el
+ * nombre muestra las dos separadas por una barra.
+ */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { Kbd, ThemeIcon, Tooltip, TooltipContent, TooltipTrigger } from '@vasakgroup/vue-libvasak';
-import { computed, onBeforeUnmount, ref } from 'vue';
-import TabComponent from '@/components/tab/TabComponent.vue';
-import TabDraggableComponent from '@/components/tab/TabDraggableComponent.vue';
-import { useShortcutsStore } from '@/stores/runtime/shortcuts';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	type ElementoDePestana,
+	TabBar,
+} from '@vasakgroup/vue-libvasak';
+import { computed, ref } from 'vue';
 import { useWorkspacesStore } from '@/stores/storage/workspaces';
-import type { TabGroup, Tab as TabType } from '@/types/workspaces';
-
-const { t } = useI18n();
-
-const props = withDefaults(
-	defineProps<{
-		teleportTarget?: string;
-		compact?: boolean;
-	}>(),
-	{
-		teleportTarget: '.window-toolbar-primary-teleport-target',
-		compact: false,
-	}
-);
+import type { Tab, TabGroup } from '@/types/workspaces';
 
 const workspacesStore = useWorkspacesStore();
-const shortcutsStore = useShortcutsStore();
+const { t } = useI18n();
 
-const teleportDisabled = computed(() => !props.teleportTarget);
-const teleportTo = computed(() => props.teleportTarget || 'body');
-const { openNewTabGroup, closeTabGroup, setTabs } = workspacesStore;
+const {
+	openNewTabGroup,
+	closeTabGroup,
+	setTabs,
+	openTabGroup,
+	closeOtherTabGroups,
+	closeAllTabGroups,
+} = workspacesStore;
 
-const previewEnabled = ref(true);
-const scrollContainerRef = ref<HTMLElement | null>(null);
-let scrollDisableTimeoutId: ReturnType<typeof setTimeout> | null = null;
+/** El menú de una pestaña, con el grupo sobre el que se abrió. */
+const menuAbierto = ref(false);
+const grupoDelMenu = ref<TabGroup | null>(null);
+/**
+ * Dónde se apretó, para que el menú salga ahí.
+ *
+ * El desplegable se ubica contra un elemento —le pide su rectángulo—, y la
+ * librería emite coordenadas. El puente es un ancla de cero por cero fija en
+ * ese punto: sin ella el menú no tenía contra qué medirse y salía en la esquina
+ * de la ventana.
+ */
+const anclaDelMenu = ref({ x: 0, y: 0 });
 
-function handleScrollActivity() {
-	previewEnabled.value = false;
+const grupos = computed<TabGroup[]>(() => workspacesStore.currentWorkspace?.tabGroups ?? []);
 
-	if (scrollDisableTimeoutId !== null) {
-		clearTimeout(scrollDisableTimeoutId);
-	}
-
-	scrollDisableTimeoutId = globalThis.setTimeout(() => {
-		previewEnabled.value = true;
-	}, 200);
+/** Lo que muestra una pestaña: el nombre de la pestaña, o la carpeta. */
+function etiquetaDe(tab: Tab): string {
+	return tab.name || tab.path;
 }
 
-function handleWheel(event: WheelEvent) {
-	const container = scrollContainerRef.value;
-	if (!container) return;
-	container.scrollLeft += event.deltaY || event.deltaX || 0;
-	handleScrollActivity();
+/** Un grupo partido en dos paneles muestra los dos. */
+function etiquetaDelGrupo(grupo: TabGroup): string {
+	const nombres = grupo.map(etiquetaDe).filter(Boolean);
+	return nombres.join(' | ');
 }
 
-function onScroll() {
-	handleScrollActivity();
+const pestanas = computed<ElementoDePestana[]>(() =>
+	grupos.value.map((grupo) => ({
+		id: grupo[0]?.id ?? '',
+		label: etiquetaDelGrupo(grupo),
+		// El directorio entero en el texto de ayuda: en la pestaña sólo entra la
+		// última carpeta, y dos proyectos con la misma última carpeta se ven
+		// idénticos.
+		tooltip: grupo[0]?.path || undefined,
+	}))
+);
+
+const activa = computed(
+	() => grupos.value[workspacesStore.currentWorkspace?.currentTabGroupIndex ?? 0]?.[0]?.id ?? ''
+);
+
+function grupoDe(id: string): TabGroup | undefined {
+	return grupos.value.find((grupo) => grupo[0]?.id === id);
 }
 
-onBeforeUnmount(() => {
-	if (scrollDisableTimeoutId !== null) {
-		clearTimeout(scrollDisableTimeoutId);
-	}
-});
+function elegir(id: string) {
+	const grupo = grupoDe(id);
+	if (grupo) openTabGroup(grupo);
+}
+
+function cerrar(id: string) {
+	const grupo = grupoDe(id);
+	if (grupo) closeTabGroup(grupo);
+}
+
+function abrirElMenu(carga: { id: string; x: number; y: number }) {
+	grupoDelMenu.value = grupoDe(carga.id) ?? null;
+	anclaDelMenu.value = { x: carga.x, y: carga.y };
+	menuAbierto.value = true;
+}
+
+// Sin cerrar el menú a mano: el ítem lo cierra al elegirse, y además devuelve
+// el foco a donde estaba. Cerrarlo acá encima se lo saltea.
+async function cerrarLasDemas() {
+	if (grupoDelMenu.value) await closeOtherTabGroups(grupoDelMenu.value);
+}
+
+async function cerrarTodas() {
+	await closeAllTabGroups();
+}
+
+/** La lista nueva llega entera: se guarda tal cual. */
+function reordenar(nuevas: ElementoDePestana[]) {
+	const porId = new Map(grupos.value.map((grupo) => [grupo[0]?.id ?? '', grupo]));
+	const ordenados = nuevas
+		.map((pestana) => porId.get(pestana.id))
+		.filter((grupo): grupo is TabGroup => Boolean(grupo));
+	setTabs(ordenados);
+}
 </script>
 
 <template>
-  <Teleport :to="teleportTo" :disabled="teleportDisabled">
-    <div class="flex max-w-[calc(100vw-288px)] h-full items-center gap-1 animate-sigma-ui-fade-in">
-      <div ref="scrollContainerRef" class="flex overflow-auto items-center" @wheel.prevent="handleWheel" @scroll="onScroll">
-        <div class="tab-bar__base flex w-fit items-center justify-center h-fit">
-          <!-- `TabDraggableComponent` sólo declara `items` y `parent-selector`.
-               Acá venía además un `:draggable-bg-color-var`, de cuando el
-               componente pintaba el fantasma del arrastre con esa variable:
-               hoy no existe, así que caía como atributo sobre el `<div>` de
-               afuera y no lo leía nadie. Lo destapó `strictTemplates`. -->
-          <TabDraggableComponent :items="workspacesStore.currentWorkspace?.tabGroups || []"
-            parent-selector=".tab-bar"
-            @set="setTabs($event as TabGroup[])" @drag-start="previewEnabled = false" @drag-end="previewEnabled = true">
-            <template #item="{ item }">
-              <TabComponent :tab-group="((item as TabType[]) || [])" :preview-enabled="previewEnabled"
-                @close-tab="closeTabGroup($event)" />
-            </template>
-          </TabDraggableComponent>
-        </div>
-      </div>
+  <TabBar
+    :tabs="pestanas"
+    :model-value="activa"
+    :new-label="t('tabs.newTab')"
+    :close-label="t('tabs.close')"
+    @select="elegir"
+    @close="cerrar"
+    @new="openNewTabGroup"
+    @reorder="reordenar"
+    @menu="abrirElMenu" />
 
-      <Tooltip>
-        <TooltipTrigger>
-          <button class="rounded-corner-m p-1 flex justify-center items-center bg-primary text-tx-on-primary h-5 w-5" @click="openNewTabGroup()" :aria-label="t('toolbar.newTab')">
-            <ThemeIcon name="gtk-add" type="symbol" :size="14" :alt="t('toolbar.newTab')" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {{ t('tabs.newTab') }}
-          <Kbd class="shortcut">{{ shortcutsStore.getShortcutLabel('openNewTab') }}</Kbd>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  </Teleport>
+  <DropdownMenu v-model:open="menuAbierto">
+    <!-- El ancla: cero por cero, en el punto donde se abrió el menú. Es lo que
+         el desplegable mide para ubicarse. -->
+    <DropdownMenuTrigger>
+      <span
+        class="pointer-events-none fixed size-0"
+        :style="{ left: `${anclaDelMenu.x}px`, top: `${anclaDelMenu.y}px` }"
+        aria-hidden="true" />
+    </DropdownMenuTrigger>
+    <DropdownMenuContent>
+      <DropdownMenuItem @select="cerrarLasDemas">{{ t('tabs.closeOtherTabs') }}</DropdownMenuItem>
+      <DropdownMenuItem @select="cerrarTodas">{{ t('tabs.closeAllTabs') }}</DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
 </template>

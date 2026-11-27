@@ -101,7 +101,7 @@ watch(
     :maximize-label="t('window.maximize')"
     :close-label="t('window.close')">
     <template #barra>
-      <TabBarComponent teleport-target="" />
+      <TabBarComponent />
     </template>
 
     <!-- Los botones de la ventana —búsqueda global, dividir, panel de
