@@ -196,3 +196,138 @@ describe('componente TabBarComponent (integración)', () => {
 		expect(ancla.attributes('style')).toContain('top: 20px');
 	});
 });
+
+describe('cobertura de funciones internas del TabBarComponent', () => {
+	test('elegir con ID inexistente no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		// ID que no existe
+		tabBar.vm.$emit('select', 'id-inexistente');
+		await nextTick();
+		// No debe lanzar error
+	});
+
+	test('cerrar con ID inexistente no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		tabBar.vm.$emit('close', 'id-inexistente');
+		await nextTick();
+		// No debe lanzar error, grupo sigue ahí
+		const store = useWorkspacesStore();
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+	});
+
+	test('reordenar con lista vacía no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		tabBar.vm.$emit('reorder', []);
+		await nextTick();
+		// No debe lanzar error
+	});
+
+	test('cerrarLasDemas vía menú funciona', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })], [unTab({ id: 'c' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Abrir menú en 'b'
+		tabBar.vm.$emit('menu', { id: pestanas[1].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		// Emitir select en el primer DropdownMenuItem (cerrar las demás)
+		const menuItems = vista.findAllComponents({ name: 'DropdownMenuItem' });
+		await menuItems[0].vm.$emit('select');
+		await nextTick();
+
+		// Solo 'b' debe quedar
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).toBe('b');
+	});
+
+	test('cerrarTodas vía menú funciona', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		tabBar.vm.$emit('menu', { id: pestanas[0].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		const menuItems = vista.findAllComponents({ name: 'DropdownMenuItem' });
+		await menuItems[1].vm.$emit('select');
+		// closeAllTabGroups es async y crea un grupo nuevo; esperar un poco más
+		await new Promise(r => setTimeout(r, 50));
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.length).toBe(1);
+	});
+
+	test('reordenar mantiene el grupo activo correcto', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })], [unTab({ id: 'c' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Mover 'c' al principio
+		tabBar.vm.$emit('reorder', [pestanas[2], pestanas[0], pestanas[1]]);
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.map((g) => g[0]?.id)).toEqual(['c', 'a', 'b']);
+		// El grupo activo debe seguir siendo el que estaba activo (índice 0 -> 'a')
+		expect(store.currentWorkspace?.currentTabGroupIndex).toBe(1); // 'a' ahora está en índice 1
+	});
+
+	test('reordenar con un solo grupo no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+		tabBar.vm.$emit('reorder', [pestanas[0]]);
+		await nextTick();
+		// No debe lanzar error
+	});
+
+	test('menú se cierra y reabre al cambiar pestaña objetivo', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista } = await montarLaBarra(grupos);
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Abrir menú en 'a'
+		tabBar.vm.$emit('menu', { id: pestanas[0].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		let menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+
+		// Cambiar a 'b' sin cerrar menú previo
+		tabBar.vm.$emit('menu', { id: pestanas[1].id, x: 50, y: 50 });
+		await nextTick();
+		await nextTick();
+
+		// Menú debe seguir existiendo
+		menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+
+		// Ancla actualizada
+		const ancla = vista.find('.fixed.size-0');
+		expect(ancla.attributes('style')).toContain('left: 50px');
+		expect(ancla.attributes('style')).toContain('top: 50px');
+	});
+});
