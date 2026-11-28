@@ -1,107 +1,376 @@
 /**
- * La cuenta que reordena las pestañas cuando se suelta uno arrastrado.
+ * La cuenta que reordena las pestañas cuando se suelta una arrastrada.
  *
- * `vue3-smooth-dnd` no mueve nada por su cuenta: avisa con un `drop` que trae
- * de dónde salió —`removedIndex`— y adónde cayó —`addedIndex`—, y la lista
- * nueva la arma esta aplicación. Los dos índices son **relativos a momentos
- * distintos**: `addedIndex` cuenta sobre la lista **ya sin** el elemento que
- * salió, así que sacar primero y después insertar no es lo mismo que insertar
- * primero y después sacar. Equivocarse ahí no da error: deja la pestaña una
- * posición corrida, y sólo en algunos sentidos del arrastre.
- *
- * Esto se escribió al subir la biblioteca de la 0.0.6 a la 1.0.0, que entre sus
- * arreglos trae justamente «Incorrect Evaluation of 'addedIndex'». La cuenta de
- * acá no compensaba nada de aquel error —es la de siempre: sacar, insertar—,
- * pero no tenía ninguna prueba que lo dijera, así que un arreglo del lado de la
- * biblioteca y una compensación escondida de este lado eran indistinguibles.
+ * La librería (`@vasakgroup/vue-libvasak`) usa arrastre nativo del navegador y
+ * emite la lista nueva con el evento `reorder`. Lo que se prueba acá es que
+ * esa lista se traduce de vuelta a grupos de pestañas —lo que el store entiende—
+ * y que el orden se guarda correctamente.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { TabBar } from '@vasakgroup/vue-libvasak';
 import { mount } from '@vue/test-utils';
-import { toRaw } from 'vue';
-import { Container, type DropResult } from 'vue3-smooth-dnd';
-import TabDraggableComponent from '../src/components/tab/TabDraggableComponent.vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { nextTick } from 'vue';
+import TabBarComponent from '@/components/tab/TabBarComponent.vue';
+import { useWorkspacesStore } from '@/stores/storage/workspaces';
+import type { Tab } from '@/types/workspaces';
+import { olvidarTodo } from './dobles';
 
-const LETRAS = ['a', 'b', 'c', 'd'];
-
-/** Monta la barra y devuelve lo que emite al soltar con ese resultado. */
-function soltar(resultado: Partial<DropResult>, items: unknown[] = LETRAS): unknown[] | undefined {
-	const barra = mount(TabDraggableComponent, {
-		props: { items, parentSelector: '.tab-bar' },
-		// El contenedor va simulado. Lo que se prueba es la cuenta de esta
-		// aplicación a partir de un `drop`, no el arrastre de la biblioteca —que
-		// necesita un ratón de verdad y medidas de elementos que el DOM de las
-		// pruebas no tiene—. Montar el de verdad costaba nueve segundos por
-		// prueba, y no comprobaba nada más.
-		global: { stubs: { Container: true } },
-	});
-
-	barra.findComponent(Container).vm.$emit('drop', {
-		removedIndex: null,
-		addedIndex: null,
-		payload: undefined,
-		element: document.createElement('div'),
-		...resultado,
-	});
-
-	const emitidos = barra.emitted('set') as [unknown[]][] | undefined;
-	return emitidos?.at(-1)?.[0];
+function unTab(cambios: Partial<Tab> = {}): Tab {
+	return {
+		id: 'uno',
+		name: 'Carpeta',
+		path: '/home/pato',
+		type: 'directory',
+		paneWidth: 100,
+		filterQuery: '',
+		...cambios,
+	};
 }
 
-describe('al soltar una pestaña arrastrada', () => {
-	test('y el montaje emite de verdad', () => {
-		// Sin esto, un `findComponent` que no encuentre nada —o un `set` que
-		// nadie escuche— deja todas las de abajo comparando `undefined` contra
-		// `undefined` y pasando.
-		expect(soltar({ removedIndex: 0, addedIndex: 0 })).toEqual(LETRAS);
+/** Monta la barra de pestañas con los grupos que se le pongan al store. */
+async function montarLaBarra(grupos: Tab[][]) {
+	const pinia = createPinia();
+	setActivePinia(pinia);
+	const store = useWorkspacesStore();
+	const espacio = store.currentWorkspace;
+	if (espacio) {
+		espacio.tabGroups = grupos;
+		espacio.currentTabGroupIndex = 0;
+	}
+	const vista = mount(TabBarComponent, {
+		attachTo: document.body,
+		global: { plugins: [pinia] },
+	});
+	await nextTick();
+	return { vista, store };
+}
+
+beforeEach(() => {
+	olvidarTodo();
+});
+
+afterEach(() => {
+	// Limpieza manual en lugar de enableAutoUnmount (sólo se puede llamar una vez por proceso)
+});
+
+describe('al reordenar pestañas', () => {
+	test('guarda los grupos en el orden nuevo', async () => {
+		// La librería emite la lista de pestañas; acá se traduce de vuelta a
+		// grupos, que es lo que el store entiende.
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })], [unTab({ id: 'c' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const pestanas = vista.findComponent(TabBar).props('tabs');
+		vista.findComponent(TabBar).vm.$emit('reorder', [pestanas[2], pestanas[0], pestanas[1]]);
+		await nextTick();
+		vista.unmount();
+
+		expect(store.currentWorkspace?.tabGroups.map((grupo) => grupo[0]?.id)).toEqual(['c', 'a', 'b']);
 	});
 
-	test('hacia la derecha queda donde se la soltó', () => {
-		// La `a` cae en la posición 2 de la lista ya sin ella: b, c, a, d.
-		expect(soltar({ removedIndex: 0, addedIndex: 2 })).toEqual(['b', 'c', 'a', 'd']);
+	test('un grupo partido en dos se mueve entero', async () => {
+		// Cada grupo puede tener varias pestañas (vista dividida). El reordenamiento
+		// opera a nivel de grupo: se mueve el grupo completo, no las pestañas
+		// individuales.
+		const grupos = [[unTab({ id: 'a' }), unTab({ id: 'a2' })], [unTab({ id: 'b' })]];
+		const { vista, store } = await montarLaBarra(grupos);
+
+		const pestanas = vista.findComponent(TabBar).props('tabs');
+		// Invierte el orden de los dos grupos
+		vista.findComponent(TabBar).vm.$emit('reorder', [pestanas[1], pestanas[0]]);
+		await nextTick();
+		vista.unmount();
+
+		expect(store.currentWorkspace?.tabGroups.map((grupo) => grupo[0]?.id)).toEqual(['b', 'a']);
+		// El grupo movido conserva sus pestañas internas
+		expect(store.currentWorkspace?.tabGroups[0]?.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[1]?.length).toBe(2);
+	});
+});
+
+describe('acciones del menú de pestaña (lógica del store)', () => {
+	test('closeOtherTabGroups cierra los otros grupos', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })], [unTab({ id: 'c' })]];
+		const { store } = await montarLaBarra(grupos);
+
+		// Simulamos mantener el grupo 'b'
+		await store.closeOtherTabGroups(grupos[1]);
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).toBe('b');
 	});
 
-	test('hacia la izquierda también', () => {
-		expect(soltar({ removedIndex: 3, addedIndex: 1 })).toEqual(['a', 'd', 'b', 'c']);
+	test('closeAllTabGroups deja un grupo vacío', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { store } = await montarLaBarra(grupos);
+
+		await store.closeAllTabGroups();
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.length).toBe(1);
+		// El grupo nuevo tiene un ID distinto
+		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).not.toBe('a');
+		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).not.toBe('b');
+	});
+});
+
+describe('componente TabBarComponent (integración)', () => {
+	let vista: ReturnType<typeof mount>;
+
+	afterEach(() => {
+		vista?.unmount();
 	});
 
-	test('al final de todo no se pierde', () => {
-		expect(soltar({ removedIndex: 1, addedIndex: 3 })).toEqual(['a', 'c', 'd', 'b']);
+	test('renderiza la barra con las pestañas del store', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista: v } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		expect(tabBar.exists()).toBe(true);
+		expect(tabBar.props('tabs').length).toBe(2);
+		expect(tabBar.props('tabs')[0].label).toBe('Carpeta');
+		vista.unmount();
 	});
 
-	test('la que viene de otro lado se inserta con su carga', () => {
-		// `removedIndex` en nulo es lo que manda la biblioteca cuando el
-		// elemento no salió de esta lista: entonces el que se inserta es el
-		// `payload`, y no hay nada que sacar.
-		expect(soltar({ removedIndex: null, addedIndex: 1, payload: 'z' })).toEqual([
-			'a',
-			'z',
-			'b',
-			'c',
-			'd',
-		]);
+	test('emite select al hacer click en una pestaña', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista: v, store } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+		tabBar.vm.$emit('select', pestanas[1].id);
+		await nextTick();
+
+		expect(store.currentWorkspace?.currentTabGroupIndex).toBe(1);
+		vista.unmount();
 	});
 
-	test('la que se fue a otro lado sale sin dejar hueco', () => {
-		expect(soltar({ removedIndex: 2, addedIndex: null })).toEqual(['a', 'b', 'd']);
+	test('emite close al cerrar una pestaña', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista: v, store } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+		tabBar.vm.$emit('close', pestanas[0].id);
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).toBe('b');
+		vista.unmount();
 	});
 
-	test('y un arrastre que no llegó a ninguna parte devuelve la lista, no una copia', () => {
-		// Los dos en nulo: se empezó a arrastrar y se soltó afuera. Devolver una
-		// lista nueva acá tampoco rompería nada visible, pero haría que la
-		// tienda se guarde una copia en cada arrastre fallido.
-		//
-		// Por eso va `toBe` y no `toEqual`: comparar los elementos deja pasar
-		// justamente el `[...props.items]` que se quiere evitar. Lo marcó la
-		// revisión.
-		//
-		// Y va con `toRaw` porque la comparación directa contra la lista que se
-		// pasó falla igual: lo que el componente recibe en `props.items` es el
-		// envoltorio reactivo que arma el montaje, no el arreglo de acá. `toRaw`
-		// lo desenvuelve y deja la identidad comparable; una copia sigue siendo
-		// ella misma y no pasa. Se comprobó devolviendo una.
-		const items = [...LETRAS];
+	test('emite new al crear pestaña nueva', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista: v, store } = await montarLaBarra(grupos);
+		vista = v;
 
-		expect(toRaw(soltar({}, items) as unknown[])).toBe(items);
+		const tabBar = vista.findComponent(TabBar);
+		const gruposAntes = store.currentWorkspace?.tabGroups.length ?? 0;
+		await tabBar.vm.$emit('new');
+		// openNewTabGroup es async; esperar a que complete
+		await new Promise((r) => setTimeout(r, 50));
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.length).toBe(gruposAntes + 1);
+		vista.unmount();
+	});
+
+	test('abre el menú contextual y cierra al reabrir con nueva ancla', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista: v } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Abrir menú en la pestaña 'a'
+		tabBar.vm.$emit('menu', { id: pestanas[0].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		let menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+		expect(menu).toBeTruthy();
+
+		// Reabrir menú en la pestaña 'b' (debe cerrar y reabrir)
+		tabBar.vm.$emit('menu', { id: pestanas[1].id, x: 20, y: 20 });
+		await nextTick();
+		await nextTick();
+
+		menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+		expect(menu).toBeTruthy();
+
+		// La ancla debe haberse actualizado
+		const ancla = vista.find('.fixed.size-0');
+		expect(ancla.attributes('style')).toContain('left: 20px');
+		expect(ancla.attributes('style')).toContain('top: 20px');
+		vista.unmount();
+	});
+});
+
+describe('cobertura de funciones internas del TabBarComponent', () => {
+	let vista: ReturnType<typeof mount>;
+
+	afterEach(() => {
+		vista?.unmount();
+	});
+
+	test('elegir con ID inexistente no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista: v } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		// ID que no existe
+		tabBar.vm.$emit('select', 'id-inexistente');
+		await nextTick();
+		// No debe lanzar error
+		vista.unmount();
+	});
+
+	test('cerrar con ID inexistente no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista: v } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		tabBar.vm.$emit('close', 'id-inexistente');
+		await nextTick();
+		// No debe lanzar error, grupo sigue ahí
+		const store = useWorkspacesStore();
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		vista.unmount();
+	});
+
+	test('reordenar con lista vacía no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista: v } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		tabBar.vm.$emit('reorder', []);
+		await nextTick();
+		// No debe lanzar error
+		vista.unmount();
+	});
+
+	test('cerrarLasDemas vía menú funciona', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })], [unTab({ id: 'c' })]];
+		const { vista: v, store } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Abrir menú en 'b'
+		tabBar.vm.$emit('menu', { id: pestanas[1].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		// Emitir select en el primer DropdownMenuItem (cerrar las demás)
+		const menuItems = vista.findAllComponents({ name: 'DropdownMenuItem' });
+		await menuItems[0].vm.$emit('select');
+		await nextTick();
+
+		// Solo 'b' debe quedar
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.[0]?.id).toBe('b');
+		vista.unmount();
+	});
+
+	test('cerrarTodas vía menú funciona', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista: v, store } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		tabBar.vm.$emit('menu', { id: pestanas[0].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		const menuItems = vista.findAllComponents({ name: 'DropdownMenuItem' });
+		await menuItems[1].vm.$emit('select');
+		// closeAllTabGroups es async y crea un grupo nuevo; esperar un poco más
+		await new Promise((r) => setTimeout(r, 50));
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.length).toBe(1);
+		expect(store.currentWorkspace?.tabGroups[0]?.length).toBe(1);
+		vista.unmount();
+	});
+
+	test('reordenar mantiene el grupo activo correcto', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })], [unTab({ id: 'c' })]];
+		const { vista: v, store } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Mover 'c' al principio
+		tabBar.vm.$emit('reorder', [pestanas[2], pestanas[0], pestanas[1]]);
+		await nextTick();
+
+		expect(store.currentWorkspace?.tabGroups.map((g) => g[0]?.id)).toEqual(['c', 'a', 'b']);
+		// El grupo activo debe seguir siendo el que estaba activo (índice 0 -> 'a')
+		expect(store.currentWorkspace?.currentTabGroupIndex).toBe(1); // 'a' ahora está en índice 1
+		vista.unmount();
+	});
+
+	test('reordenar con un solo grupo no rompe', async () => {
+		const grupos = [[unTab({ id: 'a' })]];
+		const { vista: v } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+		tabBar.vm.$emit('reorder', [pestanas[0]]);
+		await nextTick();
+		// No debe lanzar error
+		vista.unmount();
+	});
+
+	test('menú se cierra y reabre al cambiar pestaña objetivo', async () => {
+		const grupos = [[unTab({ id: 'a' })], [unTab({ id: 'b' })]];
+		const { vista: v } = await montarLaBarra(grupos);
+		vista = v;
+
+		const tabBar = vista.findComponent(TabBar);
+		const pestanas = tabBar.props('tabs');
+
+		// Abrir menú en 'a'
+		tabBar.vm.$emit('menu', { id: pestanas[0].id, x: 10, y: 10 });
+		await nextTick();
+		await nextTick();
+
+		let menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+		expect(menu).toBeTruthy();
+
+		// Cambiar a 'b' sin cerrar menú previo
+		tabBar.vm.$emit('menu', { id: pestanas[1].id, x: 50, y: 50 });
+		await nextTick();
+		await nextTick();
+
+		// Menú debe seguir existiendo
+		menu = document.querySelector('[role="menu"]');
+		expect(menu).not.toBeNull();
+		expect(menu).toBeTruthy();
+
+		// Ancla actualizada
+		const ancla = vista.find('.fixed.size-0');
+		expect(ancla.attributes('style')).toContain('left: 50px');
+		expect(ancla.attributes('style')).toContain('top: 50px');
+		vista.unmount();
 	});
 });

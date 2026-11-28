@@ -182,12 +182,11 @@ function removeItem(entry: DirEntry) {
 	emit('removeFromSelection', entry);
 }
 
-function openCollapsedPopover() {
-	nextTick(() => {
-		setTimeout(() => {
-			showItemsPopoverOpen.value = true;
-		}, 200);
-	});
+async function openCollapsedPopover() {
+	await nextTick();
+	setTimeout(() => {
+		showItemsPopoverOpen.value = true;
+	}, 200);
 }
 </script>
 

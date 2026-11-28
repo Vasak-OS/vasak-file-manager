@@ -77,16 +77,15 @@ watch(name, () => {
 	}
 });
 
-watch(isOpen, (open) => {
+watch(isOpen, async (open) => {
 	if (open) {
 		name.value = props.defaultName;
 		password.value = '';
 		isSubmitting.value = false;
 
-		nextTick(() => {
-			inputRef.value?.focus();
-			inputRef.value?.select();
-		});
+		await nextTick();
+		inputRef.value?.focus();
+		inputRef.value?.select();
 	} else {
 		// La clave no se queda en memoria del diálogo al cerrarlo.
 		password.value = '';

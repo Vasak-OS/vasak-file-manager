@@ -150,12 +150,11 @@ function buttonLabel(text: string): string {
 	return showsButtonText.value ? text : '';
 }
 
-function openCollapsedPopover() {
-	nextTick(() => {
-		setTimeout(() => {
-			clipboardItemsPopoverOpen.value = true;
-		}, 200);
-	});
+async function openCollapsedPopover() {
+	await nextTick();
+	setTimeout(() => {
+		clipboardItemsPopoverOpen.value = true;
+	}, 200);
 }
 </script>
 

@@ -389,10 +389,7 @@ fn should_skip_linux_mount(file_system: &str, name: &str, mount_point: &str) -> 
     let is_user_mount = mount_point.starts_with("/media/")
         || mount_point.starts_with("/mnt/")
         || mount_point.starts_with("/run/media/");
-    if is_user_mount || is_network_filesystem(file_system) {
-        return false;
-    }
-    true
+    !(is_user_mount || is_network_filesystem(file_system))
 }
 
 // ---------------------------------------------------------------------------

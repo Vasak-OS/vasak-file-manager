@@ -81,39 +81,38 @@ watch(newName, () => {
 	}
 });
 
-watch(isOpen, (open) => {
+watch(isOpen, async (open) => {
 	if (open && props.entry) {
 		const entry = props.entry;
 		newName.value = entry.name;
 		isSubmitting.value = false;
 
-		nextTick(() => {
-			if (inputRef.value) {
-				const inputElement = inputRef.value;
-				inputElement.blur();
+		await nextTick();
+		if (inputRef.value) {
+			const inputElement = inputRef.value;
+			inputElement.blur();
 
-				if (entry.is_dir) {
-					requestAnimationFrame(() => {
-						requestAnimationFrame(() => {
-							inputElement.focus();
-							inputElement.select();
-						});
-					});
-				} else {
-					const nameWithoutExt = getNameWithoutExtension(entry.name);
-					const selectionStart = 0;
-					const selectionEnd = nameWithoutExt.length;
-
+			if (entry.is_dir) {
+				requestAnimationFrame(() => {
 					requestAnimationFrame(() => {
 						inputElement.focus();
-
-						requestAnimationFrame(() => {
-							inputElement.setSelectionRange(selectionStart, selectionEnd);
-						});
+						inputElement.select();
 					});
-				}
+				});
+			} else {
+				const nameWithoutExt = getNameWithoutExtension(entry.name);
+				const selectionStart = 0;
+				const selectionEnd = nameWithoutExt.length;
+
+				requestAnimationFrame(() => {
+					inputElement.focus();
+
+					requestAnimationFrame(() => {
+						inputElement.setSelectionRange(selectionStart, selectionEnd);
+					});
+				});
 			}
-		});
+		}
 	} else if (!open) {
 		handleCancel();
 	}
