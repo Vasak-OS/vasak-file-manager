@@ -349,9 +349,9 @@ function handleGlobalKeydown(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
+	window.addEventListener('keydown', handleGlobalKeydown);
 	await nextTick();
 	scrollBreadcrumbsToEnd();
-	window.addEventListener('keydown', handleGlobalKeydown);
 });
 
 onUnmounted(() => {
